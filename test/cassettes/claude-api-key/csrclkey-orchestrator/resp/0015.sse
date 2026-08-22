@@ -1,0 +1,45 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeK5tckg6UKkYMvWusGue","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":879,"cache_read_input_tokens":53775,"cache_creation":{"ephemeral_5m_input_tokens":879,"ephemeral_1h_input_tokens":0},"output_tokens":2,"service_tier":"standard","inference_geo":"global"}}             }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""} }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EocECqgBCBEYAipATEjIgNfM8/39/lJ+qqQY3AGfjqMnebZ6AUCd428kw8n/J1rex91NNbGkLNyo5goRyZGr2DEoov6lOp8qB5ZfizIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEB4aFA8rRS4c55cfnpWb6maIAQGoAdX6qdQGsAECEgwitMiqY+uioygdBtcaDGbg7rzfZTGvMS5SSCIwmJ6HuKs3DD3etoVT+QMQjWYR4YaG3YMOPvKDYjSQ9s+SQB/7gpo/3J5eSSkagmF6KosCCfmuSbelddN3Ea+fFZz++wtxIEnlMEQ3J1miendURWC3jgeS5sAISsDD99aR3qRiK7/LlF2/HXV1SDvK0ZrjF97FPpeptJP+e+88dKtfxX/rjLWrDWMwFPStyeCY7yyVG876LNG1LTzPwzHhV4XHuZ+VtPgAQ/Es1ciDuimf21HTybE+1twdP4fEtx5kOnSV/pf6858ahewwebb9yWG+X2dRqfCFrBh5XZVT1+Uevg47XPWL0NjOiv1LLgeVtP8IUi2aqxZkaIvZLj3QB8s0BTQRTSJSjvsfZJQHReU/lh+yppJP2sj/qxiDq5hC/Is7aioTL7tJcgtjnqyOfyCJ7LsATYr/yP51pFHCGAE="}         }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0        }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}             }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Report looks complete, but the branch shows `dirty: true` despite dev claiming everything was committed. I"}      }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" need to fetch and verify directly rather than trust the report."}          }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1      }
+
+event: content_block_start
+data: {"type":"content_block_start","index":2,"content_block":{"type":"tool_use","id":"toolu_014JqvehXqrKNxoR7Zp12C1v","name":"Bash","input":{},"caller":{"type":"direct"}}              }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member fetch dev 2\u003e\u00261 | tail -50\"}","type":"input_json_delta"},"index":2,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":2     }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":879,"cache_read_input_tokens":53775,"output_tokens":206,"output_tokens_details":{"thinking_tokens":83}},"context_management":{"applied_edits":[]}  }
+
+event: message_stop
+data: {"type":"message_stop"  }
+

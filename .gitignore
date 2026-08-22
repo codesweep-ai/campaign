@@ -1,0 +1,46 @@
+# What this repository deliberately DOES commit, so nobody adds a rule for it
+# later: covmap/ holds the behaviour rubric, its run records and the rendered
+# page, all reviewed in a diff; ledger/ holds the issue records and their
+# rendered page; internal/cli/assets/cs-campaign-member.bin is a text
+# placeholder the build replaces, and `create` refuses to install one.
+#
+# Campaign material is not ignored either, because none belongs here at all:
+# profiles, missions, briefs and archives live in a workspace outside this
+# checkout (CONTRIBUTING.md).
+
+# Go build output
+/bin/
+
+# goreleaser release artifacts
+/dist/
+
+# Local credentials and env config
+/.env
+*.key
+
+# Private terms scripts/lint-oss.py scans for. The file names exactly what this
+# project considers private, so committing it would publish the list itself.
+/.leakterms
+
+# Scratch space for a run in progress, and anything an operator archived here
+# by mistake. Archives belong outside the checkout.
+/.tmp/
+/archives/
+/dispatch-viewer/out/
+
+# The covmap run buffer: every `go test` appends to it, and `make covmap` folds
+# it into the tracked covmap/results.json. Committing the buffer would commit
+# the same records twice.
+/covmap/runs.local.jsonl
+
+# Go coverage data. Every test target writes a tier directory here; the merged
+# profile and the report are derived from them. The baseline (.coverage-baseline)
+# is committed on purpose — it is what makes a lost suite reviewable.
+/.coverage/
+
+# Editor state
+/.vscode/
+
+# A stray build of the guest binary at the root. The embed placeholder lives at
+# internal/cli/assets/cs-campaign-member.bin and must stay the only copy.
+/cs-campaign-member

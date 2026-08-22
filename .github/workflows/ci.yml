@@ -1,0 +1,430 @@
+# Build, unit tests, every gate a contributor runs before pushing, and the
+# smoke tier.
+#
+# The smoke job boots real Firecracker microVMs on a hosted runner. That works
+# because ubuntu-latest does have /dev/kvm — it is root:kvm and the runner user
+# is not in that group, so it reads as absent until the job widens it. What the
+# job does not have is a credential, and it needs none: every model call is
+# served from the committed cassette by a cs-vcr on the campaign's own fabric.
+#
+# The integration tier is not here. It talks to real providers and spends real
+# money, so it runs by hand on a machine with the logins (CONTRIBUTING.md).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: build-test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # The four tools `make check` shells out to. golangci-lint is pinned
+      # because it gains checks between releases: unpinned, somebody else's
+      # release becomes a red build on a pull request that touched nothing.
+      #
+      # cs-vcr is deliberately NOT pinned, and it is here for `fixtures-check`
+      # rather than for a linter. That gate asks whether the committed
+      # cassettes still replay under the cs-vcr a run would actually use, and
+      # the smoke job below installs @latest — so pinning it here would only
+      # move the discovery to the expensive job that boots machines. Its
+      # absence is not an error either: fixtures-check skips when cs-vcr is
+      # missing, which is what keeps `make check` runnable on a laptop.
+      - name: linters
+        run: |
+          set -euo pipefail
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+          go install golang.org/x/tools/cmd/deadcode@latest
+          go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
+          go install github.com/codesweep-ai/vcr/cmd/cs-vcr@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      # The same one command a contributor runs before pushing
+      # (CONTRIBUTING.md): fmt, vet, the Go linters, the unit tier and all
+      # three prose gates. The jobs below run three of those again, on their
+      # own, so they answer in seconds and answer when the tests are failing.
+      - name: make check
+        run: make check
+
+      - name: build
+        run: make build-go
+
+      # The tier this leg produced, for the coverage job to merge. Uploaded
+      # rather than reported here: the unit tier is one number only once it
+      # stands beside the smoke tier, and judging it on its own would measure a
+      # slice of the suite instead of the suite.
+      - name: keep this leg's coverage
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-unit-${{ matrix.os }}
+          path: .coverage/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+
+      # Schema only: this validates the manifest and does not prove a release
+      # can be cut. `make snapshot` does that, locally.
+      - name: goreleaser check
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: check
+
+  # Its own job, and pinned. What it checks is platform-independent, so it runs
+  # once rather than per matrix leg; and these linters gain checks between
+  # releases, so an unpinned one turns somebody else's release into a red build
+  # on a pull request that touched nothing.
+  lint:
+    name: lint (go)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+      - run: go install golang.org/x/tools/cmd/deadcode@latest
+      - run: make lint
+      - run: make deadcode
+
+  # The prose rules from CONTRIBUTING.md, checked by cs-lint. Its own job
+  # because it needs no matrix and builds nothing of this repository, so it
+  # answers in a minute and answers even when the tests are failing.
+  # cs-lint is installed from source in each of the three jobs below rather
+  # than pinned: it is this family's own linter, and a check it gains has to
+  # reach here on the day it lands.
+  docs:
+    name: docs prose
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: cs-lint
+        run: |
+          go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - run: make docs
+
+  # The rules this repository has to satisfy as a published project: the
+  # licence, the document set, what must never reach a public commit, the
+  # release path, and what a stranger's clone can do with it. fetch-depth: 0
+  # because half of them read the history, and a shallow checkout would let
+  # them pass by seeing nothing.
+  oss:
+    name: open-source readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: cs-lint
+        run: |
+          go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - run: make oss
+
+  # The documents against the software: every command they name exists, every
+  # command the binaries carry is named, the settings the code reads are the
+  # settings they list, and a sample output is still what the command prints.
+  # It builds first, because half the checks ask the binary itself.
+  walkthrough:
+    name: docs walkthrough
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: cs-lint
+        run: |
+          go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - run: make walkthrough
+
+  # The ledger's freshness gate. CONTRIBUTING.md asks for a render and a check
+  # before every commit that touches ledger/, and nothing enforced it until
+  # this job did.
+  ledger:
+    name: ledger check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: install cs-ledger
+        run: go install github.com/codesweep-ai/ledger/cmd/cs-ledger@latest
+      - run: cs-ledger check ledger
+
+  # The whole dispatch protocol on real machines, with the model's answers
+  # replayed. This is the job that proves the harness rather than its parts: two
+  # microVMs boot, the readback runs, the mission opens, the orchestrator drives
+  # an agent, and a verdict comes back — for nothing, because cs-vcr serves every
+  # call from the cassette and the run holds no credential at all.
+  #
+  # It needs no checkout of the sibling repositories: cs-sandbox embeds its own
+  # image tree and builds the guest image and the Firecracker artifacts itself,
+  # and `go install ...@latest` resolves both tools to a pseudo-version of their
+  # branch tip, since neither is tagged yet.
+  smoke:
+    name: smoke (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # One tag for the build and for the tests. `--slim --with-agents` would
+      # default to exactly this, but `make test-smoke` reads the variable rather
+      # than the flag, so naming it here is what points the two at one image.
+      CS_SANDBOX_IMAGE: localhost/cs-sandbox:ci-agents
+      # Out of ~/.cache and into the workspace, so the pack and unpack steps
+      # below have a single path to name.
+      CS_SANDBOX_FC_CACHE: ${{ github.workspace }}/bin/fc-cache
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Skip the whole job, cheaply, when there is nothing to replay. A
+      # repository whose cassette has not been recorded yet cannot be said to
+      # have a broken replay, and forty minutes of image building would prove
+      # only that.
+      #
+      # The glob is <scenario>/<member>/index.jsonl, which is the shape
+      # `make fixtures` writes and the shape hasCassette globs for in
+      # internal/cli/smoke_test.go. One level shallower matches nothing, and a
+      # guard that matches nothing skips every step below and still reports a
+      # green job in twenty seconds.
+      - name: is there a cassette to replay?
+        id: cassette
+        run: |
+          set -euo pipefail
+          if compgen -G 'test/cassettes/*/*/index.jsonl' >/dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "no cassette committed; record one with \`make fixtures\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # /dev/kvm is present on these runners but root:kvm, and the runner user
+      # is not in that group — so it reads as absent, every microVM skips
+      # itself, and that looks exactly like passing.
+      - name: host prerequisites
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            fakeroot e2fsprogs dnsmasq-base passt socat uidmap iproute2 curl podman
+          sudo chmod 0666 /dev/kvm
+          test -w /dev/kvm || { echo "/dev/kvm still not writable" >&2; exit 1; }
+
+      - name: install cs-sandbox and cs-vcr
+        id: tools
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          go install github.com/codesweep-ai/sandbox/cmd/cs-sandbox@latest
+          # CGO_ENABLED=0 for cs-vcr, and it is load-bearing. The proxy is
+          # bind-mounted into gcr.io/distroless/static-debian12 — no libc, no
+          # dynamic loader — so it has to be static. A runner has gcc, so the
+          # default build is cgo and therefore dynamic, and the container then
+          # dies at exec with "/usr/local/bin/cs-vcr: No such file or directory":
+          # the kernel reporting the missing ELF interpreter, not a missing
+          # binary. Every model call then fails and each scenario burns its
+          # ceiling, so the job times out rather than saying what broke.
+          CGO_ENABLED=0 go install github.com/codesweep-ai/vcr/cmd/cs-vcr@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          # What the cache below is keyed on. Both tools resolve to @latest, so
+          # the image they build changes without anything in this repository
+          # changing — a key made from files here would serve a stale image
+          # until somebody happened to touch go.sum.
+          ver=$("$(go env GOPATH)/bin/cs-sandbox" version | awk '{print $2}')
+          # An empty key segment would collapse every sandbox version onto one
+          # cache entry, which is the stale image this key exists to prevent.
+          test -n "$ver" || { echo "cannot read the cs-sandbox version" >&2; exit 1; }
+          echo "sandbox=$ver" >> "$GITHUB_OUTPUT"
+
+      # Packed, not cached in place. The base rootfs is a 32 GiB file that is
+      # almost entirely holes: `tar --sparse` stores it in a few hundred
+      # megabytes, where caching the directory itself would hand actions/cache
+      # 32 GiB of zeros to store and, on the next run, to write back out onto a
+      # runner that has about 21 GB of disk.
+      - name: cache the guest image and the Firecracker artifacts
+        id: artifacts
+        if: steps.cassette.outputs.present == 'true'
+        uses: actions/cache@v4
+        with:
+          path: bin/ci-artifacts
+          key: cs-sandbox-ci-${{ runner.os }}-${{ steps.tools.outputs.sandbox }}
+
+      # --slim is what makes this job possible at all. The shipped guest image is
+      # 9.3 GB and takes tens of minutes; a hosted runner does not have the disk,
+      # and every attempt died partway through `podman build` with "no space left
+      # on device". The slim image is the same Containerfile with the developer
+      # toolchains dropped.
+      #
+      # --with-agents is what this repository needs beyond the plain slim image
+      # cs-sandbox's own CI uses: every scenario here drives claude, codex or
+      # opencode INSIDE the member, and the readback runs `command -v <cli>`
+      # before anything else, so a member without them fails before the first
+      # dispatch. The mission itself asks only for git and python3, both of which
+      # the slim base already carries.
+      - name: build the guest image and the Firecracker artifacts
+        if: steps.cassette.outputs.present == 'true' && steps.artifacts.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          cs-sandbox build --engine firecracker --slim --with-agents
+          mkdir -p bin/ci-artifacts
+          podman save --format oci-archive -o bin/ci-artifacts/image.tar "$CS_SANDBOX_IMAGE"
+          tar --sparse -C "$CS_SANDBOX_FC_CACHE" -czf bin/ci-artifacts/fc-artifacts.tar.gz .
+          ls -lh bin/ci-artifacts
+          # This job died on a full disk for its entire first week, so what it
+          # cost is worth a line in the log rather than a bisect next time.
+          df -h /
+
+      # `create` checks the image exists before it boots anything, so the microVM
+      # path needs it loaded even though it boots from the rootfs and not from
+      # podman.
+      - name: load the cached guest image and artifacts
+        if: steps.cassette.outputs.present == 'true' && steps.artifacts.outputs.cache-hit == 'true'
+        run: |
+          set -euo pipefail
+          podman load -i bin/ci-artifacts/image.tar
+          podman image exists "$CS_SANDBOX_IMAGE"
+          mkdir -p "$CS_SANDBOX_FC_CACHE"
+          tar -C "$CS_SANDBOX_FC_CACHE" -xzf bin/ci-artifacts/fc-artifacts.tar.gz
+
+      # Both paths land here, so a cache hit is held to the same bar as a build.
+      - name: the agent tools, and the artifacts this host will boot
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          cs-sandbox install-agent-tools
+          cs-sandbox doctor --engine firecracker
+
+      # Four of the five scenarios. opencode-fireworks is left out here, and
+      # only here: on a two-core hosted runner its member never gets its turn
+      # started, sits out the whole 300s settling window and takes the run to
+      # 1250s before the tier gives up. It passes in about 110s on a machine
+      # with room, so `make test-smoke` still runs all five by default and the
+      # scenario is skipped rather than deleted.
+      - name: smoke
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          make test-smoke SMOKE_TESTS='TestSmokeReplay/^(claude-subscription|claude-api-key|codex-subscription|codex-api-key)$'
+
+      - name: keep this job's coverage
+        if: steps.cassette.outputs.present == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-smoke
+          path: .coverage/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+
+  # The behaviour map is committed, and it is a pure function of the rubric and
+  # the run records. A stale page is a merge gate rather than a confusing diff
+  # somebody finds later.
+  covmap:
+    name: behaviour map
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: the committed page is what the rubric renders
+        run: |
+          set -euo pipefail
+          go test ./internal/covmap/... -run TestCoverageHTMLCurrent -count=1
+          git diff --exit-code -- covmap/
+
+  # One number for the whole run, and the gate that keeps it honest.
+  #
+  # Every job above uploads its tier rather than judging it, because each sees
+  # only the part of the suite it ran: the unit leg never boots a machine, and
+  # the smoke job never runs the unit tier. Merged here they are one picture,
+  # which is the only one worth reporting or gating on.
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    needs: [build-test, smoke]
+    if: always() && needs.build-test.result == 'success'
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: collect every tier
+        uses: actions/download-artifact@v7
+        with:
+          pattern: coverage-*
+          path: .coverage-artifacts
+
+      # Unpacked side by side as <tier>@<job> rather than merged into one
+      # directory per tier: covdata data files are named after a build hash, so
+      # two jobs' files would collide on name while differing in content.
+      # scripts/coverage.sh treats every <tier>@* directory as that tier.
+      #
+      # Found by searching rather than by walking one fixed level down, because
+      # download-artifact does not always put an artifact in a directory of its
+      # own: it unpacks straight into `path` when exactly one artifact matched
+      # the pattern. So the depth here depends on how many jobs uploaded, and a
+      # loop written for the many-artifact shape silently assembles nothing on
+      # the day only one did.
+      - name: assemble the tiers
+        run: |
+          set -euo pipefail
+          mkdir -p .coverage
+          while IFS= read -r dir; do
+            tier=$(basename "$dir")
+            job=$(basename "$(dirname "$dir")"); job=${job#coverage-}
+            # The flat shape above: the tier's parent is the download root
+            # itself, which names no job, so the tier names it.
+            [ "$job" = ".coverage-artifacts" ] && job=$tier
+            cp -a "$dir" ".coverage/$tier@$job"
+          done < <(find .coverage-artifacts -type d \( -name unit -o -name smoke \) | sort)
+          echo "tier directories assembled:"
+          find .coverage -mindepth 1 -maxdepth 1 -type d -printf '  %f\n' | sort
+
+      # Prints the aggregate to the job summary and fails if a package the
+      # baseline records has stopped being reached by the tier that reached it.
+      - name: report and gate
+        run: make coverage-check

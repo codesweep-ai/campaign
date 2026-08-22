@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeK5Xz5jVxQL2fLkvgd5N","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":311,"cache_read_input_tokens":52708,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":311},"output_tokens":3,"service_tier":"standard","inference_geo":"not_available"}}             }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}        }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Now I"}    }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"'ll dispatch the actual mission work to dev."}  }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0             }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_018XWf9xrpM1zM4d6VGKJkkn","name":"Write","input":{},"caller":{"type":"direct"}}               }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/tmp/dev-d002.md\", \"content\": \"Dispatch d002 for dev.\\n\\nImplement the following in your ~/subject repository clone, on your own branch:\\n\\n1. Create `src/greet.py` with a function `greet(name)` that returns the string\\n   `\\\"Hello, \u003cname\u003e!\\\"` (e.g. `greet(\\\"World\\\")` returns `\\\"Hello, World!\\\"`).\\n\\n2. Create `tests/test_greet.py` with unit tests covering:\\n   - A normal name (e.g. `greet(\\\"World\\\")` == `\\\"Hello, World!\\\"`)\\n   - The empty string (e.g. `greet(\\\"\\\")` == `\\\"Hello, !\\\"`)\\n\\n3. Run `python3 -m unittest discover -s tests` from the repo root and confirm\\n   it exits 0 (all tests pass). Fix anything necessary until it does.\\n\\n4. Commit your work to your own branch.\\n\\n5. Reply to this dispatch (`cs-campaign-member reply --file \u003cpath\u003e`) with an\\n   honest summary: what you implemented, the exact test command you ran, its\\n   output/exit code, and confirmation that you committed to your branch.\\n\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1            }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":311,"cache_read_input_tokens":52708,"output_tokens":436,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]} }
+
+event: message_stop
+data: {"type":"message_stop"             }
+

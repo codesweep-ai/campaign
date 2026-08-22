@@ -1,0 +1,20 @@
+apiVersion: codesweep.ai/v1alpha1
+kind: CampaignProfile
+defaults:
+  engine: firecracker
+orchestrator:
+  cli: claude
+  auth:
+    inheritAgentLogin:
+      - claude
+agents:
+  claude-worker:
+    cli: claude
+    auth:
+      inheritAgentLogin:
+        - claude
+  codex-worker:
+    cli: codex
+    auth:
+      apiKeyFromEnv:
+        - OPENAI_API_KEY

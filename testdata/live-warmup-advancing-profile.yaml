@@ -1,0 +1,31 @@
+# Acceptance fleet used by TestLiveOpenCodeWarmupWaitsForASlowMember
+# (internal/cli/live_warmup_test.go). Two opencode members on Fireworks-hosted
+# Kimi K3, the adapter whose live failure produced the row and the one where
+# turnAdvancing is least certain (it infers from the SQLite WAL rather
+# than asking the server). Verifying the fix anywhere else would be verifying it
+# on the plane where it cannot fail.
+#
+# No `model:`/`effort:` here on purpose. The row's failing member was glm-5p2 at
+# reasoningEffort: high, but the model slug is provider-specific and opencode
+# exposes no effort ladder for kimi over an openai-compatible transport (see
+# the driver). Effort only changes HOW LONG the turn takes; the test compresses the
+# same scenario by shortening warmup's soft deadline instead, so the mechanism
+# under test — a turn that outlives the deadline while still writing — is
+# reproduced without depending on a provider's latency. To run the row's exact
+# shape, add `--set orchestrator.model=<slug> --set orchestrator.effort=high`.
+apiVersion: codesweep.ai/v1alpha1
+kind: CampaignProfile
+defaults:
+  engine: firecracker
+  resources:
+    cpus: 2
+    memoryMiB: 2048
+orchestrator:
+  cli: opencode
+  auth:
+    apiKeyFromEnv: [FIREWORKS_API_KEY]
+agents:
+  oc-worker:
+    cli: opencode
+    auth:
+      apiKeyFromEnv: [FIREWORKS_API_KEY]

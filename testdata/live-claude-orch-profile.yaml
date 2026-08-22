@@ -1,0 +1,18 @@
+# Claude-orchestrator live smoke used by TestLiveClaudeOrchestratorSmoke
+# (internal/cli/live_claude_orch_test.go). Deliberately declares NO Claude
+# auth grants: the test injects an independent OAuth login ("slot") into each
+# Claude member after create, so concurrent members never share a rotating
+# credential (IMPL.md OI-009). The slots are a test-only fixture, not a
+# harness feature — see the test header for the one-time setup.
+apiVersion: codesweep.ai/v1alpha1
+kind: CampaignProfile
+defaults:
+  engine: firecracker
+  resources:
+    cpus: 2
+    memoryMiB: 2048
+orchestrator:
+  cli: claude
+agents:
+  claude-agent:
+    cli: claude

@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeK5akegLTu9jTz39Qjcj","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":184,"cache_read_input_tokens":51379,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":184},"output_tokens":2,"service_tier":"standard","inference_geo":"not_available"}}          }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}     }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EqcDCqgBCBEYAipAJrHd3fTgdRHGGZozJmyIbKme3bCFP2MKHXaXV7G2Bq89pqa9K2xkWk150kJIyi6Dqj2xr3lsRiC0ktzwuo83fDIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEIEM70u1gGnGHg+dXPb733CIAQGoAeH4qdQGsAECEgzJYj5LYDXdWZp2mR8aDL+69MT1bhEJviVEeyIwikvDyWGaMj8fS/FqZRnqIrcTBmTmFDZz66uod4PlWyKt64Qdk+M1ZjiJw35Xzz+MKqsBpQbVF6/8W1kWuDqv+YGwSlAC7DdSQ6OHmcAo6V5CYA4C1Py9Y48ihowd5/TemJGga4h/PjH42jIzl9gZOXpIApoxmJBviUVhv34DP5Sem9HKSsLytFAoJefv6+iMyrJDVIjKFbqAkurot2CRvnziclWYhXT75XYpis5x3sErhcG7AS3TGT58pb7VizKDROP5UBBga0V2Mn0L7xm8ZcCkI8gD03t28XQOvTzBGAE="}    }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0         }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01EWNMzeX21eNEncVfGo6jb4","name":"Bash","input":{},"caller":{"type":"direct"}}         }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git status \u0026\u0026 git log --oneline -3\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":184,"cache_read_input_tokens":51379,"output_tokens":112,"output_tokens_details":{"thinking_tokens":46}},"context_management":{"applied_edits":[]} }
+
+event: message_stop
+data: {"type":"message_stop"    }
+

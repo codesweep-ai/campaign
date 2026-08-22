@@ -1,0 +1,15 @@
+apiVersion: codesweep.ai/v1alpha1
+kind: CampaignProfile
+defaults:
+  engine: firecracker
+orchestrator:
+  cli: codex
+  auth:
+    apiKeyFromEnv: [OPENAI_API_KEY]
+    inheritAgentLogin: [codex]
+agents:
+  worker:
+    cli: codex
+    auth:
+      apiKeyFromEnv: [OPENAI_API_KEY]
+      inheritAgentLogin: [codex]

@@ -1,0 +1,19 @@
+# Mixed-adapter live smoke used by TestLiveClaudeSmoke (internal/cli/live_claude_test.go).
+# Exactly one Claude member: cloned OAuth credentials rotate and must not be
+# shared by concurrent Claude VMs (IMPL.md OI-009).
+apiVersion: codesweep.ai/v1alpha1
+kind: CampaignProfile
+defaults:
+  engine: firecracker
+  resources:
+    cpus: 2
+    memoryMiB: 2048
+orchestrator:
+  cli: codex
+  auth:
+    apiKeyFromEnv: [OPENAI_API_KEY]
+agents:
+  claude-worker:
+    cli: claude
+    auth:
+      inheritAgentLogin: [claude]

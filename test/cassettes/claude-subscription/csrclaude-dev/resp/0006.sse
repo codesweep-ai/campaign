@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeK5VkYbGMDGfRkpj9JAH","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":79,"cache_read_input_tokens":50094,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":79},"output_tokens":9,"service_tier":"standard","inference_geo":"not_available"}} }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}  }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EsoCCqgBCBEYAipAYl0q5HJ8pBmdvrX9I2XUWnTN+n3z2p4XSnVpuQ698PfK/2bTi0sVdTZJhensfSpUFYXRdzlf5zcBxJ2StAmCoTIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEIEM70u1gGnGHg+dXPb733CIAQGoAZ34qdQGsAECEgxQQ+WufsSDp3DigIAaDMi9rwONEdfedM9QCiIw3StLvNUFGIXUMS9jRCPYB0hx0WfbZq+xu/jZZqwEPsmMXhUhv+m0N9DMKrrkgS69Kk/JOz45xu8htSaWFnyf5AD3NitDnnEGCVVozEr5JWhApNY6JCr/U96H8q3V5ZnhJ/TPfeGyienuwE4egAV6I/0nGBsPTu7tbTLkYwNLvO97GAE="}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0    }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01PVTHfnKD5oH623ArzHmhTN","name":"Write","input":{},"caller":{"type":"direct"}}            }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/tmp/readback.json\", \"content\": \"{\\\"member\\\":\\\"dev\\\",\\\"role\\\":\\\"agent\\\",\\\"branch\\\":\\\"cs-sandbox/<DEV:1>.<GROUP:1>\\\",\\\"missing\\\":[],\\\"goal\\\":\\\"Act as the agent for campaign csrclaude, implementing exactly what each dispatch asks against the subject repository and reporting the results.\\\",\\\"scope\\\":\\\"I own the subject repository clone at ~/subject on my dedicated branch, and must not touch other members' branches, systems, or scope beyond what a dispatch explicitly asks.\\\",\\\"obligations\\\":\\\"I must commit my work to my own branch, write durable results to the output directory, and reply to each dispatch truthfully; work not committed to my branch is lost when my machine is destroyed, and ending a turn without a reply leaves the dispatch open and gets me prodded to continue.\\\"}\\n\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1          }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":79,"cache_read_input_tokens":50094,"output_tokens":360,"output_tokens_details":{"thinking_tokens":23}},"context_management":{"applied_edits":[]}       }
+
+event: message_stop
+data: {"type":"message_stop"       }
+

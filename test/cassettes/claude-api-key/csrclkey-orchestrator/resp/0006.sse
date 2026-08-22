@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeK5n1irGJrxzA6XCB7w9","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":74,"cache_read_input_tokens":51051,"cache_creation":{"ephemeral_5m_input_tokens":74,"ephemeral_1h_input_tokens":0},"output_tokens":4,"service_tier":"standard","inference_geo":"global"}}           }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}          }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EuAFCqgBCBEYAipA8ZFx8LTvByK4ePOA3HbX1mWsnES+MsQCPbOd8uDKz9PhhncOYIIhRQHLRjKf1SwkhlWY9LXikAL3Y1xcQltTnDIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEB4aFA8rRS4c55cfnpWb6maIAQGoAf35qdQGsAECEgzx8SjyckqE0jNpxOwaDB5Wd0yDixLqVWSlvCIwFkDVQhZ82ooc00gCzvfYtglTj5XbRRcmjfxjhGxa4lGTP9AK/Dz5KM2jAqpBcWo0KuQDLjBuDnbqLedyRa/cpvyOvyrZAcrV5y0vZJ2IDdMRIspnvy7DMc92BTfuq7Y4TUxG3E0JwQn7HcRQChjqgOUUACqQFS1FC8+w4p5t/T/LURWru9PIWMuddgG4IqSw1Ca0ME3InSrdCvuI3v/UshDmCYwSuZ4/RBj9yYkujCcNJ08iPRdpEUwvmcF/bHXrbgt4m36spx6oNuNG9N3fPEWYQ80tuDEzuvuaF02wNHwujiCfntBt39ovGqFvT2rNJEBPlZk/xuZKR1vYqG+IaUtLcFI4V4Dogp24zMN3D/INjjxyrYrtET4uoe5Ip6H13jTkzZUVQ16sIG8l9JRvoVu9NVRYYZ1LBcXDot1pW6LoDOYKBz9n48VwrbXDnc7QIkz+PfUWNabO0JNklQjiMwVcVj09FirSZbrhh5wYxmq0pGSEyLevHu6sUdbNWmIKUPoH67jCCTOolSyAYSlfAYyfK3hbENf+74ZwmaAUI6LNc/cT8wPRgiECdmLCwhQZvHV2Ai4iHb2o88A0Gu1556nhI8UANTH8QZUtMYYviLqMkQC9e4GU/D2OaMBUgd4dQDGm1eirJriBnDccx2BhIRqyqdnIg6eiZChFejt07rq0iN9NtLoEg1HJqusPSc7Wkf3WiDriJhgB"}   }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_012Q8UFY8GC6Bi15nL3xL1SM","name":"Write","input":{},"caller":{"type":"direct"}}   }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/tmp/readback.json\", \"content\": \"{\\\"member\\\":\\\"orchestrator\\\",\\\"role\\\":\\\"orchestrator\\\",\\\"branch\\\":\\\"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\\\",\\\"missing\\\":[],\\\"goal\\\":\\\"Get dev to deliver a tested greet(name) function in src/greet.py with passing unittest tests in tests/test_greet.py, and judge that work honestly before ending the campaign.\\\",\\\"scope\\\":\\\"I own dispatching work to dev, judging dev's replies by fetching and inspecting the actual branch, and reporting the honest outcome to the mission; I own no source code and must not write it myself.\\\",\\\"obligations\\\":\\\"I must commit my own work to my branch and write durable results to the campaign output directory, and I must reply to close each dispatch (including the mission) rather than ending my turn silently, or the work will be considered undone and I will simply be prodded to continue.\\\"}\\n\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1   }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":74,"cache_read_input_tokens":51051,"output_tokens":521,"output_tokens_details":{"thinking_tokens":171}},"context_management":{"applied_edits":[]}               }
+
+event: message_stop
+data: {"type":"message_stop"        }
+

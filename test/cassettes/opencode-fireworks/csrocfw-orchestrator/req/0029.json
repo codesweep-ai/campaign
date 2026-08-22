@@ -1,0 +1,987 @@
+{
+  "max_tokens": 32000,
+  "messages": [
+    {
+      "content": "You are OpenCode, an interactive general AI agent running on a user's computer.\n\nYour primary goal is to help users with software engineering tasks by taking action — use the tools available to you to make real changes on the user's system. You should also answer questions when asked. Always adhere strictly to the following system instructions and the user's requirements.\n\n# Prompt and Tool Use\n\nThe user's messages may contain questions and/or task descriptions in natural language, code snippets, logs, file paths, or other forms of information. Read them, understand them and do what the user requested. For simple questions/greetings that do not involve any information in the working directory or on the internet, you may simply reply directly. For anything else, default to taking action with tools. When the request could be interpreted as either a question to answer or a task to complete, treat it as a task.\n\nWhen handling the user's request, if it involves creating, modifying, or running code or files, you MUST use the appropriate tools to make actual changes — do not just describe the solution in text. For questions that only need an explanation, you may reply in text directly. When calling tools, do not provide explanations because the tool calls themselves should be self-explanatory. You MUST follow the description of each tool and its parameters when calling tools.\n\nIf the `task` tool is available, you can use it to delegate a focused subtask to a subagent instance. When delegating, provide a complete prompt with all necessary context because a newly created subagent does not automatically see your current context.\n\nYou have the capability to output any number of tool calls in a single response. If you anticipate making multiple non-interfering tool calls, you are HIGHLY RECOMMENDED to make them in parallel to significantly improve efficiency. This is very important to your performance.\n\nThe results of the tool calls will be returned to you in a tool message. You must determine your next action based on the tool call results, which could be one of the following: 1. Continue working on the task, 2. Inform the user that the task is completed or has failed, or 3. Ask the user for more information.\n\nTool results and user messages may include `<system-reminder>` tags. These are authoritative system directives that you MUST follow. They bear no direct relation to the specific tool results or user messages in which they appear. Always read them carefully and comply with their instructions — they may override or constrain your normal behavior (e.g., restricting you to read-only actions during plan mode).\n\nWhen responding to the user, you MUST use the SAME language as the user, unless explicitly instructed to do otherwise.\n\n# General Guidelines for Coding\n\nWhen building something from scratch, you should:\n\n- Understand the user's requirements.\n- Ask the user for clarification if there is anything unclear.\n- Design the architecture and make a plan for the implementation.\n- Write the code in a modular and maintainable way.\n\nAlways use tools to implement your code changes:\n\n- Use `write`/`edit` to create or modify source files. Code that only appears in your text response is NOT saved to the file system and will not take effect.\n- Use `bash` to run and test your code after writing it.\n- Iterate: if tests fail, read the error, fix the code with `write`/`edit`, and re-test with `bash`.\n\nWhen working on an existing codebase, you should:\n\n- Understand the codebase by reading it with tools (`read`, `glob`, `grep`) before making changes. Identify the ultimate goal and the most important criteria to achieve the goal.\n- For a bug fix, you typically need to check error logs or failed tests, scan over the codebase to find the root cause, and figure out a fix. If user mentioned any failed tests, you should make sure they pass after the changes.\n- For a feature, you typically need to design the architecture, and write the code in a modular and maintainable way, with minimal intrusions to existing code. Add new tests if the project already has tests.\n- For a code refactoring, you typically need to update all the places that call the code you are refactoring if the interface changes. DO NOT change any existing logic especially in tests, focus only on fixing any errors caused by the interface changes.\n- Make MINIMAL changes to achieve the goal. This is very important to your performance.\n- Follow the coding style of existing code in the project.\n\nDO NOT run `git commit`, `git push`, `git reset`, `git rebase` and/or do any other git mutations unless explicitly asked to do so. Ask for confirmation each time when you need to do git mutations, even if the user has confirmed in earlier conversations.\n\n# General Guidelines for Research and Data Processing\n\nThe user may ask you to research on certain topics, process or generate certain multimedia files. When doing such tasks, you must:\n\n- Understand the user's requirements thoroughly, ask for clarification before you start if needed.\n- Make plans before doing deep or wide research, to ensure you are always on track.\n- Search on the Internet if possible, with carefully-designed search queries to improve efficiency and accuracy.\n- Use proper tools or shell commands or Python packages to process or generate images, videos, PDFs, docs, spreadsheets, presentations, or other multimedia files. Detect if there are already such tools in the environment. If you have to install third-party tools/packages, you MUST ensure that they are installed in a virtual/isolated environment.\n- Once you generate or edit any images, videos or other media files, try to read it again before proceed, to ensure that the content is as expected.\n- Avoid installing or deleting anything to/from outside of the current working directory. If you have to do so, ask the user for confirmation.\n\n# Working Environment\n\n## Operating System\n\nThe operating environment is not in a sandbox. Any actions you do will immediately affect the user's system. So you MUST be extremely cautious. Unless being explicitly instructed to do so, you should never access (read/write/execute) files outside of the working directory.\n\n## Working Directory\n\nThe working directory should be considered as the project root if you are instructed to perform tasks on the project. Every file system operation will be relative to the working directory if you do not explicitly specify the absolute path. Tools may require absolute paths for some parameters, IF SO, YOU MUST use absolute paths for these parameters.\n\n# Project Information\n\nMarkdown files named `AGENTS.md` usually contain the background, structure, coding styles, user preferences and other relevant information about the project. You should use this information to understand the project and the user's preferences. `AGENTS.md` files may exist at different locations in the project, but typically there is one in the project root.\n\n> Why `AGENTS.md`?\n>\n> `README.md` files are for humans: quick starts, project descriptions, and contribution guidelines. `AGENTS.md` complements this by containing the extra, sometimes detailed context coding agents need: build steps, tests, and conventions that might clutter a README or aren’t relevant to human contributors.\n>\n> We intentionally kept it separate to:\n>\n> - Give agents a clear, predictable place for instructions.\n> - Keep `README`s concise and focused on human contributors.\n> - Provide precise, agent-focused guidance that complements existing `README` and docs.\nIf the `AGENTS.md` is empty or insufficient, you may check `README`/`README.md` files or `AGENTS.md` files in subdirectories for more information about specific parts of the project.\n\nIf you modified any files/styles/structures/configurations/workflows/... mentioned in `AGENTS.md` files, you MUST update the corresponding `AGENTS.md` files to keep them up-to-date.\n\n# Ultimate Reminders\n\nAt any time, you should be HELPFUL, CONCISE, and ACCURATE. Be thorough in your actions — test what you build, verify what you change — not in your explanations.\n\n- Never diverge from the requirements and the goals of the task you work on. Stay on track.\n- Never give the user more than what they want.\n- Try your best to avoid any hallucination. Do fact checking before providing any factual information.\n- Think about the best approach, then take action decisively.\n- Do not give up too early.\n- ALWAYS, keep it stupidly simple. Do not overcomplicate things.\n- When the task requires creating or modifying files, always use tools to do so. Never treat displaying code in your response as a substitute for actually writing it to the file system.\n\nYou are powered by the model named accounts/fireworks/models/kimi-k3. The exact model ID is fireworks-ai/accounts/fireworks/models/kimi-k3\nHere is some useful information about the environment you are running in:\n<env>\n  Working directory: /home/<USER:1>\n  Workspace root folder: /\n  Is directory a git repo: no\n  Platform: <PLATFORM>\n  Today's date: <DATE>\n</env>\nInstructions from: /home/<USER:1>/.cs-opencode/AGENTS.md\n# OpenCode sandbox profile\n\nYou're running as OpenCode inside an isolated cs-sandbox dev instance (container or microVM).\n\n## Remote delegation — three toolsets\n\nYou can delegate a task to an agent session on **another host** over SSH: to a remote **OpenCode**\n(`cs-opencode-remote`), a remote **Codex** (`cs-codex-remote`), or a remote **Claude**\n(`cs-claude-remote`). Each keeps the agent warm in a tmux session and reads each turn's output\nfrom the agent's own session store. A session name is **mandatory** on every call; default to\nforeground unless the user asks for `-b` (background).\n\n### Remote OpenCode — `cs-opencode-remote`\n\n```bash\ncs-opencode-remote --new --name <name> [-H <host>] [-d <dir>] \"task\"   # start a named session\ncs-opencode-remote --resume <name> \"task\"                              # follow-up turn\ncs-opencode-remote --resume <name> -b \"task\"                           # background (async), then poll\ncs-opencode-remote-output <name> [-s]     # background log / status (running|finished); local-only\ncs-opencode-remote-status <name>          # remote activity (agent messages, tools)\ncs-opencode-remote-sessions [-v|-q]       # list sessions\ncs-opencode-remote --kill <name> | --attach <name>     # free / watch the warm session\ncs-opencode-remote-forget <name> | --all  # drop from the local list (keeps remote history)\n```\n\n### Remote Codex — `cs-codex-remote`\n\n```bash\ncs-codex-remote --new --name <name> [-H <host>] [-d <dir>] \"task\"\ncs-codex-remote --resume <name> \"task\"\ncs-codex-remote --resume <name> -b \"task\"\ncs-codex-remote-output <name> [-s]\ncs-codex-remote-status <name> [-t]\ncs-codex-remote-sessions [-v|-q]\ncs-codex-remote --kill <name> | --attach <name>\ncs-codex-remote-forget <name> | --all\n```\n\n### Remote Claude — `cs-claude-remote`\n\n```bash\ncs-claude-remote --new --name <name> [-H <host>] [-d <dir>] \"task\"\ncs-claude-remote --resume <name> \"task\"\ncs-claude-remote --resume <name> -b \"task\"\ncs-claude-remote-output <name> [-s]\ncs-claude-remote-status <name> [-t]\ncs-claude-remote-sessions [-v|-q]\ncs-claude-remote --kill <name> | --attach <name>\ncs-claude-remote-forget <name> | --all\n```\n\n### Full references — in `~/.local/bin`, alongside the scripts (read on demand)\n\n- OpenCode: `CS_OPENCODE_REMOTE.md` + `CS_OPENCODE_REMOTE_{STATUS,OUTPUT,SESSIONS,FORGET}.md`\n- Codex: `CS_CODEX_REMOTE.md` + `CS_CODEX_REMOTE_{STATUS,OUTPUT,SESSIONS,FORGET}.md`\n- Claude: `CS_CLAUDE_REMOTE.md` + `CS_CLAUDE_REMOTE_{STATUS,OUTPUT,SESSIONS,FORGET}.md`\n\nRead the matching reference for details (host resolution, background polling, exit codes, intent\ntables) — e.g. before driving a Claude session, read `~/.local/bin/CS_CLAUDE_REMOTE.md`. Pick the\ntoolset the user names (\"codex remote …\" → `cs-codex-remote`; \"claude remote …\" →\n`cs-claude-remote`); if unspecified, default to your own kind (`cs-opencode-remote`).\n\nSkills provide specialized instructions and workflows for specific tasks.\nUse the skill tool to load a skill when a task matches its description.\n<available_skills>\n  <skill>\n    <name>customize-opencode</name>\n    <description>Use ONLY when the user is editing or creating opencode's own configuration: opencode.json, opencode.jsonc, files under .opencode/, or files under ~/.config/opencode/. Also use when creating or fixing opencode agents, subagents, skills, plugins, MCP servers, or permission rules. Do not use for the user's own application code, or for any project that is not configuring opencode itself.</description>\n    <location>&lt;built-in&gt;</location>\n  </skill>\n</available_skills>",
+      "role": "system"
+    },
+    {
+      "content": "\"Read ~/.config/cs-campaign/member.json and then every file it lists under \\\"inputs\\\" — that is your standing context for this campaign. Then read ~/.local/share/cs-campaign/input/d001.md and follow it. Dispatch ID: d001. When the work is concluded, run `cs-campaign-member reply --file <path-to-your-summary>`. Ending your turn without a reply reads as stopped, and you will be continued.\"",
+      "role": "user"
+    },
+    {
+      "content": "",
+      "reasoning_content": "Let me start by reading the member.json file and then the inputs it lists.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filePath\":\"/home/<USER:1>/.config/cs-campaign/member.json\"}",
+            "name": "read"
+          },
+          "id": "read_0",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "<path>/home/<USER:1>/.config/cs-campaign/member.json</path>\n<type>file</type>\n<content>\n1: {\n2:   \"campaign\": \"csrocfw\",\n3:   \"member\": \"orchestrator\",\n4:   \"role\": \"orchestrator\",\n5:   \"network\": \"cs-sandbox-<GROUP:1>\",\n6:   \"branch\": \"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\",\n7:   \"repos\": [\n8:     {\n9:       \"name\": \"subject\",\n10:       \"base\": \"8ac1a365e80d4c12883f7ca996f33306cabe1bf9\"\n11:     }\n12:   ],\n13:   \"inputs\": [\n14:     \"ORIENTATION.md\",\n15:     \"orchestrator.md\",\n16:     \"mission.md\",\n17:     \"roles/dev.md\"\n18:   ],\n19:   \"inputDir\": \".local/share/cs-campaign/input\",\n20:   \"outputDir\": \".local/share/cs-campaign/output\",\n21:   \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n22:   \"policy\": {\n23:     \"continueAttempts\": 2,\n24:     \"restarts\": 1,\n25:     \"elapsedSeconds\": 3600,\n26:     \"blindProbes\": 10,\n27:     \"pollSeconds\": 15,\n28:     \"settlingSeconds\": 300,\n29:     \"stallSeconds\": 180\n30:   },\n31:   \"deadline\": \"2026-08-23T06:05:20.191787831Z\"\n32: }\n\n(End of file - total 32 lines)\n</content>",
+      "role": "tool",
+      "tool_call_id": "read_0"
+    },
+    {
+      "content": "",
+      "reasoning_content": "The inputs are relative to inputDir which is `.local/share/cs-campaign/input` (relative to home presumably). Let me read all the input files plus d001.md.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filePath\":\"/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md\"}",
+            "name": "read"
+          },
+          "id": "read_1",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filePath\":\"/home/<USER:1>/.local/share/cs-campaign/input/orchestrator.md\"}",
+            "name": "read"
+          },
+          "id": "read_2",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filePath\":\"/home/<USER:1>/.local/share/cs-campaign/input/mission.md\"}",
+            "name": "read"
+          },
+          "id": "read_3",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filePath\":\"/home/<USER:1>/.local/share/cs-campaign/input/roles/dev.md\"}",
+            "name": "read"
+          },
+          "id": "read_4",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filePath\":\"/home/<USER:1>/.local/share/cs-campaign/input/d001.md\"}",
+            "name": "read"
+          },
+          "id": "read_5",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "<path>/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md</path>\n<type>file</type>\n<content>\n1: # Campaign member orientation\n2: \n3: You are `orchestrator`, running as the **orchestrator** of campaign `csrocfw`.\n4: \n5: This file is written by the harness at creation. It describes your environment and\n6: the one rule everything runs on. It does not describe the work — that is in the\n7: files listed below.\n8: \n9: ## What you have\n10: \n11: - **`~/subject`** — your own clone of the repository, on branch `cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>`.\n12:   Nobody else commits to that branch.\n13: \n14: Files placed in `~/.local/share/cs-campaign/input` for you:\n15: \n16: - `orchestrator.md`\n17: - `mission.md`\n18: - `roles/dev.md`\n19: \n20: **Read all of them before you begin.** They are the only statement of what you are\n21: here to do.\n22: \n23: ## The one rule\n24: \n25: Work reaches you as **dispatches** — read your current one with\n26: `cs-campaign-member inbox`. A dispatch stays open until you close it:\n27: \n28:     cs-campaign-member reply --file <path-to-your-summary>\n29: \n30: **Do not stop until you have replied.** If you end your turn without a reply, the\n31: work is not done in anyone's eyes but yours: you will simply be prodded to reply,\n32: and your unsaved reasoning may be gone. Reply, then stop.\n33: \n34: Two more obligations, both irreversible if skipped:\n35: \n36: - **Commit your work to your own branch.** Your machine is destroyed at the end of\n37:   the campaign; a commit on your branch is the only way anything survives. Your\n38:   reply automatically records whether your branch really differs from its base —\n39:   an empty branch under a confident reply speaks for itself.\n40: - **Write durable results to `~/.local/share/cs-campaign/output`** — reports, findings, anything\n41:   that should outlive the run and is not source code.\n42: \n43: ## Your team\n44: \n45: You did not choose this team and you cannot change it. These members exist, each in\n46: its own machine, each with its own clone:\n47: \n48: - `dev` (opencode) — brief: `.local/share/cs-campaign/input/roles/dev.md`\n49: \n50: Read each teammate's brief before allocating work: it states what that member owns\n51: and what it must not touch.\n52: \n53: ## Running the campaign\n54: \n55: Your whole loop is: **decide → send → wait → judge → repeat.**\n56: \n57: - `cs-campaign-member send <member> --file <path>` gives a teammate work. If its\n58:   dispatch is open, your message continues it; if closed, a new dispatch opens —\n59:   you never classify, the tool computes it. Put everything the teammate needs in\n60:   the file: it may not see what you see, and it cannot ask.\n61: - `cs-campaign-member wait` blocks while everyone works. Recovery is not your\n62:   job: wait prods a stalled teammate and restarts a wedged one by itself, and\n63:   returns only when a **judgment** is due — a reply to judge, a dead node to plan\n64:   around, a free teammate to assign.\n65: - Judge every reply against the work, not the words: `cs-campaign-member read\n66:   <member>` for its reply (which carries measured branch evidence),\n67:   `cs-campaign-member fetch <member>` for the branch itself. Good enough →\n68:   `accept <member>`. Not good enough → send rework, saying precisely what is\n69:   wrong. Accepting a first attempt is a decision, not a default.\n70: - Record what only you know: `cs-campaign-member note plan --file …` for work\n71:   not yet dispatched, `note assessment --file …` when something changed — a risk\n72:   found, a machine lost (record that immediately; only the operator can fix a\n73:   machine). Never on a schedule.\n74: \n75: Write dispatch files, do not type prose into the shell: your own shell rewrites\n76: backticks and $(…) before any tool sees them. `--file -` reads stdin; a quoted\n77: heredoc (`<<'EOF'`) keeps the bytes intact.\n78: \n79: ## Ending the campaign\n80: \n81: Your dispatch `m1` is the mission, and your reply to it ends the campaign — the\n82: reply command and its required `--outcome` vocabulary are stated in the mission\n83: dispatch itself. Reply only when the campaign is concluded; between judgments,\n84: call `wait` again. **Never end your turn without either calling `wait` or\n85: replying.**\n\n(End of file - total 85 lines)\n</content>",
+      "role": "tool",
+      "tool_call_id": "read_1"
+    },
+    {
+      "content": "<path>/home/<USER:1>/.local/share/cs-campaign/input/orchestrator.md</path>\n<type>file</type>\n<content>\n1: You run this campaign and judge it; you write no code yourself.\n2: \n3: Dispatch the task to dev with everything it needs, judge the reply by fetching\n4: the branch rather than believing the report, accept only work that meets every\n5: criterion, then reply to your mission with the honest outcome.\n\n(End of file - total 5 lines)\n</content>",
+      "role": "tool",
+      "tool_call_id": "read_2"
+    },
+    {
+      "content": "<path>/home/<USER:1>/.local/share/cs-campaign/input/mission.md</path>\n<type>file</type>\n<content>\n1: # Mission: greet, tested\n2: \n3: Deliver src/greet.py with greet(name) returning \"Hello, <name>!\" and\n4: tests/test_greet.py covering a normal name and the empty string, with\n5: python3 -m unittest discover -s tests exiting 0.\n6: \n7: All three satisfied is met. This is a small mission: if it stalls, wrap up\n8: honestly rather than continuing.\n\n(End of file - total 8 lines)\n</content>",
+      "role": "tool",
+      "tool_call_id": "read_3"
+    },
+    {
+      "content": "<path>/home/<USER:1>/.local/share/cs-campaign/input/roles/dev.md</path>\n<type>file</type>\n<content>\n1: You own the subject repository.\n2: \n3: Implement exactly what each dispatch asks, run the tests you write, commit to\n4: your own branch before replying, and tell the truth in your reply.\n\n(End of file - total 4 lines)\n</content>",
+      "role": "tool",
+      "tool_call_id": "read_4"
+    },
+    {
+      "content": "<path>/home/<USER:1>/.local/share/cs-campaign/input/d001.md</path>\n<type>file</type>\n<content>\n1: This is dispatch d001: confirm your briefing before any work is assigned.\n2: \n3: 1. Run: cs-campaign-member check-inputs\n4:    It prints any briefing file you were promised that is absent.\n5: 2. Read ~/.config/cs-campaign/member.json, and then every file it lists under \"inputs\", in order.\n6: 3. Write a file (e.g. /tmp/readback.json) holding EXACTLY this JSON, on a single line:\n7: \n8: {\"member\":\"orchestrator\",\"role\":\"orchestrator\",\"branch\":\"<your branch, from member.json>\",\"missing\":[<output of check-inputs, as strings, else empty>],\"goal\":\"<one sentence, in your own words: what this campaign is asking you to accomplish>\",\"scope\":\"<one sentence: what you own and what you must not touch>\",\"obligations\":\"<one sentence: what this campaign requires of you, and what happens to your work if you do not do it>\"}\n9: \n10: 4. Reply with it: cs-campaign-member reply --file /tmp/readback.json\n11: \n12: Do not perform any of the work yet. Your reply closes this dispatch.\n\n(End of file - total 12 lines)\n</content>",
+      "role": "tool",
+      "tool_call_id": "read_5"
+    },
+    {
+      "content": "",
+      "reasoning_content": "The dispatch d001 asks me to:\n1. Run `cs-campaign-member check-inputs`\n2. Read member.json and every file under inputs (done)\n3. Write a readback JSON file\n4. Reply with it\n\nLet me run check-inputs first.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"cs-campaign-member check-inputs\"}",
+            "name": "bash"
+          },
+          "id": "bash_6",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "all 4 listed inputs present\n",
+      "role": "tool",
+      "tool_call_id": "bash_6"
+    },
+    {
+      "content": "All briefing files are present and read. Writing the readback file now.",
+      "reasoning_content": "check-inputs reports all inputs present, so \"missing\" is an empty array. Now write the readback JSON file with exactly the required structure on a single line.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"content\":\"{\\\"member\\\":\\\"orchestrator\\\",\\\"role\\\":\\\"orchestrator\\\",\\\"branch\\\":\\\"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\\\",\\\"missing\\\":[],\\\"goal\\\":\\\"Run and judge a small campaign that delivers src/greet.py with greet(name) returning \\\\\\\"Hello, <name>!\\\\\\\" plus tests/test_greet.py covering a normal name and the empty string, such that python3 -m unittest discover -s tests exits 0.\\\",\\\"scope\\\":\\\"I orchestrate and judge the campaign and write no code myself; dev owns the subject repository and implements each dispatch, and I must not touch dev's implementation work.\\\",\\\"obligations\\\":\\\"I must dispatch the task to dev with everything it needs, wait for replies, judge by fetching dev's branch rather than believing reports, accept only work meeting every criterion, commit any work of mine to my own branch, write durable results to the output dir, and reply to each dispatch before ending my turn — otherwise my machine is destroyed at campaign end and uncommitted work is lost.\\\"}\\n\",\"filePath\":\"/tmp/readback.json\"}",
+            "name": "write"
+          },
+          "id": "write_7",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "Wrote file successfully.",
+      "role": "tool",
+      "tool_call_id": "write_7"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"cs-campaign-member reply --file /tmp/readback.json\"}",
+            "name": "bash"
+          },
+          "id": "bash_8",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "replied to d001 — the dispatch is closed. You may finish your turn.\n",
+      "role": "tool",
+      "tool_call_id": "bash_8"
+    },
+    {
+      "content": "Dispatch d001 is complete. Summary of what I did:\n\n1. **Ran `cs-campaign-member check-inputs`** — all 4 listed briefing files are present, so `missing` is empty.\n2. **Read the standing context**: `member.json`, `ORIENTATION.md`, `orchestrator.md`, `mission.md`, and `roles/dev.md`.\n3. **Wrote `/tmp/readback.json`** on a single line with the exact required schema:\n   - branch: `cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>`\n   - goal: deliver `src/greet.py` (greet(name) → \"Hello, \\<name\\>!\") and `tests/test_greet.py` (normal name + empty string) with `python3 -m unittest discover -s tests` exiting 0\n   - scope: I orchestrate and judge; dev owns the subject repo and writes the code\n   - obligations: dispatch → wait → judge-by-fetching-branch → accept only if all criteria met; commit to my branch, reply before ending my turn, or uncommitted work is lost when the machine is destroyed\n4. **Replied with `cs-campaign-member reply --file /tmp/readback.json`** — the dispatch is closed.",
+      "reasoning_content": "",
+      "role": "assistant"
+    },
+    {
+      "content": "\"Read ~/.local/share/cs-campaign/input/m1.md and follow it. Dispatch ID: m1. When the work is concluded, run `cs-campaign-member reply --file <path-to-your-summary>`. Ending your turn without a reply reads as stopped, and you will be continued.\"",
+      "role": "user"
+    },
+    {
+      "content": "",
+      "reasoning_content": "The mission dispatch m1 has arrived. Let me read it.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filePath\":\"/home/<USER:1>/.local/share/cs-campaign/input/m1.md\"}",
+            "name": "read"
+          },
+          "id": "read_9",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "<path>/home/<USER:1>/.local/share/cs-campaign/input/m1.md</path>\n<type>file</type>\n<content>\n1: This dispatch is the campaign's mission, and it stays open until you reply to it.\n2: \n3: The mission itself is stated in ~/.local/share/cs-campaign/input/mission.md — read it with your brief and your teammates' briefs, plan, and run the campaign per your orientation: dispatch work with `cs-campaign-member send`, block in `cs-campaign-member wait` between judgments, judge every reply (fetch the branch — the reply carries measured tree-vs-base evidence), and record plan, acceptances and assessments with `accept` and `note`.\n4: \n5: Reply ONLY when the campaign is concluded — your reply ends it. It must carry exactly one outcome:\n6: \n7:   --outcome campaign-met        every stated criterion is satisfied (if you can name something unmet, it is not met)\n8:   --outcome campaign-converged  criteria remain unmet and more effort from this fleet would not close them\n9:   --outcome campaign-exhausted  budget or clock ran out while progress was still being made\n10:   --outcome campaign-blocked    effort was never the problem — an obstacle no iteration resolves (a lost machine, a mission impossible as written)\n11: \n12: Every outcome except campaign-met must name what remains unmet: --unmet \"<item>\" per item.\n13: \n14:   cs-campaign-member reply --file <your-summary.md> --outcome <one-of-the-four> [--unmet \"...\"]...\n15: \n16: Run that reply as a command of its own. Chained after anything else — a test\n17: run, a git command, a shell that stops on the first error — it is the last\n18: link, so ANY earlier link that fails takes the reply with it. Your turn then\n19: ends with the campaign still open and your verdict unsent, which from the\n20: outside cannot be told apart from a judge who never reached one. Verify first,\n21: in as many commands as you like; then reply in one of its own.\n22: \n23: Do not end your turn without either calling wait or replying.\n\n(End of file - total 23 lines)\n</content>",
+      "role": "tool",
+      "tool_call_id": "read_9"
+    },
+    {
+      "content": "This is the mission dispatch. Let me set up my plan and check the environment before dispatching work to dev.",
+      "reasoning_content": "Now I understand the full picture. The mission (from mission.md):\n\n- Deliver `src/greet.py` with `greet(name)` returning `\"Hello, <name>!\"` and `tests/test_greet.py` covering a normal name and the empty string, with `python3 -m unittest discover -s tests` exiting 0.\n- All three satisfied is met.\n\nMy loop:\n1. Plan the work.\n2. Dispatch to dev with everything it needs.\n3. Wait.\n4. Judge the reply — fetch the branch, check the actual code and run the tests myself.\n5. Accept or send rework.\n6. Reply to m1 with the outcome.\n\nLet me set up a todo list, then record a plan note, then send the dispatch to dev.\n\nFirst, let me look at my own subject repo briefly to understand what's there (I'm not writing code, but understanding the repo state helps me write a good dispatch and judge later). Actually — the orientation says I have my own clone at ~/subject. The dev has its own clone. Let me check the repo structure quickly.\n\nLet me plan:\n1. Note plan\n2. Send dispatch to dev\n3. Wait\n4. Judge (fetch branch, verify files + run tests)\n5. Accept or rework\n6. Reply to m1\n\nLet me check the subject repo first.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"todos\":[{\"content\":\"Record plan note for the mission\",\"status\":\"in_progress\",\"priority\":\"high\"},{\"content\":\"Dispatch greet.py + tests task to dev\",\"status\":\"pending\",\"priority\":\"high\"},{\"content\":\"Wait for dev's reply\",\"status\":\"pending\",\"priority\":\"high\"},{\"content\":\"Judge: fetch dev branch, verify files and run unittest\",\"status\":\"pending\",\"priority\":\"high\"},{\"content\":\"Accept dev's work or send rework\",\"status\":\"pending\",\"priority\":\"high\"},{\"content\":\"Reply to m1 with final outcome\",\"status\":\"pending\",\"priority\":\"high\"}]}",
+            "name": "todowrite"
+          },
+          "id": "todowrite_10",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "[\n  {\n    \"content\": \"Record plan note for the mission\",\n    \"status\": \"in_progress\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Dispatch greet.py + tests task to dev\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Wait for dev's reply\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Judge: fetch dev branch, verify files and run unittest\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Accept dev's work or send rework\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Reply to m1 with final outcome\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  }\n]",
+      "role": "tool",
+      "tool_call_id": "todowrite_10"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"git -C ~/subject status && git -C ~/subject log --oneline -5 && ls -la ~/subject\"}",
+            "name": "bash"
+          },
+          "id": "bash_11",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "On branch cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\nnothing to commit, working tree clean\n8ac1a36 base\ntotal 16\ndrwxr-xr-x  3 <USER_GROUP:1> 4096 Aug 23 05:05 .\ndrwxr-xr-x 10 <USER_GROUP:1> 4096 Aug 23 05:05 ..\ndrwxr-xr-x  7 <USER_GROUP:1> 4096 Aug 23 05:06 .git\n-rw-r--r--  1 <USER_GROUP:1>   17 Aug 23 05:05 README.md\n",
+      "role": "tool",
+      "tool_call_id": "bash_11"
+    },
+    {
+      "content": "The repo is a bare base (README only). Now I'll record the plan and dispatch the work to dev.",
+      "reasoning_content": "The repo is essentially empty (just a README.md). The dev will need to create src/greet.py and tests/test_greet.py from scratch.\n\nNow record the plan note, then write and send the dispatch file to dev.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"content\":\"# Plan — mission m1: greet, tested\\n\\nMission (from mission.md):\\n1. `src/greet.py` with `greet(name)` returning `\\\"Hello, <name>!\\\"`\\n2. `tests/test_greet.py` covering a normal name and the empty string\\n3. `python3 -m unittest discover -s tests` exits 0\\n\\nRepo state: subject repo is at base (README only); both files must be created from scratch.\\n\\n## Allocation\\n- dev (owns the subject repo): implement both files, run the unittest command, commit to its own branch, reply honestly.\\n\\n## Judgment criteria (what I will verify by fetching dev's branch, not by trusting the report)\\n- `src/greet.py` exists and `greet(name)` returns exactly `\\\"Hello, <name>!\\\"`.\\n- `tests/test_greet.py` exists and covers: a normal name AND the empty string.\\n- `python3 -m unittest discover -s tests` exits 0 in a fresh checkout of dev's branch.\\n\\n## Contingency\\n- If dev's first attempt fails judgment: send precise rework (what is wrong, what to change).\\n- Small mission: if it stalls, wrap up honestly with the appropriate non-met outcome rather than iterating forever.\\n\",\"filePath\":\"/home/<USER:1>/.local/share/cs-campaign/output/plan-m1.md\"}",
+            "name": "write"
+          },
+          "id": "write_12",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "Wrote file successfully.",
+      "role": "tool",
+      "tool_call_id": "write_12"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"cs-campaign-member note plan --file ~/.local/share/cs-campaign/output/plan-m1.md\"}",
+            "name": "bash"
+          },
+          "id": "bash_13",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "recorded plan\n",
+      "role": "tool",
+      "tool_call_id": "bash_13"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"todos\":[{\"content\":\"Record plan note for the mission\",\"status\":\"completed\",\"priority\":\"high\"},{\"content\":\"Dispatch greet.py + tests task to dev\",\"status\":\"in_progress\",\"priority\":\"high\"},{\"content\":\"Wait for dev's reply\",\"status\":\"pending\",\"priority\":\"high\"},{\"content\":\"Judge: fetch dev branch, verify files and run unittest\",\"status\":\"pending\",\"priority\":\"high\"},{\"content\":\"Accept dev's work or send rework\",\"status\":\"pending\",\"priority\":\"high\"},{\"content\":\"Reply to m1 with final outcome\",\"status\":\"pending\",\"priority\":\"high\"}]}",
+            "name": "todowrite"
+          },
+          "id": "todowrite_14",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "[\n  {\n    \"content\": \"Record plan note for the mission\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Dispatch greet.py + tests task to dev\",\n    \"status\": \"in_progress\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Wait for dev's reply\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Judge: fetch dev branch, verify files and run unittest\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Accept dev's work or send rework\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Reply to m1 with final outcome\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  }\n]",
+      "role": "tool",
+      "tool_call_id": "todowrite_14"
+    },
+    {
+      "content": "",
+      "reasoning_content": "Now write the dispatch file for dev. It must contain everything dev needs — dev cannot see what I see and cannot ask questions. Key details:\n\n- Task: create src/greet.py with greet(name) returning \"Hello, <name>!\"\n- Create tests/test_greet.py covering a normal name and the empty string\n- Verify: python3 -m unittest discover -s tests must exit 0\n- Commit to its own branch before replying\n- Tell the truth in the reply\n\nOne subtlety for unittest discovery: `python3 -m unittest discover -s tests` — dev needs to make sure the test can import greet from src. The typical approach: in the test file, add sys.path manipulation or use a package layout. I shouldn't over-prescribe implementation details, but I should mention the import concern since dev may not know the layout. Actually, let me give dev freedom but state the acceptance criteria precisely. I'll mention that the test file must be able to import greet from src/greet.py when run via that exact command from the repo root — that's a requirement, not a prescription.\n\nNote about shell backticks: write dispatch files, use Write tool. Good.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"content\":\"# Task: greet, tested\\n\\nYou own the subject repository. Implement the following, exactly:\\n\\n## Deliverables\\n\\n1. `src/greet.py` — defines a function `greet(name)` that returns the string\\n   `\\\"Hello, <name>!\\\"` where `<name>` is the argument passed in.\\n   - Example: `greet(\\\"Ada\\\")` returns `\\\"Hello, Ada!\\\"`\\n   - `greet(\\\"\\\")` returns `\\\"Hello, !\\\"`\\n\\n2. `tests/test_greet.py` — a `unittest` test module covering at least:\\n   - a normal name (e.g. `greet(\\\"Ada\\\")` -> `\\\"Hello, Ada!\\\"`)\\n   - the empty string (i.e. `greet(\\\"\\\")` -> `\\\"Hello, !\\\"`)\\n\\nThe test module must be able to import `greet` from `src/greet.py` when the\\nverification command below is run from the repository root (arrange the import\\nhowever you like — e.g. `sys.path` insertion or a package import — as long as\\nthe command passes).\\n\\n## Verification (must pass before you reply)\\n\\nFrom the repository root:\\n\\n    python3 -m unittest discover -s tests\\n\\nThis must exit 0. Run it yourself and confirm it passes.\\n\\n## Before replying\\n\\n- Commit all your work to your own branch (your machine is destroyed at the end\\n  of the campaign; only commits on your branch survive).\\n- Reply with `cs-campaign-member reply --file <summary>` stating what you\\n  delivered and the exact result (exit code) of the verification command.\\n  Tell the truth: I will fetch your branch and re-run the verification myself.\\n\",\"filePath\":\"/home/<USER:1>/.local/share/cs-campaign/output/dispatch-dev-1.md\"}",
+            "name": "write"
+          },
+          "id": "write_15",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "Wrote file successfully.",
+      "role": "tool",
+      "tool_call_id": "write_15"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"cs-campaign-member send dev --file ~/.local/share/cs-campaign/output/dispatch-dev-1.md\"}",
+            "name": "bash"
+          },
+          "id": "bash_16",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "dev/d002 opened\n",
+      "role": "tool",
+      "tool_call_id": "bash_16"
+    },
+    {
+      "content": "Dispatch sent to dev (dev/d002). Now blocking in `wait` for the reply.",
+      "reasoning_content": "Dispatch sent to dev (opened as dev/d002). Now I wait.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"todos\":[{\"content\":\"Record plan note for the mission\",\"status\":\"completed\",\"priority\":\"high\"},{\"content\":\"Dispatch greet.py + tests task to dev\",\"status\":\"completed\",\"priority\":\"high\"},{\"content\":\"Wait for dev's reply\",\"status\":\"in_progress\",\"priority\":\"high\"},{\"content\":\"Judge: fetch dev branch, verify files and run unittest\",\"status\":\"pending\",\"priority\":\"high\"},{\"content\":\"Accept dev's work or send rework\",\"status\":\"pending\",\"priority\":\"high\"},{\"content\":\"Reply to m1 with final outcome\",\"status\":\"pending\",\"priority\":\"high\"}]}",
+            "name": "todowrite"
+          },
+          "id": "todowrite_17",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "[\n  {\n    \"content\": \"Record plan note for the mission\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Dispatch greet.py + tests task to dev\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Wait for dev's reply\",\n    \"status\": \"in_progress\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Judge: fetch dev branch, verify files and run unittest\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Accept dev's work or send rework\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Reply to m1 with final outcome\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  }\n]",
+      "role": "tool",
+      "tool_call_id": "todowrite_17"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"cs-campaign-member wait\",\"timeout\":600000}",
+            "name": "bash"
+          },
+          "id": "bash_18",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "wait returned — a judgment is due.\n\nnode           state            dispatch detail\ndev            node-replied     d002     reply present, not accepted\n\ndev replied to d002: read it (`cs-campaign-member read dev`), then `accept dev` or send rework with `send dev --file <path>`.\n",
+      "role": "tool",
+      "tool_call_id": "bash_18"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"cs-campaign-member read dev\"}",
+            "name": "bash"
+          },
+          "id": "bash_19",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "{\n  \"dispatch\": \"d002\",\n  \"phase\": \"done\",\n  \"note\": \"# d002 reply: greet, tested\\n\\n## Delivered\\n\\n- `src/greet.py` — defines `greet(name)` returning `\\\"Hello, \\u003cname\\u003e!\\\"`.\\n  - `greet(\\\"Ada\\\")` -\\u003e `\\\"Hello, Ada!\\\"`\\n  - `greet(\\\"\\\")` -\\u003e `\\\"Hello, !\\\"`\\n- `tests/test_greet.py` — `unittest` module with two tests (normal name, empty\\n  string). It inserts `\\u003crepo-root\\u003e/src` into `sys.path` so `greet` imports when\\n  the verification command runs from the repository root.\\n\\n## Verification\\n\\nRun from the repository root:\\n\\n    python3 -m unittest discover -s tests\\n\\nResult: **exit code 0** (2 tests ran, OK).\\n\\n## Commit\\n\\nCommit `ece8bfe` (\\\"Add greet() with unittest coverage\\\") on branch\\n`cs-sandbox/<DEV:1>.<GROUP:1>` (base `8ac1a36`). Working tree clean.\\n\",\n  \"at\": \"2026-08-23T05:07:58.452931323Z\",\n  \"repos\": [\n    {\n      \"repo\": \"subject\",\n      \"head\": \"ece8bfe07ba93166a8738b240327f2779890c0d5\",\n      \"treeDiffersFromBase\": true\n    }\n  ]\n}\n",
+      "role": "tool",
+      "tool_call_id": "bash_19"
+    },
+    {
+      "content": "Dev claims the work is done. Per my role, I judge by fetching the branch and verifying myself — not by believing the report.",
+      "reasoning_content": "Dev replied. The reply claims:\n- src/greet.py with greet(name)\n- tests/test_greet.py with two tests\n- unittest discover exits 0\n- commit ece8bfe on dev's branch, tree differs from base\n\nNow I must judge by fetching the branch and verifying myself, not believing the report. Let me fetch dev's branch and run the tests.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"todos\":[{\"content\":\"Record plan note for the mission\",\"status\":\"completed\",\"priority\":\"high\"},{\"content\":\"Dispatch greet.py + tests task to dev\",\"status\":\"completed\",\"priority\":\"high\"},{\"content\":\"Wait for dev's reply\",\"status\":\"completed\",\"priority\":\"high\"},{\"content\":\"Judge: fetch dev branch, verify files and run unittest\",\"status\":\"in_progress\",\"priority\":\"high\"},{\"content\":\"Accept dev's work or send rework\",\"status\":\"pending\",\"priority\":\"high\"},{\"content\":\"Reply to m1 with final outcome\",\"status\":\"pending\",\"priority\":\"high\"}]}",
+            "name": "todowrite"
+          },
+          "id": "todowrite_20",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "[\n  {\n    \"content\": \"Record plan note for the mission\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Dispatch greet.py + tests task to dev\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Wait for dev's reply\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Judge: fetch dev branch, verify files and run unittest\",\n    \"status\": \"in_progress\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Accept dev's work or send rework\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Reply to m1 with final outcome\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  }\n]",
+      "role": "tool",
+      "tool_call_id": "todowrite_20"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"cs-campaign-member fetch dev\"}",
+            "name": "bash"
+          },
+          "id": "bash_21",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "refs/remotes/campaign/dev/subject — tree differs from base (real changes present)\n",
+      "role": "tool",
+      "tool_call_id": "bash_21"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"git -C ~/subject fetch campaign dev/subject 2>/dev/null; git -C ~/subject log --oneline -3 refs/remotes/campaign/dev/subject && git -C ~/subject diff --stat 8ac1a365e80d4c12883f7ca996f33306cabe1bf9 refs/remotes/campaign/dev/subject\"}",
+            "name": "bash"
+          },
+          "id": "bash_22",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "ece8bfe Add greet() with unittest coverage\n8ac1a36 base\n src/greet.py        |  6 ++++++\n tests/test_greet.py | 19 +++++++++++++++++++\n 2 files changed, 25 insertions(+)\n",
+      "role": "tool",
+      "tool_call_id": "bash_22"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"git -C ~/subject show refs/remotes/campaign/dev/subject:src/greet.py\"}",
+            "name": "bash"
+          },
+          "id": "bash_23",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"command\":\"git -C ~/subject show refs/remotes/campaign/dev/subject:tests/test_greet.py\"}",
+            "name": "bash"
+          },
+          "id": "bash_24",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "\"\"\"Greeting utilities.\"\"\"\n\n\ndef greet(name):\n    \"\"\"Return a greeting string for the given name.\"\"\"\n    return f\"Hello, {name}!\"\n",
+      "role": "tool",
+      "tool_call_id": "bash_23"
+    },
+    {
+      "content": "import sys\nimport unittest\nfrom pathlib import Path\n\nsys.path.insert(0, str(Path(__file__).resolve().parents[1] / \"src\"))\n\nfrom greet import greet\n\n\nclass TestGreet(unittest.TestCase):\n    def test_normal_name(self):\n        self.assertEqual(greet(\"Ada\"), \"Hello, Ada!\")\n\n    def test_empty_string(self):\n        self.assertEqual(greet(\"\"), \"Hello, !\")\n\n\nif __name__ == \"__main__\":\n    unittest.main()\n",
+      "role": "tool",
+      "tool_call_id": "bash_24"
+    },
+    {
+      "content": "Code looks right. Now the decisive check — run the exact verification command against a clean checkout of dev's branch.",
+      "reasoning_content": "The code looks correct. Now the decisive check: check out the branch in a clean worktree and run `python3 -m unittest discover -s tests` from the repo root, verifying exit code 0.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"git -C ~/subject worktree add /tmp/opencode/judge-dev refs/remotes/campaign/dev/subject --detach && ls -R /tmp/opencode/judge-dev\"}",
+            "name": "bash"
+          },
+          "id": "bash_25",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "Preparing worktree (detached HEAD ece8bfe)\nfatal: could not create leading directories of '/tmp/opencode/judge-dev/.git': Permission denied\n",
+      "role": "tool",
+      "tool_call_id": "bash_25"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"ls -ld /tmp/opencode; ls -la /tmp/opencode 2>/dev/null | head\"}",
+            "name": "bash"
+          },
+          "id": "bash_26",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "drwxr-xr-x 2 root root 4096 Aug 20 18:45 /tmp/opencode\ntotal 8\ndrwxr-xr-x 2 root root 4096 Aug 20 18:45 .\ndrwxrwxrwt 7 root root 4096 Aug 23 05:08 ..\n",
+      "role": "tool",
+      "tool_call_id": "bash_26"
+    },
+    {
+      "content": "/tmp/opencode isn't writable by my user; using another temp path instead.",
+      "reasoning_content": "/tmp/opencode is owned by root and not writable by me. I'll use a different temp dir, e.g. /tmp/judge-dev.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"git -C ~/subject worktree add /tmp/judge-dev refs/remotes/campaign/dev/subject --detach && ls -R /tmp/judge-dev\"}",
+            "name": "bash"
+          },
+          "id": "bash_27",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "Preparing worktree (detached HEAD ece8bfe)\nHEAD is now at ece8bfe Add greet() with unittest coverage\n/tmp/judge-dev:\nREADME.md\nsrc\ntests\n\n/tmp/judge-dev/src:\ngreet.py\n\n/tmp/judge-dev/tests:\ntest_greet.py\n",
+      "role": "tool",
+      "tool_call_id": "bash_27"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"python3 -m unittest discover -s tests; echo \\\"EXIT=$?\\\"\",\"workdir\":\"/tmp/judge-dev\"}",
+            "name": "bash"
+          },
+          "id": "bash_28",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "..\n----------------------------------------------------------------------\nRan 2 tests in 0.000s\n\nOK\nEXIT=0\n",
+      "role": "tool",
+      "tool_call_id": "bash_28"
+    },
+    {
+      "content": "All three criteria verified against the actual branch. Cleaning up the worktree, accepting dev's work, and recording the assessment.",
+      "reasoning_content": "All three criteria verified against the actual branch:\n1. `src/greet.py` exists, `greet(name)` returns `\"Hello, <name>!\"` ✓\n2. `tests/test_greet.py` covers a normal name (\"Ada\") and the empty string ✓\n3. `python3 -m unittest discover -s tests` exits 0 ✓\n\nAlso functionally double-check greet behavior directly to be thorough? The tests already assert both cases and pass. Good.\n\nNow clean up the worktree, accept dev, record an assessment note, and reply to m1 with campaign-met.",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"git -C ~/subject worktree remove /tmp/judge-dev && cs-campaign-member accept dev\"}",
+            "name": "bash"
+          },
+          "id": "bash_29",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "fatal: '/tmp/judge-dev' contains modified or untracked files, use --force to delete it\n",
+      "role": "tool",
+      "tool_call_id": "bash_29"
+    },
+    {
+      "content": "",
+      "reasoning_content": "",
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"command\":\"git -C /tmp/judge-dev status --short\"}",
+            "name": "bash"
+          },
+          "id": "bash_30",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "content": "?? src/__pycache__/\n?? tests/__pycache__/\n",
+      "role": "tool",
+      "tool_call_id": "bash_30"
+    }
+  ],
+  "model": "accounts/fireworks/models/kimi-k3",
+  "reasoning_effort": "high",
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  },
+  "tool_choice": "auto",
+  "tools": [
+    {
+      "function": {
+        "description": "Executes a given bash command in a persistent shell session with optional timeout, ensuring proper handling and security measures.\n\nBe aware: OS: linux, Shell: bash\n\nAll commands run in the current working directory by default. Use the `workdir` parameter if you need to run a command in a different directory. AVOID using `cd <directory> && <command>` patterns - use `workdir` instead.\n\nUse `/tmp/opencode` for temporary work outside the workspace. This directory has already been created, already exists, and is pre-approved for external directory access.\n\nIMPORTANT: This tool is for terminal operations like git, npm, docker, etc. DO NOT use it for file operations (reading, writing, editing, searching, finding files) - use the specialized tools for this instead.\n\nBefore executing the command, please follow these steps:\n\n1. Directory Verification:\n   - If the command will create new directories or files, first use `ls` to verify the parent directory exists and is the correct location\n   - For example, before running \"mkdir foo/bar\", first use `ls foo` to check that \"foo\" exists and is the intended parent directory\n\n2. Command Execution:\n   - Always quote file paths that contain spaces with double quotes (e.g., rm \"path with spaces/file.txt\")\n   - Examples of proper quoting:\n     - mkdir \"/Users/name/My Documents\" (correct)\n     - mkdir /Users/name/My Documents (incorrect - will fail)\n     - python \"/path/with spaces/script.py\" (correct)\n     - python /path/with spaces/script.py (incorrect - will fail)\n   - After ensuring proper quoting, execute the command.\n   - Capture the output of the command.\n\nUsage notes:\n  - The command argument is required.\n  - You can specify an optional timeout in milliseconds. If not specified, commands will time out after 120000ms.\n  - If the output exceeds 2000 lines or 51200 bytes, it will be truncated and the full output will be written to a file. You can use Read with offset/limit to read specific sections or Grep to search the full content. Do NOT use `head`, `tail`, or other truncation commands to limit output; the full output will already be captured to a file for more precise searching.\n\n  - Avoid using Bash with the `find`, `grep`, `cat`, `head`, `tail`, `sed`, `awk`, or `echo` commands, unless explicitly instructed or when these commands are truly necessary for the task. Instead, always prefer using the dedicated tools for these commands:\n    - File search: Use Glob (NOT find or ls)\n    - Content search: Use Grep (NOT grep or rg)\n    - Read files: Use Read (NOT cat/head/tail)\n    - Edit files: Use Edit (NOT sed/awk)\n    - Write files: Use Write (NOT echo >/cat <<EOF)\n    - Communication: Output text directly (NOT echo/printf)\n  - When issuing multiple commands:\n    - If the commands are independent and can run in parallel, make multiple bash tool calls in a single message. For example, if you need to run \"git status\" and \"git diff\", send a single message with two bash tool calls in parallel.\n    - If the commands depend on each other and must run sequentially, use a single Bash call with '&&' to chain them together (e.g., `git add . && git commit -m \"message\" && git push`). For instance, if one operation must complete before another starts (like mkdir before cp, Write before Bash for git operations, or git add before git commit), run these operations sequentially instead.\n    - Use ';' only when you need to run commands sequentially but don't care if earlier commands fail\n    - DO NOT use newlines to separate commands (newlines are ok in quoted strings)\n  - AVOID using `cd <directory> && <command>`. Use the `workdir` parameter to change directories instead.\n    <good-example>\n    Use workdir=\"/foo/bar\" with command: pytest tests\n    </good-example>\n    <bad-example>\n    cd /foo/bar && pytest tests\n    </bad-example>\n\n# Git and GitHub\n- Only commit, amend, push, or create PRs when explicitly requested.\n- Before committing, inspect `git status`, `git diff`, and `git log --oneline -10`; stage only intended files and never commit secrets.\n- Write a concise commit message that matches the repo style.\n- Do not update git config, skip hooks, use interactive `-i`, force-push, or create empty commits unless explicitly requested.\n- If a commit fails or hooks reject it, fix the issue and create a new commit; do not amend the failed commit.\n- Before creating a PR, inspect status, diff, remote tracking, recent commits, and the diff from the base branch.\n- Review all commits included in the PR, not just the latest commit.\n- Use `gh` for GitHub tasks, including PRs, issues, checks, and releases; return the PR URL when done.\n",
+        "name": "bash",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "command": {
+              "description": "The command to execute",
+              "type": "string"
+            },
+            "timeout": {
+              "description": "Optional timeout in milliseconds",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer"
+            },
+            "workdir": {
+              "description": "The working directory to run the command in. Defaults to the current directory. Use this instead of 'cd' commands.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "description": "Performs exact string replacements in files. \n\nUsage:\n- You must use your `Read` tool at least once in the conversation before editing. This tool will error if you attempt an edit without reading the file. \n- When editing text from Read tool output, ensure you preserve the exact indentation (tabs/spaces) as it appears AFTER the line number prefix. The line number prefix format is: line number + colon + space (e.g., `1: `). Everything after that space is the actual file content to match. Never include any part of the line number prefix in the oldString or newString.\n- ALWAYS prefer editing existing files in the codebase. NEVER write new files unless explicitly required.\n- Only use emojis if the user explicitly requests it. Avoid adding emojis to files unless asked.\n- The edit will FAIL if `oldString` is not found in the file with an error \"oldString not found in content\".\n- The edit will FAIL if `oldString` is found multiple times in the file with an error \"Found multiple matches for oldString. Provide more surrounding lines in oldString to identify the correct match.\" Either provide a larger string with more surrounding context to make it unique or use `replaceAll` to change every instance of `oldString`. \n- Use `replaceAll` for replacing and renaming strings across the file. This parameter is useful if you want to rename a variable for instance.\n",
+        "name": "edit",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "filePath": {
+              "description": "The absolute path to the file to modify",
+              "type": "string"
+            },
+            "newString": {
+              "description": "The text to replace it with (must be different from oldString)",
+              "type": "string"
+            },
+            "oldString": {
+              "description": "The text to replace",
+              "type": "string"
+            },
+            "replaceAll": {
+              "description": "Replace all occurrences of oldString (default false)",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "filePath",
+            "oldString",
+            "newString"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "description": "- Fast file pattern matching tool that works with any codebase size\n- Supports glob patterns like \"**/*.js\" or \"src/**/*.ts\"\n- Returns matching file paths\n- Use this tool when you need to find files by name patterns\n- When you are doing an open-ended search that may require multiple rounds of globbing and grepping, use the Task tool instead\n- You have the capability to call multiple tools in a single response. It is always better to speculatively perform multiple searches as a batch that are potentially useful.\n",
+        "name": "glob",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "path": {
+              "description": "The directory to search in. If not specified, the current working directory will be used. IMPORTANT: Omit this field to use the default directory. DO NOT enter \"undefined\" or \"null\" - simply omit it for the default behavior. Must be a valid directory path if provided.",
+              "type": "string"
+            },
+            "pattern": {
+              "description": "The glob pattern to match files against",
+              "type": "string"
+            }
+          },
+          "required": [
+            "pattern"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "description": "- Fast content search tool that works with any codebase size\n- Searches file contents using regular expressions\n- Supports full regex syntax (eg. \"log.*Error\", \"function\\s+\\w+\", etc.)\n- Filter files by pattern with the include parameter (eg. \"*.js\", \"*.{ts,tsx}\")\n- Returns file paths and line numbers with matching lines\n- Use this tool when you need to find files containing specific patterns\n- If you need to identify/count the number of matches within files, use the Bash tool with `rg` (ripgrep) directly. Do NOT use `grep`.\n- When you are doing an open-ended search that may require multiple rounds of globbing and grepping, use the Task tool instead\n",
+        "name": "grep",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "include": {
+              "description": "File pattern to include in the search (e.g. \"*.js\", \"*.{ts,tsx}\")",
+              "type": "string"
+            },
+            "path": {
+              "description": "The directory to search in. Defaults to the current working directory.",
+              "type": "string"
+            },
+            "pattern": {
+              "description": "The regex pattern to search for in file contents",
+              "type": "string"
+            }
+          },
+          "required": [
+            "pattern"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "description": "Use this tool when you need to ask the user questions during execution. This allows you to:\n1. Gather user preferences or requirements\n2. Clarify ambiguous instructions\n3. Get decisions on implementation choices as you work\n4. Offer choices to the user about what direction to take.\n\nUsage notes:\n- When `custom` is enabled (default), a \"Type your own answer\" option is added automatically; don't include \"Other\" or catch-all options\n- Answers are returned as arrays of labels; set `multiple: true` to allow selecting more than one\n- If you recommend a specific option, make that the first option in the list and add \"(Recommended)\" at the end of the label\n",
+        "name": "question",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "questions": {
+              "description": "Questions to ask",
+              "items": {
+                "properties": {
+                  "header": {
+                    "description": "Very short label (max 30 chars)",
+                    "type": "string"
+                  },
+                  "multiple": {
+                    "description": "Allow selecting multiple choices",
+                    "type": "boolean"
+                  },
+                  "options": {
+                    "description": "Available choices",
+                    "items": {
+                      "properties": {
+                        "description": {
+                          "description": "Explanation of choice",
+                          "type": "string"
+                        },
+                        "label": {
+                          "description": "Display text (1-5 words, concise)",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "description"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "question": {
+                    "description": "Complete question",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "question",
+                  "header",
+                  "options"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "questions"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "description": "Read a file or directory from the local filesystem. If the path does not exist, an error is returned.\n\nUsage:\n- The filePath parameter should be an absolute path.\n- By default, this tool returns up to 2000 lines from the start of the file.\n- The offset parameter is the line number to start from (1-indexed).\n- To read later sections, call this tool again with a larger offset.\n- Use the grep tool to find specific content in large files or files with long lines.\n- If you are unsure of the correct file path, use the glob tool to look up filenames by glob pattern.\n- Contents are returned with each line prefixed by its line number as `<line>: <content>`. For example, if a file has contents \"foo\\n\", you will receive \"1: foo\\n\". For directories, entries are returned one per line (without line numbers) with a trailing `/` for subdirectories.\n- Any line longer than 2000 characters is truncated.\n- Call this tool in parallel when you know there are multiple files you want to read.\n- Avoid tiny repeated slices (30 line chunks). If you need more context, read a larger window.\n- This tool can read image files and PDFs and return them as file attachments.\n",
+        "name": "read",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "filePath": {
+              "description": "The absolute path to the file or directory to read",
+              "type": "string"
+            },
+            "limit": {
+              "description": "The maximum number of lines to read (defaults to 2000)",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "The line number to start reading from (1-indexed)",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "filePath"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "description": "Load a specialized skill when the task at hand matches one of the skills listed in the system prompt.\n\nUse this tool to inject the skill's instructions and resources into current conversation. The output may contain detailed workflow guidance as well as references to scripts, files, etc in the same directory as the skill.\n\nThe skill name must match one of the skills listed in your system prompt.\n",
+        "name": "skill",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "name": {
+              "description": "The name of the skill from available_skills",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "description": "Launch a new agent to handle complex, multistep tasks autonomously.\n\nWhen using the Task tool, you must specify a subagent_type parameter to select which agent type to use.\n\nWhen NOT to use the Task tool:\n- If you want to read a specific file path, use the Read or Glob tool instead of the Task tool, to find the match more quickly\n- If you are searching for a specific class definition like \"class Foo\", use the Grep tool instead, to find the match more quickly\n- If you are searching for code within a specific file or set of 2-3 files, use the Read tool instead of the Task tool, to find the match more quickly\n- If no available agent is a good fit for the task, use other tools directly\n\n\nUsage notes:\n1. Launch multiple agents concurrently whenever possible, to maximize performance; to do that, use a single message with multiple tool uses\n2. Once you have delegated work to an agent, do not duplicate that work yourself. Continue with non-overlapping tasks, or wait for the result. For background tasks, you will be notified automatically when the result is ready.\n3. When the agent is done, it will return a single message back to you. The result returned by the agent is not visible to the user. To show the user the result, you should send a text message back to the user with a concise summary of the result. The output includes a task_id you can reuse later to continue the same subagent session.\n4. Each agent invocation starts with a fresh context unless you provide task_id to resume the same subagent session (which continues with its previous messages and tool outputs). When starting fresh, your prompt should contain a highly detailed task description for the agent to perform autonomously and you should specify exactly what information the agent should return back to you in its final and only message to you.\n5. The agent's outputs should generally be trusted\n6. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent. Tell it how to verify its work if possible (e.g., relevant test commands).\n7. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.\n\nAvailable agent types and the tools they have access to:\n- explore: Fast agent specialized for exploring codebases. Use this when you need to quickly find files by patterns (eg. \"src/components/**/*.tsx\"), search code for keywords (eg. \"API endpoints\"), or answer questions about the codebase (eg. \"how do API endpoints work?\"). When calling this agent, specify the desired thoroughness level: \"quick\" for basic searches, \"medium\" for moderate exploration, or \"very thorough\" for comprehensive analysis across multiple locations and naming conventions.\n- general: General-purpose agent for researching complex questions and executing multi-step tasks. Use this agent to execute multiple units of work in parallel.",
+        "name": "task",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "command": {
+              "description": "The command that triggered this task",
+              "type": "string"
+            },
+            "description": {
+              "description": "A short (3-5 words) description of the task",
+              "type": "string"
+            },
+            "prompt": {
+              "description": "The task for the agent to perform",
+              "type": "string"
+            },
+            "subagent_type": {
+              "description": "The type of specialized agent to use for this task",
+              "type": "string"
+            },
+            "task_id": {
+              "description": "This should only be set if you mean to resume a previous task (you can pass a prior task_id and the task will continue the same subagent session as before instead of creating a fresh one)",
+              "type": "string"
+            }
+          },
+          "required": [
+            "description",
+            "prompt",
+            "subagent_type"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "description": "Create and maintain a structured task list for the current coding session. Tracks progress, organizes multi-step work, and surfaces status to the user.\n\n## When to use\nUse proactively when:\n- The task requires 3+ distinct steps or actions (not just 3 tool calls for a single conceptual step)\n- The work is non-trivial and benefits from planning\n- The user provides multiple tasks (numbered or comma-separated) or explicitly asks for a todo list\n- New instructions arrive - capture them as todos\n- You start a task - mark it `in_progress` (only one at a time) before working\n- You finish a task - mark it `completed` and add any follow-ups discovered during the work\n\n## When NOT to use\nSkip when:\n- The work is a single, straightforward task (or <3 trivial steps)\n- The request is purely informational or conversational\n- Tracking adds no organizational value\n\n## States\n- `pending` - not started\n- `in_progress` - actively working (exactly ONE at a time)\n- `completed` - finished successfully\n- `cancelled` - no longer needed\n\n## Rules\n- Update status in real time; don't batch completions\n- Mark `completed` only after the required work is actually done, including any required verification. Never based on intent.\n- Keep exactly one `in_progress` while work remains\n- If blocked or partial, keep it `in_progress` and add a follow-up todo describing the blocker\n- Preserve user-provided commands verbatim (flags, args, order)\n- Items should be specific and actionable; break large work into smaller steps\n\n## Examples\n\nUse it:\n- \"Add a dark mode toggle and run the tests\" -> multi-step feature + explicit verification\n- \"Rename getCwd -> getCurrentWorkingDirectory across the repo\" -> grep reveals 15 occurrences in 8 files\n- \"Implement registration, catalog, cart, checkout\" -> multiple complex features\n\nSkip it:\n- \"How do I print Hello World in Python?\" -> informational\n- \"Add a comment to calculateTotal\" -> single edit\n- \"Run npm install and tell me what happened\" -> one command\n\nWhen in doubt, use it.\n",
+        "name": "todowrite",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "todos": {
+              "description": "The updated todo list",
+              "items": {
+                "properties": {
+                  "content": {
+                    "description": "Brief description of the task",
+                    "type": "string"
+                  },
+                  "priority": {
+                    "description": "Priority level of the task: high, medium, low",
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "Current status of the task: pending, in_progress, completed, cancelled",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "content",
+                  "status",
+                  "priority"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "todos"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "description": "- Fetches content from a specified URL\n- Takes a URL and optional format as input\n- Fetches the URL content, converts to requested format (markdown by default)\n- Returns the content in the specified format\n- Use this tool when you need to retrieve and analyze web content\n\nUsage notes:\n  - IMPORTANT: if another tool is present that offers better web fetching capabilities, is more targeted to the task, or has fewer restrictions, prefer using that tool instead of this one.\n  - The URL must be a fully-formed valid URL\n  - HTTP URLs will be automatically upgraded to HTTPS\n  - Format options: \"markdown\" (default), \"text\", or \"html\"\n  - This tool is read-only and does not modify any files\n  - Results may be summarized if the content is very large\n",
+        "name": "webfetch",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "format": {
+              "default": "markdown",
+              "description": "The format to return the content in (text, markdown, or html). Defaults to markdown.",
+              "enum": [
+                "text",
+                "markdown",
+                "html"
+              ],
+              "type": "string"
+            },
+            "timeout": {
+              "description": "Optional timeout in seconds (max 120)",
+              "type": "number"
+            },
+            "url": {
+              "description": "The URL to fetch content from",
+              "type": "string"
+            }
+          },
+          "required": [
+            "url"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "description": "Writes a file to the local filesystem.\n\nUsage:\n- This tool will overwrite the existing file if there is one at the provided path.\n- If this is an existing file, you MUST use the Read tool first to read the file's contents. This tool will fail if you did not read the file first.\n- ALWAYS prefer editing existing files in the codebase. NEVER write new files unless explicitly required.\n- NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.\n- Only use emojis if the user explicitly requests it. Avoid writing emojis to files unless asked.\n",
+        "name": "write",
+        "parameters": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "content": {
+              "description": "The content to write to the file",
+              "type": "string"
+            },
+            "filePath": {
+              "description": "The absolute path to the file to write (must be absolute, not relative)",
+              "type": "string"
+            }
+          },
+          "required": [
+            "content",
+            "filePath"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    }
+  ]
+}

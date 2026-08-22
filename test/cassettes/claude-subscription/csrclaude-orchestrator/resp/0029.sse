@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeK5gWxLNokRJfqmN9Eiv","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":358,"cache_read_input_tokens":58760,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":358},"output_tokens":4,"service_tier":"standard","inference_geo":"not_available"}}    }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}       }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EtEECqgBCBEYAipAUYT6VLO521ayTNmj0ZFe96RgaVDR6i4gpOUqkX49Cq1TLxr9D0mdSTA4LQt5ykNduOS/P1CdFnmhIFQVC78xsTIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEFWa4a6iQCho/6Ld1JVIVheIAQGoAbH5qdQGsAECEgwY0XLX8qxm387F9iwaDEGfUaLnq3OnAESWPSIwvJB96+GZTe/GNHjgU3Vm+IR9tG8iX1Y4CofEePTpr9otrBFDR4L1/V3ALTR2FGpAKtUCWp2go9hamSCuqF9a6HL3oLNUp7Fw36udQGVGdzMT6svWEfpWC7H4NlZzrAHTt/Tem+W9PiO3elv9BPh+zn2AdtnlSCy9dOQO4rnhi8wcEe7jBmXx44kYvdiUAPFgvY77FqMze799no/LUjVpkt15TORImOeB1Xs9qezJj3436w1CeMSiY8oiz9hm7CrX+/GuNNdF9XOkPFixJ5tL3Yr4vGh22XofD7JurXLPxBOMPWblIzm9Puedit//ST9Fnaz3U7GobGxkh6nFyUiXHmJHW2dEuMqBLK42nUUocsYl/Uk1bT5laF97ycqLbr9rEgxr1ZqStiGSJ1p50TJtX8NTeqrOIBn4RSmtgBWjpLRGs6P/YOmeIInGcPKkHENvTcD6yyEh26pkoJcyUAAzsdKKW2qLhiCDCPlklWvR7JoYusNjmG0yXVQugJ4VJuJUOvR2M7huh6gYAQ=="}      }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0          }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01FnpZnnk38UZobpjsFN3uNg","name":"Bash","input":{},"caller":{"type":"direct"}}               }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member inbox 2\u003e\u00261\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1      }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":358,"cache_read_input_tokens":58760,"output_tokens":177,"output_tokens_details":{"thinking_tokens":113}},"context_management":{"applied_edits":[]}           }
+
+event: message_stop
+data: {"type":"message_stop"             }
+

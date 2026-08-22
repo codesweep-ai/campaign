@@ -1,0 +1,26 @@
+# Live-smoke fleet used by TestLiveCampaignSmoke (internal/cli/live_test.go).
+# __REPO__ is replaced with a disposable host repository path at test runtime.
+apiVersion: codesweep.ai/v1alpha1
+kind: CampaignProfile
+defaults:
+  engine: firecracker
+  resources:
+    cpus: 2
+    memoryMiB: 2048
+orchestrator:
+  cli: codex
+  repos:
+    - path: __REPO__
+  auth:
+    apiKeyFromEnv: [OPENAI_API_KEY]
+agents:
+  worker-a:
+    cli: codex
+    repos:
+      - path: __REPO__
+    auth:
+      apiKeyFromEnv: [OPENAI_API_KEY]
+  worker-b:
+    cli: codex
+    auth:
+      apiKeyFromEnv: [OPENAI_API_KEY]

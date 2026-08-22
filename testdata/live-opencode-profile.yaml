@@ -1,0 +1,19 @@
+# Mixed-adapter live smoke used by TestLiveOpenCodeSmoke (internal/cli/live_opencode_test.go).
+# The opencode agent authenticates with a Fireworks API key (apiKeyFromEnv → the guest's
+# ~/.cs-opencode/env); the shipped profile pins the Fireworks-hosted Kimi K3 model.
+apiVersion: codesweep.ai/v1alpha1
+kind: CampaignProfile
+defaults:
+  engine: firecracker
+  resources:
+    cpus: 2
+    memoryMiB: 2048
+orchestrator:
+  cli: codex
+  auth:
+    apiKeyFromEnv: [OPENAI_API_KEY]
+agents:
+  oc-worker:
+    cli: opencode
+    auth:
+      apiKeyFromEnv: [FIREWORKS_API_KEY]

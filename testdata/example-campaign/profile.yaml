@@ -1,0 +1,17 @@
+# The smallest complete campaign: one orchestrator, one agent, no repositories.
+# `make check` validates this profile, so it is an example that stays true.
+# A real campaign's own files live outside this repository (CONTRIBUTING.md).
+apiVersion: codesweep.ai/v1alpha1
+kind: CampaignProfile
+defaults:
+  engine: firecracker
+  deadline: 90m
+orchestrator:
+  cli: codex
+  auth:
+    apiKeyFromEnv: [OPENAI_API_KEY]
+agents:
+  worker:
+    cli: codex
+    auth:
+      apiKeyFromEnv: [OPENAI_API_KEY]

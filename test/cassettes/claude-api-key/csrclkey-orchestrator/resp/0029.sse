@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeK5xsmfwBShbYgurS5Ms","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":341,"cache_read_input_tokens":59291,"cache_creation":{"ephemeral_5m_input_tokens":341,"ephemeral_1h_input_tokens":0},"output_tokens":4,"service_tier":"standard","inference_geo":"global"}}      }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}             }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EvcECqgBCBEYAipA4tKg/tiu/SCi3s9wDDAub3Wa1tUWJzoO25M7robDNL2hZUCed4cfr5L+gjP/mItCZiyMjtRAKScHHCNe4O8WyTIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEB4aFA8rRS4c55cfnpWb6maIAQGoAY/7qdQGsAECEgyZioSTA0JTBu/jAUoaDAAHD5Avtlal4MQm/SIwpeYNFLPJ1G3/vDgRVPvIITec49fJLoI1F+jXJ5vLCwp+LJnpwmu2jsoZoYD96nLoKvsCt5kFljvJR4gikSdtyCCZLsoTTF3nfrYmNzKbyh/SNq30e+L5qOkGJAbuZuqp9KTBswbniNZbgXqIdfRHAhq+UwoVia2wj5EHoTeU5c3mxwKIPtLXsdmaQK9WkrHlEPDgJpdZumM78Yoa/pjSqQYGK5yAq9dAC+1SeipjqRX9vQOqgBERVK1p2w/2ILk4aSEvZo8/Pxm2yA7Od/FqPDPrYsxog/vmdtzNPG3no9CWkHomD1HAHVdB3QTP3MWRBjbh8RO3FaDsmRL0KCi3z8XczxuMWvHHgUkhuAz2upwYfuDqUf8Hp5p4howafzsGC+w3KzRVwvlUdusvGSqzWtn7KFMAEE2alWS6QrhDgONTWj8y/zR9dx/y0UZRoOjfDc+BfT/PpeXeDwF3iBBlHROVddmi1h3CCr2AELkvw7oaTudYeWRG3SCOAvpEYmNPZQaBC2zVH+ChMQJOMK/r2hr+jwzKXNbUt9VMBxScAhFiYKqhbXf1UrT7G45YNBgB"}   }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0            }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01JK2X2pqUVeQUaXMtXKTmKJ","name":"Bash","input":{},"caller":{"type":"direct"}}}
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member inbox 2\u003e\u00261\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1         }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":341,"cache_read_input_tokens":59291,"output_tokens":181,"output_tokens_details":{"thinking_tokens":117}},"context_management":{"applied_edits":[]}           }
+
+event: message_stop
+data: {"type":"message_stop"       }
+

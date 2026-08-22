@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeK5ZCHEPR2rTZkZRxLqv","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":1001,"cache_read_input_tokens":48168,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":1001},"output_tokens":7,"service_tier":"standard","inference_geo":"not_available"}}          }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}    }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"ErMCCqgBCBEYAipAJmoGa226JR4M8QBRe6HRhJTBYj6KebmZnk2/Qqdwfiqm1mkZ4lfmgkTeU6rLZEsksgEX9Ks9t4xcakcXUTDygDIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEIEM70u1gGnGHg+dXPb733CIAQGoAcz4qdQGsAECEgzMHRit2MJmbF6XFN8aDHS/Z0MHGSmsHVayiSIwhkoCpSiLKMBKvR9oi0Lb8rZWHI+Bv/2GtTxFMDQOUvJlyIv4AEVIl2q5GCCYi+L9Kjivb2rRY1CrO+RgVnhx8/JHyDjKeOWEVXpPZFhsk7OV2vDVfCogm+nh88JajfgOqMvKS1R8roJLBxgB"}         }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01BYGbV4Vb4DFNtr2ura5MSN","name":"Bash","input":{},"caller":{"type":"direct"}}        }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member inbox\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1             }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":1001,"cache_read_input_tokens":48168,"output_tokens":76,"output_tokens_details":{"thinking_tokens":18}},"context_management":{"applied_edits":[]}               }
+
+event: message_stop
+data: {"type":"message_stop"  }
+

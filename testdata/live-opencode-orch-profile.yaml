@@ -1,0 +1,30 @@
+# OpenCode-orchestrator live smoke used by TestLiveOpenCodeOrchestratorSmoke
+# (internal/cli/live_opencode_orch_test.go). The opencode orchestrator (Fireworks-hosted Kimi K3)
+# drives a codex agent and a claude agent; exactly one Claude member because cloned OAuth
+# credentials rotate (IMPL.md OI-009). __REPO__ is replaced with a disposable host repository
+# path at test runtime; the orchestrator and codex-worker share it so the scoped helper's
+# fetch flow can be asserted on a real committed task.
+apiVersion: codesweep.ai/v1alpha1
+kind: CampaignProfile
+defaults:
+  engine: firecracker
+  resources:
+    cpus: 2
+    memoryMiB: 2048
+orchestrator:
+  cli: opencode
+  repos:
+    - path: __REPO__
+  auth:
+    apiKeyFromEnv: [FIREWORKS_API_KEY]
+agents:
+  codex-worker:
+    cli: codex
+    repos:
+      - path: __REPO__
+    auth:
+      apiKeyFromEnv: [OPENAI_API_KEY]
+  claude-worker:
+    cli: claude
+    auth:
+      inheritAgentLogin: [claude]

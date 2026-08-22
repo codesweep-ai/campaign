@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cs-campaign behavioral coverage</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --surface: #fcfcfb; --plane: #f9f9f7;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --ring: rgba(11,11,11,0.10);
+  --tier-unit-bg: #86b6ef;    --tier-unit-ink: #0b0b0b;
+  --tier-scripts-bg: #2a78d6; --tier-scripts-ink: #ffffff;
+  --tier-live-bg: #184f95;    --tier-live-ink: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1a1a19; --plane: #0d0d0d;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --ring: rgba(255,255,255,0.10);
+    --tier-unit-bg: #184f95;    --tier-unit-ink: #ffffff;
+    --tier-scripts-bg: #2a78d6; --tier-scripts-ink: #ffffff;
+    --tier-live-bg: #86b6ef;    --tier-live-ink: #0b0b0b;
+  }
+}
+html { background: var(--plane); }
+body { margin: 0; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+h2 { font-size: 16px; margin: 28px 0 8px; }
+.gen { color: var(--ink-2); margin: 4px 0 16px; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px 20px; margin: 12px 0 4px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.swatch { display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 18px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--ring);
+  border-radius: 8px; padding: 12px; }
+table { border-collapse: collapse; width: 100%; }
+th { font-weight: 600; color: var(--ink-2); text-align: left; padding: 4px 8px; }
+th.adapter { text-align: center; border-bottom: 1px solid var(--grid); }
+th.role { text-align: center; font-weight: 400; color: var(--muted); font-size: 12px; }
+td.rowhead, th.rowhead { padding: 6px 10px 6px 0; border-top: 1px solid var(--grid); min-width: 220px; }
+td.cell { width: 44px; min-width: 44px; height: 26px; text-align: center; vertical-align: middle;
+  border-top: 1px solid var(--grid); font-size: 12px; font-weight: 600; padding: 3px;
+  border-left: 2px solid var(--surface); border-right: 2px solid var(--surface); }
+td.cell.tier-unit, .swatch.tier-unit, .tiertag.tier-unit { background: var(--tier-unit-bg); color: var(--tier-unit-ink); }
+td.cell.tier-scripts, .swatch.tier-scripts, .tiertag.tier-scripts { background: var(--tier-scripts-bg); color: var(--tier-scripts-ink); }
+td.cell.tier-live, .swatch.tier-live, .tiertag.tier-live { background: var(--tier-live-bg); color: var(--tier-live-ink); }
+td.cell.gap, .swatch.gap { background: transparent; outline: 1px dashed var(--muted); outline-offset: -3px; }
+td.ev { color: var(--ink-2); border-top: 1px solid var(--grid); padding: 6px 8px; }
+.tiertag { display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 16px; border-radius: 3px; font-size: 11px; font-weight: 600; padding: 0 3px; }
+details { background: var(--surface); border: 1px solid var(--ring); border-radius: 8px;
+  padding: 8px 12px; margin: 8px 0; }
+summary { cursor: pointer; font-weight: 600; }
+details ul { margin: 8px 0 4px; padding-left: 18px; }
+details li { margin: 6px 0; color: var(--ink-2); }
+details li b { color: var(--ink); font-weight: 600; }
+.muted { color: var(--muted); }
+code { font-size: 12.5px; }
+</style>
+</head>
+<body>
+<main>
+<h1>cs-campaign behavioral coverage — run results</h1>
+<p class="gen">GENERATED — rubric: <code>covmap/behaviors.json</code>, results: <code>covmap/results.json</code>; regenerate with <code>make covmap</code>. Every colored cell is backed by a test that actually executed its proving assertion (the record carries the commit and time it ran). Dashed cells are unproven — the visible backlog.</p>
+<div class="legend">
+  <span class="chip"><span class="swatch tier-unit">U</span> unit — pure Go, collaborators faked</span>
+  <span class="chip"><span class="swatch tier-scripts">S</span> scripts — the real shipped shell scripts execute</span>
+  <span class="chip"><span class="swatch tier-smoke">R</span> smoke — real VMs and the whole protocol, model turns replayed</span>
+  <span class="chip"><span class="swatch tier-live">L</span> live — real Firecracker VMs and model turns</span>
+  <span class="chip"><span class="swatch gap"></span> no run-result</span>
+</div>
+<h2>Adapter behaviors</h2>
+<div class="scroll"><table>
+<thead>
+<tr><th rowspan="2" class="rowhead">behavior</th><th colspan="2" class="adapter">claude</th><th colspan="2" class="adapter">codex</th><th colspan="2" class="adapter">opencode</th></tr>
+<tr><th class="role">orch</th><th class="role">agent</th><th class="role">orch</th><th class="role">agent</th><th class="role">orch</th><th class="role">agent</th></tr>
+</thead>
+<tbody>
+<tr><td class="rowhead" title="SPEC.md § 4.2 Grants">auth provisioning (API key / login inherit)</td><td class="cell tier-smoke" title="auth provisioning (API key / login inherit) — claude/orchestrator
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="auth provisioning (API key / login inherit) — claude/agent
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="auth provisioning (API key / login inherit) — codex/orchestrator
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]
+U: TestAPIKeyTakesPrecedenceWithoutExposingValue (campaign) @ 9989889, 2026-08-20 [both roles]
+U: TestPrepareAuthPassesKeyNameNeverValue (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="auth provisioning (API key / login inherit) — codex/agent
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]
+U: TestAPIKeyTakesPrecedenceWithoutExposingValue (campaign) @ 9989889, 2026-08-20 [both roles]
+U: TestPrepareAuthPassesKeyNameNeverValue (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="auth provisioning (API key / login inherit) — opencode/orchestrator
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]
+U: TestPrepareAuthPassesKeyNameNeverValue (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="auth provisioning (API key / login inherit) — opencode/agent
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]
+U: TestPrepareAuthPassesKeyNameNeverValue (campaign) @ 9989889, 2026-08-20 [both roles]">R</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.3 Channels">prompt delivery + dispatch-bound await</td><td class="cell tier-smoke" title="prompt delivery + dispatch-bound await — claude/orchestrator
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="prompt delivery + dispatch-bound await — claude/agent
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="prompt delivery + dispatch-bound await — codex/orchestrator
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="prompt delivery + dispatch-bound await — codex/agent
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="prompt delivery + dispatch-bound await — opencode/orchestrator
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="prompt delivery + dispatch-bound await — opencode/agent
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.3 Channels">session resume (second turn, same session)</td><td class="cell gap" title="session resume (second turn, same session) — claude/orchestrator: no run-result"></td><td class="cell gap" title="session resume (second turn, same session) — claude/agent: no run-result"></td><td class="cell gap" title="session resume (second turn, same session) — codex/orchestrator: no run-result"></td><td class="cell gap" title="session resume (second turn, same session) — codex/agent: no run-result"></td><td class="cell gap" title="session resume (second turn, same session) — opencode/orchestrator: no run-result"></td><td class="cell gap" title="session resume (second turn, same session) — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.3 Channels">output retrieval (session text / helper output)</td><td class="cell gap" title="output retrieval (session text / helper output) — claude/orchestrator: no run-result"></td><td class="cell gap" title="output retrieval (session text / helper output) — claude/agent: no run-result"></td><td class="cell gap" title="output retrieval (session text / helper output) — codex/orchestrator: no run-result"></td><td class="cell gap" title="output retrieval (session text / helper output) — codex/agent: no run-result"></td><td class="cell gap" title="output retrieval (session text / helper output) — opencode/orchestrator: no run-result"></td><td class="cell gap" title="output retrieval (session text / helper output) — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.5 Dispatch and completion">status contract (finished/running/failed/unknown)</td><td class="cell gap" title="status contract (finished/running/failed/unknown) — claude/orchestrator: no run-result"></td><td class="cell gap" title="status contract (finished/running/failed/unknown) — claude/agent: no run-result"></td><td class="cell gap" title="status contract (finished/running/failed/unknown) — codex/orchestrator: no run-result"></td><td class="cell gap" title="status contract (finished/running/failed/unknown) — codex/agent: no run-result"></td><td class="cell gap" title="status contract (finished/running/failed/unknown) — opencode/orchestrator: no run-result"></td><td class="cell gap" title="status contract (finished/running/failed/unknown) — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.3 Channels">interrupt a running turn</td><td class="cell gap" title="interrupt a running turn — claude/orchestrator: no run-result"></td><td class="cell gap" title="interrupt a running turn — claude/agent: no run-result"></td><td class="cell gap" title="interrupt a running turn — codex/orchestrator: no run-result"></td><td class="cell gap" title="interrupt a running turn — codex/agent: no run-result"></td><td class="cell gap" title="interrupt a running turn — opencode/orchestrator: no run-result"></td><td class="cell gap" title="interrupt a running turn — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.3 Channels">clear to a fresh session</td><td class="cell gap" title="clear to a fresh session — claude/orchestrator: no run-result"></td><td class="cell gap" title="clear to a fresh session — claude/agent: no run-result"></td><td class="cell gap" title="clear to a fresh session — codex/orchestrator: no run-result"></td><td class="cell gap" title="clear to a fresh session — codex/agent: no run-result"></td><td class="cell gap" title="clear to a fresh session — opencode/orchestrator: no run-result"></td><td class="cell gap" title="clear to a fresh session — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.3 Channels">retry a recorded prompt after failure</td><td class="cell gap" title="retry a recorded prompt after failure — claude/orchestrator: no run-result"></td><td class="cell gap" title="retry a recorded prompt after failure — claude/agent: no run-result"></td><td class="cell gap" title="retry a recorded prompt after failure — codex/orchestrator: no run-result"></td><td class="cell gap" title="retry a recorded prompt after failure — codex/agent: no run-result"></td><td class="cell gap" title="retry a recorded prompt after failure — opencode/orchestrator: no run-result"></td><td class="cell gap" title="retry a recorded prompt after failure — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.7 The command-line contract">member stop/start, then resume across restart</td><td class="cell gap" title="member stop/start, then resume across restart — claude/orchestrator: no run-result"></td><td class="cell gap" title="member stop/start, then resume across restart — claude/agent: no run-result"></td><td class="cell gap" title="member stop/start, then resume across restart — codex/orchestrator: no run-result"></td><td class="cell gap" title="member stop/start, then resume across restart — codex/agent: no run-result"></td><td class="cell gap" title="member stop/start, then resume across restart — opencode/orchestrator: no run-result"></td><td class="cell gap" title="member stop/start, then resume across restart — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.5 Dispatch and completion">delivery failure isolated from peers</td><td class="cell gap" title="delivery failure isolated from peers — claude/orchestrator: no run-result"></td><td class="cell gap" title="delivery failure isolated from peers — claude/agent: no run-result"></td><td class="cell gap" title="delivery failure isolated from peers — codex/orchestrator: no run-result"></td><td class="cell gap" title="delivery failure isolated from peers — codex/agent: no run-result"></td><td class="cell gap" title="delivery failure isolated from peers — opencode/orchestrator: no run-result"></td><td class="cell gap" title="delivery failure isolated from peers — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.6 Fleet conformance">exec-driven scoped-helper control</td><td class="cell gap" title="exec-driven scoped-helper control — claude/orchestrator: no run-result"></td><td class="cell gap" title="exec-driven scoped-helper control — claude/agent: no run-result"></td><td class="cell gap" title="exec-driven scoped-helper control — codex/orchestrator: no run-result"></td><td class="cell gap" title="exec-driven scoped-helper control — codex/agent: no run-result"></td><td class="cell gap" title="exec-driven scoped-helper control — opencode/orchestrator: no run-result"></td><td class="cell gap" title="exec-driven scoped-helper control — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.3 Channels">model-driven delegation</td><td class="cell tier-smoke" title="model-driven delegation — claude/orchestrator
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="model-driven delegation — claude/agent
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="model-driven delegation — codex/orchestrator
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="model-driven delegation — codex/agent
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="model-driven delegation — opencode/orchestrator
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="model-driven delegation — opencode/agent
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.11 Repository and result model">repo fetch via scoped helper</td><td class="cell gap" title="repo fetch via scoped helper — claude/orchestrator: no run-result"></td><td class="cell gap" title="repo fetch via scoped helper — claude/agent: no run-result"></td><td class="cell gap" title="repo fetch via scoped helper — codex/orchestrator: no run-result"></td><td class="cell gap" title="repo fetch via scoped helper — codex/agent: no run-result"></td><td class="cell gap" title="repo fetch via scoped helper — opencode/orchestrator: no run-result"></td><td class="cell gap" title="repo fetch via scoped helper — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.11 Repository and result model">integration flow (fetch, merge, test in orchestrator clone)</td><td class="cell gap" title="integration flow (fetch, merge, test in orchestrator clone) — claude/orchestrator: no run-result"></td><td class="cell gap" title="integration flow (fetch, merge, test in orchestrator clone) — claude/agent: no run-result"></td><td class="cell gap" title="integration flow (fetch, merge, test in orchestrator clone) — codex/orchestrator: no run-result"></td><td class="cell gap" title="integration flow (fetch, merge, test in orchestrator clone) — codex/agent: no run-result"></td><td class="cell gap" title="integration flow (fetch, merge, test in orchestrator clone) — opencode/orchestrator: no run-result"></td><td class="cell gap" title="integration flow (fetch, merge, test in orchestrator clone) — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.10 Archives">archive evidence allowlist</td><td class="cell tier-smoke" title="archive evidence allowlist — claude/orchestrator
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="archive evidence allowlist — claude/agent
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="archive evidence allowlist — codex/orchestrator
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="archive evidence allowlist — codex/agent
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="archive evidence allowlist — opencode/orchestrator
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]
+U: TestArchiveTranscriptsOpenCodeAllowlistAndExport (campaign) @ 9989889, 2026-08-20 [both roles]">R</td><td class="cell tier-smoke" title="archive evidence allowlist — opencode/agent
+R: TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]
+U: TestArchiveTranscriptsOpenCodeAllowlistAndExport (campaign) @ 9989889, 2026-08-20 [both roles]">R</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.10 Archives">credential canaries absent from archive</td><td class="cell gap" title="credential canaries absent from archive — claude/orchestrator: no run-result"></td><td class="cell gap" title="credential canaries absent from archive — claude/agent: no run-result"></td><td class="cell gap" title="credential canaries absent from archive — codex/orchestrator: no run-result"></td><td class="cell gap" title="credential canaries absent from archive — codex/agent: no run-result"></td><td class="cell gap" title="credential canaries absent from archive — opencode/orchestrator: no run-result"></td><td class="cell gap" title="credential canaries absent from archive — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.5 Dispatch and completion">turn-driver completion semantics</td><td class="cell gap" title="turn-driver completion semantics — claude/orchestrator: no run-result"></td><td class="cell gap" title="turn-driver completion semantics — claude/agent: no run-result"></td><td class="cell gap" title="turn-driver completion semantics — codex/orchestrator: no run-result"></td><td class="cell gap" title="turn-driver completion semantics — codex/agent: no run-result"></td><td class="cell gap" title="turn-driver completion semantics — opencode/orchestrator: no run-result"></td><td class="cell gap" title="turn-driver completion semantics — opencode/agent: no run-result"></td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.10 Archives">archive of a failed/incomplete member is marked</td><td class="cell gap" title="archive of a failed/incomplete member is marked — claude/orchestrator: no run-result"></td><td class="cell gap" title="archive of a failed/incomplete member is marked — claude/agent: no run-result"></td><td class="cell gap" title="archive of a failed/incomplete member is marked — codex/orchestrator: no run-result"></td><td class="cell gap" title="archive of a failed/incomplete member is marked — codex/agent: no run-result"></td><td class="cell gap" title="archive of a failed/incomplete member is marked — opencode/orchestrator: no run-result"></td><td class="cell gap" title="archive of a failed/incomplete member is marked — opencode/agent: no run-result"></td></tr>
+</tbody>
+</table></div>
+<h2>Run records</h2>
+<details><summary>auth provisioning (API key / login inherit) <span class="muted">(SPEC.md § 4.2 Grants)</span></summary>
+<ul>
+<li><b>claude / orchestrator</b><br><span class="tiertag tier-smoke">R</span> TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]</li>
+<li><b>codex / orchestrator</b><br><span class="tiertag tier-smoke">R</span> TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]<br><span class="tiertag tier-unit">U</span> TestAPIKeyTakesPrecedenceWithoutExposingValue (campaign) @ 9989889, 2026-08-20 [both roles]<br><span class="tiertag tier-unit">U</span> TestPrepareAuthPassesKeyNameNeverValue (campaign) @ 9989889, 2026-08-20 [both roles]</li>
+<li><b>opencode / orchestrator</b><br><span class="tiertag tier-smoke">R</span> TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]<br><span class="tiertag tier-unit">U</span> TestPrepareAuthPassesKeyNameNeverValue (campaign) @ 9989889, 2026-08-20 [both roles]</li>
+</ul>
+</details>
+<details><summary>prompt delivery + dispatch-bound await <span class="muted">(SPEC.md § 4.3 Channels)</span></summary>
+<ul>
+<li><b>claude / orchestrator</b><br><span class="tiertag tier-smoke">R</span> TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]</li>
+<li><b>codex / orchestrator</b><br><span class="tiertag tier-smoke">R</span> TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]</li>
+<li><b>opencode / orchestrator</b><br><span class="tiertag tier-smoke">R</span> TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]</li>
+</ul>
+</details>
+<details><summary>session resume (second turn, same session) <span class="muted">(SPEC.md § 4.3 Channels)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>output retrieval (session text / helper output) <span class="muted">(SPEC.md § 4.3 Channels)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>status contract (finished/running/failed/unknown) <span class="muted">(SPEC.md § 4.5 Dispatch and completion)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>interrupt a running turn <span class="muted">(SPEC.md § 4.3 Channels)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>clear to a fresh session <span class="muted">(SPEC.md § 4.3 Channels)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>retry a recorded prompt after failure <span class="muted">(SPEC.md § 4.3 Channels)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>member stop/start, then resume across restart <span class="muted">(SPEC.md § 4.7 The command-line contract)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>delivery failure isolated from peers <span class="muted">(SPEC.md § 4.5 Dispatch and completion)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>exec-driven scoped-helper control <span class="muted">(SPEC.md § 4.6 Fleet conformance)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>model-driven delegation <span class="muted">(SPEC.md § 4.3 Channels)</span></summary>
+<ul>
+<li><b>claude / orchestrator</b><br><span class="tiertag tier-smoke">R</span> TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]</li>
+<li><b>codex / orchestrator</b><br><span class="tiertag tier-smoke">R</span> TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]</li>
+<li><b>opencode / orchestrator</b><br><span class="tiertag tier-smoke">R</span> TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]</li>
+</ul>
+</details>
+<details><summary>repo fetch via scoped helper <span class="muted">(SPEC.md § 4.11 Repository and result model)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>integration flow (fetch, merge, test in orchestrator clone) <span class="muted">(SPEC.md § 4.11 Repository and result model)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>archive evidence allowlist <span class="muted">(SPEC.md § 4.10 Archives)</span></summary>
+<ul>
+<li><b>claude / orchestrator</b><br><span class="tiertag tier-smoke">R</span> TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]</li>
+<li><b>codex / orchestrator</b><br><span class="tiertag tier-smoke">R</span> TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]</li>
+<li><b>opencode / orchestrator</b><br><span class="tiertag tier-smoke">R</span> TestSmokeReplay (campaign) @ 9989889, 2026-08-20 [both roles]<br><span class="tiertag tier-unit">U</span> TestArchiveTranscriptsOpenCodeAllowlistAndExport (campaign) @ 9989889, 2026-08-20 [both roles]</li>
+</ul>
+</details>
+<details><summary>credential canaries absent from archive <span class="muted">(SPEC.md § 4.10 Archives)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>turn-driver completion semantics <span class="muted">(SPEC.md § 4.5 Dispatch and completion)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<details><summary>archive of a failed/incomplete member is marked <span class="muted">(SPEC.md § 4.10 Archives)</span></summary>
+<ul>
+<li class="muted">no run-results yet</li>
+</ul>
+</details>
+<h2>Core behaviors (adapter-agnostic)</h2>
+<div class="scroll"><table>
+<thead><tr><th class="rowhead">behavior</th><th>proven</th><th>run records</th></tr></thead>
+<tbody>
+<tr><td class="rowhead" title="SPEC.md § 4.8 Profiles">profile validation, flag/YAML equivalence, strict decode</td><td class="cell tier-unit">U</td><td class="ev">TestDefaultEnvAppliesOnlyWhereAMemberDeclaresNone (campaign) @ 9989889, 2026-08-20 · TestHomogeneousFleet (campaign) @ 9989889, 2026-08-20 · TestProfileAcceptsOpenCode (campaign) @ 9989889, 2026-08-20 · TestProfileAndFlagsResolveEquivalently (campaign) @ 9989889, 2026-08-20 · TestProfileFromExplicitAgents (campaign) @ 9989889, 2026-08-20 · TestTypedSetOverridesAndRejectsUnknown (campaign) @ 9989889, 2026-08-20 · TestUnknownProfileFieldRejected (campaign) @ 9989889, 2026-08-20</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.7 The command-line contract">plan determinism and non-mutation</td><td class="cell tier-unit">U</td><td class="ev">TestEmptyRepositoryPlanIsNonMutatingAndCreateIsDeterministic (campaign) @ 9989889, 2026-08-20 · TestPlanAndDryRunDoNotCreateState (campaign) @ 9989889, 2026-08-20 · TestPlanIdentityIsDeterministic (campaign) @ 9989889, 2026-08-20 · TestResolveRepoRefsPinsOneCommit (campaign) @ 9989889, 2026-08-20 · TestValidateDoesNotCreateState (campaign) @ 9989889, 2026-08-20 · TestValidateMatchesCreateOnRepoPaths (campaign) @ 9989889, 2026-08-20</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.9 Campaign state">state versioning, locking, and listing</td><td class="cell tier-unit">U</td><td class="ev">TestCorruptStateIsNotSilentlyOmittedFromLs (campaign) @ 9989889, 2026-08-20 · TestLockSerializesWriters (campaign) @ 9989889, 2026-08-20 · TestRoundTripAndList (campaign) @ 9989889, 2026-08-20 · TestStateVersionRejectionAndCorruptionErrors (campaign) @ 9989889, 2026-08-20</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.9 Campaign state">create resume, refusal, and reconciliation</td><td class="cell tier-unit">U</td><td class="ev">TestCreateArgsPreserveIsolation (campaign) @ 9989889, 2026-08-20 · TestCreateRefusesExistingGeneratedGroup (campaign) @ 9989889, 2026-08-20 · TestCreateResumesAfterInjectedMemberFailure (campaign) @ 9989889, 2026-08-20 · TestDeclaredEnvReachesTheSandboxAlongsideAuth (campaign) @ 9989889, 2026-08-20 · TestGeneratedMappingRejectsOverlongMemberName (campaign) @ 9989889, 2026-08-20</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.5 Dispatch and completion">dispatch/await race safety</td><td class="cell gap"></td><td class="ev">no run-results yet</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.3 Channels">delivery-failure isolation in fan-out</td><td class="cell gap"></td><td class="ev">no run-results yet</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.6 Fleet conformance">scoped-helper manifest, prompt, and refusal</td><td class="cell tier-unit">U</td><td class="ev">TestConfigureOrchestratorManifestScopesAgents (campaign) @ 9989889, 2026-08-20 · TestOrchestratorManifestUsesInGroupNamesNotHostRefs (campaign) @ 9989889, 2026-08-20</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.10 Archives">archive extraction safety and bounded shell arguments</td><td class="cell tier-unit">U</td><td class="ev">TestDestroyArchiveBlocksOnIncompleteAndRetries (campaign) @ 9989889, 2026-08-20 · TestExtractMemberChannelsAllowsOnlyInputAndOutput (campaign) @ 9989889, 2026-08-20 · TestRepositoryArchiveNamesAndShellArgumentsAreBounded (campaign) @ 9989889, 2026-08-20</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.11 Repository and result model">repository adoption rules</td><td class="cell tier-unit">U</td><td class="ev">TestCreateAdoptsTheBranchSandboxActuallyMade (campaign) @ 9989889, 2026-08-20 · TestNonEmptyNonGitRepositoryIsRejected (campaign) @ 9989889, 2026-08-20 · TestUnbornGitRepositoryIsAdoptedOnMain (campaign) @ 9989889, 2026-08-20</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.11 Repository and result model">no-push command surface</td><td class="cell tier-unit">U</td><td class="ev">TestRootExposesNoPushOrLegacyCtlCommand (campaign) @ 9989889, 2026-08-20</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.6 Fleet conformance">doctor gates (version, ls --json, tool families)</td><td class="cell tier-unit">U</td><td class="ev">TestArchiveFlagsAHarnessChangedDuringTheRun (campaign) @ 9989889, 2026-08-20 · TestCampaignDoctorCatchesDisarmedGuard (campaign) @ 9989889, 2026-08-20 · TestCampaignDoctorCatchesManifestDrift (campaign) @ 9989889, 2026-08-20 · TestCampaignDoctorCatchesMissingMemberCLI (campaign) @ 9989889, 2026-08-20 · TestCampaignDoctorNamesAMissingMemberTool (campaign) @ 9989889, 2026-08-20 · TestCampaignDoctorPassesAMemberOnThePinnedHarness (campaign) @ 9989889, 2026-08-20 · TestCreateFailsLoudlyWhenInstantiationIsBroken (campaign) @ 9989889, 2026-08-20 · TestCreateRefusesAMemberRunningAStaleDriver (campaign) @ 9989889, 2026-08-20 · TestCreateRefusesDeviatingUpstreamUnlessAccepted (campaign) @ 9989889, 2026-08-20 · TestCreateRunsCampaignDoctorOnFaithfulInstantiation (campaign) @ 9989889, 2026-08-20 · TestDoctorChecksVersionJSONAndRemoteFamilies (campaign) @ 9989889, 2026-08-20 · TestDoctorFailsLoudlyOnToolMutation (campaign) @ 9989889, 2026-08-20 · TestDoctorFailsLoudlyOnVersionDrift (campaign) @ 9989889, 2026-08-20 · TestDoctorRejectsSandboxWithoutGroups (campaign) @ 9989889, 2026-08-20 · TestDoctorRejectsUnversionedSandbox (campaign) @ 9989889, 2026-08-20 · TestDoctorWarnsLoudlyWhenUnpinned (campaign) @ 9989889, 2026-08-20 · TestMemberHarnessFailsClosedWhenItCannotHash (campaign) @ 9989889, 2026-08-20 · TestPinRefusesCasualOverwriteOfDeviatingSurface (campaign) @ 9989889, 2026-08-20 · TestPinRoundTripAndDoctorPinnedOK (campaign) @ 9989889, 2026-08-20</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.6 Fleet conformance">fleet conformance (guard fires; declared CLI did the work)</td><td class="cell tier-smoke">R</td><td class="ev">TestSmokeReplay (campaign) @ 9989889, 2026-08-20 · TestFleetProbeClassifiesEvidenceAndForeignState (campaign) @ 9989889, 2026-08-20 · TestVerifyFleetArchiveFlagsCtv4 (campaign) @ 61ee976, 2026-08-13 · TestVerifyFleetArchiveSynthetic (campaign) @ 9989889, 2026-08-20 · TestVerifyFleetLiveFlagsWrongFamilyMember (campaign) @ 9989889, 2026-08-20 · TestVerifyFleetLivePassesAHealthyFleet (campaign) @ 9989889, 2026-08-20</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.7 The command-line contract">inspection and completions</td><td class="cell tier-unit">U</td><td class="ev">TestShellCompletionSmoke (campaign) @ 9989889, 2026-08-20</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.2 Grants">agent-login seeding (sandbox side)</td><td class="cell gap"></td><td class="ev">no run-results yet</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.1 Topology and trust">cross-campaign network isolation</td><td class="cell gap"></td><td class="ev">no run-results yet</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.1 Topology and trust">host ref vs in-group name; ref-keyed lookups</td><td class="cell tier-unit">U</td><td class="ev">TestCampaignDoctorKeepsTheTwoAddressingPlanesApart (campaign) @ 9989889, 2026-08-20 · TestDoctorRejectsSandboxWithoutGroups (campaign) @ 9989889, 2026-08-20 · TestGeneratedMappingRejectsOverlongSocketPath (campaign) @ 9989889, 2026-08-20 · TestOrchestratorManifestUsesInGroupNamesNotHostRefs (campaign) @ 9989889, 2026-08-20 · TestOrdinaryCampaignFitsTheSocketBudget (campaign) @ 9989889, 2026-08-20 · TestPlannedBranchLooksLikeTheSandboxDerivation (campaign) @ 9989889, 2026-08-20</td></tr>
+<tr><td class="rowhead" title="SPEC.md § 4.1 Topology and trust">campaign group reclaimed only after members are gone</td><td class="cell tier-unit">U</td><td class="ev">TestDestroyArchiveBlocksOnIncompleteAndRetries (campaign) @ 9989889, 2026-08-20 · TestDestroyPreservesStateWhileMembersSurvive (campaign) @ 9989889, 2026-08-20 · TestDestroyToleratesAlreadyReclaimedGroup (campaign) @ 9989889, 2026-08-20</td></tr>
+</tbody>
+</table></div>
+</main>
+</body>
+</html>

@@ -1,0 +1,249 @@
+{
+  "behaviors": [
+    {
+      "id": "auth-provisioning",
+      "title": "auth provisioning (API key / login inherit)",
+      "group": "lifecycle",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.2 Grants"
+    },
+    {
+      "id": "prompt-await",
+      "title": "prompt delivery + dispatch-bound await",
+      "group": "lifecycle",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.3 Channels"
+    },
+    {
+      "id": "session-resume",
+      "title": "session resume (second turn, same session)",
+      "group": "lifecycle",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.3 Channels"
+    },
+    {
+      "id": "output-retrieval",
+      "title": "output retrieval (session text / helper output)",
+      "group": "lifecycle",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.3 Channels"
+    },
+    {
+      "id": "status-contract",
+      "title": "status contract (finished/running/failed/unknown)",
+      "group": "lifecycle",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.5 Dispatch and completion"
+    },
+    {
+      "id": "interrupt",
+      "title": "interrupt a running turn",
+      "group": "lifecycle",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.3 Channels"
+    },
+    {
+      "id": "clear",
+      "title": "clear to a fresh session",
+      "group": "lifecycle",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.3 Channels"
+    },
+    {
+      "id": "retry",
+      "title": "retry a recorded prompt after failure",
+      "group": "lifecycle",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.3 Channels"
+    },
+    {
+      "id": "restart-resume",
+      "title": "member stop/start, then resume across restart",
+      "group": "lifecycle",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.7 The command-line contract"
+    },
+    {
+      "id": "delivery-failure",
+      "title": "delivery failure isolated from peers",
+      "group": "lifecycle",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.5 Dispatch and completion"
+    },
+    {
+      "id": "helper-control",
+      "title": "exec-driven scoped-helper control",
+      "group": "orchestration",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.6 Fleet conformance"
+    },
+    {
+      "id": "model-delegation",
+      "title": "model-driven delegation",
+      "group": "orchestration",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.3 Channels"
+    },
+    {
+      "id": "repo-fetch",
+      "title": "repo fetch via scoped helper",
+      "group": "orchestration",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.11 Repository and result model"
+    },
+    {
+      "id": "integration-flow",
+      "title": "integration flow (fetch, merge, test in orchestrator clone)",
+      "group": "orchestration",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.11 Repository and result model"
+    },
+    {
+      "id": "archive-evidence",
+      "title": "archive evidence allowlist",
+      "group": "evidence",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.10 Archives"
+    },
+    {
+      "id": "credential-canaries",
+      "title": "credential canaries absent from archive",
+      "group": "evidence",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.10 Archives"
+    },
+    {
+      "id": "turn-driver-semantics",
+      "title": "turn-driver completion semantics",
+      "group": "evidence",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.5 Dispatch and completion"
+    },
+    {
+      "id": "archive-incomplete-member",
+      "title": "archive of a failed/incomplete member is marked",
+      "group": "evidence",
+      "scope": "adapter",
+      "design_ref": "SPEC.md § 4.10 Archives"
+    },
+    {
+      "id": "profile-validation",
+      "title": "profile validation, flag/YAML equivalence, strict decode",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.8 Profiles"
+    },
+    {
+      "id": "plan-determinism",
+      "title": "plan determinism and non-mutation",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.7 The command-line contract"
+    },
+    {
+      "id": "state-safety",
+      "title": "state versioning, locking, and listing",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.9 Campaign state"
+    },
+    {
+      "id": "create-resume",
+      "title": "create resume, refusal, and reconciliation",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.9 Campaign state"
+    },
+    {
+      "id": "dispatch-races",
+      "title": "dispatch/await race safety",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.5 Dispatch and completion"
+    },
+    {
+      "id": "fanout-isolation",
+      "title": "delivery-failure isolation in fan-out",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.3 Channels"
+    },
+    {
+      "id": "helper-scoping",
+      "title": "scoped-helper manifest, prompt, and refusal",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.6 Fleet conformance"
+    },
+    {
+      "id": "archive-safety",
+      "title": "archive extraction safety and bounded shell arguments",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.10 Archives"
+    },
+    {
+      "id": "repo-adoption",
+      "title": "repository adoption rules",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.11 Repository and result model"
+    },
+    {
+      "id": "no-push",
+      "title": "no-push command surface",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.11 Repository and result model"
+    },
+    {
+      "id": "doctor",
+      "title": "doctor gates (version, ls --json, tool families)",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.6 Fleet conformance"
+    },
+    {
+      "id": "fleet-conformance",
+      "title": "fleet conformance (guard fires; declared CLI did the work)",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.6 Fleet conformance"
+    },
+    {
+      "id": "inspection",
+      "title": "inspection and completions",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.7 The command-line contract"
+    },
+    {
+      "id": "login-seeding",
+      "title": "agent-login seeding (sandbox side)",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.2 Grants"
+    },
+    {
+      "id": "network-isolation",
+      "title": "cross-campaign network isolation",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.1 Topology and trust"
+    },
+    {
+      "id": "member-addressing",
+      "title": "host ref vs in-group name; ref-keyed lookups",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.1 Topology and trust"
+    },
+    {
+      "id": "group-reclaim",
+      "title": "campaign group reclaimed only after members are gone",
+      "group": "core",
+      "scope": "core",
+      "design_ref": "SPEC.md § 4.1 Topology and trust"
+    }
+  ]
+}

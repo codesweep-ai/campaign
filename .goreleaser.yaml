@@ -1,0 +1,132 @@
+# goreleaser config for cs-campaign: static CGO_ENABLED=0 binaries, checksummed,
+# with a bill of materials and a keyless cosign signature over the checksums.
+#
+#   goreleaser check                       # validate this file
+#   goreleaser release --snapshot --clean  # full local dry-run into dist/
+#   goreleaser release --clean             # tagged release (needs a git tag)
+#
+# `make snapshot` and `make release` wrap the last two, and restore the guest
+# binary placeholder afterwards.
+version: 2
+
+project_name: cs-campaign
+
+before:
+  hooks:
+    - go mod tidy
+    - go vet ./...
+    - go test ./...
+    # The guest binary is embedded in cs-campaign, and a plain build embeds the
+    # committed placeholder instead. A release that shipped the placeholder
+    # would install into a member and be refused there, so this hook is not
+    # optional.
+    - make guestbin
+
+builds:
+  # Linux only, and both architectures. A campaign member is a Firecracker
+  # microVM, so the host is a Linux machine with KVM; a darwin build of
+  # cs-campaign would install cleanly and fail at `create`.
+  - id: cs-campaign
+    main: ./cmd/cs-campaign
+    binary: cs-campaign
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/codesweep-ai/campaign/internal/cli.version={{ .Version }}
+    goos: [linux]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}" # reproducible builds
+
+  - id: cs-dispatch-viewer
+    main: ./dispatch-viewer/cmd/cs-dispatch-viewer
+    binary: cs-dispatch-viewer
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/codesweep-ai/campaign/dispatch-viewer/internal/cli.version={{ .Version }}
+    goos: [linux]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: cs-campaign
+    ids:
+      - cs-campaign
+      - cs-dispatch-viewer
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - README.md
+      - INSTALL.md
+      - MANUAL.md
+      - PROTOCOL.md
+      - SPEC.md
+      - CONTRIBUTING.md
+      - AGENTS.md
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+# Software bill of materials per archive. Needs cyclonedx-gomod:
+#   go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
+sboms:
+  - id: archive
+    artifacts: archive
+    documents:
+      - "{{ .ArtifactName }}.sbom.json"
+    cmd: cyclonedx-gomod
+    args: ["app", "-json", "-output", "$document", "-main", "cmd/cs-campaign", "../../.."]
+
+# Keyless cosign signing of the checksums. Needs cosign, and ambient OIDC in
+# CI; set COSIGN_EXPERIMENTAL=1 to sign locally.
+signs:
+  - id: cosign
+    cmd: cosign
+    signature: "${artifact}.sig"
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+
+snapshot:
+  version_template: '{{ with index .Env "VERSION" }}{{ . }}{{ else }}{{ .ShortCommit }}{{ end }}'
+
+changelog:
+  sort: asc
+  use: git
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "^test:"
+      - "merge conflict"
+
+release:
+  draft: true
+  name_template: "cs-campaign {{ .Tag }}"
+  header: |
+    ## cs-campaign {{ .Tag }}
+
+    Give a team of AI coding agents one mission, run them in microVM sandboxes,
+    and get back evidence of what they did. Every dispatch stays open until its
+    reply artifact appears, and node state is computed from each machine rather
+    than stored.
+
+    Static `CGO_ENABLED=0` binaries for Linux; verify with `checksums.txt` and
+    the cosign `.sig` beside it. Needs a group-aware `cs-sandbox` at runtime —
+    see `INSTALL.md` in the archive.

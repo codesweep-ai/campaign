@@ -1,0 +1,13 @@
+# Everything here is consumed on Linux. The guest binary runs inside a
+# Firecracker microVM, the probe and guard scripts are shell strings the host
+# sends over SSH, and the Go sources build for linux/amd64.
+#
+# Without this, a checkout on Windows applies core.autocrlf and rewrites every
+# text file to CRLF. A probe script then arrives inside a guest with a carriage
+# return on the end of every line, and the shell fails with a message naming
+# the interpreter rather than the script. The committed guest-binary
+# placeholder would also change size, which is what `create` checks to refuse
+# installing it.
+#
+# text=auto still lets git detect and leave real binaries alone.
+* text=auto eol=lf

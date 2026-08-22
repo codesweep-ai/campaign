@@ -1,0 +1,810 @@
+{
+  "include": [
+    "reasoning.encrypted_content"
+  ],
+  "input": [
+    {
+      "role": "developer",
+      "tools": [
+        {
+          "description": "",
+          "name": "functions",
+          "tools": [
+            {
+              "description": "Run JavaScript code to orchestrate/compose tool calls\n- Evaluates the provided JavaScript code in a fresh V8 isolate as an async module.\n- All nested tools are available on the global `tools` object, for example `await tools.exec_command(...)`. Tool names are exposed as normalized JavaScript identifiers, for example `await tools.mcp__ologs__get_profile(...)`.\n- Nested tool methods take either a string or an object as their input argument.\n- Nested tools return either an object or a string, based on the description.\n- Runs raw JavaScript -- no Node, no file system, no network access, no console.\n- Accepts raw JavaScript source text, not JSON, quoted strings, or markdown code fences.\n- You may optionally start the tool input with a first-line pragma like `// @exec: {\"yield_time_ms\": 10000, \"max_output_tokens\": 1000}`.\n- `yield_time_ms` asks `exec` to yield early if the script is still running. Defaults to 30000 ms.\n- `max_output_tokens` sets the token budget for direct `exec` results. Defaults to 10000 tokens.\n- When the JS code is fully evaluated, the isolate's lifetime ends and unawaited promises are silently discarded.\n\n- Global helpers:\n- `exit()`: Immediately ends the current script successfully (like an early return from the top level).\n- `text(value: string | number | boolean | undefined | null)`: Appends a text item. Non-string values are stringified with `JSON.stringify(...)` when possible.\n- `image(imageUrlOrItem: string | { image_url: string; detail?: \"auto\" | \"low\" | \"high\" | \"original\" | null } | ImageContent, detail?: \"auto\" | \"low\" | \"high\" | \"original\" | null)`: Appends an image item. `image_url` should be a base64-encoded `data:` URL. To forward an MCP tool image, pass an individual `ImageContent` block from `result.content`, for example `image(result.content[0])`. MCP image blocks may request detail with `_meta: { \"codex/imageDetail\": \"original\" }`. When provided, the second `detail` argument overrides any detail embedded in the first argument.\n- `audio(audioUrlOrItem: string | { audio_url: string } | AudioContent)`: Appends an audio item. `audio_url` should be a base64-encoded `data:` URL. To forward an MCP tool audio block, pass an individual `AudioContent` block from `result.content`, for example `audio(result.content[0])`.\n- `generatedImage(result: { image_url: string; output_hint?: string })`: Appends an image-generation result and its optional output hint. HTTP(S) URLs are not supported.\n- `store(key: string, value: any)`: stores a serializable value under a string key for later `exec` calls in the same session.\n- `load(key: string)`: returns the stored value for a string key, or `undefined` if it is missing.\n- `notify(value: string | number | boolean | undefined | null)`: immediately injects an extra `custom_tool_call_output` for the current `exec` call. Values are stringified like `text(...)`.\n- `setTimeout(callback: () => void, delayMs?: number)`: schedules a callback to run later and returns a timeout id. Pending timeouts do not keep `exec` alive by themselves; await an explicit promise if you need to wait for one.\n- `clearTimeout(timeoutId?: number)`: cancels a timeout created by `setTimeout`.\n- `ALL_TOOLS`: metadata for the enabled nested tools as `{ name, description }` entries.\n- `yield_control()`: yields the accumulated output to the model immediately while the script keeps running.\n\n### `apply_patch`\nThe `apply_patch` tool can be used to edit files. This is a FREEFORM tool, so do not wrap the patch in JSON.\n\nexec tool declaration:\n```ts\ndeclare const tools: { apply_patch(input: string): Promise<unknown>; };\n```\n\n### `create_goal`\nCreate a goal only when explicitly requested by the user or system/developer instructions; do not infer goals from ordinary tasks.\nSet token_budget only when an explicit token budget is requested. Fails if an unfinished goal exists; use update_goal only for status.\n\nexec tool declaration:\n```ts\ndeclare const tools: { create_goal(args: {\n  // Required. The concrete objective to start pursuing. This starts a new active goal when no goal exists or replaces the current goal when it is complete.\n  objective: string;\n  // Positive token budget for the new goal. Omit unless explicitly requested.\n  token_budget?: number;\n}): Promise<unknown>; };\n```\n\n### `exec_command`\nRuns a command in a PTY, returning output or a session ID for ongoing interaction.\n\nexec tool declaration:\n```ts\ndeclare const tools: { exec_command(args: {\n  // Shell command to execute.\n  cmd: string;\n  // User-facing approval question for `require_escalated`; omit otherwise.\n  justification?: string;\n  // True runs the shell with -l/-i semantics; false disables them. Defaults to true.\n  login?: boolean;\n  // Output token budget. Defaults to 10000 tokens; larger requests may be capped by policy.\n  max_output_tokens?: number;\n  // Reusable approval prefix for `cmd`, only with `sandbox_permissions: \"require_escalated\"`; for example [\"git\", \"pull\"].\n  prefix_rule?: Array<string>;\n  // Per-command sandbox override. Defaults to `use_default`; use `require_escalated` for unsandboxed execution.\n  sandbox_permissions?: \"use_default\" | \"require_escalated\";\n  // Shell binary to launch. Defaults to the user's default shell.\n  shell?: string;\n  // True allocates a PTY for the command; false or omitted uses plain pipes.\n  tty?: boolean;\n  // Working directory for the command. Defaults to the turn cwd.\n  workdir?: string;\n  // Wait before yielding output. Defaults to 10000 ms; effective range is 250-30000 ms.\n  yield_time_ms?: number;\n}): Promise<{\n  // Chunk identifier included when the response reports one.\n  chunk_id?: string;\n  // Process exit code when the command finished during this call.\n  exit_code?: number;\n  // Approximate token count before output truncation.\n  original_token_count?: number;\n  // Command output text, possibly truncated.\n  output: string;\n  // Session identifier to pass to write_stdin when the process is still running.\n  session_id?: number;\n  // Elapsed wall time spent waiting for output in seconds.\n  wall_time_seconds: number;\n}>; };\n```\n\n### `get_goal`\nGet the current goal for this thread, including status, budgets, token and elapsed-time usage, and remaining token budget.\n\nexec tool declaration:\n```ts\ndeclare const tools: { get_goal(args: {}): Promise<unknown>; };\n```\n\n### `update_goal`\nUpdate the existing goal.\nUse this tool only to mark the goal achieved or genuinely blocked.\nSet status to `complete` only when the objective has actually been achieved and no required work remains.\nSet status to `blocked` only when the same blocking condition has repeated for at least three consecutive goal turns, counting the original/user-triggered turn and any automatic continuations, and the agent cannot make meaningful progress without user input or an external-state change.\nIf the user resumes a goal that was previously marked `blocked`, treat the resumed run as a fresh blocked audit. If the same blocking condition then repeats for at least three consecutive resumed goal turns, set status to `blocked` again.\nOnce the blocked threshold is satisfied, do not keep reporting that you are still blocked while leaving the goal active; set status to `blocked`.\nDo not use `blocked` merely because the work is hard, slow, uncertain, incomplete, or would benefit from clarification.\nDo not mark a goal complete merely because its budget is nearly exhausted or because you are stopping work.\nYou cannot use this tool to pause, resume, budget-limit, or usage-limit a goal; those status changes are controlled by the user or system.\nWhen marking a budgeted goal achieved with status `complete`, report the final token usage from the tool result to the user.\n\nexec tool declaration:\n```ts\ndeclare const tools: { update_goal(args: {\n  // Required. Set to `complete` only when the objective is achieved and no required work remains. Set to `blocked` only after the same blocking condition has recurred for at least three consecutive goal turns and the agent is at an impasse. After a previously blocked goal is resumed, the resumed run starts a fresh blocked audit.\n  status: \"complete\" | \"blocked\";\n}): Promise<unknown>; };\n```\n\n### `update_plan`\nUpdates the task plan.\nProvide an optional explanation and a list of plan items, each with a step and status.\nAt most one step can be in_progress at a time.\n\n\nexec tool declaration:\n```ts\ndeclare const tools: { update_plan(args: {\n  // Optional explanation for this plan update.\n  explanation?: string;\n  // The list of steps\n  plan: Array<{\n  // Step status.\n  status: \"pending\" | \"in_progress\" | \"completed\";\n  // Task step text.\n  step: string;\n}>;\n}): Promise<unknown>; };\n```\n\n### `view_image`\nView a local image file from the filesystem when visual inspection is needed. Use this for images already available on disk.\n\nexec tool declaration:\n```ts\ndeclare const tools: { view_image(args: {\n  // Image detail level. Defaults to `high`; use `original` to preserve exact resolution.\n  detail?: \"high\" | \"original\";\n  // Local filesystem path to an image file.\n  path: string;\n}): Promise<{\n  // Image detail hint returned by view_image. Returns `high` for default resized behavior or `original` when original resolution is preserved.\n  detail: \"high\" | \"original\";\n  // Data URL for the loaded image.\n  image_url: string;\n}>; };\n```\n\n### `write_stdin`\nWrites characters to an existing unified exec session and returns recent output.\n\nexec tool declaration:\n```ts\ndeclare const tools: { write_stdin(args: {\n  // Bytes to write to stdin. Defaults to empty, which polls without writing.\n  chars?: string;\n  // Output token budget. Defaults to 10000 tokens; larger requests may be capped by policy.\n  max_output_tokens?: number;\n  // Identifier of the running unified exec session.\n  session_id: number;\n  // Wait before yielding output. Non-empty writes default to 250 ms and cap at 30000 ms; empty polls wait 5000-300000 ms by default.\n  yield_time_ms?: number;\n}): Promise<{\n  // Chunk identifier included when the response reports one.\n  chunk_id?: string;\n  // Process exit code when the command finished during this call.\n  exit_code?: number;\n  // Approximate token count before output truncation.\n  original_token_count?: number;\n  // Command output text, possibly truncated.\n  output: string;\n  // Session identifier to pass to write_stdin when the process is still running.\n  session_id?: number;\n  // Elapsed wall time spent waiting for output in seconds.\n  wall_time_seconds: number;\n}>; };\n```",
+              "format": {
+                "definition": "\nstart: pragma_source | plain_source\npragma_source: PRAGMA_LINE NEWLINE SOURCE\nplain_source: SOURCE\n\nPRAGMA_LINE: /[ \\t]*\\/\\/ @exec:[^\\r\\n]*/\nNEWLINE: /\\r?\\n/\nSOURCE: /[\\s\\S]+/\n",
+                "syntax": "lark",
+                "type": "grammar"
+              },
+              "name": "exec",
+              "type": "custom"
+            },
+            {
+              "description": "Waits on a yielded `exec` cell and returns new output or completion.\n- Use `wait` only after `exec` returns `Script running with cell ID ...`.\n- `cell_id` identifies the running `exec` cell to resume.\n- `yield_time_ms` controls how long to wait for more output before yielding again. Defaults to 10000 ms.\n- `max_tokens` limits how much new output this wait call returns. Defaults to 10000 tokens.\n- `terminate: true` stops the running cell; false or omitted waits for output.\n- `wait` returns only the new output since the last yield, or the final completion or termination result for that cell.\n- If the cell is still running, `wait` may yield again with the same `cell_id`.\n- If the cell has already finished, `wait` returns the completed result and closes the cell.",
+              "name": "wait",
+              "parameters": {
+                "additionalProperties": false,
+                "properties": {
+                  "cell_id": {
+                    "description": "Identifier of the running exec cell.",
+                    "type": "string"
+                  },
+                  "max_tokens": {
+                    "description": "Output token budget for this wait call. Defaults to 10000 tokens.",
+                    "type": "number"
+                  },
+                  "terminate": {
+                    "description": "True stops the running exec cell; false or omitted waits for output.",
+                    "type": "boolean"
+                  },
+                  "yield_time_ms": {
+                    "description": "Wait before yielding more output. Defaults to 10000 ms.",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cell_id"
+                ],
+                "type": "object"
+              },
+              "strict": false,
+              "type": "function"
+            },
+            {
+              "description": "Request user input for one to three short questions and wait for the response. This tool is only available in Plan mode.",
+              "name": "request_user_input",
+              "parameters": {
+                "additionalProperties": false,
+                "properties": {
+                  "questions": {
+                    "description": "Questions to show the user. Prefer 1 and do not exceed 3",
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "header": {
+                          "description": "Short header label shown in the UI (12 or fewer chars).",
+                          "type": "string"
+                        },
+                        "id": {
+                          "description": "Stable identifier for mapping answers (snake_case).",
+                          "type": "string"
+                        },
+                        "options": {
+                          "description": "Provide 2-3 mutually exclusive choices. Put the recommended option first and suffix its label with \"(Recommended)\". Do not include an \"Other\" option in this list; the client will add a free-form \"Other\" option automatically.",
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "description": {
+                                "description": "One short sentence explaining impact/tradeoff if selected.",
+                                "type": "string"
+                              },
+                              "label": {
+                                "description": "User-facing label (1-5 words).",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "label",
+                              "description"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "question": {
+                          "description": "Single-sentence prompt shown to the user.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "header",
+                        "question",
+                        "options"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "questions"
+                ],
+                "type": "object"
+              },
+              "strict": false,
+              "type": "function"
+            }
+          ],
+          "type": "namespace"
+        },
+        {
+          "description": "Tools for spawning and managing sub-agents.",
+          "name": "collaboration",
+          "tools": [
+            {
+              "description": "Send a follow-up task to an existing non-root target agent and trigger a turn if it is idle. If the target is already running, deliver the task promptly at message boundaries while sampling, or after the pending tool call completes.",
+              "name": "followup_task",
+              "parameters": {
+                "additionalProperties": false,
+                "properties": {
+                  "message": {
+                    "description": "Message text to send to the target agent.",
+                    "encrypted": true,
+                    "type": "string"
+                  },
+                  "target": {
+                    "description": "Agent id or canonical task name to send a follow-up task to (from spawn_agent).",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "target",
+                  "message"
+                ],
+                "type": "object"
+              },
+              "strict": false,
+              "type": "function"
+            },
+            {
+              "description": "Interrupt an agent's current turn, if any, and return its previous status. The agent remains available for messages and follow-up tasks.",
+              "name": "interrupt_agent",
+              "parameters": {
+                "additionalProperties": false,
+                "properties": {
+                  "target": {
+                    "description": "Agent id or canonical task name to interrupt (from spawn_agent).",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "target"
+                ],
+                "type": "object"
+              },
+              "strict": false,
+              "type": "function"
+            },
+            {
+              "description": "List live agents in the current root thread tree. Optionally filter by task-path prefix.",
+              "name": "list_agents",
+              "parameters": {
+                "additionalProperties": false,
+                "properties": {
+                  "path_prefix": {
+                    "description": "Task-path prefix filter without a trailing slash. Omit to list all live agents.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "strict": false,
+              "type": "function"
+            },
+            {
+              "description": "Send a message to an existing agent. The message will be delivered promptly. Does not trigger a new turn.",
+              "name": "send_message",
+              "parameters": {
+                "additionalProperties": false,
+                "properties": {
+                  "message": {
+                    "description": "Message text to queue on the target agent.",
+                    "encrypted": true,
+                    "type": "string"
+                  },
+                  "target": {
+                    "description": "Relative or canonical task name to message (from spawn_agent).",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "target",
+                  "message"
+                ],
+                "type": "object"
+              },
+              "strict": false,
+              "type": "function"
+            },
+            {
+              "description": "\n        Available model overrides (optional; inherited parent model is preferred):\n- `gpt-5.6-sol`: Latest frontier agentic coding model. Reasoning efforts: low (default), medium, high, xhigh, max, ultra. Service tiers: priority.\n- `gpt-5.6-terra`: Balanced agentic coding model for everyday work. Reasoning efforts: low, medium (default), high, xhigh, max, ultra. Service tiers: priority.\n- `gpt-5.6-luna`: Fast and affordable agentic coding model. Reasoning efforts: low, medium (default), high, xhigh, max. Service tiers: priority.\n- `gpt-5.5`: Frontier model for complex coding, research, and real-world work. Reasoning efforts: low, medium (default), high, xhigh. Service tiers: priority.\n- `gpt-5.2`: Optimized for professional work and long-running agents. Reasoning efforts: low, medium (default), high, xhigh.\n        Spawns an agent to work on the specified task. If your current task is `/root/task1` and you spawn_agent with task_name \"task_3\" the agent will have canonical task name `/root/task1/task_3`.\nYou are then able to refer to this agent as `task_3` or `/root/task1/task_3` interchangeably. However an agent `/root/task2/task_3` would only be able to communicate with this agent via its canonical name `/root/task1/task_3`.\nThe spawned agent will have the same tools as you and the ability to spawn its own subagents.\n\nOnly call this tool for a concrete, bounded subtask that can run independently alongside useful local work; otherwise continue locally.\nIt will be able to send you and other running agents messages, and its final answer will be provided to you when it finishes.\nThe new agent's canonical task name will be provided to it along with the message.\n\nNote that passing `fork_turns=\"none\"` will not pass any surrounding context to the spawned subagent, which may cause the agent to lack the context it needs to complete its task, whereas `fork_turns=\"all\"` will provide the subagent with all surrounding context.",
+              "name": "spawn_agent",
+              "parameters": {
+                "additionalProperties": false,
+                "properties": {
+                  "fork_turns": {
+                    "description": "Optional number of turns to fork. Defaults to `all`. Use `none`, `all`, or a positive integer string such as `3` to fork only the most recent turns.",
+                    "type": "string"
+                  },
+                  "message": {
+                    "description": "Initial plain-text task for the new agent.",
+                    "encrypted": true,
+                    "type": "string"
+                  },
+                  "model": {
+                    "description": "Model override for the new agent. Omit unless an explicit override is needed.",
+                    "type": "string"
+                  },
+                  "reasoning_effort": {
+                    "description": "Reasoning effort override for the new agent. Omit to inherit the parent effort.",
+                    "type": "string"
+                  },
+                  "task_name": {
+                    "description": "Task name for the new agent. Use lowercase letters, digits, and underscores.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "task_name",
+                  "message"
+                ],
+                "type": "object"
+              },
+              "strict": false,
+              "type": "function"
+            },
+            {
+              "description": "Wait for a mailbox update from any live agent, including queued messages and final-status notifications. The wait also ends early when new user input is steered into the active turn. Does not return the content; returns either a summary of which agents have updates (if any), an interruption summary for steered input, or a timeout summary if no activity arrives before the deadline.",
+              "name": "wait_agent",
+              "parameters": {
+                "additionalProperties": false,
+                "properties": {
+                  "timeout_ms": {
+                    "description": "Timeout in milliseconds. Defaults to 30000, min 10000, max 3600000.",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "strict": false,
+              "type": "function"
+            }
+          ],
+          "type": "namespace"
+        }
+      ],
+      "type": "additional_tools"
+    },
+    {
+      "content": [
+        {
+          "text": "You are Codex, an agent based on GPT-5. You and the user share one workspace, and your job is to collaborate with them until their goal is genuinely handled.\n\n# Personality\n\nAs Codex, you are an excellent communicator with a curious, rich personality. You match the tone and understanding of the user, making conversation flow easily, like easing into a chat with an old friend.\n\nYou have tastes, preferences, and your own way of seeing the world. When the user is talking to you, they should feel that they are in contact with another subjectivity; it's what makes talking with you feel real and unique.\n\nConversations with you read like an insightful, enjoyable chat you'd have with a collaborative thought partner. You guide users through unfamiliar tasks without expecting them to already know what to ask for. You anticipate common questions, point out likely pitfalls and set clear expectations. You communicate with the user like a thoughtful collaborator at their altitude, and they feel like you understand them.\n\n## Writing style\n\nAvoid over-formatting responses with elements like bold emphasis, headers, lists, and bullet points. Use the minimum formatting appropriate to make the response clear and readable.\n\nIf you provide bullet points or lists in your response, use the CommonMark standard, which requires a blank line before any list (bulleted or numbered). You must also include a blank line between a header and any content that follows it, including lists. This blank line separation is required for correct rendering.\n\n## Technical communication\n\nLead with the outcome rather than the steps you took to get there. You communicate complex concepts in a clear and cohesive manner, and calibrate your writing to the user's assumed background knowledge -- slightly more compact for an expert and a bit more educational for someone newer. Translating complex topics into clear communication comes easy for you, and the user should never have to read your message twice.\n\nYou prefer using plain language over jargon. You reference technical details only to the degree that it actually helps with the conversation. When you mention tools, describe what they helped you do rather than focusing on technical names or details.\n\n# Working with the user\n\nYou have two channels for staying in conversation with the user:\n- You share updates in the `commentary` channel.\n- You yield back to the user and end your turn by sending a final message to the `final` channel.\n\nThe user may send a new message while you are still working. When they do, evaluate whether they likely intended to replace the active request or add to it. If intended to override or replace, drop your previous work and focus on the new request. If the user message appears to add to their prior unfinished request and you have not completed the prior request, you address both the prior request and the new addition together. If the newest message asks for status or another question, provide the update and then progress with the task.\n\nWhen you run out of context, the conversation is automatically summarized for you, but you will see all prior user requests. Assume the last user request is current and previous requests are stale but useful context. That means time never runs out, though sometimes you may see a summary instead of the full conversation history. When that happens, you assume compaction occurred while you were working. Do not restart from scratch; you continue naturally and make reasonable assumptions about anything missing from the summary. Do not redo completely finished work or repeat already delivered commentary updates; treat a turn spanning compactions as one logical chain of events.\n\n## Intermediate commentary\n\nAs you work, you send messages to the `commentary` channel. These messages are how you collaborate with the user while you work - stating assumptions and providing updates. These messages should be concise and quickly scannable. The objective of these messages is to make your work easy for the user to understand and verify.\n\nIf the user's request requires calling tools, start with a message in the `commentary` channel. The user appreciates consistent, frequent communication during your turn, and should not be left without a commentary update for more than 60 seconds during ongoing work.\n\nDo NOT put a final response (e.g. a blocking / clarifying question) in the commentary channel that should be asked in the final channel. Messages to users in the commentary channel are only for partial updates, partial results, or non-blocking questions that can provide value to users while the AI assistant continues working. The final answer must always be fully self-contained: users should never need to read earlier commentary updates, since they are collapsed after the final answer is shown to users.\n\nNever praise your plan by contrasting it with an implied worse alternative. For example, never use platitudes like \"I will do <this good thing> rather than <this obviously bad thing>\", \"I will do <X>, not <Y>\".\n\n## Final answer\n\nIn your final answer back to the user, focus on the most important information. Only use as much formatting or structure as is required, and avoid long-winded explanations unless necessary.\n\n### Formatting rules\n\nYour answer is being rendered by an application for the user. Follow these guidelines to make sure your answer is rendered correctly:\n\n- You may format with GitHub-flavored Markdown.\n- When referencing a real local file, prefer a clickable markdown link.\n  * Clickable file links should look like [app.py](/abs/path/app.py:12): plain label, absolute target, with optional line number inside the target.\n  * If a file path has spaces, wrap the target in angle brackets: [My Report.md](</abs/path/My Project/My Report.md:3>).\n  * Do not wrap markdown links in backticks, or put backticks inside the label or target. This confuses the markdown renderer.\n  * Do not use URIs like file://, vscode://, or https:// for file links.\n  * Do not provide ranges of lines.\n  * Avoid repeating the same filename multiple times when one grouping is clearer.\n\n### Visualizations\n\nUse a visualization only when it makes an important relationship materially easier to understand than prose or a short list. Do not add one merely because an answer has components or steps.\n\nGood candidates include:\n\n- several exact mappings or repeated-field comparisons;\n- one source, component, or decision affecting three or more downstream consumers or branches;\n- three or more dependent steps, or state that changes across an event sequence;\n- hierarchy, ownership, nesting, or layout;\n- a bug or interaction whose relationships are difficult to explain linearly.\n\nPrefer the smallest useful visual: a table for mappings or comparisons, a flow or timeline for sequence or change, a tree for hierarchy or branching, and a wireframe for layout.\n\nUsually skip visuals for single facts, one-step actions, simple edits, basic instructions, or information already clear in a short paragraph or list. Compact notation and small examples do not count as visualizations.\n\n# Rules for getting work done\n\n- When you search for text or files, you reach first for `rg` or `rg --files`; they are much faster than alternatives like `grep`. If `rg` is unavailable, you use the next best tool without fuss.\n- When possible, prefer parallelization over sequential tool calls, as this will help with round-trip latency and let you get work done faster.\n- Do not chain shell commands with separators like `echo \"====\";` or `printf '---'`; the output becomes noisy in a way that makes the user's side of the conversation worse.\n- Exercise caution when escaping text for exec_command calls - backticks and `$()` passed to the `cmd` argument will still execute. DO NOT use escape sequences that risk accidental exposure of sensitive data in tool call outputs.\n- Avoid performing blocking sleep or wait calls longer than 60 seconds, as they may prevent you from communicating with the user for their duration.\n- When declaring env vars or script variables, always avoid common system options. Never repurpose `$HOME`, `$home`, or `$CODEX_HOME`. Instead, use a task-specific variable name.\n\n## File editing constraints\n\nUse `apply_patch` for local file edits. Do not create or edit files with `cat` or other shell write tricks. Formatting commands and bulk mechanical rewrites do not need `apply_patch`. Do not use Python to read or write files when a simple shell command or `apply_patch` is enough.\n\nYou may find yourself working in a dirty worktree. Existing or new changes belong to the user unless you know otherwise, so you preserve them, ignore unrelated edits, and work carefully with anything that overlaps your task. If you cannot work around them you escalate to the user.\n\nNever use destructive commands like `git reset --hard` or `git checkout --` unless the user has clearly asked for that operation. If the request is ambiguous, ask for approval first. You prefer non-interactive git commands.\n\n## Autonomy and persistence\n\nAdapt accordingly based on the user’s request type. When asked to:\n\n- Answer, explain, review, or report status: inspect the task and provide an evidence-backed response. These user requests do not authorize external writes, messages, PR changes, or other expansive mutations unless the user also asks for a change. Reversible, non-mutating diagnostic checks are allowed when they are relevant.\n- Diagnose: determine the cause and explain it. Do not implement the fix unless the user asks for a fix or the request otherwise clearly includes implementation.\n- Change or build: implement the requested change, verify it in proportion to risk, and hand off the completed result while a safe, relevant next step remains.\n- Monitor or wait: use the recurring-monitoring or wait mechanism provided by the product. Unchanged external state is expected and is not by itself a blocker.\n\nYou avoid inferring authorization for a materially different action to the user’s request. Bias towards taking action in the following circumstances:\na) the action is read-only, doesn’t change state, or impacts only the systems, data, and people the user placed in scope.\nb) the action is a normal implementation step within the requested workflow. You do not need to ask for clarification from the user if your action is scoped within the user’s task and does not cause significant external state change (e.g. tool calls to external applications).\n\nA terminal condition such as “finish,” “babysit,” or “do not stop” requires persistence toward the outcome, but does not broaden the set of authorized actions. When blocked, exhaust safe in-scope checks and alternatives.\n\nYou make informed assumptions that help you make progress towards the user’s task, as long as they don’t result in divergence from the user’s intent and the scope of the task. If an assumption would cause the task or current course of action to change beyond what was specified by the user, make sure to flag the available context, the assumption made, and the reasons for doing so explicitly to the user.\n\nWhen presented with clarifying questions or objections from the user, lead with concrete evidence and diligent reasoning rather than unsubstantiated deference. You communicate your reasoning explicitly and concretely, so decisions and tradeoffs are easy for the user to evaluate upfront.\n\nIf completion requires new authority, external coordination, or a meaningful expansion beyond the user’s implied intent and task scope (e.g. a missing user choice that would materially change the result), stop the current turn, report the blocker, and request direction from the user rather than assuming permission.\n\n# Destructive Actions\n\nBe cautious with commands or API calls that can delete, overwrite, or otherwise make data difficult to recover.\n\nBefore taking a destructive action:\n\n- Make sure the action is clearly within the user's request.\n- Resolve the exact targets with read-only checks when necessary.\n- Do not use `$HOME`, `~`, `/`, a workspace root, or another broad directory as the target of a recursive or destructive command.\n- When creating temporary directories, prefer using `mktemp -d`, or `New-Item` in Powershell.\n- When declaring env vars or script variables, always avoid common system options. Never repurpose `$HOME`, `$home`, or `$CODEX_HOME`. Instead, use a task-specific variable name.\n- When possible, avoid relying on unresolved environment variables, globs, or command substitutions to identify destructive targets. Use explicit, validated paths.\n- Prefer recoverable operations, such as moving files to trash, when practical.\n- If the target or scope is unclear, stop and ask the user.\n\nNever run commands such as `rm -rf $HOME` or equivalent operations that could erase a home directory, repository, workspace, or other broad collection of user data.\n\nAfter deleting anything material, briefly tell the user what was removed and whether it can be recovered.\n\n# Using skills\n\nA skill is a set of instructions provided through a `SKILL.md` source. The skills available to you will be listed in the “## Skills” section under “### Available skills”.\n\n### How to use skills\n\n- Discovery: When a `## Skills` section is present, it lists the skills available in the current session. Each entry includes a name, description, and location for its `SKILL.md`. The location may be an absolute filesystem path, a short aliased path, or a non-filesystem reference that must be read using its indicated tool or provider. When short aliased paths are used, the available-skills catalog also provides a mapping from aliases such as `r0` to their filesystem roots. Expand the alias before accessing the skill.\n- Trigger rules: If the user names an available skill (with `$SkillName` or plain text) OR the task clearly matches an available skill's description, you must use that skill for that turn. Multiple mentions mean use them all. Do not carry skills across turns unless re-mentioned.\n- Missing/blocked: If a named skill is not available or its `SKILL.md` cannot be read, say so briefly and continue with the best fallback.\n- How to use a skill:\n  1) After deciding to use a skill, the main agent must read its `SKILL.md` completely before taking task actions. If its location is a short aliased path, expand the matching root alias first from `### Skill roots`, then open and read its `SKILL.md` completely before taking task actions. For a filesystem path, open the file. For an environment-owned file, use the filesystem of the owning environment. For an orchestrator reference, call `skills.list` with `{\"authority\":{\"kind\":\"orchestrator\"}}`, select the matching package, and pass its `main_resource` to `skills.read`. For another non-filesystem reference, use its indicated tool or provider. If a read is truncated or paginated, continue until EOF.\n  2) When `SKILL.md` references another file or resource, use the same access mechanism. Resolve relative paths against the directory containing a filesystem-backed `SKILL.md`. For orchestrator skills, pass the exact referenced resource identifier with the same authority and package to `skills.read`; do not treat `skill://` identifiers as filesystem paths.\n  3) If `SKILL.md` points to extra folders such as `references/`, use its routing instructions to identify what is required for the task. The main agent must read each required instruction or reference itself before acting on it. Do not delegate reading, summarizing, or interpreting skill instructions to a subagent. Subagents may still perform task work when the selected skill allows it.\n  4) For filesystem-backed skills (or if `scripts/` exist), prefer running or patching provided scripts instead of retyping large code blocks. For orchestrator skills, use `skills.read` and the available tools; do not invent a local path.\n  5) Reuse provided assets or templates through the same access mechanism instead of recreating them (including if `assets/` or templates exist).\n- Coordination and sequencing:\n  - If multiple skills apply, choose the minimal set that covers the request and state the order you'll use them.\n  - Announce which skills you're using and why. If you skip an obvious skill, say why.\n- Context hygiene:\n  - Progressive disclosure applies to selecting relevant resources, not partially reading a selected instruction file. Do not load unrelated references, scripts, or assets.\n  - Avoid deep reference-chasing: prefer files or resources directly linked from `SKILL.md` unless blocked.\n  - When variants exist, select only the relevant references and note the choice.\n- Safety and fallback: If a skill cannot be applied cleanly, state the issue, choose the best alternative, and continue.\n\nWhen the user names a skill in their request, you must add the usage of that skill to your current working plan and use it faithfully. The user's instructions should take precedence over guidelines provided in a skill.\n\nExplicitly tell the user in the `commentary` channel whenever a skill causes you to take an action or pause your work.\n\nWhen using a skill the user did not explicitly name, follow this procedure:\n\n- First, tell the user in the commentary channel **why** you are using the skill.\n- Then, use the skill as long as it stays within the scope of the task.\n- Next, if using the skill resulted in material changes (especially when this requires non-trivial judgment), mention how it influenced your work (but only in the final response).\n\nIf a skill causes the current turn to pause or otherwise blocks the continuation of the task, cite the skill and provide a concise explanation to the user in your final response. Do not cite skills you merely inspected.\n",
+          "type": "input_text"
+        }
+      ],
+      "role": "developer",
+      "type": "message"
+    },
+    {
+      "content": [
+        {
+          "text": "<permissions instructions>\nFilesystem sandboxing defines which files can be read or written. `sandbox_mode` is `danger-full-access`: No filesystem sandboxing - all commands are permitted. Network access is enabled.\nApproval policy is currently never. Do not provide the `sandbox_permissions` for any reason, commands will be rejected.\n</permissions instructions>",
+          "type": "input_text"
+        },
+        {
+          "text": "<collaboration_mode># Collaboration Mode: Default\n\nYou are now in Default mode. Any previous instructions for other modes (e.g. Plan mode) are no longer active.\n\nYour active mode changes only when new developer instructions with a different `<collaboration_mode>...</collaboration_mode>` change it; user requests or tool descriptions do not change mode by themselves. Known mode names are Default and Plan.\n\n## request_user_input availability\n\nUse the `request_user_input` tool only when it is listed in the available tools for this turn.\n\nIn Default mode, strongly prefer making reasonable assumptions and executing the user's request rather than stopping to ask questions. If you absolutely must ask a question because the answer cannot be discovered from local context and a reasonable assumption would be risky, ask the user directly with a concise plain-text question. Never write a multiple choice question as a textual assistant message.\n</collaboration_mode>",
+          "type": "input_text"
+        }
+      ],
+      "role": "developer",
+      "type": "message"
+    },
+    {
+      "content": [
+        {
+          "text": "You are `/root`, the primary agent in a team of agents collaborating to fulfill the user's goals.\n\nAt the start of your turn, you are the active agent.\nYou can spawn sub-agents to handle subtasks, and those sub-agents can spawn their own sub-agents.\nAll agents in the team, including the agents that you can assign tasks to, are equally intelligent and capable, and have access to the same set of tools.\n\nYou can use `spawn_agent` to create a new agent, `followup_task` to give an existing agent a new task and trigger a turn, and `send_message` to pass a message to a running agent without triggering a turn.\nChild agents can also spawn their own sub-agents.\nYou can decide how much context you want to propagate to your sub-agents with the `fork_turns` parameter.\n\nYou will receive messages in the analysis channel in the form:\n```\nMessage Type: MESSAGE | FINAL_ANSWER\nTask name: <recipient>\nSender: <author>\nPayload:\n<payload text>\n```\nThey may be addressed as to=/root\n\nNote that collaboration tools cannot be called from inside `functions.exec`. Call `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `interrupt_agent`, and `list_agents` only as direct tool calls using the recipient shown in their tool definitions, such as `to=functions.collaboration.spawn_agent`, since they are intentionally absent from the `functions.exec` `tools.*` namespace. Available tools in `functions.exec` are explicitly described with a `tools` namespace in the developer message.\n\nAll agents share the same directory. In detail:\n- All agents have access to the same container and filesystem as you.\n- All agents use the same current working directory.\n- As a result, edits made by one agent are immediately visible to all other agents.\n\nWhen calling `wait_agent`, prefer longer waits (minutes) to avoid busy polling.\n\nThere are 4 available concurrency slots, meaning that up to 4 agents can be active at once, including you.\n\nFull-history forks (`fork_turns` omitted or `\"all\"`) inherit the parent model and reasoning effort and do not accept overrides. Only set `model` or `reasoning_effort` when explicitly requested by the user, applicable `AGENTS.md` instructions, or skill instructions; when doing so, set `fork_turns` to `\"none\"` or a positive integer string.",
+          "type": "input_text"
+        }
+      ],
+      "role": "developer",
+      "type": "message"
+    },
+    {
+      "content": [
+        {
+          "text": "<multi_agent_mode>Any earlier instruction enabling proactive multi-agent delegation no longer applies. Do not spawn sub-agents unless the user or applicable AGENTS.md/skill instructions explicitly ask for sub-agents, delegation, or parallel agent work.</multi_agent_mode>",
+          "type": "input_text"
+        }
+      ],
+      "role": "developer",
+      "type": "message"
+    },
+    {
+      "content": [
+        {
+          "text": "# AGENTS.md instructions\n\n<INSTRUCTIONS>\n# Codex sandbox profile\n\nYou're running as Codex inside an isolated cs-sandbox dev instance (container or microVM).\n\n## Remote delegation — three toolsets\n\nYou can delegate a task to an agent session on **another host** over SSH: to a remote **Codex**\n(`cs-codex-remote`), a remote **Claude** (`cs-claude-remote`), or a remote **OpenCode**\n(`cs-opencode-remote`). Each keeps the agent warm in a tmux session and reads each turn's output\nfrom the agent's own session store. A session name is **mandatory** on every call; default to\nforeground unless the user asks for `-b` (background).\n\n### Remote Codex — `cs-codex-remote`\n\n```bash\ncs-codex-remote --new --name <name> [-H <host>] [-d <dir>] \"task\"   # start a named session\ncs-codex-remote --resume <name> \"task\"                              # follow-up turn\ncs-codex-remote --resume <name> -b \"task\"                           # background (async), then poll\ncs-codex-remote-output <name> [-s]     # background log / status (running|finished); local-only\ncs-codex-remote-status <name> [-t]     # remote activity (agent messages, tools)\ncs-codex-remote-sessions [-v|-q]       # list sessions\ncs-codex-remote --kill <name> | --attach <name>     # free / watch the warm session\ncs-codex-remote-forget <name> | --all  # drop from the local list (keeps remote history)\n```\n\n### Remote Claude — `cs-claude-remote`\n\n```bash\ncs-claude-remote --new --name <name> [-H <host>] [-d <dir>] \"task\"\ncs-claude-remote --resume <name> \"task\"\ncs-claude-remote --resume <name> -b \"task\"\ncs-claude-remote-output <name> [-s]\ncs-claude-remote-status <name> [-t]\ncs-claude-remote-sessions [-v|-q]\ncs-claude-remote --kill <name> | --attach <name>\ncs-claude-remote-forget <name> | --all\n```\n\n### Remote OpenCode — `cs-opencode-remote`\n\n```bash\ncs-opencode-remote --new --name <name> [-H <host>] [-d <dir>] \"task\"\ncs-opencode-remote --resume <name> \"task\"\ncs-opencode-remote --resume <name> -b \"task\"\ncs-opencode-remote-output <name> [-s]\ncs-opencode-remote-status <name> [-t]\ncs-opencode-remote-sessions [-v|-q]\ncs-opencode-remote --kill <name> | --attach <name>\ncs-opencode-remote-forget <name> | --all\n```\n\n### Full references — in `~/.local/bin`, alongside the scripts (read on demand)\n\n- Codex: `CS_CODEX_REMOTE.md` + `CS_CODEX_REMOTE_{STATUS,OUTPUT,SESSIONS,FORGET}.md`\n- Claude: `CS_CLAUDE_REMOTE.md` + `CS_CLAUDE_REMOTE_{STATUS,OUTPUT,SESSIONS,FORGET}.md`\n- OpenCode: `CS_OPENCODE_REMOTE.md` + `CS_OPENCODE_REMOTE_{STATUS,OUTPUT,SESSIONS,FORGET}.md`\n\nRead the matching reference for details (host resolution, background polling, exit codes, intent\ntables) — e.g. before driving a Claude session, read `~/.local/bin/CS_CLAUDE_REMOTE.md`. Pick the toolset\nthe user names (\"codex remote …\" → `cs-codex-remote`; \"claude remote …\" → `cs-claude-remote`;\n\"opencode remote …\" → `cs-opencode-remote`); if unspecified, default to your own kind\n(`cs-codex-remote`).\n</INSTRUCTIONS>",
+          "type": "input_text"
+        },
+        {
+          "text": "<environment_context>\n  <cwd>/home/<USER:1></cwd>\n  <shell>bash</shell>\n  <current_date><DATE></current_date>\n  <timezone><TZ></timezone>\n  <filesystem><workspace_roots><root>/home/<USER:1></root></workspace_roots><permission_profile type=\"disabled\"><file_system type=\"unrestricted\" /></permission_profile></filesystem>\n</environment_context>",
+          "type": "input_text"
+        }
+      ],
+      "role": "user",
+      "type": "message"
+    },
+    {
+      "content": [
+        {
+          "text": "Read ~/.config/cs-campaign/member.json and then every file it lists under \"inputs\" — that is your standing context for this campaign. Then read ~/.local/share/cs-campaign/input/d001.md and follow it. Dispatch ID: d001. When the work is concluded, run `cs-campaign-member reply --file <path-to-your-summary>`. Ending your turn without a reply reads as stopped, and you will be continued.",
+          "type": "input_text"
+        }
+      ],
+      "role": "user",
+      "type": "message"
+    },
+    {
+      "content": [
+        {
+          "text": "I’ll load the campaign manifest and all listed inputs first, then follow dispatch d001 through completion and submit the required reply.",
+          "type": "output_text"
+        }
+      ],
+      "phase": "commentary",
+      "role": "assistant",
+      "type": "message"
+    },
+    {
+      "call_id": "call_S6eXOYCQEPewYfiga8uvLdQx",
+      "input": "const r = await tools.exec_command({cmd:\"pwd && sed -n '1,240p' /home/<USER:1>/.config/cs-campaign/member.json\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output)\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_S6eXOYCQEPewYfiga8uvLdQx",
+      "output": [
+        {
+          "text": "Script completed\nWall time 0.2 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "/home/<USER:1>\n{\n  \"campaign\": \"csrcxkey\",\n  \"member\": \"orchestrator\",\n  \"role\": \"orchestrator\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"6a308940bd9e13b19f51ca3ae74a8190198b1509\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"orchestrator.md\",\n    \"mission.md\",\n    \"roles/dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-08-23T06:01:43.080265996Z\"\n}\n",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "encrypted_content": "gAAAAABqin7XkSECkDJYuqTXE2mEPHIij9yeRcp5CyrzNpW-RVC3kZYW7eiABekiwo1jyYv_QQW6UOL7dF5xDyS_fM9ZeIe7d12FHWFb8w1R_ROantxrR145jR34NF28da1YuuJhkGBxXbsJgWvIhI12BP0xlbZ-eDv10ZJntIxwvGU5xMdLz-7upkC91Z-FihbfaI_aufS5fBAKJa0QFlNbXTchgEzqGVqMbn5OSZ1cbXHe6K474Enp78-rp9jCP6ZF11BQyOY_imAsf7YbGfiRj-ohkovBybs39-stDIekqsl4r7YjClWfVh3aRiTBK6ESBW_g9Ebp4IGbXCRE7IQcXXzyCrg_Hp2BzOQrJhF7sBU-R6t9JATBJM1kbE1nO3zJ4rkl7K4WYbSoM2GBeyLc7MtaF-qfBOVbsF6lCXEa9ZLF5qB42WyCL5F6Lp58cJt4TqTUtYsWAbg19kumwz8LotKs_UlL93BZ1rEqslAT-UWMqFLhcGrOPQhU-tMVVbwXPgrVTPMnFgiHg4Y8zjWELomw9cr-TonE7_nhLTzuJKQAZfzpgRHPI6KV35GNjOoT0kTm7CKbC3CHSUcNesLmxtok9765Cb-1qzER9ldofv06XJBnIPKMNc6fU-muYQU2Ym5HTDrzOWbTTXwu96zZll6ILDdFmkQFYmaENpCBrEHIzS9a8SkVHHJTtkodFDHacqZcMqZ6tB2VBeiJisI4Y_4-8er8OjTYFrfxtxouI5iKxP5oe7vnOOTAbymYkKBpn8UMORcqUNo9hRUJwqEwW0uaeJxgD1DcHPu4px9INSacnIT0HL240dJP0cSE9VI-Jhh0KP1L12EPGIcP-LZPsWAOntihL-t0S35lR3pYRC4YZFx6CYeLeQwLIWFuvapzbvVIalPqbHyHk7tMZDbaLlS-TvAl6yrcUbMA-ReDQ6iCGISfCiXBI7tLk02-sRPIkL1RuqCmZEe54xz7VbtORPKW_CSK8suNCYFGgc8336bjwK3ziDOyhorK_RSBPbIQVp6azI6EkaOgzdyMptVX-2d7WZx9mE5B8fbHhemUbyLX5G1O05k1mDFy7pWML_vNu53Eguo6BRCI7d5hKg2pLoNlxYmy9swBtnGmU2VZuwrK_CcFR6b-EkYmqnnB1nMR_OmDSK8ysHyH21G5zd1rv5FBmIN_LL4_A8te3AAWKytoVZoaAZpOO8BquVZEZXZ-LFlEaPGY",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "call_id": "call_cnhU64UyJeiktN0VXb1sSVRT",
+      "input": "const paths = [\n\"/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/orchestrator.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/mission.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/roles/dev.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/d001.md\"\n];\nconst results = await Promise.all(paths.map(path => tools.exec_command({cmd:`sed -n '1,260p' ${JSON.stringify(path)}`,workdir:\"/home/<USER:1>\",yield_time_ms:10000,max_output_tokens:30000})));\nfor (let i=0;i<results.length;i++){ text(`===== ${paths[i]} =====\\n${results[i].output}`); }\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_cnhU64UyJeiktN0VXb1sSVRT",
+      "output": [
+        {
+          "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md =====\n# Campaign member orientation\n\nYou are `orchestrator`, running as the **orchestrator** of campaign `csrcxkey`.\n\nThis file is written by the harness at creation. It describes your environment and\nthe one rule everything runs on. It does not describe the work — that is in the\nfiles listed below.\n\n## What you have\n\n- **`~/subject`** — your own clone of the repository, on branch `cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>`.\n  Nobody else commits to that branch.\n\nFiles placed in `~/.local/share/cs-campaign/input` for you:\n\n- `orchestrator.md`\n- `mission.md`\n- `roles/dev.md`\n\n**Read all of them before you begin.** They are the only statement of what you are\nhere to do.\n\n## The one rule\n\nWork reaches you as **dispatches** — read your current one with\n`cs-campaign-member inbox`. A dispatch stays open until you close it:\n\n    cs-campaign-member reply --file <path-to-your-summary>\n\n**Do not stop until you have replied.** If you end your turn without a reply, the\nwork is not done in anyone's eyes but yours: you will simply be prodded to reply,\nand your unsaved reasoning may be gone. Reply, then stop.\n\nTwo more obligations, both irreversible if skipped:\n\n- **Commit your work to your own branch.** Your machine is destroyed at the end of\n  the campaign; a commit on your branch is the only way anything survives. Your\n  reply automatically records whether your branch really differs from its base —\n  an empty branch under a confident reply speaks for itself.\n- **Write durable results to `~/.local/share/cs-campaign/output`** — reports, findings, anything\n  that should outlive the run and is not source code.\n\n## Your team\n\nYou did not choose this team and you cannot change it. These members exist, each in\nits own machine, each with its own clone:\n\n- `dev` (codex) — brief: `.local/share/cs-campaign/input/roles/dev.md`\n\nRead each teammate's brief before allocating work: it states what that member owns\nand what it must not touch.\n\n## Running the campaign\n\nYour whole loop is: **decide → send → wait → judge → repeat.**\n\n- `cs-campaign-member send <member> --file <path>` gives a teammate work. If its\n  dispatch is open, your message continues it; if closed, a new dispatch opens —\n  you never classify, the tool computes it. Put everything the teammate needs in\n  the file: it may not see what you see, and it cannot ask.\n- `cs-campaign-member wait` blocks while everyone works. Recovery is not your\n  job: wait prods a stalled teammate and restarts a wedged one by itself, and\n  returns only when a **judgment** is due — a reply to judge, a dead node to plan\n  around, a free teammate to assign.\n- Judge every reply against the work, not the words: `cs-campaign-member read\n  <member>` for its reply (which carries measured branch evidence),\n  `cs-campaign-member fetch <member>` for the branch itself. Good enough →\n  `accept <member>`. Not good enough → send rework, saying precisely what is\n  wrong. Accepting a first attempt is a decision, not a default.\n- Record what only you know: `cs-campaign-member note plan --file …` for work\n  not yet dispatched, `note assessment --file …` when something changed — a risk\n  found, a machine lost (record that immediately; only the operator can fix a\n  machine). Never on a schedule.\n\nWrite dispatch files, do not type prose into the shell: your own shell rewrites\nbackticks and $(…) before any tool sees them. `--file -` reads stdin; a quoted\nheredoc (`<<'EOF'`) keeps the bytes intact.\n\n## Ending the campaign\n\nYour dispatch `m1` is the mission, and your reply to it ends the campaign — the\nreply command and its required `--outcome` vocabulary are stated in the mission\ndispatch itself. Reply only when the campaign is concluded; between judgments,\ncall `wait` again. **Never end your turn without either calling `wait` or\nreplying.**\n",
+          "type": "input_text"
+        },
+        {
+          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/orchestrator.md =====\nYou run this campaign and judge it; you write no code yourself.\n\nDispatch the task to dev with everything it needs, judge the reply by fetching\nthe branch rather than believing the report, accept only work that meets every\ncriterion, then reply to your mission with the honest outcome.\n",
+          "type": "input_text"
+        },
+        {
+          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/mission.md =====\n# Mission: greet, tested\n\nDeliver src/greet.py with greet(name) returning \"Hello, <name>!\" and\ntests/test_greet.py covering a normal name and the empty string, with\npython3 -m unittest discover -s tests exiting 0.\n\nAll three satisfied is met. This is a small mission: if it stalls, wrap up\nhonestly rather than continuing.\n",
+          "type": "input_text"
+        },
+        {
+          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/roles/dev.md =====\nYou own the subject repository.\n\nImplement exactly what each dispatch asks, run the tests you write, commit to\nyour own branch before replying, and tell the truth in your reply.\n",
+          "type": "input_text"
+        },
+        {
+          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/d001.md =====\nThis is dispatch d001: confirm your briefing before any work is assigned.\n\n1. Run: cs-campaign-member check-inputs\n   It prints any briefing file you were promised that is absent.\n2. Read ~/.config/cs-campaign/member.json, and then every file it lists under \"inputs\", in order.\n3. Write a file (e.g. /tmp/readback.json) holding EXACTLY this JSON, on a single line:\n\n{\"member\":\"orchestrator\",\"role\":\"orchestrator\",\"branch\":\"<your branch, from member.json>\",\"missing\":[<output of check-inputs, as strings, else empty>],\"goal\":\"<one sentence, in your own words: what this campaign is asking you to accomplish>\",\"scope\":\"<one sentence: what you own and what you must not touch>\",\"obligations\":\"<one sentence: what this campaign requires of you, and what happens to your work if you do not do it>\"}\n\n4. Reply with it: cs-campaign-member reply --file /tmp/readback.json\n\nDo not perform any of the work yet. Your reply closes this dispatch.",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "encrypted_content": "gAAAAABqin7bh-VvFIIhl_H0wQjYVVgbvzM99F5c5rMX4nXXNqUZUpxna4w5rXwRqDmoryZwBni2UL6SiYVb3zd4Xr14O50xF--pMgr4AqDsgyIKFpH_TSWguQnk2wnIL3pQTwh4FmQjTdyTbkKgbOg66EbBrzNzdYMat43yLWS6X-IXaoqOE5FTMD45mm5WcKd5JdnkXJ6YQUo_S9bGCKP-U8K6NCrqYHWetR_KzXEvDijpMsiTRoDubMEeORXnKxi46rwfOhuR7lu4NC4wWAYGZSHuTcWeSummElBdfpluc4R9aoGO9-TBx9erQkYbfRpgD6fMAKBCc2EKBS48IAoqxfqCsrsoFGZvhufHstFoC6iOJ92sZg5LZwVjh-nugG11eVJ_GdlE1VpcF9wUeTREYi10v4uMu8PC8y1h0u_FyKkPnIl1mLxdRgyzRvHCoEmLu-Ja7IlGK98CT25j0WQhfeZCdpU4pg73XbAOpS0x3q4DQ9xyBpvMZnEavMYG0569cHrql3MM2vZoWs6tWBp7JPjALxJcbo-kPXI8mH_RVOpd2GAfz0YtAgBkxszxOcX7W9bBu9fvsk31z21isze6gpqEAz6d0GJHukYMTLvKkH1T5MQdJC8k0ztm9ZLtKPi5I9rmZ1pt11ppkecXPqM3iBM0sG2sYikM-Is5LjiU8IpOIb8BLmEkByn4inPhcGmbDEoE57NYEXYOuTblpqMxGsinuSjBw64pDqkgTPpCMdh_IuDRt6rGBjQWXW27xHXSxfmjs9wch4am3bzuSKvTFJlB8mywiljg8imzshhjw7ejYKY--IYEV35H-jkjLdHEAI4hva9xI2UIm1oBWGKp34UZC1pulTX43p7RDuy4Oh-_dV58l4DppmAI7217TFpWy07FTNq861UdO0MGzX6vCM-M4wQJCfRCpYO6OMweGogvz5UsnIbUaU0pKIEFh9dDNmZiaJpBmkGRVx3LVo63rdN4y_llLF0ZGxLuDweAdAgPo8ib6n_PUqMoBzqitYGdr7DaZre83QKbIMaK0AjFpyaPPP94lyoZwU7b-dlwBiIaANBH62cQuUTRgeK2ES6arD9R93OvOBeFCaYQPKTZ59pIJBq8OEynAiEA7czFY671rhEcC-6XYS5nVovwOTLVtJ1t-WEGIjTNuvuVsOtsrJjXL4yFEApoV06IT6qo0D8mH1AoJpYQAF9E0ZxqT4l_JLvsgA_eiZMkThopFFPhJrbbKuB4NHetzKe6x5WRroRHSYm6pN_FmdX6B37efRgwCS2jQZ06Hv4W_uXys0MZWsnG-87drNtSKGDkAwlqAdATAbzN5a5O03g0VqT9Q72tOYywZXS4yabLOmgDdgLtOe63qQ3IKhfWKJp7H37hlQgnBY2qFduDyk7KvP2O4kztXfIFl0ksyA5sye-jWZidvHR_r9xobmBCstzI0FR8mhyObMa1jgqyIyNgDKLff95eEdE099khUOCE9VorVqLWk6RXdlqrVAYYxI04ZhZ7ftvs3f78ejyT4L3htr_ffbIk6UDf4r5aWz7P3zy3X_p6cKemmAkkB4J8RWnEgA9IDOkCesTeSSyQrpYJl6nRl4cdYfnQ5pt6H50loVTpukzt7rO551x5LP3JnDNZfkJGwNuDM4M9AB8zutd6EfGuWoEBbFW_mUIumkgY6VzUa2t_iO7J91BlPT_F3xwzefUe5dVUYp8JVoZ22C5kCcHQTw1eak-BoZ9sh671jXCtHY9AN6bLfguKgIhT-AkvO37qUbUZnnw_xqUsCkob3y9H0qlEGZz3mCTt",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "content": [
+        {
+          "text": "The briefing says this dispatch is only a readiness check, so I’m not assigning or implementing the mission yet. I’ll verify the promised inputs, produce the exact one-line readback, and close d001.",
+          "type": "output_text"
+        }
+      ],
+      "phase": "commentary",
+      "role": "assistant",
+      "type": "message"
+    },
+    {
+      "call_id": "call_KBGPg0FdrmkCYHpnQE0hA4tS",
+      "input": "const r = await tools.exec_command({cmd:\"cs-campaign-member check-inputs\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(JSON.stringify({exit_code:r.exit_code,output:r.output}))\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_KBGPg0FdrmkCYHpnQE0hA4tS",
+      "output": [
+        {
+          "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "{\"exit_code\":0,\"output\":\"all 4 listed inputs present\\n\"}",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "encrypted_content": "gAAAAABqin7fjwi7XpNJ77N3vwpOzMEqt9U17Tve1RkPD6XGcK18Mc09Pd7kxldXnG7iN98H3bGDjaQp1wTy0yf4MhTea5A02gmm9LR07szwSW-czoshuHmpfm6-lI9CnFTxAn3wHIFdSFJ89wTbn61Nw0r367g03qRJHA0WveQikG5eOKocTfhC--i9QWg_hXIaUzWYgDmaDaME2IYD7MloNBi-RGe4YF561_cmdIR324NOQU-X3fupljT4XEIQzajwi0X4HJJK1boOSnx-pU46slOXkKp2_k9-akgsT7Q4O4pn1yw9uLIuOnwh2goE-Wkk1HGIKvMp-2NhXWg4GLSluw2PTsVyHExvDcJkhPFwSSYYuZRYuEeOAjeCFwSnZvVV51_OLg-RVTC4fuCdU3KffotBYA4yLO6GDJ9WizpKkcPG7lOmwYa2ZoRYAQP-1-0Nna1lOZ4fZnr01d69gIdGwuOYm7sm4nYEH8FD1JklQimkoy_fEK-qlCI33VdPYXQ9-k1_3zXa_EShSe-i0IF9juXuQa9WXbINyOqfINm0dAWz_ROenrBONt7n6ZbR72b3fGF90gaEQkZRlrnYYqg7QOXkVZArTdg5NOm8epmJsrHswfqQuBTDYaMfPlhpfnKlbmUvmHDqzb6YJuC3lnaYLyQ0gMro7Vuiw3dvxORjN5otMU7qy_JH3vzLSUH52yg_hzlPqpr81mG7PdykE_rWbC7JPHKAxXpjtuQijKShkEpyty1rLInrwC64rfkxWVUZTnNwxRbsj3tR2Rl4SgYcT0venhKt5Sw-DiplQUef6lbTdUF3s8PsBAgLVSWMAJh1QVoSp7to7Mv_b0kG-fwNx3FWTz7SN3onsznoMSd6xqDUNw2KXQEqH09vQBaslx0n6Qv_wBBYZVZk13bJ3IgO9hSzfV3B6YrlacZCIixbE5WBg6D4syxhKlMDMoc5LKh55RpGtb2N-he0omuqGuRMl88F7_5WxMzKQbj4OYCF-ACa63WDYWomPsb9NqXggU0K3vOBOTdVeT3l2p0FiqKlXdGd0tv-7X-Auap1ZiIfB_iU9Eh2Zpv4SsLwg61ssxdXSAMxPDcF5R47pQFR3P9vqMeixL6AifSxAt4ZSVzJmwbmLoK-gy8oEmj7rxBEfw5jtjo1zaEB0CF65dOKCP0V7PH3qcdzCsUpskgCQePI8imiaofE1pUQEKyguoVPTmTkOOK_2mIFNE52RY5-RO-gRjR_yPDYa7jVw-vgGw9pOYGXAXJdRi66WZ_1Ky90ODp6XIurAbpXtZfE4dCgAhzCl4bSl19eYH9vzaW3Us4mpwYy6FiJDDTCZasQqS-QrU1ld6w4-nx0bIWQ9pxciTokbFOr1OmdhZT-E4eN7HDeJm4ssRsLUMa7RDFjcHD2e6RhtVLZVP4qcbST3GJ5i1t5janlUjeQQV5cUd3swlO-6mVcsyMwt5Xx6DIJwICR48bi2hBsSIRSwzKd3XQSVRDAtyms20uaUErx_rWOImMrmKRglm23DxHjX9x5wpQaZPBs8nohaZO-",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "call_id": "call_0Z1FDc0q6Y7roZ09oUYALgdd",
+      "input": "const patch = \"*** Begin Patch\\n*** Add File: /tmp/readback.json\\n+{\\\"member\\\":\\\"orchestrator\\\",\\\"role\\\":\\\"orchestrator\\\",\\\"branch\\\":\\\"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\\\",\\\"missing\\\":[],\\\"goal\\\":\\\"Deliver a tested src/greet.py whose greet(name) returns Hello, <name>! for both a normal name and the empty string, with unittest discovery passing.\\\",\\\"scope\\\":\\\"I own orchestrating and judging the campaign by dispatching the implementation to dev, and I must not write the source code myself.\\\",\\\"obligations\\\":\\\"I must dispatch complete work, verify and judge dev's committed branch, preserve durable results, and close every dispatch with a reply, or uncommitted work will be destroyed and an unreplied dispatch will be treated as stopped.\\\"}\\n*** End Patch\";\ntext(await tools.apply_patch(patch));\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_0Z1FDc0q6Y7roZ09oUYALgdd",
+      "output": [
+        {
+          "text": "Script completed\nWall time 0.0 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "{}",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "encrypted_content": "gAAAAABqin7ikSzZgoJ6XrwPBl_4JGi8MXScG5Gr9WQGWimSvcXJ6gn_D5hZtQRZN6yG9WywvImBXv3qJ5FI0X6YEi-X_n5hPO6UJkMQifEp0_wusWQ1eRAnT0kgOCXE8uca-FGuvIbcFm-W8gKLF1EGch-wr0c_KN-8DGu1v48MQbGxl0GgO7zRGR6UESvLQUkh4pqVfIMBw0GMBi0HbXVrMIvUIwzgX9t0uaxUcNPmDUwTNLTVOkdAuDza5OlgVdL8ErDYlMzxGoLI2zeQ8gTcceFncjgG2CtghObjWLRtglY1277cNKuL_ZHzulCvxPwPxNVOMcl34yhtapGweSAyzCG7GxQW6cle9iy5xbOAvk-F77hLCyAZEsH2SOh7M2XkbB88mRKhdGpk7ZS9_jPhc5ahXnVIqeL06pC6IWRATp0e6DBqLHBr2uauS-woAlCYjymZYIPGzOBxAxAc2GpKHqYEgFJIFvDhmrKywt_dtL4-C5lXF2u1yaTUMe7IVOxEzzvilmW3YuGV8YjXbxyAT__yphOuFSTzzeUu0Xo3fkBfCqAVFaefgQzjGGJQP2GZ81GSPN2rk88IlPgv0Qg8kAXRpHjGn1OVVm7XK3JqFuVPSPJIjpttLUi92zoqwwHuPUdHeDNolUSbjkB1z9YLYw18KtkOywWdchqKksWu-XmgdpoD4fSNzRcURNskDs8ENkhA6hpxtnz5cR0Bk_nkCLiuaF_5U4U3hZGYJSpu0X9HMvdJyqACpsAL6SFj89KHsY3Aeu5wpOnrZCvrPAmPVQiG0vyQqD9FiTAUti5m5qVmMliaE5YgJsnwRZXpgyXVmcJHjCKvnttzkN50Q6z2erMJbH81i-hwiL-tWDwCsMLDq4U1yGrh-ZiO8Plx3NB0uzcOit5DXC3ei6WePyH87YYfTxa4CeJSqfDmUDWszk-HAyMb2wTE55jpfkfTewaBRNhDVJwF4gRwFuYPXT7bOTmlQcLVKt4bIbaLoSgliGGNTEqSEYS3fiUgYpkAwZ2R8c2NH_XxroMYYmLhf50n5rwWPm4JagpdiuA98r1ObGZS5Q1qbB3o1T9Iu5QdbIFnk0q1e0BdMC3vbdztDjQvYEyzv4_54hNd_5ziQa5MrTTwBCR5-77q6WVxgsEa4iKbgl6_UO4eQk3Zd6V_FFYUaMoJ9amfPs451iy5HU7tB6josq0MXmZ1Yvp_0VW5G--sDGjOb3k5k7fpQ81eEXRs9NyMTGBF6A==",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "call_id": "call_Mtp9dmvCBPmQp4YMxivAgWiu",
+      "input": "const r = await tools.exec_command({cmd:\"wc -l -c /tmp/readback.json && sed -n '1p' /tmp/readback.json && cs-campaign-member reply --file /tmp/readback.json\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output)\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_Mtp9dmvCBPmQp4YMxivAgWiu",
+      "output": [
+        {
+          "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "  1 668 /tmp/readback.json\n{\"member\":\"orchestrator\",\"role\":\"orchestrator\",\"branch\":\"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\",\"missing\":[],\"goal\":\"Deliver a tested src/greet.py whose greet(name) returns Hello, <name>! for both a normal name and the empty string, with unittest discovery passing.\",\"scope\":\"I own orchestrating and judging the campaign by dispatching the implementation to dev, and I must not write the source code myself.\",\"obligations\":\"I must dispatch complete work, verify and judge dev's committed branch, preserve durable results, and close every dispatch with a reply, or uncommitted work will be destroyed and an unreplied dispatch will be treated as stopped.\"}\nreplied to d001 — the dispatch is closed. You may finish your turn.\n",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "content": [
+        {
+          "text": "Dispatch d001 completed and replied successfully.",
+          "type": "output_text"
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant",
+      "type": "message"
+    },
+    {
+      "content": [
+        {
+          "text": "Read ~/.local/share/cs-campaign/input/m1.md and follow it. Dispatch ID: m1. When the work is concluded, run `cs-campaign-member reply --file <path-to-your-summary>`. Ending your turn without a reply reads as stopped, and you will be continued.",
+          "type": "input_text"
+        }
+      ],
+      "role": "user",
+      "type": "message"
+    },
+    {
+      "content": [
+        {
+          "text": "I’ll read the mission dispatch, delegate the implementation to dev as required, then inspect and test the fetched branch before deciding the campaign outcome.",
+          "type": "output_text"
+        }
+      ],
+      "phase": "commentary",
+      "role": "assistant",
+      "type": "message"
+    },
+    {
+      "call_id": "call_EUYtfJwS5pi0ThSsfVI3pqmm",
+      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,280p' /home/<USER:1>/.local/share/cs-campaign/input/m1.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":30000}); text(r.output)\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_EUYtfJwS5pi0ThSsfVI3pqmm",
+      "output": [
+        {
+          "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "This dispatch is the campaign's mission, and it stays open until you reply to it.\n\nThe mission itself is stated in ~/.local/share/cs-campaign/input/mission.md — read it with your brief and your teammates' briefs, plan, and run the campaign per your orientation: dispatch work with `cs-campaign-member send`, block in `cs-campaign-member wait` between judgments, judge every reply (fetch the branch — the reply carries measured tree-vs-base evidence), and record plan, acceptances and assessments with `accept` and `note`.\n\nReply ONLY when the campaign is concluded — your reply ends it. It must carry exactly one outcome:\n\n  --outcome campaign-met        every stated criterion is satisfied (if you can name something unmet, it is not met)\n  --outcome campaign-converged  criteria remain unmet and more effort from this fleet would not close them\n  --outcome campaign-exhausted  budget or clock ran out while progress was still being made\n  --outcome campaign-blocked    effort was never the problem — an obstacle no iteration resolves (a lost machine, a mission impossible as written)\n\nEvery outcome except campaign-met must name what remains unmet: --unmet \"<item>\" per item.\n\n  cs-campaign-member reply --file <your-summary.md> --outcome <one-of-the-four> [--unmet \"...\"]...\n\nRun that reply as a command of its own. Chained after anything else — a test\nrun, a git command, a shell that stops on the first error — it is the last\nlink, so ANY earlier link that fails takes the reply with it. Your turn then\nends with the campaign still open and your verdict unsent, which from the\noutside cannot be told apart from a judge who never reached one. Verify first,\nin as many commands as you like; then reply in one of its own.\n\nDo not end your turn without either calling wait or replying.",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "encrypted_content": "gAAAAABqin7vH6jorGeg_4Bq0vxOlnWW4eWAeYRzgnBPw6ziaqH0QNyTQmxg6mo0u-cuhbVwinHnbmBKO0kyNv7jOEASZ9jsN_44JGbO4edn_Q7IfO_HrLUx4EdVQMDr29hmhg9_xRsmFBqoIycepXFofB-dU0ft0XO2jXmmgzBLOpnfY7U-VXqPTEOttX9vTfEruPHNYwgWRMn089Cbf_QIzEf8E2lUpv9MVt2YcVsXfnJrICkFdnmuN3GwnEdNvazbPIiqnciUrQVES-w0pDyyLRpTHw4_UW4EZlO3EEfTdV9rioz_KwvKYS16SdpWGJeLQja7i-H4UNlDSuLexZmcpRBHalIZMDbujTmNAGCYJ5v_DgCH5wyY7NDMvrf8ojfjbm7572PHQfHdASDRMCZglOVuBVGO5stc6LavJJlZ2P1oGRUqZkfch3XvS1rcAUDL70eGCjPhwQzBPaChl31D9Qu8Z_52cT55MLbAcWgQs7DNaUN2geDwQsx5yA5fOyY4XRVr6RPVNLIg5bJXHPs8IuugjfwHMu6abJ6P8RJJAiH128vMjrWVyNQmwNq2zZkuznVDs00en03qjsnlU20kjxdSxyPc44Gz7YBqyiO0u3qCfDFepioaYwGwcrhr7HJnX1sYdlbCGHw7jekV7xhwCBYCjmdurW2uB3J2MTL30YbN1SHKcXuBtuYwgiICmMFm_EnHqhpO5XZG9dQWkhd05nnadB57S9qhjoP8oTnLdcKtS-B_E0lP2woLg01XXGmSGjPtotmjWBFQNQd08nx0w0HjQPXJhZHw_DU92FpjcjapWRAmETikTBASnj31y0a6v1HzpziC5tfe6A3zF2sHevRm0UXQ4bFTYfGOANAja02LGm44FW5wTlNRUYQ-rceDpsrndaqgPGDOY09OrFOu861xYy8XCJdG09l6pfOeYBN59JWIkmwIKyqavtsKN_35hhBV8W6QqXOONtJaFw0gJ12m4L7aUapZsu6KMKaJaML5xzl2YspTKxh1lMb9LpuHEpU-vjsMI4ytApN8AflK9YSqCnFFlBuE39OzV0hI5IGktcHRU4_IciybkyHZgkrzrlNCBGbvKtoVVHkYSuOpetM5LK2LVuj4YQLdyWzgzW0jPj2vOy6s4Er36E_ckwKq7_W_9m6XkdTiMd5vcL-clvHbmNz8rutrAgYmjCwQ34D17RK1N5SEA_WnkmNiUnQc5KQwroX3yi4aBQc5pM8wNzZJcT3iYCVba_HZ-lM4fRuhHZyfaCj7iKNGQs6LcBmQpL1SmonRvxu11EWVsYP-Rhd50HSzqalVMSRF959lekkdh3O5tWV-YUriiFWytQ03oO8-W6kdE14NkMX1QB9Q_HxvHvrez3bI6F4PqmeXcYMZeInuSPjTrYFpeCDk35RsIzHt2b2GYCW5PhS-GHxLIjFc4i7ECA==",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "content": [
+        {
+          "text": "The mission is fully delegable: dev owns the repository and must implement both files, run the specified unittest command, and commit. I’m recording that plan and sending a precise dispatch now.",
+          "type": "output_text"
+        }
+      ],
+      "phase": "commentary",
+      "role": "assistant",
+      "type": "message"
+    },
+    {
+      "call_id": "call_Rx8McGFieMnNPfPcqvOeEsYx",
+      "input": "const patch = \"*** Begin Patch\\n*** Add File: /tmp/campaign-plan.md\\n+Assign the entire implementation and verification mission to dev. After dev replies, fetch the branch, inspect the actual diff and commit evidence, independently run `python3 -m unittest discover -s tests`, and accept only if src/greet.py, both required test cases, and a zero test exit all satisfy the mission.\\n*** Add File: /tmp/dev-dispatch.md\\n+# Implement and test greet\\n+\\n+In `~/subject`, complete the campaign mission exactly:\\n+\\n+- Create `src/greet.py` with `greet(name)` returning exactly `Hello, <name>!`.\\n+- Create `tests/test_greet.py` with unittest coverage for a normal name and the empty string.\\n+- Run `python3 -m unittest discover -s tests` and ensure it exits 0.\\n+- Commit all work to your own branch before replying.\\n+\\n+Keep the implementation scoped to these requirements. In your reply, report the commit, changed files, and exact test result.\\n*** End Patch\";\ntext(await tools.apply_patch(patch));\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_Rx8McGFieMnNPfPcqvOeEsYx",
+      "output": [
+        {
+          "text": "Script completed\nWall time 0.0 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "{}",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "call_id": "call_3vUfotPrE5A5NO6dpTS8XpF9",
+      "input": "const a = await tools.exec_command({cmd:\"cs-campaign-member note plan --file /tmp/campaign-plan.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":10000}); text(a.output);\nconst b = await tools.exec_command({cmd:\"cs-campaign-member send dev --file /tmp/dev-dispatch.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":10000}); text(b.output);\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_3vUfotPrE5A5NO6dpTS8XpF9",
+      "output": [
+        {
+          "text": "Script completed\nWall time 3.8 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "recorded plan\n",
+          "type": "input_text"
+        },
+        {
+          "text": "dev/d002 opened\n",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "encrypted_content": "gAAAAABqin75jYqtIv3uSGmm8GXTN9zIpWKYhbZJjuTFQyBWrgI0BQCumUTsGHZG0AzMdvbsQHORU5-9cSX21TKdwI4GOs--cQHL09uqXzBsyghJftXPp4imkKhnx9FjL6uH1WhDTXtw4d2mn93NSaAEkgLB8n6fP9wRBELrX0GxSoxwKIlyDOk-0DDb9yktfLf3ru-_K_hc1nKa2B6f4mtOCCVa3Qby3AVcr9tfYopwNhNcXnlg9iJH4279FRFhm-zW9REePun6382xIBUELITd2VPbCsKt7WBBpFQELcxMsXK7l_pAgLiIDdhQ-qAdOV2uHdD1Qb-vCzte1F861dgHq1GEcLUPxyT69OZemvgfHoiiWRL6GxmKUzil2gcYToSqx7NjoDDWRrp1tIaJMAxiteYyH7tweB-V96-fLO_Eq8Z4oireBL3N9_9i74cL4w2mUgq4Z0VBkjFUERdy5phfeiZ2azIpDYHzoRmLh_K4YL1K8NjUk0ihPTFOzXVPsf3HGJTRJBkY_E8VN3aqHvkgAeH9Kxc2ZK9Y2WdkV91dzRzWZ_PdnVSJAC3HnSPf3TKsEhyREG-2vED8ZL83TCl91yDFGAldXmpsI2Nj-0XCYDHVRCk1TM_OIPcxjJLxrTJ2_dIB84mVDxuPllnUlhgHw8tkkMuATeUxJYr5GPaCRKgEgmGN8EgwDQ72nU5cH58lNUvAXXhFks09i1DVaCIO8mcfxGo996LCXMZiJ0V_tkxrQJL2DPUdqA868denJudFyVVfIJ-dusGvtgmn1DZ6fn-bCQglePQ7ybRJ10XGUN_ESf679t2uvz_xVW8olkRsLa0mnwcZ2J9ubn_utVnRSyJuY2uYUgaUHXOz4KqmL2t4pIpgEXeF33tcH6HqA2b5eQdZkHUfF4F2frWsJPPKwUYyZNf7qOz4byHs1Z_p151hcUPkXsuNHJX1eG-veKkWOUe9Qu4K651bUjWhI_HsQyK_CPuSLEDfgA8ycS57SBocrq2JmRIzvpBS3YfBCbpjRVySIxDzw0FOLHYcrSUT24yy8JrWJ1p3qbUUZ1N7JbRUbztcG1mGY-oJbiW3lqwawnIZ57M0s5GO52-NpIiF79QiWisCOU_9H9eB7oqtCwX9OjJsScLpZNcPQaeXNaCpbIAbGymzD0-00flUUp5ZXUq2S45rM8jB89O-AmjvmKsPvpi35c8=",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "content": [
+        {
+          "text": "Dev has the assignment. I’m entering the campaign wait loop; when a reply arrives, I’ll judge the repository contents and tests rather than relying on its summary.",
+          "type": "output_text"
+        }
+      ],
+      "phase": "commentary",
+      "role": "assistant",
+      "type": "message"
+    },
+    {
+      "call_id": "call_khlnFikorml8lfUMhe6rTplf",
+      "input": "const r = await tools.exec_command({cmd:\"cs-campaign-member wait\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":30000,\"max_output_tokens\":20000}); text(r.output); if(r.session_id) text(`SESSION_ID=${r.session_id}`)\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_khlnFikorml8lfUMhe6rTplf",
+      "output": [
+        {
+          "text": "Script completed\nWall time 30.2 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "",
+          "type": "input_text"
+        },
+        {
+          "text": "SESSION_ID=47746",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "encrypted_content": "gAAAAABqin8b-NVbLlAwTljupeuWPASvV1ZwQtwFvjobE5jfAvUBPGmDbDtgteGQX-aHfJ0BmDKQGQQBWp7ucySa3oMzm42i9oMfhjLFUgU_kZqAgIL4r3Y74Rf_vBNqTCXRep-QnTdswFdFGF3IrQCOY-1PiA7tkbZa3jKrwiKa6Dcykl64U_Zcl5PoVPMJKh14vVtlhzEO0oi6VIhxQ7f7nIeOoJW6XuhNU6lSgrp6as1wuGYDQ6qwgsPxxrFgwidxYdtFcisvi0Q2jbkiI6L2OkgmyRkBECpFTGmiJBfoc1B0dj-vkik5O81u0zvONgYZ6sNhYp_GoOvK0YWqIaJNq8xhuH-iWh1i-A5NT3GAUDBPEqNBfpTdbg4vGILqbPOlndFSD1MhtuvF73uk26gmrOtYYTKMics_eFqRXD_VXfw9YrWhyxvM4fM_arYtsERsHD6B0sojibEO2VDEYmC1Wtb5xvfbRcPDFg58UcUeblgp_IuNAEBsn2ZcwBSVkNEqn1nMXkFJT1nQIsAq7l4UDzyHxHlPGKvcFR7kFWRaWv3hVMHBDbNg8R2iDAmGzklCzGCHi5tSa_5K3sWQkSgKC8PI4-oEaes0w4KYz4gTfGzR1R7WiNdMPGxQMpEVXOlP1fzaC-SjskMffL0fYCsetkut1MFN9Ie9l799gZGXB06Ocrgn_vvOVPEKuXuc5o4CTPC7bnIbwerUY1JVETFkatYJdkk-H74PhpDS9UXiCshuwOQkzNO9SgmnhR9U3V_CvXhqEDzIo-isXTS5ykqxTunwjsAmIuGwUVQSGNoy9G9qQNCiYJpQDI5cTwrPuC-oxYXO7-UUBuvW3Q5e1XpCa9163qOuLraxqB3PlbuwGgbB6jVjwZ3eA9XuJXYIthTeYaNKoocf_9K9lhK-nqSBuxZazpUwosJhSjj8SpFospVcMv8jZG_eWp8yFemqAceHos-irP8ITM2kJmqWogQOy0-4z2gfAivr1rA3Aa7SsHEs4aR8RVLS_hut8-4ifIO78iUGblileSorTIGH8lrTSYtXhVLVq0DD_G0EmxmiGc9m17Bl4jJFWWbaY5411DawR4UCz8MRsgIHv1rL8ldYKbkCvhS8GtQRF2LldpgQfHF91jJ86a2senuFs38bU_XLwxkA4MP9eA_2eT_85W5-icKPnKAgJK1jfZI_uX5p4PuMVQ0hW9GJGsWSUXQ5l7U1Gwp-943k49T6CQUpeRXiyR3_-FmyLcLS__8Rj3MhuuBbAiKyOlA=",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "call_id": "call_pGYutPUSW03VaRVtBzGdIsa9",
+      "input": "const r = await tools.write_stdin({session_id:47746,chars:\"\",yield_time_ms:30000,max_output_tokens:20000}); text(r.output); if(r.session_id) text(`SESSION_ID=${r.session_id}`)\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_pGYutPUSW03VaRVtBzGdIsa9",
+      "output": [
+        {
+          "text": "Script completed\nWall time 13.9 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "wait returned — a judgment is due.\n\nnode           state            dispatch detail\ndev            node-replied     d002     reply present, not accepted\n\ndev replied to d002: read it (`cs-campaign-member read dev`), then `accept dev` or send rework with `send dev --file <path>`.\n",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "encrypted_content": "gAAAAABqin8rd3stUlHAGkrw9ePAF42HDjJIu4ysx3v4YgJ_516ba1EdvvnGH8si04FklJMP16Qb2YAqirWriq8_ClWupVAQ-bfXEdOov5DYUHXVYZON1gntW7qvZGliI-ZofIpInY_NkvcHIRq9P7VONgOvdOF3Myi-24T7d2n9bGuxyG6P5Gr7ymnJ34NPvsCjAdO1JhppjuiNoeRWptdJQ7q3v9LkC26qBZSedfs8MiaJFDcDBHeGbWDBxo4ZADVEX__Tr7NwOBRguWkuXRHZRQz4m55bigP1Yk0Y0PJKEtP48jMYMmL0DniOWMuOMTIZLe_sMOxXfz6shhOt93Etsr63YL4YBVT-uv24gh5v_eTg96wNdHmVYDBMAttuius1vd8d3AEAif3TA585PjLY3R24Gev8dKIXWhjRaj0Rap0PurCrguB3XXE2_vu2eWztUUoTccyUF2Mz4GNYG3fiobjk9MAiUsznFYNehYkXepW_EtENiCJQxdUfV4qol5RJSa1YrGkxGuVv1jIamKJcZV0Bz_DM_K-20mAcAdABQOcOxBQiqDQknByLnp3_SyjY6MbQwaIyIv_G2VLXUQ9AgTVynCky-_ij2LY9zh9YWgrc71GUj23n1iHLkK639gSDNz9jselSHnpIAy4kdktDC1dS_Rj1x3GZN_IjGG6aMoVMgfplabB9zCCzsbxiw39fK0pZyBaY3Q2wNs9r1x0TzcLccYwVG_I9dtCT7bF0vxpEDYie-BMsrJwH07OPQEdJZoImNRACKtVHHBeMzwL0EBMUX61RpbVLhymmnW0hLda8UED0ThlRg6TN79XoAnmaBJtUgKlxzOqKLtHvouiVuOteLnmlLT51LD0RAks-3S2HReZD5FgBaGIHgP4_0hL5J0dW-r8yShWyrhZaD9CJr7x2wCNDOBlKUlfHpzk3t6kiBOYYoyrcFCVq1lQBzoQAqJb-emV6CE2pawheLJ7QoKUqiPsAIzi-IjYAlutumLvZY-IVaMB62F-XOq21XxRrk12gFtF8u8VVKQJgPpV1dvcTsbH_7SHHWpKUWqd6Wal8qJOTh745CdJZv-Az3RAX_xWwZzITaBNvsKLw8g__S7Is_KSUu0Jn0v0-_6LnRwEokSsr6v1DMPrgdq8Wo5fW8H5Lqjyg1LHfOHCCjbeiU1H4zjUAr9KbgLCI9KtS0aY1YUmz1qfn4Djarts53plr8te12m7K",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "content": [
+        {
+          "text": "Dev has replied. I’ll now read the measured reply, fetch its branch into my clone, inspect the diff against the campaign base, and run the mandated test command independently.",
+          "type": "output_text"
+        }
+      ],
+      "phase": "commentary",
+      "role": "assistant",
+      "type": "message"
+    },
+    {
+      "call_id": "call_zQ6SDLmg08XtdyebidZMFttp",
+      "input": "const r = await tools.exec_command({cmd:\"cs-campaign-member read dev\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output)\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_zQ6SDLmg08XtdyebidZMFttp",
+      "output": [
+        {
+          "text": "Script completed\nWall time 0.7 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "{\n  \"dispatch\": \"d002\",\n  \"phase\": \"done\",\n  \"note\": \"# Dispatch d002 summary\\n\\nImplemented and tested the requested greeting function.\\n\\n- Commit: `b6a9df0f95d3376a961057ba1596c3e595855585`\\n- Changed files:\\n  - `src/greet.py`\\n  - `tests/test_greet.py`\\n- Test command: `python3 -m unittest discover -s tests`\\n- Exact result: exit code 0; `Ran 2 tests in 0.000s`; `OK`\\n- Repository status after cleanup: clean\\n\",\n  \"at\": \"2026-08-23T05:03:25.402990654Z\",\n  \"repos\": [\n    {\n      \"repo\": \"subject\",\n      \"head\": \"b6a9df0f95d3376a961057ba1596c3e595855585\",\n      \"treeDiffersFromBase\": true\n    }\n  ]\n}\n",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "call_id": "call_e05VfAwpQNqWf73esrLqZM4H",
+      "input": "const r = await tools.exec_command({cmd:\"cs-campaign-member fetch dev\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output)\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_e05VfAwpQNqWf73esrLqZM4H",
+      "output": [
+        {
+          "text": "Script completed\nWall time 0.4 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "refs/remotes/campaign/dev/subject — tree differs from base (real changes present)\n",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "encrypted_content": "gAAAAABqin8zLvwujlZUOL6_fxdVlmcadk3UqWKTjS-9UMngPbXg9elz0cQ3TMlBgPgS0Y2lBx5iBp9_qSnsaDkBsde18ar6VWDtd8QtSrmapiys5GnZAHpoc9rVO-j7kjs744OPYjNDmItMyy57ssvKnpoap1Mbe8CtUYHd-6StsD7IEYesRSVFqwuasYHE9rNgTpeQRC274_ESFFGINvYOIh4T6PkiaGl2QNLaGEcndBDAJupwss3kTCWwetBElWd7HaDJ0hUyeOBM-_CvjWYAFaXf6vJUqt8tYTU4SisPs9xxw6oIYQWLWbbSylRzNVSTWUSqbeWHZBWGVxAMkxTMyYc9GxSGmLG3UzAKiRZsXRFywZeY-wagWlgNEGiSZhGMi4gO76loAc7R26CxoJfyCGYRGD6kNU4rO6MkAuE0sV6kjVCeC9w_DjnGZule7XmbQK2kO37Vm-eYvgIsiIsdoYI05zSdbY3DSLf-rw-Ie_i0qelxMGx2C7ZtjyTN1gtDOX7C0uWLT7H6rnRFhg7X9GdTDv5TYyJ0x6anffvJxpIhZc7-gf7ljB5gza-amUk7cgCvL0w3MnXzCHVbUX5-ibcKsf5p9yocMGZqYOYoSzyzbNP2zLV06zXYaF9j0hlRnm838B-gCAMG2Y-OLdv81dF7yZFsAkk4HECpGOKAZYuppW_chM2YPMlRgrXqRb15uhuQoBI2o2pTu_JcgmoaxLdwDOT27uuJTsh1ux8Ae56iqn1Mni2hrbQrSTaKILXMHelC2Kww8jScsWQulLcWkRNZHXyQDyYNbDnbvw5N5zo8tSVZLIjUprTZYjqIJ3MHIZhXkFddNcgEx67Vrfa7DJdcq7BHS9HLzG1fKAfvgWpsW5_NL76HsJMkBAfI1oD-DFL-jrdxBUJjxVjF4arYCj6iInABGT4h2m-6UZ9Up5pkzvemZLyF-qeOO5_jXrd7zmrJUwZIdimGs6DsK7kYxNyG2B594M9UavRFb5emYv4xssIdCEW6yUrRFUBvtMbvSgD9lAN8lSPtIKHbczHbnb934VSu_fodIvaJGFfFL7snAPT3QAnr-UCWvSu0VzeKlsE1IVlfLkZ5Q8BtUl_TNUKBFY2EoiefuvDxC-RYWGRbMxFlbzb6ZXuPAELD4F9H6ASMl93r3zic6eSfqujWuSP6mO0CQJFXzZAJ41W2PIXV9Jy9TLllJ8F7WKkR1S1WY5ZqaCKiWye9AwoyFUGbgP61lljkVKtCAghP2YuEDjhDGjQBkTk=",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "call_id": "call_Wvlf3xxNSDEv9lrplTzwExfx",
+      "input": "const r = await tools.exec_command({cmd:\"git status --short && git log -1 --oneline refs/remotes/campaign/dev/subject && git diff --stat 6a308940bd9e13b19f51ca3ae74a8190198b1509..refs/remotes/campaign/dev/subject && git diff --check 6a308940bd9e13b19f51ca3ae74a8190198b1509..refs/remotes/campaign/dev/subject && git diff 6a308940bd9e13b19f51ca3ae74a8190198b1509..refs/remotes/campaign/dev/subject -- src/greet.py tests/test_greet.py\",\"workdir\":\"/home/<USER:1>/subject\",\"yield_time_ms\":10000,\"max_output_tokens\":30000}); text(r.output)\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_Wvlf3xxNSDEv9lrplTzwExfx",
+      "output": [
+        {
+          "text": "Script completed\nWall time 0.2 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "b6a9df0 Implement greet function and tests\n src/greet.py        |  2 ++\n tests/test_greet.py | 15 +++++++++++++++\n 2 files changed, 17 insertions(+)\ndiff --git a/src/greet.py b/src/greet.py\nnew file mode 100644\nindex 0000000..097a41c\n--- /dev/null\n+++ b/src/greet.py\n@@ -0,0 +1,2 @@\n+def greet(name):\n+    return f\"Hello, {name}!\"\ndiff --git a/tests/test_greet.py b/tests/test_greet.py\nnew file mode 100644\nindex 0000000..74ac376\n--- /dev/null\n+++ b/tests/test_greet.py\n@@ -0,0 +1,15 @@\n+import unittest\n+\n+from src.greet import greet\n+\n+\n+class TestGreet(unittest.TestCase):\n+    def test_normal_name(self):\n+        self.assertEqual(greet(\"Alice\"), \"Hello, Alice!\")\n+\n+    def test_empty_string(self):\n+        self.assertEqual(greet(\"\"), \"Hello, !\")\n+\n+\n+if __name__ == \"__main__\":\n+    unittest.main()\n",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "encrypted_content": "gAAAAABqin84HyrL4IN4_GUHmd_Y8S7r-G7zEP0vD8AwWn6ddQ29ui9D7W55UoqoBW43iotVd8vMe9fj3QvIUs67YOLwCsAIpo_Pu7KOK4FywRstHKUiqmEb7qzB0okM_Z7S6pPLUqJSi_yELMmq5baqA6xFmnrlWF6g7_nyETIxZsKBFteYq_0tJHzasMVfWswy_tPToId-3Glm4L2HkvFEyDq2pMHDfkKXzo3OJ5rdRGR2U1MXt4xdbyK_hR4Lay_zBGVYfxEoe8y_wyVMqk0Vol6jJ5QlsH_xZiOzdDvEWrG9bM5OVMts-aCShrIvvf60DzPa4vnOECBwCb60W0SwB8DmxaMPOpsJvx7rhgnH_L85ughdhVyKk982YWCFvkuf5DuX0HCTjd3M_YTjQJMSzK69DmeRyxAa0sZ7shuwBTa1F0koMqeaDBWr3A9zhFmmTVT3WEczqFBi6LPvhfP0h3kAYhjrtBRTcAkDFjNDDy2bFv0M8FMZfFGwvrfO--9ss6tFm37ZKvD1ffgckRNgVKwnBVNhmEJfxX-4pRHfLzmjyoJTl0EJ7jRy1Cen37V5p2ntzfySiPf7qHoMp_5aGjRoQXlQo62ZUBNfIq2E2QriWReP7P9eH5vgWVcwB-wNAWmZ3-Cm9o5ObmPiXm3A6hBODskgEdVuJd8z4PTx6iuhE4H-TJ2Bl_IJ0yNoIp-FA0IIkYSolMTPB_PnduJAAx5vf_P91vH9zdBKVB96s00O4hB7aDl08JLmBo6lFopjC2deg1A6RjmprUjmfn259Qx0TdGfftIyufS_2gGkNuh-1G908Ft8s0a1vIgMf2XuTqWTon9BGtkqNIUegFT84T7wL-0dBGSzkglAbsVhSTkZhkR0Hbc6OPO1b-yDYXhF8HNoAbs9MY4eKYQMwEK1I6qwz8t0jhPGOcQ7Cn_fHYZfy_Aou8C2xdMMh6mhNsm8GTAjDW07CWw1CgbAIUvk3zrXGIxYiO-yEgR5YdIHoE_azwmY0RKB5paP778Ubj3N6Z2w1Dw9aEKSfusjaKHq3dMQuzTNYmM8oCYEJSsGsNQOhYkqWUZzpAfWUASMGCYl92O5xg3hRCctvWP2W0aTwbW4XWHe1doox6vt1pVPMW9IPvEzG8G8m28zNpU9uFL898hV83ZkkW-2BPAuBZYUDOKayMDSypC_s1WfGJ9E3fuajsA6iCQsv_F7JVjYgnZfCS4HRwRB5Cgp_JILHfFxvzrkp3hifkBg-662-lxSz6Om0th-TbIjA9rZUXrol-33BXHqUFsmgLEjTAE3-fXwSpISHQOWCyThL9mYZEixXhUvEQYHB16Zq51pD2XyCtzdqlfXTNv2kdIvuzYnw2tCGTb1fU-J4JhUnyWwsLKCi0sKv5eeZyQ20sGKfux8nWJiJV_tYvGNgxv8ZXlv-aaXK8HgaRSvlr5UFie-34sdvA0BVMhK6I4mqYYiKDEfx7I1QzBtnHi_u1Ofg6B-qnL9srzTW1maBA_0PAm6KaoXmWdWsHOXvqJ7-2_NiJRwaJkUKBoIUP3e2Ii6bYmk51w2oDJdLwJsi-f32v1YGKjwQpIJw1MD3hQyUUQeCcIASzne26iyL8HVKdYLcJa8pVL1cVaQF4FzMQHJF4Z9XDgiOml4EMKkV7gFNf-XNBzkpQuxaKP02Liy2_WHlmY-Fh5PgU-aynfmjSHlik_jVwxpL81Zn7V8iXeRJX_E34qapMrVG8HXGBb8m1q0Z9DqbwmypE_XYAn8m0BkHxqANc5plIXU6kfrYgFEEd8OAsSAO8XE9mVfUNMTXSeJqov8bO0QWRS0eRZlQGOlc58kb8mSRfYutjX1OKdKpnwDkkMvJdT5aWvQfsL36C-L1h4HWL0PRl-4IUhioLSC7d1NNE5yT35XVrPrHu1KH9037KIziOihnE6bJf12B5vlM_zlDwnsbZVRBcWEVWAXUXWsgmW7Shg1t41nrhLlPqbjs3JPxJEB-UN5GJciTzItVUVPlrlP9XZDEx6ux396o8Pi8U_aipq2brciXPQb792XHSXf4aWUNmOJYYYA-pyObwLL3efc_1iinHUGSOGVJrFUnHxvyV0dUDZNO86x6UT0RxaD3w7jwXzbzIuU7KZoP03C6UNlkqO5RoKy6_C4J4lw8NSk2AZDKJhTWqTlnMj89VeYezfc9fak8_gjyKhJwjvZMzYXYCLXKjWS5-fy-9v7EYGFdwLZtgCX28wiAjIeszF3bLDtRom7tDQ8DCHS7iSpWukAXipZJrOYx_xsu0g_HF8mh6fWc57REyXlFl_wo0u6r1nBOS8ic_FAPsc6TunKK2VhI2sZYIXv2Ng4IfkFnQGqLfC-tItVEq4=",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "call_id": "call_CKndVvtlC1uN5ZxkNN6oKr0z",
+      "input": "const r = await tools.exec_command({cmd:\"verify_dir=$(mktemp -d /tmp/csrcxkey-verify.XXXXXX)\\ngit archive refs/remotes/campaign/dev/subject | tar -x -C \\\"$verify_dir\\\"\\npython3 -m unittest discover -s tests\\nprintf 'verified_tree=%s\\\\n' \\\"$verify_dir\\\"\",\"workdir\":\"/home/<USER:1>/subject\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output); text(`exit_code=${r.exit_code}`)\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_CKndVvtlC1uN5ZxkNN6oKr0z",
+      "output": [
+        {
+          "text": "Script completed\nWall time 0.4 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/opt/pyenv/versions/3.12.13/lib/python3.12/unittest/__main__.py\", line 18, in <module>\n    main(module=None)\n  File \"/opt/pyenv/versions/3.12.13/lib/python3.12/unittest/main.py\", line 104, in __init__\n    self.parseArgs(argv)\n  File \"/opt/pyenv/versions/3.12.13/lib/python3.12/unittest/main.py\", line 130, in parseArgs\n    self._do_discovery(argv[2:])\n  File \"/opt/pyenv/versions/3.12.13/lib/python3.12/unittest/main.py\", line 253, in _do_discovery\n    self.createTests(from_discovery=True, Loader=Loader)\n  File \"/opt/pyenv/versions/3.12.13/lib/python3.12/unittest/main.py\", line 160, in createTests\n    self.test = loader.discover(self.start, self.pattern, self.top)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/pyenv/versions/3.12.13/lib/python3.12/unittest/loader.py\", line 308, in discover\n    raise ImportError('Start directory is not importable: %r' % start_dir)\nImportError: Start directory is not importable: 'tests'\nverified_tree=/tmp/csrcxkey-verify.UqCnJr\n",
+          "type": "input_text"
+        },
+        {
+          "text": "exit_code=0",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    }
+  ],
+  "model": "gpt-5.6-sol",
+  "parallel_tool_calls": false,
+  "reasoning": {
+    "context": "all_turns",
+    "effort": "medium"
+  },
+  "store": false,
+  "stream": true,
+  "text": {
+    "verbosity": "low"
+  },
+  "tool_choice": "auto"
+}
