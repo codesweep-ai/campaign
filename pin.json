@@ -1,6 +1,6 @@
 {
-  "pinnedAt": "2026-08-23T19:39:03.436450501Z",
-  "sandboxVersion": "44eb5b5",
+  "pinnedAt": "2026-08-23T20:38:33.4169867Z",
+  "sandboxVersion": "b6157c8",
   "tools": {
     "cs-claude": "9e906d165605fe18c92974ed71a46e81fd2176ea09349b64fda9f564f4be6fb1",
     "cs-claude-remote": "c5f8407729c1f71c11f6b86e06be439f7b0e67a65b8853894f435d15b0abfd50",
@@ -10,24 +10,24 @@
     "cs-claude-remote-status": "4197ba136468f5d0b19d790053277a52e2f243bca538957542c92bd3abdd9fbb",
     "cs-claude-turn": "563d2c78ec074542e70ce26ff8c4a4be05cf57130d4388a060e2c245f685cfa9",
     "cs-codex": "ff4cc1d55c6f8f635fcd9920d351d34931bc0d50896d270e3227400b55d5062b",
-    "cs-codex-remote": "1924ca70dede4a61f97dd2ec49dd1ae254c81f54a17c83c48c348d9029a2a078",
+    "cs-codex-remote": "cdadf4e06b9e60265c68a67109efcb4be143c1c6d3914d0f698f3bbc68143bfb",
     "cs-codex-remote-forget": "e88dccedc1c8b34ba2e0eca42df4df6797c8fdfab8370f5a0e48f3da20643873",
     "cs-codex-remote-output": "c51c06a7c4f8dd3e571bf55d6b4ed82c7edb84c7b73c8201f8b829539a4d2c8a",
     "cs-codex-remote-sessions": "08e4ffda850daa76580a5ca6499c9acb11afb9e3fdcb97d3bc95ea978b501e08",
     "cs-codex-remote-status": "b6be1f9e07fc83e41cd5ce6fac92ed43c0a4cba00baea9b67e6b27e245175f5d",
     "cs-codex-turn": "fc7d910d5c069f5cbc1d3db7eb07066ce8d962eb821332bc4acf2e6aadfa5aae",
     "cs-opencode": "e3678adf2e951abd93e7681a22ffd1f449fdddd8d9591fd31c195aeb6df3dfa2",
-    "cs-opencode-remote": "3dffbcfc15c6c8a42231fcf2f225434acf9a73c4e4552f3773f95adaaab1d131",
+    "cs-opencode-remote": "a002432c749cd38f90510baa8af612edc0e3761b43d99e264b8fc8e75845003e",
     "cs-opencode-remote-forget": "0b3756739f88217c4499b3657201c10dc6ccd570a854c69cc58ae2039ec7ba01",
     "cs-opencode-remote-output": "32ddc8ab5c280a22551406f5ac6a4bc43708d7efb3673b73bb1c8aaca59b95fc",
     "cs-opencode-remote-sessions": "e94cb889d8ff2a30e020ef82e8205d521316aa051f126d4631168f3690cd9b49",
     "cs-opencode-remote-status": "05f483b850c477f3a6145423fae712be259ff2a3b3b1fc735f6558a48ce6ae5a",
     "cs-opencode-turn": "b84e9ef9ae50a40558e775ff3778eaa4a8d740c289e10a6ded225ccf073b81a1",
-    "cs-sandbox": "fa7226e975c3be168b1be69f1ff4151199c2eba744da88001dc8221785c271fa"
+    "cs-sandbox": "093e964d3cf563d9469d9f35773a6d34349c5320fb8ce8f0a1f652f15c18e80a"
   },
   "fixtures": {
     "cs-vcr": "082db12ea6c6469ba03cbeb6b63de553a8787b169e6231390bdfacb5d6c64f62"
   },
   "fixtureRuleset": "v12",
-  "note": "cs-sandbox 44eb5b5: the opencode turn driver now runs a turn against one server. It used to boot a transient `opencode serve` to mint a session id and kill it before launching the TUI on the same port, and a turn that died in that window left it holding the port, where it answered every later health check while the TUI it shadowed rendered nothing (cs-sandbox SBX-023). A server found there with no tmux session behind it is now reclaimed by name. The driver also falls back to $HOME, out loud, when the working directory it is handed does not exist. Validated with make test-smoke on this binary, not make test-integration: all five scenarios PASS on real machines. Real-provider traffic was not re-run."
+  "note": "cs-sandbox b6157c8: two fixes to the agent turn drivers. A turn now runs against one opencode server, where a transient one used to be booted to mint a session id and could be stranded holding the port (SBX-023). And cs-opencode-remote and cs-codex-remote now resolve the learned session id under the turn lock, storing it before releasing: a campaign dispatches the next turn as soon as a reply lands, so turns overlap, and the second one used to mint a session of its own (SBX-024). A new opencode session generates a title, which is a model call no cassette recorded at that point, so the replay missed and the turn died while the campaign waited out its ladder. Validated with make test-smoke on this binary, not make test-integration: all five scenarios PASS on real machines. The race it fixes needs a loaded host to appear, so a local pass does not prove it; cs-campaign's CI is where that is tested. Real-provider traffic was not re-run."
 }

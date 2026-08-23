@@ -349,18 +349,22 @@ jobs:
         if: steps.cassette.outputs.present == 'true'
         run: make test-smoke
 
-      # Why a member went quiet, for the one failure mode this tier cannot
-      # explain from its own output. A turn is dispatched with `-b`, so the
-      # agent driver's exit code is never read and a launch failure reads as a
-      # node that stopped. The reason is on the host, in the log the remote tool
-      # keeps, and a run that keeps evidence collects it per member. Without
-      # this the runner deletes it and the job says only that the tier gave up.
+      # Why a member went quiet, for the failure modes this tier cannot explain
+      # from its own output. A turn is dispatched with `-b`, so the agent
+      # driver's exit code is never read and a failed turn reads as a node that
+      # stopped; the reason is on the host, in the log the remote tool keeps,
+      # and a run that keeps evidence collects it per member. The proxy
+      # directory carries the other half: cs-vcr's whole log, and the request it
+      # could not serve, written in the same normalized form the cassette stores
+      # so `cs-vcr calibrate` can read it. Without this the runner deletes both.
       - name: keep the evidence of a failed run
         if: failure() && steps.cassette.outputs.present == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: smoke-evidence
-          path: .tmp/live-evidence/
+          path: |
+            .tmp/live-evidence/
+            .tmp/live-proxy/
           if-no-files-found: ignore
           include-hidden-files: true
           retention-days: 7
