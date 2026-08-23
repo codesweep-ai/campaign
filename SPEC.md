@@ -959,6 +959,7 @@ homogeneous so a failure names the backend that broke:
 | Scenario | Adapter | Signed in with |
 |---|---|---|
 | `claude-subscription` | claude | a Claude Pro or Max subscription on this host |
+| `claude-api-key` | claude | `ANTHROPIC_API_KEY` |
 | `codex-subscription` | codex | a ChatGPT subscription on this host |
 | `codex-api-key` | codex | `OPENAI_API_KEY` |
 | `opencode-fireworks` | opencode | `FIREWORKS_API_KEY` |
@@ -967,9 +968,10 @@ A scenario this host cannot sign in for skips with the credential it wants, whic
 reports what one more login would cover. One further test drives a mixed team, because a helper
 that routes by declared CLI is only exercised when the two members differ.
 
-The replay tier runs every scenario, and CI narrows that to four. On a two-core hosted runner the
-`opencode-fireworks` member never gets its turn started, so CI selects the other four by name and a
-run with room still covers all five.
+The replay tier runs every scenario, and so does CI. `opencode-fireworks` was once left out: on a
+two-core runner its member never got its turn started. The driver behind that has since been fixed.
+A relapse is legible rather than silent, because a run that keeps evidence collects each member's
+agent-driver log, and CI uploads it when the job fails.
 
 **Every scenario is recordable.** Aiming an adapter at cs-vcr means setting the base URL it reads,
 and the profile's `env:` block sets it:
@@ -977,14 +979,23 @@ and the profile's `env:` block sets it:
 | Adapter | Variable |
 |---|---|
 | claude | `ANTHROPIC_BASE_URL` |
-| opencode | `OPENAI_BASE_URL` |
+| opencode | `OPENCODE_BASE_URL` |
 | codex | `OPENAI_BASE_URL` |
 
-Claude and opencode read theirs directly. Codex reads none, taking a provider declaration instead,
-so `cs-codex` builds one from `OPENAI_BASE_URL` and passes it as `-c` overrides, with nothing
-written to a configuration file. That wrapper ships from
-[the sandbox repository](https://github.com/codesweep-ai/sandbox), and its manual documents the
+Claude reads its own directly. The other two do not, and each wrapper ships from
+[the sandbox repository](https://github.com/codesweep-ai/sandbox), whose manual documents the
 behaviour.
+
+An opencode base URL belongs to the provider rather than to the client. opencode reads
+`OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL`, and nothing else. A model on any other backend ignores
+both. Setting `OPENAI_BASE_URL` for a fireworks model therefore records nothing: the campaign runs
+against the real endpoint while the proxy sits idle. What works for every backend is a `baseURL` in
+opencode's own configuration. `cs-opencode` derives it from the pinned model and writes that
+configuration inline from `OPENCODE_BASE_URL`.
+
+Codex reads no such variable at all, taking a provider declaration instead. `cs-codex` builds one
+from `OPENAI_BASE_URL` and passes it as `-c` overrides, with nothing written to a configuration
+file.
 
 Codex's two auth modes take different URLs. With an API key the provider names the variable holding
 it, and the base URL ends in `/v1`. On a ChatGPT subscription codex authenticates as itself and

@@ -333,16 +333,37 @@ jobs:
           cs-sandbox install-agent-tools
           cs-sandbox doctor --engine firecracker
 
-      # Four of the five scenarios. opencode-fireworks is left out here, and
-      # only here: on a two-core hosted runner its member never gets its turn
-      # started, sits out the whole 300s settling window and takes the run to
-      # 1250s before the tier gives up. It passes in about 110s on a machine
-      # with room, so `make test-smoke` still runs all five by default and the
-      # scenario is skipped rather than deleted.
+      # All five scenarios. opencode-fireworks was left out here for a member
+      # that never got its turn started on a two-core runner: it sat out the
+      # whole 300s settling window and took the run to 1250s before the tier
+      # gave up. The cause it is back on is cs-sandbox SBX-023 — a turn used to
+      # boot a second opencode server to mint a session id, and one that died
+      # in that window left it holding the port. Two servers is also about 2 GiB
+      # in a member given 2048 MiB, which a hosted runner feels and a developer
+      # machine does not.
+      #
+      # That is a mechanism rather than a measurement: the stall was never
+      # reproduced on a machine with room, so this job is where the fix is
+      # actually tested. The step below is what makes a relapse legible.
       - name: smoke
         if: steps.cassette.outputs.present == 'true'
-        run: |
-          make test-smoke SMOKE_TESTS='TestSmokeReplay/^(claude-subscription|claude-api-key|codex-subscription|codex-api-key)$'
+        run: make test-smoke
+
+      # Why a member went quiet, for the one failure mode this tier cannot
+      # explain from its own output. A turn is dispatched with `-b`, so the
+      # agent driver's exit code is never read and a launch failure reads as a
+      # node that stopped. The reason is on the host, in the log the remote tool
+      # keeps, and a run that keeps evidence collects it per member. Without
+      # this the runner deletes it and the job says only that the tier gave up.
+      - name: keep the evidence of a failed run
+        if: failure() && steps.cassette.outputs.present == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-evidence
+          path: .tmp/live-evidence/
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
 
       - name: keep this job's coverage
         if: steps.cassette.outputs.present == 'true'
