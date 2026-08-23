@@ -3,18 +3,22 @@
   "title": "Every turn was told to run in a directory no member has",
   "type": "defect",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, after a cs-sandbox fix stopped masking it",
   "opened": "2026-08-23",
-  "resolved": null,
+  "resolved": "2026-08-23",
   "stint": "2026-08-23 opencode turn driver",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "e9060b0"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "go test ./cmd/cs-campaign-member/ -run TestStartTurnNamesNoWorkingDirectory -count=1: PASS, and FAIL with the argument restored. make test-smoke on cs-sandbox 44eb5b5: all five scenarios PASS in 485.66s, opencode-fireworks in 109.97s with 0 continuations and 0 restarts. The same tier against the previous argument failed, with every prompt on the member's session reporting FileSystem.realPath (/workspace)."
   },
-  "resolution": null,
+  "resolution": "Neither side names a working directory now, so a turn runs where the remote tool lands, in the member's home, with the clone one level down. That is where every turn has run all along.",
   "details": "cs-campaign passed `-d /workspace` to every agent turn, from `startTurn` on the host and from the member-side dispatcher. No member has that directory: `ls -ld /workspace` in a Firecracker sandbox reports ENOENT, and the string appears nowhere in cs-sandbox.\n\nIt did no visible harm because every adapter fell back. `tmux new-session -c` starts the session in its own working directory when the path does not exist, so claude and codex turns ran in $HOME while the argument said otherwise. The opencode driver bound its session to the directory it was given, and used to hide that behind `cd \"$dir\" 2>/dev/null || cd \"$HOME\"`.\n\nWhen cs-sandbox stopped hiding it, opencode honoured the path and failed every prompt on the session with `PlatformError: NotFound: FileSystem.realPath (/workspace)`. The campaign then ran its whole restart ladder against members that could not answer.\n\nThe comment on the constant also claimed the value came from the sandbox layer. It did not.",
   "notes": [],
-  "links": ["SAC-003"]
+  "links": [
+    "SAC-003"
+  ]
 }

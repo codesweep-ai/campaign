@@ -3,18 +3,22 @@
   "title": "A member whose agent never launched looks the same as a slow one",
   "type": "improvement",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, while diagnosing SAC-002",
   "opened": "2026-08-23",
-  "resolved": null,
+  "resolved": "2026-08-23",
   "stint": "2026-08-23 opencode turn driver",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "e9060b0"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "go vet -tags smoke ./internal/cli/ passes with keepDriverLogs called from keepEvidence, and make check is clean. Not exercised by a stalled run: the tier has not stalled since, and provoking one would mean reintroducing SAC-002."
   },
-  "resolution": null,
+  "resolution": "A run that keeps evidence now writes each member's host-side driver log beside the archive, as driver-<member>.log. The log already existed and named the cause on its first line; nothing collected it.",
   "details": "A turn is dispatched with `-b`, so the remote tool returns as soon as it has forked and its exit code is never read. A driver that failed to launch and a turn that is merely slow both reach the host as a node that has gone quiet.\n\nThe reason exists, on the host, in the log the remote tool keeps at ~/.cs-<cli>-remote-logs/<session>.log. Nothing collected it. The live tiers archive the campaign when a run stalls, and that archive holds what the MEMBER produced, which for this failure is nothing.\n\nMeasured while diagnosing SAC-002: the campaign reported four members stopped and gave up after its ladder, while the driver log named the cause on its first line. Finding it took knowing it was there.\n\nThe protocol's rule that an agent log is never a state input still stands. This is about the evidence a failing run leaves behind, not about how a node's state is decided.",
   "notes": [],
-  "links": ["SAC-002"]
+  "links": [
+    "SAC-002"
+  ]
 }
