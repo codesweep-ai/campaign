@@ -1,7 +1,7 @@
 # The cs-campaign specification
 
-`cs-campaign` runs a team of coding agents in microVM sandboxes, under one dispatch protocol, and
-preserves the evidence of what they did. One member of the team is an orchestrator that plans
+`cs-campaign` runs a team of coding agents in Firecracker microVMs, under one dispatch protocol,
+and preserves the evidence of what they did. One member of the team is an orchestrator that plans
 the work and judges it; the rest are agents that do it. An operator states the mission, watches,
 and harvests the result.
 
@@ -185,7 +185,7 @@ one ref.*
 time when it would overflow, naming both the overflow and the remedy. *A member's Unix sockets live
 at `<instances>/<group>/<member>/`, and `AF_UNIX` bounds the whole path at 108 bytes. Names that
 pass every per-label check can still overflow it. The path is then truncated, a socket binds under
-the shortened name, and the only symptom is a microVM sandbox that never becomes ready.*
+the shortened name, and the only symptom is a microVM that never becomes ready.*
 
 **R12.** The campaign discriminator in a group name **SHOULD** be short rather than the full
 campaign ID, for the same budget.
@@ -588,7 +588,7 @@ filter that runs second is a filter a new file can outrun.*
 **R111.** Archiving **MUST** be a host-driver responsibility, and a campaign member **MUST NOT** be
 able to rewrite the authoritative archive.
 
-**R112.** Archiving **MUST** run before destroy. *The microVM sandboxes are the only copy of a
+**R112.** Archiving **MUST** run before destroy. *The microVMs are the only copy of a
 member's work until it is harvested.*
 
 **R113.** An archive step that cannot complete **MUST** mark itself incomplete in the artifact
@@ -660,9 +660,9 @@ agents:
 
 | Field | Where | Meaning |
 |---|---|---|
-| `engine` | `defaults` | The sandbox engine every member runs on. |
+| `engine` | `defaults` | The sandbox engine every member runs on: `firecracker` for a microVM, or `podman` for a container. |
 | `deadline` | `defaults` | The campaign wall clock as a duration from create. |
-| `resources.cpus`, `resources.memoryMiB` | `defaults`, member | The microVM sandbox's size. |
+| `resources.cpus`, `resources.memoryMiB` | `defaults`, member | The microVM's size. |
 | `policy` | `defaults`, member | The dispatch machine's numbers. See §6. |
 | `env` | `defaults`, member | `KEY=VALUE` injected into the sandbox, or a bare `KEY` to inherit the host's value. |
 | `cli` | member | One of `claude`, `codex`, `opencode`. |
@@ -910,7 +910,7 @@ Each tier answers a question the one below it cannot, and each costs more than t
 
 A build tag adds files to a package rather than hiding the rest, so every tier above unit also
 passes `-run` to select its own tests. Without it `make test-smoke` would re-run the unit tier
-under a timeout sized for booting microVM sandboxes.
+under a timeout sized for booting microVMs.
 
 #### The smoke tier
 

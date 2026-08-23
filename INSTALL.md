@@ -2,11 +2,11 @@
 
 `cs-campaign` installs two host binaries: `cs-campaign`, which an operator drives, and
 `cs-dispatch-viewer`, which renders a finished run. A third binary, `cs-campaign-member`, is
-compiled into `cs-campaign` and installed into each member microVM sandbox at create time, so the
-two ends of every channel always ship in lockstep.
+compiled into `cs-campaign` and installed into each member's Firecracker microVM at create time,
+so the two ends of every channel always ship in lockstep.
 
 At runtime `cs-campaign` needs two things it does not contain: a group-aware
-[`cs-sandbox`](https://github.com/codesweep-ai/sandbox) to build the microVM sandboxes, and the
+[`cs-sandbox`](https://github.com/codesweep-ai/sandbox) to build the microVMs, and the
 per-CLI agent tools `cs-sandbox` installs. `cs-campaign doctor` gates on both and names what is
 missing, so run it first when a step here fails.
 
@@ -75,7 +75,7 @@ $ cs-campaign manual | less        # the full reference, carried inside the bina
 
 ## 2. Install and set up cs-sandbox
 
-`cs-campaign` shells out to `cs-sandbox` for every microVM sandbox, the campaign network, the SSH
+`cs-campaign` shells out to `cs-sandbox` for every microVM, the campaign network, the SSH
 trust material and the gateway. It needs a **group-aware** build: one whose `group ls --json` works
 and whose identity is `(group, name)`. Campaign isolation is a group, so there is no fallback for an
 older build.
@@ -181,7 +181,7 @@ $ cs-campaign plan hello --profile hello/profile.yaml | head -8
 ```
 
 `plan` resolving cleanly means every name fits, every path exists and every grant is declared. The
-next step, `cs-campaign create`, boots real microVM sandboxes and starts spending model tokens, so
+next step, `cs-campaign create`, boots real microVMs and starts spending model tokens, so
 take it when you mean to run a campaign.
 
 Nothing above created a campaign, so there is nothing to tear down. Remove the scaffold with

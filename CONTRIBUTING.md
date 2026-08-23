@@ -85,9 +85,9 @@ full.
 ## Keep campaign material out of this repo
 
 Profiles, mission prompts, rubrics, learnings and run archives belong in a workspace directory
-outside this checkout. `cs-campaign` shares repositories into member microVM sandboxes, so anything
-left here can arrive inside a team's clone. A campaign seeds its members from its own workspace,
-which is why this repository ships the tool and none of the engagements.
+outside this checkout. `cs-campaign` shares repositories into member Firecracker microVMs, so
+anything left here can arrive inside a team's clone. A campaign seeds its members from its own
+workspace, which is why this repository ships the tool and none of the engagements.
 
 `.gitignore` keeps the archive and scratch directories out of the tree, and it is not the guard.
 Deciding where a campaign's files live is.

@@ -28,7 +28,7 @@ const (
 	TierUnit    Tier = "unit"    // pure Go in-process, collaborators faked
 	TierScripts Tier = "scripts" // the real shipped shell scripts execute (no VMs/models)
 	TierSmoke   Tier = "smoke"   // real VMs and the whole protocol, model turns replayed
-	TierLive    Tier = "live"    // real Firecracker VMs and real model turns
+	TierLive    Tier = "live"    // real microVMs and real model turns
 )
 
 // Smoke ranks below live and above scripts, which is exactly what it proves:
@@ -45,7 +45,7 @@ var (
 		TierUnit:    "unit — pure Go, collaborators faked",
 		TierScripts: "scripts — the real shipped shell scripts execute",
 		TierSmoke:   "smoke — real VMs and the whole protocol, model turns replayed",
-		TierLive:    "live — real Firecracker VMs and model turns",
+		TierLive:    "live — real microVMs and model turns",
 	}
 )
 

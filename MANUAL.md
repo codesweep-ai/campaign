@@ -2,8 +2,8 @@
 
 ## Name
 
-`cs-campaign`: give a team of coding agents one mission, run them in microVM sandboxes, and harvest
-the evidence of what they did.
+`cs-campaign`: give a team of coding agents one mission, run them in Firecracker microVMs, and
+harvest the evidence of what they did.
 
 The repository ships three programs. `cs-campaign` is the host command an operator drives.
 `cs-campaign-member` is installed inside every member and is how a member reads its work and answers
@@ -38,7 +38,7 @@ cs-dispatch-viewer <run-dir> [-o out.html]
 ## Description
 
 A **campaign** is one engagement: a team of coding agents, a mission, and the evidence of what they
-did. The mission says what the team is there to accomplish. Each member is a microVM sandbox running
+did. The mission says what the team is there to accomplish. Each member is a microVM running
 one coding agent. One member is the **orchestrator**. It works out how to get the mission done,
 splits the work across the others, and reviews what they send back. It decides when the mission is
 finished, or that it cannot be. The rest are **agents**, which do the work delegated to them.
@@ -141,7 +141,7 @@ cs-campaign plan <campaign> --profile PROFILE [--set PATH=VALUE]... [fleet flags
 ```
 
 Prints the resolved creation plan as JSON and changes nothing. Every generated name, the group, the
-network, the resolved policy and each member's branch are visible before a microVM sandbox exists.
+network, the resolved policy and each member's branch are visible before a microVM exists.
 
 ```console
 $ cs-campaign plan acme --profile acme/profile.yaml
@@ -162,7 +162,7 @@ cs-campaign create <campaign> --profile PROFILE [--accept-upstream-change] [--dr
 cs-campaign create <campaign> --orchestrator CLI --agent NAME=CLI... --repo PATH
 ```
 
-Provisions each member's microVM sandbox, seeds the briefs and the orientation, installs the guest
+Provisions each member's microVM, seeds the briefs and the orientation, installs the guest
 binary into every member, arms the family guard in the orchestrator, and runs the campaign doctor.
 Then the protocol starts:
 
@@ -788,7 +788,7 @@ read-only probes: `observe`, transcript growth, `git log` on the member's branch
 problem to fix. Unsticking it destroys both the finding and any claim that the team worked
 autonomously.
 
-**Archive before destroy.** The microVM sandboxes are the only copy of a member's work until you
+**Archive before destroy.** The microVMs are the only copy of a member's work until you
 fetch it. Read the verdict rather than assuming it.
 
 Re-run the gates yourself from a fresh clone of the integration branch. That independent check is

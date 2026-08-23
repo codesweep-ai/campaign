@@ -45,7 +45,7 @@ func Execute() error {
 }
 
 func (a *app) root() *cobra.Command {
-	root := &cobra.Command{Use: "cs-campaign", Short: "Run a team of AI coding agents in microVM sandboxes on one mission", SilenceUsage: true, SilenceErrors: true}
+	root := &cobra.Command{Use: "cs-campaign", Short: "Run a team of AI coding agents in Firecracker microVMs on one mission", SilenceUsage: true, SilenceErrors: true}
 	root.PersistentFlags().BoolVar(&a.json, "json", false, "print machine-readable JSON")
 	root.AddCommand(
 		// Planning and lifecycle.
