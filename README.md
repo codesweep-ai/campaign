@@ -227,15 +227,13 @@ campaign spends real money for as long as it runs. Confirm the profile before `c
 
 ## Docs
 
-| You want to | Read |
-|---|---|
-| get it onto a machine | [INSTALL.md](INSTALL.md) |
-| use the tools | [MANUAL.md](MANUAL.md): every command, flag, file and diagnostic |
-| understand the dispatch model | [PROTOCOL.md](PROTOCOL.md): the protocol every campaign runs on |
-| know what it guarantees | [SPEC.md](SPEC.md): the contract, and what is left open |
-| change the harness | [CONTRIBUTING.md](CONTRIBUTING.md): the gates and the conventions |
-| work here as an agent | [AGENTS.md](AGENTS.md) |
-| know what is broken | [`ledger/ledger.html`](ledger/ledger.html), or the records under `ledger/issues/` |
+- [INSTALL.md](INSTALL.md) · getting it onto a machine
+- [MANUAL.md](MANUAL.md) · every command, flag, file and diagnostic
+- [PROTOCOL.md](PROTOCOL.md) · the dispatch protocol every campaign runs on
+- [SPEC.md](SPEC.md) · what it guarantees, and what is left open
+- [CONTRIBUTING.md](CONTRIBUTING.md) · the gates and the conventions
+- [AGENTS.md](AGENTS.md) · where an agent looks first
+- [ledger/ledger.html](ledger/ledger.html) · what is broken, with the records under `ledger/issues/`
 
 `cs-campaign --help` is generated from the code and is always current. Prefer it over any command
 line quoted in a document.

@@ -839,8 +839,8 @@ cd /tmp/verify && make check
 
 ## See also
 
-- [`README.md`](README.md): what this is, and how to run it.
-- [`INSTALL.md`](INSTALL.md): how to get the tools, and the setup they need once.
-- [`PROTOCOL.md`](PROTOCOL.md): the dispatch protocol, on its own terms.
-- [`SPEC.md`](SPEC.md): what the behaviour must be, and what is left open.
-- [`CONTRIBUTING.md`](CONTRIBUTING.md): how to work on the harness.
+- [README.md](README.md) · what this is, and how to run it.
+- [INSTALL.md](INSTALL.md) · how to get the tools, and the setup they need once.
+- [PROTOCOL.md](PROTOCOL.md) · the dispatch protocol, on its own terms.
+- [SPEC.md](SPEC.md) · what the behaviour must be, and what is left open.
+- [CONTRIBUTING.md](CONTRIBUTING.md) · how to work on the harness.
