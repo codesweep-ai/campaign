@@ -1,0 +1,20 @@
+{
+  "id": "SAC-002",
+  "title": "Every turn was told to run in a directory no member has",
+  "type": "defect",
+  "severity": "med",
+  "status": "in-progress",
+  "foundBy": "session agent, after a cs-sandbox fix stopped masking it",
+  "opened": "2026-08-23",
+  "resolved": null,
+  "stint": "2026-08-23 opencode turn driver",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "cs-campaign passed `-d /workspace` to every agent turn, from `startTurn` on the host and from the member-side dispatcher. No member has that directory: `ls -ld /workspace` in a Firecracker sandbox reports ENOENT, and the string appears nowhere in cs-sandbox.\n\nIt did no visible harm because every adapter fell back. `tmux new-session -c` starts the session in its own working directory when the path does not exist, so claude and codex turns ran in $HOME while the argument said otherwise. The opencode driver bound its session to the directory it was given, and used to hide that behind `cd \"$dir\" 2>/dev/null || cd \"$HOME\"`.\n\nWhen cs-sandbox stopped hiding it, opencode honoured the path and failed every prompt on the session with `PlatformError: NotFound: FileSystem.realPath (/workspace)`. The campaign then ran its whole restart ladder against members that could not answer.\n\nThe comment on the constant also claimed the value came from the sandbox layer. It did not.",
+  "notes": [],
+  "links": ["SAC-003"]
+}

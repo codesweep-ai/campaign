@@ -1,0 +1,20 @@
+{
+  "id": "SAC-003",
+  "title": "A member whose agent never launched looks the same as a slow one",
+  "type": "improvement",
+  "severity": "med",
+  "status": "in-progress",
+  "foundBy": "session agent, while diagnosing SAC-002",
+  "opened": "2026-08-23",
+  "resolved": null,
+  "stint": "2026-08-23 opencode turn driver",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "A turn is dispatched with `-b`, so the remote tool returns as soon as it has forked and its exit code is never read. A driver that failed to launch and a turn that is merely slow both reach the host as a node that has gone quiet.\n\nThe reason exists, on the host, in the log the remote tool keeps at ~/.cs-<cli>-remote-logs/<session>.log. Nothing collected it. The live tiers archive the campaign when a run stalls, and that archive holds what the MEMBER produced, which for this failure is nothing.\n\nMeasured while diagnosing SAC-002: the campaign reported four members stopped and gave up after its ladder, while the driver log named the cause on its first line. Finding it took knowing it was there.\n\nThe protocol's rule that an agent log is never a state input still stands. This is about the evidence a failing run leaves behind, not about how a node's state is decided.",
+  "notes": [],
+  "links": ["SAC-002"]
+}

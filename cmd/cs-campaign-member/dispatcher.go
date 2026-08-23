@@ -273,7 +273,8 @@ var startTurn = func(home string, rec protocol.AgentRecord, msgPath, id string) 
 			break
 		}
 	}
-	args := []string{tool, "-H", rec.Sandbox, "-d", "/workspace", "-b", "--turn-timeout", "0"}
+	// No -d, for the reason the host side gives: /workspace is a directory no member has.
+	args := []string{tool, "-H", rec.Sandbox, "-b", "--turn-timeout", "0"}
 	if fresh {
 		args = append(args, "--new", "--name", rec.Session)
 	} else {

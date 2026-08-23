@@ -53,12 +53,6 @@ const (
 	// in a subdirectory so an agent named "mission" cannot collide with the
 	// mission file itself.
 	guestRolesDir = guestInputDir + "/roles"
-
-	// guestWorkDir is the working directory every turn runs in. It comes from
-	// the sandbox layer rather than from cs-campaign, and it is NOT the member's
-	// clone — the clone is at $HOME/<repo-name>. A relative path in a prompt
-	// therefore resolves somewhere the operator did not intend.
-	guestWorkDir = "/workspace"
 )
 
 // reservedInputNames are basenames the product owns inside a member's input

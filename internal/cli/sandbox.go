@@ -107,7 +107,14 @@ func (s sandboxCLI) startTurn(ctx context.Context, member model.Member, msgPath,
 	if err != nil {
 		return err
 	}
-	args := []string{"-H", member.Ref, "-d", guestWorkDir, "-b", "--turn-timeout", "0"}
+	// No -d. A turn runs in the member's $HOME, which is where the remote tool lands and
+	// where the clone sits one level down at $HOME/<repo-name>. cs-campaign named
+	// /workspace here for a directory no member has: tmux starts a session in its own
+	// working directory when -c points nowhere, so every turn has always run in $HOME
+	// while the argument said otherwise. opencode is the one adapter that binds a session
+	// to the path it is handed, and it fails every prompt on that session rather than
+	// falling back — so the argument has to be right, not merely tolerated.
+	args := []string{"-H", member.Ref, "-b", "--turn-timeout", "0"}
 	if hostSessionFresh(member) {
 		args = append(args, "--new", "--name", member.Session.Name)
 	} else {

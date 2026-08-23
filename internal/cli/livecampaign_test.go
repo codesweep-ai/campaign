@@ -633,7 +633,32 @@ func keepEvidence(t *testing.T, a *app, campaign *model.Campaign, why string) {
 	if _, err := a.archiveCampaign(context.Background(), campaign, dir); err != nil {
 		t.Logf("evidence: archive: %v", err)
 	}
+	keepDriverLogs(t, a, campaign, dir)
 	t.Logf("evidence kept in %s (%s)", dir, why)
+}
+
+// keepDriverLogs saves each member's host-side agent-driver log beside the archive.
+//
+// The archive collects what the MEMBER produced, and a member whose driver never started
+// produced nothing — which is the failure this tier is most likely to hit and least able to
+// explain. Turns are dispatched with `-b`, so the driver's exit code is never seen: a launch
+// failure and a slow turn both read as a node that went quiet. The reason is written on the
+// host, in the log the remote tool keeps, and it says which of the two happened.
+//
+// Best effort, like everything else here: a member that never opened a session has no log,
+// and that is not a failure worth reporting over the one being investigated.
+func keepDriverLogs(t *testing.T, a *app, campaign *model.Campaign, dir string) {
+	t.Helper()
+	for _, member := range campaign.Members {
+		var buf strings.Builder
+		if err := a.sandbox.sessionLog(context.Background(), &buf, member); err != nil || buf.Len() == 0 {
+			continue
+		}
+		path := filepath.Join(dir, "driver-"+member.Name+".log")
+		if err := os.WriteFile(path, []byte(buf.String()), 0o600); err != nil {
+			t.Logf("evidence: %s: %v", path, err)
+		}
+	}
 }
 
 // campaignName names the run. A recording and its replay must produce the same

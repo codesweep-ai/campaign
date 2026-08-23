@@ -431,3 +431,41 @@ func TestWaitChunkElapsesQuietly(t *testing.T) {
 		t.Fatalf("an elapsed chunk must say nothing was actionable:\n%s", out)
 	}
 }
+
+// TestStartTurnNamesNoWorkingDirectory: a turn is never told to run somewhere the member
+// does not have.
+//
+// cs-campaign used to pass `-d /workspace`, which no member has. Two of the three adapters
+// hid it — tmux starts a session in its own working directory when `-c` points nowhere — so
+// every turn ran in $HOME while the argument said otherwise. opencode binds its session to
+// the path it is handed and then fails every prompt on that session with a path error, which
+// reaches the host as a member that went quiet.
+//
+// Omitting the flag is what the runs have always done: the remote tool lands in the member's
+// $HOME, and the clone sits one level down.
+func TestStartTurnNamesNoWorkingDirectory(t *testing.T) {
+	home := t.TempDir()
+	bin := t.TempDir()
+	argv := filepath.Join(home, "argv")
+	script := "#!/bin/sh\necho \"$@\" >> " + argv + "\n"
+	if err := os.WriteFile(filepath.Join(bin, "setsid"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+
+	rec := protocol.AgentRecord{CLI: "codex", Sandbox: "dev-box", Session: "sess-dev"}
+	if err := startTurn(home, rec, "input/d001.md", "d001"); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(argv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	line := string(b)
+	if strings.Contains(line, "/workspace") {
+		t.Errorf("no member has /workspace, and opencode fails every prompt on a session bound to it:\n%s", line)
+	}
+	if strings.Contains(line, " -d ") {
+		t.Errorf("a turn names no working directory, so it runs in the member's $HOME:\n%s", line)
+	}
+}

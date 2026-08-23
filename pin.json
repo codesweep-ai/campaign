@@ -1,6 +1,6 @@
 {
-  "pinnedAt": "2026-08-23T05:50:33.252821735Z",
-  "sandboxVersion": "ffe0cb6",
+  "pinnedAt": "2026-08-23T19:39:03.436450501Z",
+  "sandboxVersion": "44eb5b5",
   "tools": {
     "cs-claude": "9e906d165605fe18c92974ed71a46e81fd2176ea09349b64fda9f564f4be6fb1",
     "cs-claude-remote": "c5f8407729c1f71c11f6b86e06be439f7b0e67a65b8853894f435d15b0abfd50",
@@ -22,12 +22,12 @@
     "cs-opencode-remote-output": "32ddc8ab5c280a22551406f5ac6a4bc43708d7efb3673b73bb1c8aaca59b95fc",
     "cs-opencode-remote-sessions": "e94cb889d8ff2a30e020ef82e8205d521316aa051f126d4631168f3690cd9b49",
     "cs-opencode-remote-status": "05f483b850c477f3a6145423fae712be259ff2a3b3b1fc735f6558a48ce6ae5a",
-    "cs-opencode-turn": "b4b95c0478660c2c7d086a846cdd02c7257d06ca1c0ab68a1b46a355fe46babd",
-    "cs-sandbox": "05ed6098da47c2f32f099b318c699c315d7ef4cfbfde713b5a86b8dcc916d78a"
+    "cs-opencode-turn": "b84e9ef9ae50a40558e775ff3778eaa4a8d740c289e10a6ded225ccf073b81a1",
+    "cs-sandbox": "fa7226e975c3be168b1be69f1ff4151199c2eba744da88001dc8221785c271fa"
   },
   "fixtures": {
     "cs-vcr": "082db12ea6c6469ba03cbeb6b63de553a8787b169e6231390bdfacb5d6c64f62"
   },
   "fixtureRuleset": "v12",
-  "note": "cs-sandbox ffe0cb6: a guest's ssh config now bounds the connect to a peer (ConnectTimeout 10), so an unreachable teammate fails in 10s instead of sitting 136s in the kernel's SYN window, past the 120s at which an adapter's shell tool kills the command with no output. Validated with make test-smoke on this binary, not make test-integration: all five scenarios PASS on real machines, which exercises member creation with the new seed config, peer ssh through fetch, archive and destroy. Real-provider traffic was not re-run, and an ssh config cannot reach it."
+  "note": "cs-sandbox 44eb5b5: the opencode turn driver now runs a turn against one server. It used to boot a transient `opencode serve` to mint a session id and kill it before launching the TUI on the same port, and a turn that died in that window left it holding the port, where it answered every later health check while the TUI it shadowed rendered nothing (cs-sandbox SBX-023). A server found there with no tmux session behind it is now reclaimed by name. The driver also falls back to $HOME, out loud, when the working directory it is handed does not exist. Validated with make test-smoke on this binary, not make test-integration: all five scenarios PASS on real machines. Real-provider traffic was not re-run."
 }
