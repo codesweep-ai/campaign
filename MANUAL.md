@@ -632,8 +632,8 @@ set.
 threshold than the agents. A member's own `policy:` block sets it for that member, else
 `defaults.policy.stallSeconds` for the campaign, else the compiled-in default for that role. The
 resolved value is recorded on that member and delivered to its turn driver through the sandbox
-environment. Any other number a member's `policy:` block carries is accepted by the parser and not
-applied; put it in `defaults.policy`, which is where the machine reads it.
+environment. `validate` refuses any other number in a member's `policy:` block, naming it: those
+belong under `defaults.policy`, which is where the dispatch machine reads them.
 
 `CS_CAMPAIGN_POLL_SECONDS` overrides `pollSeconds` at the wait itself, for the host and for every
 member. It is not profile configuration, and it never reaches the campaign record. The campaign ID is the

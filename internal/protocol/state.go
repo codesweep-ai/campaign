@@ -24,7 +24,7 @@ const (
 )
 
 // Facts is everything one probe of one node returns — one round trip, per
-// spec §6: connect, ask, done.
+// PROTOCOL.md §6: connect, ask, done.
 type Facts struct {
 	Msgs    []Msg
 	Replies map[string]bool // dispatch ID -> reply file exists
@@ -84,7 +84,7 @@ type Observation struct {
 // consecutive failed probes and is observer-local; probeFailed marks this
 // look as one of them.
 //
-// Order is load-bearing (spec §1.4): reachability precedes everything, and
+// Order is load-bearing (SPEC.md §7.3): reachability precedes everything, and
 // the reply check precedes the liveness check — a node that replied and then
 // exited is node-replied, not node-stopped.
 func Compute(f Facts, probeFailed bool, blindRun int, accepted map[string]bool, pol Policy, now int64) Observation {

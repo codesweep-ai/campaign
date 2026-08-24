@@ -3,8 +3,9 @@ package cli
 // The host's dispatcher verbs. The host is a dispatcher to exactly one
 // worker — the orchestrator — so send and restart address it implicitly.
 // Both are operator instruments, never a loop: a human who sees node-stopped
-// on the orchestrator decides whether to continue it (§8: an orchestrator
-// that stops is a defect to be made visible, not repaired automatically).
+// on the orchestrator decides whether to continue it (PROTOCOL.md §8: an
+// orchestrator that stops is a defect to be made visible, not repaired
+// automatically).
 
 import (
 	"errors"

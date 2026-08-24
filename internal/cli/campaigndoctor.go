@@ -182,6 +182,49 @@ func (a *app) reportMemberHarness(ctx context.Context, campaign *model.Campaign,
 	return harnessRemedy(campaign.Name, pinVersion)
 }
 
+// saveHarness records what the doctor just measured, and only that.
+//
+// It takes the campaign lock HERE rather than around the whole command: the
+// probes above run inside every member and take seconds, and create holds the
+// same lock for a whole provisioning run. A doctor that locked first would
+// block on a create it was called to inspect.
+//
+// Which means the record on disk may have moved while the probes ran, so the
+// save re-reads it and copies over the one field this command owns. Saving
+// the in-memory copy would revert every member record written since doctor
+// loaded it, which is the loss R101 exists to prevent.
+//
+// Best-effort: doctor's verdict is its exit code and its output, and a
+// campaign whose record could not be updated is still one the operator has
+// just been told the truth about.
+func (a *app) saveHarness(campaign *model.Campaign) {
+	measured := map[string]*model.HarnessCheck{}
+	for i := range campaign.Members {
+		if campaign.Members[i].Harness != nil {
+			measured[campaign.Members[i].Name] = campaign.Members[i].Harness
+		}
+	}
+	if len(measured) == 0 {
+		return
+	}
+	unlock, err := a.store.Lock(campaign.Name)
+	if err != nil {
+		return
+	}
+	defer func() { _ = unlock() }()
+	saved, err := a.store.Load(campaign.Name)
+	if err != nil {
+		return
+	}
+	for i := range saved.Members {
+		if check, ok := measured[saved.Members[i].Name]; ok {
+			saved.Members[i].Harness = check
+		}
+	}
+	saved.UpdatedAt = time.Now().UTC()
+	_ = a.store.Save(saved)
+}
+
 func manifestDrift(campaign *model.Campaign, agents []model.Member, manifest guestManifest) []string {
 	var drift []string
 	if manifest.Campaign != campaign.Name {

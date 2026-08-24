@@ -48,7 +48,8 @@ usage:
   cs-dispatch-viewer manual | version | help
 
 <run-dir> is a campaign archive directory (holding campaign.json) or a run
-directory holding archive/. Output defaults to viewer.html beside the input.
+directory holding archive/. Output defaults to viewer.html in the current
+directory.
 `
 
 type options struct {

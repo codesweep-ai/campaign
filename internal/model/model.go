@@ -49,8 +49,10 @@ type Auth struct {
 // exactly why the resolved values are recorded on the Member.
 type MemberProfile struct {
 	CLI string `yaml:"cli" json:"cli"`
-	// Policy overrides the campaign policy for this seat alone — how the
-	// orchestrator gets its longer stall threshold while agents keep theirs.
+	// Policy carries this seat's own stall threshold — how the orchestrator
+	// gets a longer one than its agents. Nothing else belongs here: every
+	// other number governs the whole campaign, and validation refuses a
+	// member that declares one (protocol.Policy.CampaignOnlyFields).
 	Policy    protocol.Policy `yaml:"policy,omitempty" json:"policy,omitzero"`
 	Model     string          `yaml:"model,omitempty" json:"model,omitempty"`
 	Effort    string          `yaml:"effort,omitempty" json:"effort,omitempty"`
@@ -75,9 +77,9 @@ type Defaults struct {
 	// the campaign and in every member.json.
 	Policy protocol.Policy `yaml:"policy,omitempty" json:"policy,omitzero"`
 	// Deadline is the campaign's wall clock as a Go duration from create
-	// ("90m", "6h"). When set, an unset policy.elapsedSeconds derives from it
-	// — §1.7's stated default for the elapsed backstop — and the absolute
-	// instant is recorded on the campaign and in every member.json. It does
+	// ("90m", "6h"). When set, an unset policy.elapsedSeconds derives from it —
+	// the default SPEC.md §6.1 states for the elapsed backstop — and the
+	// absolute instant is recorded on the campaign and in every member.json. It does
 	// not stop anything by itself: the orchestrator's judgment enforces the
 	// deadline; the machine only uses it as the recovery bound.
 	Deadline  string    `yaml:"deadline,omitempty" json:"deadline,omitempty"`

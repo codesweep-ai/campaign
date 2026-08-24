@@ -277,3 +277,49 @@ func TestInspectProbeSkipsUnresolvableSandboxes(t *testing.T) {
 		t.Fatal("an unknown status was treated as unprobeable")
 	}
 }
+
+// R101: doctor writes one field, and must not carry the rest of the record it
+// loaded back to disk. Its probes take seconds, and anything saved in that
+// window — a member record another command wrote — would be reverted by a
+// whole-document save of a stale copy.
+func TestDoctorSavesItsHarnessWithoutRevertingTheRecord(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "state-safety", covmap.TierUnit)
+	a := &app{store: store.Store{Dir: t.TempDir()}}
+	campaign := &model.Campaign{Name: "acme", Members: []model.Member{
+		{Name: "orchestrator", Role: "orchestrator", CLI: "codex"},
+		{Name: "dev", Role: "agent", CLI: "claude"},
+	}}
+	if err := a.store.Save(campaign); err != nil {
+		t.Fatal(err)
+	}
+
+	// doctor's own copy, as loaded before it began probing.
+	loaded, err := a.store.Load("acme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded.Members[1].Harness = &model.HarnessCheck{Pinned: true, Tools: map[string]string{"cs-claude": "abc"}}
+
+	// Meanwhile, another command records something on the other member.
+	concurrent, err := a.store.Load("acme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	concurrent.Members[0].Readback = &model.Readback{Goal: "written while doctor was probing"}
+	if err = a.store.Save(concurrent); err != nil {
+		t.Fatal(err)
+	}
+
+	a.saveHarness(loaded)
+
+	final, err := a.store.Load("acme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if final.Members[1].Harness == nil || !final.Members[1].Harness.Pinned {
+		t.Fatal("doctor did not record the harness it measured")
+	}
+	if final.Members[0].Readback == nil {
+		t.Fatal("doctor's save reverted a record written while it was probing")
+	}
+}

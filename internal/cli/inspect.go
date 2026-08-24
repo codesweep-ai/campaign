@@ -63,7 +63,7 @@ func (a *app) doctorCmd() *cobra.Command {
 			err = a.campaignDoctor(c.Context(), c.OutOrStdout(), campaign)
 			// Persist the refreshed per-member harness verdict either
 			// way — the measurement is perishable.
-			_ = a.store.Save(campaign)
+			a.saveHarness(campaign)
 			return err
 		}
 		reported, err := a.sandbox.version(context.Background())

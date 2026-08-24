@@ -345,7 +345,19 @@ func (a *app) archiveSourceMetadata(ctx context.Context, base string, member mod
 			name = filepath.Base(repo.Path)
 		}
 		guestRepo := `"$HOME"/` + shellQuote(name)
-		command := fmt.Sprintf("git -C %s status --short && git -C %s log -1 --format='commit=%%H%%nsubject=%%s' && git -C %s diff --binary %s..HEAD", guestRepo, guestRepo, guestRepo, repo.ResolvedCommit)
+		// Branch and base first, because the rest of the file cannot supply
+		// them: a diff names neither of its endpoints, and `status --short`
+		// prints no branch header. An archive read years later has to answer
+		// "which branch, measured against what?" from this file alone.
+		// The branch is asked of the member rather than taken from the record:
+		// the record's copy is what the host expects, and the point of
+		// evidence is to be able to disagree with that.
+		command := fmt.Sprintf(
+			"printf 'branch=%%s\\nbase=%%s\\n' \"$(git -C %s rev-parse --abbrev-ref HEAD)\" %s"+
+				" && git -C %s log -1 --format='commit=%%H%%nsubject=%%s'"+
+				" && git -C %s status --short"+
+				" && git -C %s diff --binary %s..HEAD",
+			guestRepo, shellQuote(repo.ResolvedCommit), guestRepo, guestRepo, guestRepo, shellQuote(repo.ResolvedCommit))
 		data, err := a.collect(ctx, member, command)
 		component := archiveComponent(name)
 		complete := filepath.Join(base, "source-metadata", component+".txt")

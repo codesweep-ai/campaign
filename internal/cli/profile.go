@@ -60,6 +60,9 @@ func validateProfile(p model.Profile) error {
 	if err := validateModelConfig(p.Orchestrator); err != nil {
 		return fmt.Errorf("orchestrator: %w", err)
 	}
+	if err := validateMemberPolicy(p.Orchestrator); err != nil {
+		return fmt.Errorf("orchestrator: %w", err)
+	}
 	for name, m := range p.Agents {
 		if !dnsName.MatchString(name) || name == "orchestrator" {
 			return fmt.Errorf("invalid or reserved agent name %q", name)
@@ -71,6 +74,9 @@ func validateProfile(p model.Profile) error {
 			return fmt.Errorf("agent %s: %w", name, err)
 		}
 		if err := validateModelConfig(m); err != nil {
+			return fmt.Errorf("agent %s: %w", name, err)
+		}
+		if err := validateMemberPolicy(m); err != nil {
 			return fmt.Errorf("agent %s: %w", name, err)
 		}
 	}
@@ -87,6 +93,22 @@ func validateProfile(p model.Profile) error {
 		}
 	}
 	return nil
+}
+
+// validateMemberPolicy refuses a policy number a member cannot have. One
+// resolved set governs the campaign, and stallSeconds is the only number
+// carried per seat — so a member declaring pollSeconds would run on the
+// campaign's value with its own profile saying otherwise, and nothing would
+// ever report the difference. Same rule as validateModelConfig below: fail on
+// a declaration that cannot be honoured, rather than write it and let the
+// member run on something else.
+func validateMemberPolicy(m model.MemberProfile) error {
+	fields := m.Policy.CampaignOnlyFields()
+	if len(fields) == 0 {
+		return nil
+	}
+	return fmt.Errorf("a member's policy: block carries stallSeconds alone; move %s under defaults.policy, which is where the dispatch machine reads it",
+		strings.Join(fields, ", "))
 }
 
 // validateModelConfig fails closed on a declaration this CLI cannot honour,

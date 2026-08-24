@@ -771,13 +771,13 @@ archive/
 │   ├── input/                    m1 and its continuations
 │   ├── output/                   replies/m1.json, and log.jsonl
 │   ├── transcript/               its CLI's own session evidence
-│   └── source-metadata/          commit, status, diff against base
+│   └── source-metadata/          branch, base, commit, status, diff
 └── agents/<name>/
     ├── config/                   member.json, the delivered stall threshold
     ├── input/                    d001 onward
     ├── output/replies/           its replies, evidence stamped
     ├── transcript/               its CLI's own session evidence
-    └── source-metadata/          commit, status, diff against base
+    └── source-metadata/          branch, base, commit, status, diff
 ```
 
 Both layouts hold the same evidence classes (R107); only the orchestrator's output channel carries a
@@ -842,7 +842,9 @@ Each member field, and `stallSeconds`, resolves in this order:
 A member that declares a key replaces the default rather than merging with it (R92).
 
 The rest of the policy numbers have no step 1: they resolve once, from `defaults.policy` over the
-compiled-in defaults, and govern every node (§6.1).
+compiled-in defaults, and govern every node (§6.1). A member that declares one is refused by
+`validate`, rather than provisioned to run on the campaign's value with its own profile saying
+otherwise.
 
 ### 6.3 Environment
 
@@ -906,7 +908,9 @@ stuck.
 
 Create and destroy hold an exclusive `flock` on the campaign for the whole command. Every save
 writes the whole record to a temporary file and renames it, so a reader sees one version or the
-other and never a torn one. Message delivery mints an ID and refuses to clobber an existing name; a
+other and never a torn one. `doctor <campaign>` probes without the lock and takes it only to save,
+where it re-reads the record and writes back the one field it owns. Message delivery mints an ID
+and refuses to clobber an existing name; a
 sender that loses the race looks again. Create checkpoints each completed resource, so a re-run
 continues rather than starting over. Destroy tolerates an absent resource at every step.
 

@@ -282,8 +282,9 @@ func TestResolveRepoRefsPinsOneCommit(t *testing.T) {
 	}
 }
 
-// The elapsed backstop's stated default is the campaign deadline (§1.7); the
-// compiled-in day applies only when the profile declares neither. Derivation
+// The elapsed backstop's stated default is the campaign deadline
+// (SPEC.md §6.1); the compiled-in day applies only when the profile declares
+// neither. Derivation
 // happens at create so the recorded policy is the resolved number.
 func TestDeadlineDerivesElapsedBound(t *testing.T) {
 	now := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
@@ -523,5 +524,41 @@ func TestDefaultEnvAppliesOnlyWhereAMemberDeclaresNone(t *testing.T) {
 	}
 	if !slices.Equal(p.Agents["own"].Env, []string{"OWN=2"}) {
 		t.Errorf("agent env = %v, want its own declaration untouched", p.Agents["own"].Env)
+	}
+}
+
+// Only stallSeconds is resolved per seat. A member that declares any other
+// policy number is refused at validation, rather than provisioned to run on
+// the campaign's value while its own profile says otherwise — the same
+// fail-closed rule a model declaration gets.
+func TestMemberPolicyCarriesStallSecondsAlone(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	worker := p.Agents["worker"]
+	worker.Policy.StallSeconds = 240
+	p.Agents["worker"] = worker
+	if err = validateProfile(p); err != nil {
+		t.Fatalf("a member's own stall threshold is the one number it may set: %v", err)
+	}
+
+	worker.Policy.PollSeconds = 15
+	p.Agents["worker"] = worker
+	err = validateProfile(p)
+	if err == nil {
+		t.Fatal("a per-member pollSeconds must be refused: nothing reads it")
+	}
+	// The message has to name the key and where it belongs, or the operator
+	// is left deleting lines until the profile validates.
+	if !strings.Contains(err.Error(), "policy.pollSeconds") || !strings.Contains(err.Error(), "defaults.policy") {
+		t.Fatalf("the refusal must name the key and its home: %v", err)
+	}
+
+	p.Agents["worker"] = model.MemberProfile{CLI: "codex"}
+	p.Orchestrator.Policy.ContinueAttempts = 5
+	if err = validateProfile(p); err == nil {
+		t.Fatal("the orchestrator seat is a member too")
 	}
 }

@@ -88,8 +88,9 @@ var runSessionCmd = func(name string, args ...string) error {
 	return exec.Command(name, args...).Run()
 }
 
-// probeAgent is the one round trip of §6: every fact about one node, or a
-// probe failure — which is a fact about the observation, not the node.
+// probeAgent is the one round trip of PROTOCOL.md §6: every fact about one
+// node, or a probe failure — which is a fact about the observation, not the
+// node.
 func probeAgent(rec protocol.AgentRecord) (protocol.Facts, bool) {
 	out, err := sshOut(rec.Sandbox, protocol.ProbeScript(rec.CLI))
 	if err != nil {
@@ -229,8 +230,8 @@ func sendBody(env *envState, name, body string) (sendResult, error) {
 			}
 			return res, fmt.Errorf("deliver %s to %s: %v", msgName, name, putErr)
 		}
-		// §1.3: there is no "deliver into a running turn" case — the move on
-		// node-working is nothing. A continuation delivered while this probe
+		// PROTOCOL.md §5: there is no "deliver into a running turn" case — the
+		// move on node-working is nothing. A continuation delivered while this probe
 		// saw a live driver therefore starts NO second turn: the running turn
 		// (or, if it stops without replying, the wait ladder) picks the
 		// message up. A newly opened dispatch always starts its turn — the
@@ -528,9 +529,10 @@ func safeReadPath(p string) bool {
 	return true
 }
 
-// cmdWait is §8's shape with §3.6's extension: block, poll every node into
-// one snapshot, perform the mechanical moves in code, and return only when
-// the next arrow is a judgment — node-replied, node-stuck, or node-free.
+// cmdWait is the shape PROTOCOL.md §8 gives the orchestrator's wait, with the
+// mechanical ladder of PROTOCOL.md §5 run inside it: block, poll every node
+// into one snapshot, perform the moves in code, and return only when the next
+// arrow is a judgment — node-replied, node-stuck, or node-free.
 func cmdWait(env *envState, args []string) error {
 	chunk := 240
 	for i := 0; i < len(args); i++ {

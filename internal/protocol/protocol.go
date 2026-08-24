@@ -52,7 +52,7 @@ const MaxDispatchSeq = 999
 //	m1.md, m1.001.md   the mission and its continuations
 //
 // The .restart marker exists so recovery state is countable from a directory
-// listing alone — derived, never remembered (spec §1.4).
+// listing alone — derived, never remembered (SPEC.md §4.5, R59).
 var msgName = regexp.MustCompile(`^(d[0-9]{3}|m1)(?:\.([0-9]{3})(\.restart)?)?\.md$`)
 
 // Msg is one message file in a node's input channel, as observed.
@@ -177,9 +177,10 @@ func SortMsgs(msgs []Msg) {
 }
 
 // Policy is every number the machine runs on. Values come from the profile
-// (defaults.policy, overridable per member); anything unset falls back to
-// DefaultPolicy — constants compiled in, never a runtime-read defaults file.
-// Resolved values are recorded on the campaign and in each member.json.
+// (defaults.policy); anything unset falls back to DefaultPolicy — constants
+// compiled in, never a runtime-read defaults file. Resolved values are
+// recorded on the campaign and in each member.json. StallSeconds is the one
+// number a member may also declare for itself (see CampaignOnlyFields).
 type Policy struct {
 	ContinueAttempts int `json:"continueAttempts,omitempty" yaml:"continueAttempts,omitempty"`
 	Restarts         int `json:"restarts,omitempty" yaml:"restarts,omitempty"`
@@ -213,6 +214,36 @@ func DefaultPolicy() Policy {
 
 // DefaultOrchestratorStallSeconds is the orchestrator seat's stall default.
 const DefaultOrchestratorStallSeconds = 1800
+
+// CampaignOnlyFields names the set numbers in p that only a campaign may
+// declare, in profile spelling. StallSeconds is absent because it is the one
+// number resolved per seat: it belongs to a member's own turn driver, and
+// reaches it as CS_<CLI>_STALL_SECS. Every other number governs the whole
+// campaign — one resolved set, recorded on the campaign and in every
+// member.json, that every node is computed against.
+//
+// It exists so validation can REFUSE a member that declares one, rather than
+// writing a number nothing reads. That member would run on the campaign's
+// value while its own profile said otherwise, and nothing would ever say so.
+func (p Policy) CampaignOnlyFields() []string {
+	var out []string
+	for _, field := range []struct {
+		name  string
+		value int
+	}{
+		{"continueAttempts", p.ContinueAttempts},
+		{"restarts", p.Restarts},
+		{"elapsedSeconds", p.ElapsedSeconds},
+		{"blindProbes", p.BlindProbes},
+		{"pollSeconds", p.PollSeconds},
+		{"settlingSeconds", p.SettlingSeconds},
+	} {
+		if field.value != 0 {
+			out = append(out, "policy."+field.name)
+		}
+	}
+	return out
+}
 
 // Resolve fills every zero field of p from DefaultPolicy.
 func (p Policy) Resolve() Policy {

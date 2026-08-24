@@ -154,8 +154,9 @@ func (s sandboxCLI) sessionLog(ctx context.Context, w io.Writer, member model.Me
 	return runTool(ctx, w, s.stderr(), tool, member.Session.Name, "--full")
 }
 
-// probeMember is the one round trip of §6, from the host: every fact about
-// one node, or a probe failure — a fact about the observation, not the node.
+// probeMember is the one round trip of PROTOCOL.md §6, from the host: every
+// fact about one node, or a probe failure — a fact about the observation,
+// not the node.
 func (s sandboxCLI) probeMember(ctx context.Context, member model.Member) (protocol.Facts, bool) {
 	out, err := s.memberOutput(ctx, member, protocol.ProbeScript(member.CLI))
 	if err != nil {

@@ -1,8 +1,8 @@
 package main
 
-// The wait ladder — §3.6's Layer 2, correction by code with no model in the
-// loop — previously ran only under TestLiveDispatchSmoke (skipped without a
-// VM). These tests run the real cmdWait loop against a scripted in-memory
+// The wait ladder — the mechanical recovery of PROTOCOL.md §5, run by code
+// with no model in the loop — previously ran only under TestLiveDispatchSmoke
+// (skipped without a VM). These tests run the real cmdWait loop against a scripted in-memory
 // world: probes serve MSG/REPLY/DRIVERS lines from it, deliveries mutate it,
 // and the seams (sshOut, startTurn, runSessionCmd) are the only fakes.
 
@@ -296,8 +296,8 @@ func TestSendRetriesOnceOnMintCollision(t *testing.T) {
 }
 
 // A send that reaches a WORKING node (live driver) delivers its continuation
-// but starts no second turn — §1.3 has no deliver-into-a-running-turn case;
-// the running turn, or the ladder after it stops, picks the message up. The
+// but starts no second turn — PROTOCOL.md §5 has no deliver-into-a-running-turn
+// case; the running turn, or the ladder after it stops, picks the message up. The
 // racing-sends live run showed each raced round leaking one extra guest
 // session from exactly this double start.
 func TestSendSkipsTurnStartWhenTurnIsRunning(t *testing.T) {

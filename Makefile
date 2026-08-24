@@ -169,10 +169,10 @@ DOTENV = set -a; [ -f .env ] && . ./.env; set +a;
 ## test-integration: LIVE — the backend matrix against real providers
 ##
 ## Real machines, real model turns, real money. One campaign per backend:
-## claude on a subscription, codex on a subscription, codex on an API key, and
-## opencode on a Fireworks key. Every scenario this host cannot sign in for
-## skips with the credential it wants, so a run also reports what one more
-## login would cover.
+## claude on a subscription and on an API key, codex on a subscription and on
+## an API key, and opencode on a Fireworks key. Every scenario this host cannot
+## sign in for skips with the credential it wants, so a run also reports what
+## one more login would cover.
 ##
 ## -run selects the live members for the same reason test-smoke does. The
 ## recording test is not among them: it overwrites the committed cassette, so

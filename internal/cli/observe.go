@@ -124,8 +124,8 @@ var observeBurstDelay = time.Second
 // fails, a scoped burst of re-probes of THAT node only, up to BlindProbes
 // within this observe invocation. Without it observe's single look could
 // never accumulate the consecutive-failure run that concludes "machine gone"
-// (§2.3), and a truly gone machine rendered forever as the overlay. Nothing
-// is stored — the whole run happens inside one look, which is what keeps the
+// (PROTOCOL.md §5), and a truly gone machine rendered forever as the overlay.
+// Nothing is stored — the whole run happens inside one look, which keeps the
 // "node state is computed, never stored" rule intact (persisting a blind
 // count between calls would feed a computation from stored state). Healthy
 // nodes pay nothing; a gone machine costs ~BlindProbes seconds, acceptable

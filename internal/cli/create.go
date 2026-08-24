@@ -62,8 +62,9 @@ func buildCampaign(name string, profile model.Profile, profilePath, digest strin
 	id := idFor(name, profile)
 	short := discriminator(profile)
 	group := name + "-" + short
-	// The elapsed backstop's stated default is the campaign deadline (§1.7);
-	// only when the profile declares neither does the compiled-in day apply.
+	// The elapsed backstop's stated default is the campaign deadline
+	// (SPEC.md §6.1); only when the profile declares neither does the
+	// compiled-in day apply.
 	// Derived here, at create, so the recorded policy is the resolved number —
 	// never recomputed from the deadline later. An explicit elapsedSeconds
 	// always wins. The parse cannot fail on any validated profile; a caller

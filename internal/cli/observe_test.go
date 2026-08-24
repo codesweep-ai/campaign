@@ -3,8 +3,8 @@ package cli
 // Host observe and the "machine gone" conclusion. observe used to pass a
 // constant blindRun=1 — always below BlindProbes — so a truly gone machine
 // rendered forever as the node-unreachable overlay and could never reach the
-// §2.3 "machine gone" line. The scoped burst re-probes only the failing node,
-// within the one invocation, storing nothing.
+// PROTOCOL.md §5 "machine gone" line. The scoped burst re-probes only the
+// failing node, within the one invocation, storing nothing.
 
 import (
 	"context"

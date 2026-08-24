@@ -139,6 +139,7 @@ archive/
 ├── campaign-profile.yaml      the profile this campaign ran on
 ├── readback.json              each member's restatement of its own job
 ├── fleet-verdict.json         the audit's findings
+├── member-harness.json        each member's tools, measured again at archive time
 ├── upstream-fingerprint.json  the tool versions the campaign ended on
 ├── orchestrator/              the same four channels as every agent
 └── agents/<name>/
