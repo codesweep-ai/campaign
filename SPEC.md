@@ -432,8 +432,7 @@ second member of the wrong family.*
 
 **R69.** The team **MUST** be audited against evidence rather than declaration. Each member's
 declared-CLI transcript stream must be the one that did the work. No member may carry another
-family's session or credential state. At most one member may run on an inherited host login whose
-credentials rotate.
+family's session or credential state.
 
 **R70.** That audit **MUST** run while the sandboxes still exist, before destroy. *A divergence is
 then provable from the archive rather than dependent on a member's self-report.*
