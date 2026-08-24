@@ -1089,9 +1089,9 @@ var mdToHtml = function mdToHtml(src) {
 
   // Since-last-visit: read the previous visit date, stamp today's. Client-side
   // only — the rendered HTML stays a deterministic function of the records.
-  // Key is namespaced BY PROJECT (LGR-013): localStorage is per-origin, and two
-  // ledgers served from one host must not share a visit stamp. Theme stays
-  // shared deliberately — one person, one preference.
+  // Key is namespaced BY PROJECT: localStorage is per-origin, and two ledgers
+  // served from one host must not share a visit stamp. Theme stays shared
+  // deliberately — one person, one preference.
   var VISIT_KEY = 'ledger-last-visit:' + (DATA.project || '');
   var prevVisit = null;
   try {
@@ -1646,7 +1646,7 @@ var mdToHtml = function mdToHtml(src) {
     if (ev.key === 'Escape' && !$('#modal').hidden) closeModal();
   });
   $('#staleBtn').addEventListener('click', function () { state.staleOnly = !state.staleOnly; syncControls(); });
-  // narrow-mode cycling filter chips (LGR-022): curated states, fixed footprint
+  // narrow-mode cycling filter chips: curated states, fixed footprint
   var TYPE_KEYS = ['defect', 'improvement', 'feature-idea'];
   var SEV_KEYS = ['critical', 'high', 'med', 'low'];
   var TYPE_CYCLE = [
