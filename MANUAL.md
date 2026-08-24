@@ -7,8 +7,8 @@ harvest the evidence of what they did.
 
 The repository ships three programs. `cs-campaign` is the host command an operator drives.
 `cs-campaign-member` is installed inside every member and is how a member reads its work and answers
-it. `cs-dispatch-viewer` turns one finished campaign's archive into a single HTML page. All three
-print this manual with their `manual` verb.
+it. `cs-dispatch-viewer` turns one finished campaign's archive into a single HTML page. The two
+host programs, `cs-campaign` and `cs-dispatch-viewer`, print this manual with their `manual` verb.
 
 ## Synopsis
 
@@ -65,8 +65,9 @@ line quoted here.
 
 1. **Decide the acceptance gates first.** Everything else hangs off the definition of done.
 2. **Write the product documents** in the target repository, campaign-free.
-3. **Brief the team.** Role briefs enter the product repository in the opening commit, because
-   guests receive repository clones, and are retired in the closing commit.
+3. **Brief the team.** Write one brief per member in `roles/`, beside the profile. `create` seeds
+   each member its own brief, and the orchestrator the mission and every agent's brief. Nothing is
+   copied into the product repository.
 4. **Create and dispatch.** One mission prompt, then hands off. All judgement lives in the
    orchestrator; the host observes, archives and verifies.
 5. **Archive before destroy,** and re-run the gates yourself from a fresh clone. That independent
@@ -291,11 +292,12 @@ commit count.
 
 ```console
 $ cs-campaign fetch acme/backend
-backend cs-sandbox/backend-56aa4ee0.acme-56aa4ee0 — tree differs from base (real changes present)
+product cs-sandbox/backend-56aa4ee0.acme-56aa4ee0 — tree differs from base (real changes present)
 ```
 
-A branch whose tree is identical to its base gets a warning instead: it delivers no change, however
-many commits it carries.
+One line per repository that member holds, naming the repository as the member sees it and the
+branch the work arrived on. A branch whose tree is identical to its base gets a warning instead: it
+delivers no change, however many commits it carries.
 
 ### transcript
 
@@ -311,9 +313,10 @@ Streams the raw model-session transcript. Human forensics only, and never a stat
 cs-campaign archive <campaign> [--output DIR]
 ```
 
-Collects the evidence: campaign state, every member's input and output channels, CLI transcripts,
-source metadata, and the team audit verdict. It runs the audit first, while the sandboxes still
-exist.
+Collects the evidence: campaign state, every member's input and output channels, member
+configuration, CLI transcripts, source metadata, and the team audit verdict. The audit runs in the
+same pass, while the sandboxes still exist. Without `--output` the archive lands in
+`archives/<campaign>-<UTC timestamp>`, and `destroy --archive` uses `archives/<campaign>-final`.
 
 Anything that failed to collect leaves an `INCOMPLETE-*` marker beside where it should have been.
 Each collection command is bounded, so a member that stops answering leaves a marker naming the
@@ -383,9 +386,10 @@ ok  upstream matches pin: 0.0.1-snapshot-dd879be + 21 tools (pinned 2026-08-19)
 ok  state directory: /home/user/.config/cs-campaign/campaigns
 ```
 
-With a campaign name, it re-verifies that campaign's instantiation: manifest fidelity, guest
-controls, the family guard actually firing, and each member's harness against the pin. `create` ends
-by running it. **If it is not green, do not dispatch.** Fix it or destroy it.
+With a campaign name, it re-verifies that campaign's instantiation. It checks each member's harness
+against the pin, manifest fidelity, guest controls, the family guard actually firing, and each
+member's declared CLI present in its own machine. `create` ends by running it. **If it is not
+green, do not dispatch.** Fix it or destroy it.
 
 ### pin
 
@@ -394,7 +398,10 @@ cs-campaign pin [--update] [--note TEXT]
 ```
 
 Records the validated upstream surface: the `cs-sandbox` version and the sha256 of all 21 agent
-tools, with a note saying why they are trusted.
+tools, with a note saying why they are trusted. A host that also has `cs-vcr` records the replay
+surface beside it: that binary's hash, and the normalization ruleset deciding whether a committed
+cassette still replays. A host without `cs-vcr` records none of that, and does not read as deviating
+for it.
 
 ```console
 $ cs-campaign pin --note "live smoke PASS on firecracker, 102.6s"
@@ -437,7 +444,7 @@ help.
 | `restart <agent>` | Drops its session and re-anchors it against its open dispatch. |
 | `accept <agent>` | Records its current reply as accepted, which frees the agent. |
 | `note plan\|assessment --file F\|-` | Appends to the log. Re-planning is another `plan` entry. |
-| `wait [--for SECS]` | Blocks. Recovery runs itself, and it returns when a judgement is due. |
+| `wait [--for SECS]` | Blocks. Recovery runs itself. Returns when a judgement is due, or when the chunk elapses: `--for` seconds, 240 by default. |
 | `fetch <agent> [repo]` | Fetches its branch to `refs/remotes/campaign/<agent>/<repo>`. |
 | `push <agent> [repo]` | Pushes HEAD to it at `refs/campaign/orchestrator`. |
 
@@ -454,8 +461,8 @@ cs-dispatch-viewer manual | version | help
 
 Renders one campaign run archive as a single self-contained HTML page. It opens straight from disk:
 no server, no network, no runtime dependencies. `<run-dir>` is an archive directory holding
-`campaign.json`, or a run directory holding `archive/`. Output defaults to `viewer.html` beside the
-input.
+`campaign.json`, or a run directory holding `archive/`. Output defaults to `viewer.html` in the
+current directory.
 
 It reads the archive and nothing else:
 
@@ -463,7 +470,8 @@ It reads the archive and nothing else:
   record;
 - each `output/replies/*.json`, whose filename decides which dispatch it closes;
 - the orchestrator's `output/log.jsonl`;
-- `campaign.json`, `readback.json`, `fleet-verdict.json`, and any `INCOMPLETE-*` markers.
+- `campaign.json`, `readback.json`, `fleet-verdict.json`, `FLEET-ANOMALY.txt`, and any
+  `INCOMPLETE-*` markers.
 
 **Timeline.** Each node gets one lane, with the orchestrator first. Squares are channel artifacts: the facts any
 observer can verify from the files alone.
@@ -514,7 +522,7 @@ Severity reflects the kind of problem.
 | Code | Severity | Meaning |
 |---|---|---|
 | `collection-incomplete` | error | an `INCOMPLETE-*` marker: part of the archive failed to collect |
-| `fleet-anomaly` / `fleet-not-clean` | error | the create-time or archive-time team audit recorded findings |
+| `fleet-anomaly` / `fleet-not-clean` | error | the team audit recorded findings when the archive was collected |
 | `mtimes-clobbered` | error | message times are collection-time, not event-time; no timeline is drawn |
 | `reply-unparseable` / `log-unparseable` | error | an artifact is not valid JSON |
 | `reply-without-dispatch` | error | a reply exists for a dispatch no message ever opened |
@@ -592,6 +600,7 @@ agents:
     policy: {stallSeconds: 240}
 ```
 
+`engine` says what a member runs on: `firecracker` for a microVM, or `podman` for a container.
 `model` and `effort` are handed to that member's CLI unchanged, so use the slugs that CLI accepts.
 For `opencode`, `effort` requires `model` beside it, because it attaches reasoning options to a
 named model, not to the session. `repos[].ref` picks the branch or tag cloned into the member, and
@@ -599,13 +608,15 @@ named model, not to the session. `repos[].ref` picks the branch or tag cloned in
 
 Values are never written into a profile. `apiKeyFromEnv` names host environment variables, and the
 first one actually set is used. `inheritAgentLogin` names CLI families whose existing host login the
-member inherits; those expire in hours, so check yours immediately before `create`.
+member inherits; those expire in hours, so check yours immediately before `create`. A member that
+gets a key from `apiKeyFromEnv` inherits no login: the key wins, and the two are not combined.
 
 ### The policy numbers
 
-`defaults.policy` sets the dispatch machine's numbers, and a member's own `policy:` block overrides
-them for that seat. Anything unset falls back to a compiled-in default, and the resolved values are
-recorded on the campaign and in every member's `member.json`.
+`defaults.policy` sets the dispatch machine's numbers for the whole campaign. Anything unset falls
+back to a compiled-in default, and the resolved set is recorded on the campaign, in every member's
+`member.json` and in the orchestrator's `manifest.json`. Every node is computed against that one
+set.
 
 | Number | Default | Meaning |
 |---|---|---|
@@ -616,6 +627,13 @@ recorded on the campaign and in every member's `member.json`.
 | `pollSeconds` | 30 | How often the orchestrator's `wait` looks. |
 | `settlingSeconds` | 300 | Grace after any send before a driverless node counts as stopped. |
 | `stallSeconds` | 180 for agents, 1800 for the orchestrator | The turn driver's own idle threshold. |
+
+`stallSeconds` is the one number resolved per seat, which is how the orchestrator gets a longer
+threshold than the agents. A member's own `policy:` block sets it for that member, else
+`defaults.policy.stallSeconds` for the campaign, else the compiled-in default for that role. The
+resolved value is recorded on that member and delivered to its turn driver through the sandbox
+environment. Any other number a member's `policy:` block carries is accepted by the parser and not
+applied; put it in `defaults.policy`, which is where the machine reads it.
 
 `CS_CAMPAIGN_POLL_SECONDS` overrides `pollSeconds` at the wait itself, for the host and for every
 member. It is not profile configuration, and it never reaches the campaign record. The campaign ID is the
@@ -633,10 +651,14 @@ the value only as the `elapsedSeconds` default.
 |---|---|---|
 | `$XDG_CONFIG_HOME/cs-campaign/campaigns/<name>.json` | host | One campaign's record. |
 | `$XDG_CONFIG_HOME/cs-campaign/campaigns/.<name>.lock` | host | The per-campaign write lock. |
+| `$XDG_CONFIG_HOME/cs-campaign/campaigns/<name>.log-mirror.jsonl` | `observe` | A copy of the orchestrator's log, so the claim survives a lost machine. |
 | `~/.config/cs-campaign/pin.json` | `pin` | The validated upstream surface. |
 | `<archive>/campaign.json` | `archive` | The record as the campaign ended. |
+| `<archive>/campaign-profile.yaml` | `archive` | The profile the campaign was declared with. |
 | `<archive>/readback.json` | `archive` | Every member's restatement of its job. |
 | `<archive>/fleet-verdict.json` | `archive` | The audit's findings. |
+| `<archive>/upstream-fingerprint.json` | `archive` | The host surface the campaign ended on. |
+| `<archive>/member-harness.json` | `archive` | Each member's tool surface, measured again at archive time. |
 | `~/.config/cs-campaign/member.json` | host, in each member | What that member was given. |
 | `~/.config/cs-campaign/manifest.json` | host, in the orchestrator | The roster its `wait` loop runs on. |
 | `~/.local/share/cs-campaign/input/` | the member's driver | Dispatch messages. |
@@ -670,6 +692,7 @@ the host's value without the value passing through campaign state.
 |---|---|
 | 0 | The command did what it says. Read the output: an archive can be incomplete at exit 0. |
 | 1 | Any failure. The message names what failed and what to do about it. |
+| 70 | The family guard is installed but broken: the real tool it stands in for is missing or will not exec. `cs-campaign-member` only. |
 | 78 | The family guard refused a wrong-family call against a member. `cs-campaign-member` only. |
 
 ## Diagnostics
@@ -704,7 +727,8 @@ destroy it.
 
 **`member <name> would need a N-byte socket path, M over the 108-byte AF_UNIX limit`**
 
-The composed group and member path is too long. Shorten the campaign name or the member name. The
+The composed group and member path is too long. Shorten the campaign name or the member name, or
+point `CS_SANDBOX_HOME` at a shorter directory; the message says how many characters it is over. The
 check runs before anything is allocated, because the overflow is otherwise silent: the socket binds
 under a truncated name and the machine never becomes ready.
 
@@ -749,12 +773,13 @@ names the member.
 
 The host binary was built without compiling the guest binary first. Build with `make build`.
 
-**`unsupported campaign state version N`**
+**`campaign <name> uses state version N, which predates sandbox groups`**
 
 The record predates group addressing and cannot be migrated, because the sandboxes it points at are
-already unreachable.
+already unreachable. Archive or destroy it with the `cs-campaign` that made it, then remove the
+record. A record from a *newer* build reports `unsupported state version N` instead.
 
-**`%s has no reply to accept`**
+**`<agent> has no reply to accept`**
 
 The orchestrator tried to accept work that has not arrived.
 
@@ -770,12 +795,16 @@ terminal. `ssh` with arguments runs the command and returns.
 `ls --json` and `observe --json` are the machine-readable surfaces. `plan` always prints JSON.
 Everything else prints for a human and may change; parse it at your own risk.
 
-`observe` performs one probe per member over the network, and re-probes a failing member up to
-`blindProbes` times, one second apart. Budget about `blindProbes` seconds for a member whose machine
-is gone. Nothing else touches the network.
+`observe` performs one probe per member over the network, plus one read of the orchestrator's log
+and, once the mission has been answered, one read of that reply. A failing member is re-probed up to
+`blindProbes` times, one second apart, so budget about `blindProbes` seconds for a member whose
+machine is gone.
 
-`validate`, `plan`, `ls`, `doctor` and `manual` change nothing. `init` writes files and refuses to
-overwrite. `create`, `send`, `restart`, `fetch`, `archive` and `destroy` change state.
+`validate`, `plan`, `ls`, `audit`, `transcript`, `manual` and `doctor` with no argument change
+nothing. `init` writes files and refuses to overwrite. `create`, `send`, `restart`, `fetch`,
+`archive`, `destroy` and `pin` change state. So do two commands that read: `doctor <campaign>`
+records each member's refreshed harness verdict, and `observe` mirrors the orchestrator's log beside
+the campaign record.
 
 Readiness is `cs-campaign doctor`, which exits non-zero when the host surface cannot run a campaign,
 and `cs-campaign doctor <campaign>`, which exits non-zero when a live campaign is not the team that

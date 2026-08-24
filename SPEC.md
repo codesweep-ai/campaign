@@ -55,8 +55,8 @@ computed from that node's own machine rather than remembered.
 3. **Scheduling across campaigns.** One campaign is one group. Nothing here allocates hosts,
    queues campaigns, or shares a team between missions.
 4. **Being the sandbox.** Virtualization, images and the network belong to `cs-sandbox`.
-5. **A stable machine-readable output for every command.** Two commands emit JSON on request; the
-   rest print for a human.
+5. **A stable machine-readable output for every command.** Two commands emit JSON on request and
+   `plan` always does; the rest print for a human.
 
 ---
 
@@ -106,7 +106,8 @@ cs-campaign create <name> --profile <file>            # provision, brief, verify
 cs-campaign observe|send|restart <campaign>           # the protocol surface
 cs-campaign ssh|fetch|transcript <campaign>[/member]  # member access
 cs-campaign archive|audit <campaign>                  # evidence
-cs-campaign ls|destroy <campaign>                     # lifecycle
+cs-campaign ls                                        # every campaign on this host
+cs-campaign destroy <campaign>                        # teardown, and reclaim the group
 cs-campaign doctor|pin|manual|version                 # health and metadata
 ```
 
@@ -763,16 +764,24 @@ archive/
 ├── campaign-profile.yaml         what was declared
 ├── readback.json                 every member's restatement of its job
 ├── fleet-verdict.json            the audit's findings
+├── member-harness.json           each member's tool surface, measured again here
 ├── upstream-fingerprint.json     the surface the campaign ended on
 ├── orchestrator/
+│   ├── config/                   member.json, manifest.json, the delivered stall threshold
 │   ├── input/                    m1 and its continuations
-│   └── output/                   replies/m1.json, and log.jsonl
+│   ├── output/                   replies/m1.json, and log.jsonl
+│   ├── transcript/               its CLI's own session evidence
+│   └── source-metadata/          commit, status, diff against base
 └── agents/<name>/
+    ├── config/                   member.json, the delivered stall threshold
     ├── input/                    d001 onward
     ├── output/replies/           its replies, evidence stamped
     ├── transcript/               its CLI's own session evidence
-    └── source-metadata/          branch, commit, diff against base
+    └── source-metadata/          commit, status, diff against base
 ```
+
+Both layouts hold the same evidence classes (R107); only the orchestrator's output channel carries a
+log. An audit that found something also leaves `FLEET-ANOMALY.txt` at the root.
 
 Anything that failed to collect leaves an `INCOMPLETE-*` marker beside where it should have been.
 Each collection command is bounded, so a member that stops answering leaves a marker naming the
@@ -783,15 +792,19 @@ deadline rather than holding the archive open.
 `~/.config/cs-campaign/pin.json`: the time it was recorded, the `cs-sandbox` version, the sha256 of
 every pinned tool, and a note saying what was run and what it proved.
 
+Where the host also has the replay surface, `cs-vcr` today, its hash and its normalization ruleset
+are recorded beside them. They are recorded separately: a campaign host that cannot record or replay
+a cassette does not have it, and must not read as deviating for that.
+
 ---
 
 ## 6. Configuration
 
 ### 6.1 The policy numbers
 
-Every number the dispatch machine runs on comes from `defaults.policy`, is overridable per member
-under `policy:`, and falls back to a compiled-in default. The resolved values are recorded on the
-campaign and in every member document.
+Every number the dispatch machine runs on comes from `defaults.policy` and falls back to a
+compiled-in default. One resolved set governs the campaign: it is recorded on the campaign, in every
+member document and in the orchestrator's manifest, and every node is computed against it.
 
 | Number | Default | Meaning |
 |---|---|---|
@@ -802,6 +815,12 @@ campaign and in every member document.
 | `pollSeconds` | 30 | How often the orchestrator's `wait` looks. |
 | `settlingSeconds` | 300 | Grace after any send before a driverless node counts as stopped. |
 | `stallSeconds` | 180 for agents, 1800 for the orchestrator | The turn driver's own idle threshold, delivered at create through the sandbox environment. |
+
+`stallSeconds` is the one number resolved per seat, because it is the one number that is not the
+machine's. It belongs to a member's own turn driver, and long quiet means something different for a
+supervisor than for a worker. A member's `policy:` block sets it for that member, `defaults.policy`
+for the campaign, and otherwise the role's compiled-in default applies. The resolved value is
+recorded on that member's record.
 
 `CS_CAMPAIGN_POLL_SECONDS` overrides `pollSeconds` where the wait sleeps, and nowhere else. It is deliberately
 outside the policy an implementation records. A replay tier needs a shorter interval than a real
@@ -814,13 +833,16 @@ only as the `elapsedSeconds` default.
 
 ### 6.2 Resolution order
 
-For every policy number and every member field:
+Each member field, and `stallSeconds`, resolves in this order:
 
 1. Take the member's own declaration in the profile.
 2. Otherwise take the profile's `defaults` block.
 3. Otherwise take the compiled-in default.
 
 A member that declares a key replaces the default rather than merging with it (R92).
+
+The rest of the policy numbers have no step 1: they resolve once, from `defaults.policy` over the
+compiled-in defaults, and govern every node (§6.1).
 
 ### 6.3 Environment
 
@@ -882,11 +904,11 @@ stuck.
 
 ### 7.4 Lifecycle and concurrency
 
-Campaign state is written under an exclusive `flock` per campaign, and a save that touches one
-member re-reads the record rather than overwriting the whole document. Message delivery mints an ID
-and refuses to clobber an existing name; a sender that loses the race looks again. Create
-checkpoints each completed resource, so a re-run continues rather than starting over. Destroy
-tolerates an absent resource at every step.
+Create and destroy hold an exclusive `flock` on the campaign for the whole command. Every save
+writes the whole record to a temporary file and renames it, so a reader sees one version or the
+other and never a torn one. Message delivery mints an ID and refuses to clobber an existing name; a
+sender that loses the race looks again. Create checkpoints each completed resource, so a re-run
+continues rather than starting over. Destroy tolerates an absent resource at every step.
 
 ### 7.5 The behaviour map
 
@@ -1102,10 +1124,9 @@ aggregates rather than overwrites. `make coverage` merges what is there and prin
 suite that stopped running while the tests still report green. When a package is meant to lose its
 coverage, re-run `make coverage-baseline` and commit the result.
 
-The baseline records the unit tier alone today. The smoke tier is committed and CI runs it, but
-what it reaches depends on the host. A scenario that inherits an agent login skips where there is
-none to inherit. CI therefore covers the three that sign in with a key. A developer holding both
-logins covers all five. A baseline recorded from the larger run would fail every smaller one, which
+The baseline records the unit tier alone today. CI runs the smoke tier on every scenario, but what
+that tier reaches still depends on the host: it skips entirely without `/dev/kvm`, podman, `cs-vcr`
+or a cassette. A baseline recorded from a host that ran it would fail every host that cannot, which
 is the opposite of what this gate is for.
 
 ---
@@ -1230,9 +1251,9 @@ the orchestrator's judgement rather than the bill.
 1. **The elapsed bound is per dispatch, not per campaign.** A campaign that opens many short
    dispatches can outlive any `elapsedSeconds` setting. Whether a campaign-level bound belongs in
    the machine or stays the operator's job is undecided.
-2. **`--json` covers two commands.** `ls` and `observe` emit machine-readable output; `audit`,
-   `doctor` and `plan` do not, or emit a shape nothing versions. An automated caller reading the
-   others is reading text that may change.
+2. **`--json` covers two commands.** `ls` and `observe` emit machine-readable output on request,
+   and `plan` always prints the campaign record as JSON. `audit` and `doctor` print for a human
+   only, so an automated caller reading either is reading text that may change.
 3. **The acceptance record has no schema check.** `accepted` entries are ordinary log lines, and a
    malformed one is ignored rather than reported.
 4. **Readback structure is checked, not its coverage.** A member can satisfy the structural check
@@ -1247,7 +1268,4 @@ the orchestrator's judgement rather than the bill.
    records the backlog rather than gating it.
 9. **R71 is stated and not met.** The team audit asks whether a member's declared-CLI evidence
    stream is empty, which is presence rather than magnitude. A member that failed every turn still
-   leaves the files its CLI writes on start-up, and passes. The ledger tracks the gap.
-10. **The smoke tier records one adapter of three.** All three can be recorded, and only one has
-    been. Whether the tier should replay every adapter on every push, at the cost of keeping three
-    cassettes current against three moving agent versions, is undecided.
+   leaves the files its CLI writes on start-up, and passes.
