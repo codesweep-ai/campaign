@@ -1,21 +1,33 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeK5v9riRaLN4LTaMNQFx","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":205,"cache_read_input_tokens":56211,"cache_creation":{"ephemeral_5m_input_tokens":205,"ephemeral_1h_input_tokens":0},"output_tokens":20,"service_tier":"standard","inference_geo":"global"}}           }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeQBYksjQoKqoEHuAoVXU","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":42,"cache_creation_input_tokens":252,"cache_read_input_tokens":53431,"cache_creation":{"ephemeral_5m_input_tokens":252,"ephemeral_1h_input_tokens":0},"output_tokens":2,"service_tier":"standard","inference_geo":"global"}}       }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01K4ghWKbsKB8AAFZYGXHU8t","name":"Bash","input":{},"caller":{"type":"direct"}}     }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}}
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cd /tmp/verify-subject-1 \u0026\u0026 python3 -m unittest discover -s tests; echo \\\"EXIT:$?\\\"\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"Eo4DCqgBCBEYAipA33nBCY1aBtNyc9DKXw3AuJpXG+z+Za5zwSLeTDeTZ0WwlqxnSg+JWNbc7In3QOdoFdMEjp9KC+Jw0BLuEZyxWTIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEJr7kGFThzn/KuAI2/rAcCCIAQGoAYuUuNQGsAECEgxjhSI5tDbg5uoG5jkaDEDinxhaU+fdzR8anyIwd8lLlvSjMSaC/pQTawl1iR19rKHTGbIsFDXj0eIJNb7hZTPPY5SEW5n6o6obThj6KpIBUYjtVuw5iyxrDLhfs0nsujcaAPft+3oRwmVFWfMI6aTrC9p/ivMVis2qBWHhcmuMe4dgAjsGFLUaPI9+bptqrY6ehPXqMSy27t1WiLu41MaVhTLDvu08NCbA0pl+C9pQjAID0vzPJi+D4YNNKyrtmxSWH67QL5zto5j4n0xk902eLEU/PjfndwotGdoz3+M6XgIYAQ=="}}
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0       }
+data: {"type":"content_block_stop","index":0 }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01FdbhE63YV2n7kfEL4zb4hx","name":"Bash","input":{},"caller":{"type":"direct"}}               }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"git -C ~/subject worktree add /tmp/verify-subject-dev refs/remotes/campaign/dev/subject --detach 2\u003e\u00261 | tail -5\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1            }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":205,"cache_read_input_tokens":56211,"output_tokens":88,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}            }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":42,"cache_creation_input_tokens":252,"cache_read_input_tokens":53431,"output_tokens":148,"output_tokens_details":{"thinking_tokens":46}},"context_management":{"applied_edits":[]}      }
 
 event: message_stop
-data: {"type":"message_stop"           }
+data: {"type":"message_stop"              }
 

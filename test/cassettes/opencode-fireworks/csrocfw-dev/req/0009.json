@@ -8,26 +8,6 @@
     {
       "content": "\"Read ~/.config/cs-campaign/member.json and then every file it lists under \\\"inputs\\\" — that is your standing context for this campaign. Then read ~/.local/share/cs-campaign/input/d002.md and follow it. Dispatch ID: d002. When the work is concluded, run `cs-campaign-member reply --file <path-to-your-summary>`. Ending your turn without a reply reads as stopped, and you will be continued.\"",
       "role": "user"
-    },
-    {
-      "content": "",
-      "reasoning_content": "The user wants me to read ~/.config/cs-campaign/member.json, then every file listed under \"inputs\", then read ~/.local/share/cs-campaign/input/d002.md and follow it. Let me start by reading these files.",
-      "role": "assistant",
-      "tool_calls": [
-        {
-          "function": {
-            "arguments": "{\"filePath\":\"/home/<USER:1>/.config/cs-campaign/member.json\"}",
-            "name": "read"
-          },
-          "id": "read_0",
-          "type": "function"
-        }
-      ]
-    },
-    {
-      "content": "<path>/home/<USER:1>/.config/cs-campaign/member.json</path>\n<type>file</type>\n<content>\n1: {\n2:   \"campaign\": \"csrocfw\",\n3:   \"member\": \"dev\",\n4:   \"role\": \"agent\",\n5:   \"network\": \"cs-sandbox-<GROUP:1>\",\n6:   \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n7:   \"repos\": [\n8:     {\n9:       \"name\": \"subject\",\n10:       \"base\": \"8ac1a365e80d4c12883f7ca996f33306cabe1bf9\"\n11:     }\n12:   ],\n13:   \"inputs\": [\n14:     \"ORIENTATION.md\",\n15:     \"dev.md\"\n16:   ],\n17:   \"inputDir\": \".local/share/cs-campaign/input\",\n18:   \"outputDir\": \".local/share/cs-campaign/output\",\n19:   \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n20:   \"policy\": {\n21:     \"continueAttempts\": 2,\n22:     \"restarts\": 1,\n23:     \"elapsedSeconds\": 3600,\n24:     \"blindProbes\": 10,\n25:     \"pollSeconds\": 15,\n26:     \"settlingSeconds\": 300,\n27:     \"stallSeconds\": 180\n28:   },\n29:   \"deadline\": \"2026-08-23T06:05:20.191787831Z\"\n30: }\n\n(End of file - total 30 lines)\n</content>",
-      "role": "tool",
-      "tool_call_id": "read_0"
     }
   ],
   "model": "accounts/fireworks/models/kimi-k3",

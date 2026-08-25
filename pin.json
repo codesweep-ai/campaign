@@ -1,6 +1,6 @@
 {
-  "pinnedAt": "2026-08-23T20:38:33.4169867Z",
-  "sandboxVersion": "b6157c8",
+  "pinnedAt": "2026-08-25T21:26:02.63632397Z",
+  "sandboxVersion": "493c50c",
   "tools": {
     "cs-claude": "9e906d165605fe18c92974ed71a46e81fd2176ea09349b64fda9f564f4be6fb1",
     "cs-claude-remote": "c5f8407729c1f71c11f6b86e06be439f7b0e67a65b8853894f435d15b0abfd50",
@@ -23,11 +23,11 @@
     "cs-opencode-remote-sessions": "e94cb889d8ff2a30e020ef82e8205d521316aa051f126d4631168f3690cd9b49",
     "cs-opencode-remote-status": "05f483b850c477f3a6145423fae712be259ff2a3b3b1fc735f6558a48ce6ae5a",
     "cs-opencode-turn": "b84e9ef9ae50a40558e775ff3778eaa4a8d740c289e10a6ded225ccf073b81a1",
-    "cs-sandbox": "093e964d3cf563d9469d9f35773a6d34349c5320fb8ce8f0a1f652f15c18e80a"
+    "cs-sandbox": "144d9e4ef41f6f83137d3c14407bf5425888550143a874e68d7b84ae66c5026f"
   },
   "fixtures": {
-    "cs-vcr": "082db12ea6c6469ba03cbeb6b63de553a8787b169e6231390bdfacb5d6c64f62"
+    "cs-vcr": "229b8e8d7eb0e784153c56f092ba080aa302caa75e64c2c5f6287d4b83c6946e"
   },
   "fixtureRuleset": "v12",
-  "note": "cs-sandbox b6157c8: two fixes to the agent turn drivers. A turn now runs against one opencode server, where a transient one used to be booted to mint a session id and could be stranded holding the port (SBX-023). And cs-opencode-remote and cs-codex-remote now resolve the learned session id under the turn lock, storing it before releasing: a campaign dispatches the next turn as soon as a reply lands, so turns overlap, and the second one used to mint a session of its own (SBX-024). A new opencode session generates a title, which is a model call no cassette recorded at that point, so the replay missed and the turn died while the campaign waited out its ladder. Validated with make test-smoke on this binary, not make test-integration: all five scenarios PASS on real machines. The race it fixes needs a loaded host to appear, so a local pass does not prove it; cs-campaign's CI is where that is tested. Real-provider traffic was not re-run."
+  "note": "cs-sandbox 493c50c, cs-vcr 197f13d, both at origin/main; image rebuilt"
 }

@@ -338,7 +338,7 @@
     {
       "content": [
         {
-          "text": "I’ll load the campaign manifest and all listed context first, then follow dispatch `d001` through completion and submit the required summary reply.",
+          "text": "I’ll load the campaign manifest and all declared inputs first, then carry out dispatch `d001` and submit the required summary through the campaign CLI.",
           "type": "output_text"
         }
       ],
@@ -347,77 +347,61 @@
       "type": "message"
     },
     {
-      "call_id": "call_WofHv6YjXI3TEW6tpA9d10e4",
+      "call_id": "call_zD4vw45J4Kkuiiz3IHblVyOc",
       "input": "const r = await tools.exec_command({cmd:\"sed -n '1,240p' /home/<USER:1>/.config/cs-campaign/member.json\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output);\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_WofHv6YjXI3TEW6tpA9d10e4",
-      "output": [
-        {
-          "text": "Script completed\nWall time 0.2 seconds\nOutput:\n",
-          "type": "input_text"
-        },
-        {
-          "text": "{\n  \"campaign\": \"csrcxsub\",\n  \"member\": \"orchestrator\",\n  \"role\": \"orchestrator\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"315f5ae4c98e6d768b4f8349536c7e4280f3a309\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"orchestrator.md\",\n    \"mission.md\",\n    \"roles/dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-08-23T05:57:20.690924226Z\"\n}\n",
-          "type": "input_text"
-        }
-      ],
-      "type": "custom_tool_call_output"
-    },
-    {
-      "encrypted_content": "gAAAAABqin3RiG7I1yDUvAF1auoiOXGfkGh52vghmuJsXMBUHfxf7pKnqXyE7E8bnTyJhXmQj5GwYsK--2e20klJVXusucTFB2yqydAoBv0xRUGhIHu_aX4PaGkHxMxBwy36pv67Mfs0k0RisoSlC9G8c-UcxqhmfH_s-0PM1-DpWAsJ3tirolZvCuffRfFzb2IsSKuBTC4dwf3AAENhK3-naJ4kromttpbCdVrDNDQQ0KkwrbbuuyxDN-56OZ6y8yGW_V9CfvewRU26Mmd69WzpRpO0IeVqXS4MnP5_vLKVz2Mzsw3U896IbIHP6gkKm5PyikxIw1T5oTab-oyRx2BpM2Hi2HjocTSfHEUk29v9tpsJnMoW_RyzpbxkSdMwsSYgqT21LGlE3BZXzR9LK0TyLUKwjzbGR3mr0tWiQ2z-LTmuUYgH3Hm9VuPAES7ZJkJI25vQqXFMvHVE-NlJwwxS6SrewOYyh1VfCuzB6_I-2Jsdqx5s1NpVU8-u7vFLiUeRZKpOqsJlD0qatIHdNDl1ctWBwoHHY7RXC7zHV2iKDVm98A8KR9yJOwYnqPc_E3ZxA8CqV1u-GTiD2eD0dS5oq6uV-7i8fV-UnjLRTDq4CO5qub-zkLkVmkXhz8bnp-HAtTI7cY8LvBGEvdPbkHIPF0soqT3iPVsyWHpKJFDV3sZry5B8fWPRN9RRnm_eA4H67tbOPLYmfcvCtM0Vkpkr0MF-lDH2I9IBsvPb83_f_4R6dRUQ9UMuoovVjbBYYkFwu-sdGjURTBBS-PwE7tP9oUrqZOLmcGr9NiVCAlCwTOI5-OEb7AKidJKyPg-Nd4gnoO1zUesMQVlXo9ezZzjhNlMNxjt0buW1odkO-MyX8BbxkoMTS2pGhGY6E9V5JK_O4eh0Xk3ZimdXgtVVeqP5P-3WEuw1oS2aTkIQ68upwOnB34uYGSAXyCQOP2Zvd_D2FNEtcrENFEad-xMFullt9XuC7xx-dBwNydNugVnrEdEqCxgfEFbe4xNzIQH2he4cE4Xxjo9k_H1yZo_DWHLQKbYwUHE0nMxFtJqi4a1ZG06QM547PT5YGGO3IjVgkEnK5XfJJ6UUkbQvHHDjcAY8nfLfw6JhnnCARFWahtXoEoX-3zAYvDykR0-B_d_Qb01fSAuObGtEdUEhJE9fbxWSqEI5Hp9YChZKCQs7vvlOHVgPSTfi_LGp78hksYbWdh_7h_oC446abbqQVHcl8-x1K6Wk6cxWOu_qJclIx0vPV0xfsIL_D3AeYhuwwidw5ZVhhBz4DHcnlRmbkQOSfnjEAa0zc48UVGmQJoPonnFFADsFJ2Rzu6fwEH-XgauuKbmER5LhgtO_lxt4od_jxWFRdsGSRWQy-w==",
-      "summary": [],
-      "type": "reasoning"
-    },
-    {
-      "call_id": "call_q8sv1gu6caWtjEhSRgouAKJC",
-      "input": "const paths = [\n\"/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/orchestrator.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/mission.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/roles/dev.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/d001.md\"\n];\nconst rs = await Promise.all(paths.map(path => tools.exec_command({cmd:`sed -n '1,260p' ${JSON.stringify(path)}`,workdir:\"/home/<USER:1>\",yield_time_ms:10000,max_output_tokens:30000})));\nrs.forEach((r,i)=>{ text(`===== ${paths[i]} =====\\n${r.output}`); });\n",
-      "name": "exec",
-      "status": "completed",
-      "type": "custom_tool_call"
-    },
-    {
-      "call_id": "call_q8sv1gu6caWtjEhSRgouAKJC",
+      "call_id": "call_zD4vw45J4Kkuiiz3IHblVyOc",
       "output": [
         {
           "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md =====\n# Campaign member orientation\n\nYou are `orchestrator`, running as the **orchestrator** of campaign `csrcxsub`.\n\nThis file is written by the harness at creation. It describes your environment and\nthe one rule everything runs on. It does not describe the work — that is in the\nfiles listed below.\n\n## What you have\n\n- **`~/subject`** — your own clone of the repository, on branch `cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>`.\n  Nobody else commits to that branch.\n\nFiles placed in `~/.local/share/cs-campaign/input` for you:\n\n- `orchestrator.md`\n- `mission.md`\n- `roles/dev.md`\n\n**Read all of them before you begin.** They are the only statement of what you are\nhere to do.\n\n## The one rule\n\nWork reaches you as **dispatches** — read your current one with\n`cs-campaign-member inbox`. A dispatch stays open until you close it:\n\n    cs-campaign-member reply --file <path-to-your-summary>\n\n**Do not stop until you have replied.** If you end your turn without a reply, the\nwork is not done in anyone's eyes but yours: you will simply be prodded to reply,\nand your unsaved reasoning may be gone. Reply, then stop.\n\nTwo more obligations, both irreversible if skipped:\n\n- **Commit your work to your own branch.** Your machine is destroyed at the end of\n  the campaign; a commit on your branch is the only way anything survives. Your\n  reply automatically records whether your branch really differs from its base —\n  an empty branch under a confident reply speaks for itself.\n- **Write durable results to `~/.local/share/cs-campaign/output`** — reports, findings, anything\n  that should outlive the run and is not source code.\n\n## Your team\n\nYou did not choose this team and you cannot change it. These members exist, each in\nits own machine, each with its own clone:\n\n- `dev` (codex) — brief: `.local/share/cs-campaign/input/roles/dev.md`\n\nRead each teammate's brief before allocating work: it states what that member owns\nand what it must not touch.\n\n## Running the campaign\n\nYour whole loop is: **decide → send → wait → judge → repeat.**\n\n- `cs-campaign-member send <member> --file <path>` gives a teammate work. If its\n  dispatch is open, your message continues it; if closed, a new dispatch opens —\n  you never classify, the tool computes it. Put everything the teammate needs in\n  the file: it may not see what you see, and it cannot ask.\n- `cs-campaign-member wait` blocks while everyone works. Recovery is not your\n  job: wait prods a stalled teammate and restarts a wedged one by itself, and\n  returns only when a **judgment** is due — a reply to judge, a dead node to plan\n  around, a free teammate to assign.\n- Judge every reply against the work, not the words: `cs-campaign-member read\n  <member>` for its reply (which carries measured branch evidence),\n  `cs-campaign-member fetch <member>` for the branch itself. Good enough →\n  `accept <member>`. Not good enough → send rework, saying precisely what is\n  wrong. Accepting a first attempt is a decision, not a default.\n- Record what only you know: `cs-campaign-member note plan --file …` for work\n  not yet dispatched, `note assessment --file …` when something changed — a risk\n  found, a machine lost (record that immediately; only the operator can fix a\n  machine). Never on a schedule.\n\nWrite dispatch files, do not type prose into the shell: your own shell rewrites\nbackticks and $(…) before any tool sees them. `--file -` reads stdin; a quoted\nheredoc (`<<'EOF'`) keeps the bytes intact.\n\n## Ending the campaign\n\nYour dispatch `m1` is the mission, and your reply to it ends the campaign — the\nreply command and its required `--outcome` vocabulary are stated in the mission\ndispatch itself. Reply only when the campaign is concluded; between judgments,\ncall `wait` again. **Never end your turn without either calling `wait` or\nreplying.**\n",
-          "type": "input_text"
-        },
-        {
-          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/orchestrator.md =====\nYou run this campaign and judge it; you write no code yourself.\n\nDispatch the task to dev with everything it needs, judge the reply by fetching\nthe branch rather than believing the report, accept only work that meets every\ncriterion, then reply to your mission with the honest outcome.\n",
-          "type": "input_text"
-        },
-        {
-          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/mission.md =====\n# Mission: greet, tested\n\nDeliver src/greet.py with greet(name) returning \"Hello, <name>!\" and\ntests/test_greet.py covering a normal name and the empty string, with\npython3 -m unittest discover -s tests exiting 0.\n\nAll three satisfied is met. This is a small mission: if it stalls, wrap up\nhonestly rather than continuing.\n",
-          "type": "input_text"
-        },
-        {
-          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/roles/dev.md =====\nYou own the subject repository.\n\nImplement exactly what each dispatch asks, run the tests you write, commit to\nyour own branch before replying, and tell the truth in your reply.\n",
-          "type": "input_text"
-        },
-        {
-          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/d001.md =====\nThis is dispatch d001: confirm your briefing before any work is assigned.\n\n1. Run: cs-campaign-member check-inputs\n   It prints any briefing file you were promised that is absent.\n2. Read ~/.config/cs-campaign/member.json, and then every file it lists under \"inputs\", in order.\n3. Write a file (e.g. /tmp/readback.json) holding EXACTLY this JSON, on a single line:\n\n{\"member\":\"orchestrator\",\"role\":\"orchestrator\",\"branch\":\"<your branch, from member.json>\",\"missing\":[<output of check-inputs, as strings, else empty>],\"goal\":\"<one sentence, in your own words: what this campaign is asking you to accomplish>\",\"scope\":\"<one sentence: what you own and what you must not touch>\",\"obligations\":\"<one sentence: what this campaign requires of you, and what happens to your work if you do not do it>\"}\n\n4. Reply with it: cs-campaign-member reply --file /tmp/readback.json\n\nDo not perform any of the work yet. Your reply closes this dispatch.",
+          "text": "{\n  \"campaign\": \"csrcxsub\",\n  \"member\": \"orchestrator\",\n  \"role\": \"orchestrator\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"8a7a00450e5bd6b354f1f8c5c390df241ccbb502\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"orchestrator.md\",\n    \"mission.md\",\n    \"roles/dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-08-25T22:34:20.618972424Z\"\n}\n",
           "type": "input_text"
         }
       ],
       "type": "custom_tool_call_output"
     },
     {
-      "encrypted_content": "gAAAAABqin3XBlcIqQDCK70URI5QhyxaL8kyxxzIIDgn8PCokmpwg83a_qgaKBvs6osvsvAouR9hPpuF53Cw72gHP9E2rQx68eK46NHh5VJdEM5ldjpiY5otq2vGD5l7n0AD5Wg4MErNpyPgIqFB1yp4uln8PlnYZ7XmgcBeLQ0BHrYmRChIP5EPT-18dky5lFGkqIGpWO-5T9OKexElhd8faEIUok4sEyOiuTWB5ORL6E2t9F3HKTyHta6ZFfItfqDxNBPYuexidXvzao_uZhi6P57C2NRWgr2SqICZUwJNbF13D8DRdawr6yBs30-PKWTUfEoyp0jTQh768Vxdq42LRHQW_KTJDisBBjtRumPLYb4KwJLfb265PhUn9XNhQT6nNgfF4pbwuPYKw8b7iNvQr_vjNw8_wBqy-5AMB0FKBc_RYl4OybMFlEIRgX8KiaMQCTzxhtWb8uCwZ6SXkmXHswl8kNN7xPfsVpF-AvkosoB0KLWbvo8TUkD0KVSs6GFR9XMepkInQHNfAeIlk_oukI3HYieW-Mg3eOHlnbncqw6tnd7b6Ukd3FIqJem8kbIgzT_SQhIusuo-70ADPnNtBFs5fWBg75iSjHShXFdscxgsHoJ2r4shaiCpvYzq_DUO-hdJl2CsR7ejHrCve_Um1kZlvFq1RmME39nTL-BUF8YnTa9GxweLMAUAkBtFDEURBvcXCbbdl9B53M_olGCXCMN8997MW5hABa3QllkTeTOUAL9AeCDy-hxsVeXoB_9H_9-R88dEoMZVJc6c4M7dvOHorp7d1VIDi0cnWMP3kPVpG4z5I-9mlqvfiv46cC-_JrScW82bcqxWejQGDT8hptSugRtsPAlipQJwU6OIPuoe3wG7Ecww9Wf_ifyn7tk2Yj0Dd1TrIRFHqW9i_NHKE4e-Nfrs1Ha4H7_4FaL4hWenjDjw5526ciogPlZg1ScZfwfCIhhG6y4UqNiXGMvZCI92PFk_VIdT2UEKPbjHhlShhbDxN4xn5crH87LiT4x0SXWOg00yD_uvNxa0N8FjWlQARZCRGXqKCQV6CypN-pcMBpIYcrkQ7UBL6z8y25uR8EeEPEo3Ea5BPNN3VawdXuQuTMizPCkK3uZjzuU3flcOTqBqcoyCtGLFevMcmOtNNW5kxotJrEPtO1Ic7RYXbgvBSO14sQBZBvwyZ50HdJcYSkjppxBW4IGfiwO4On_2T6RK9R5JjG-l8n4JBZ-qdVHgJlcb8LlobGCzMkSs1PGG0jfv6XOYcRtSh2sp7ZVHJrZBOmg2YhO49Hz795mcWrTJ1exdM0haDU91coW8QMAqpUauRjb607oLaVS9VFhy4yTD_Gw0vPugtSPQ84-xBwGzFOIKzpafgGnjECkRdzZ52Fz5TGERNPR7bN0CM_X90tLhzSbeMJcHZRbPhoCpfyTtHrO3AKEJ0wAzOFabbk4unvNZnJ7l3KPOMVeSHIOqOuXtC1R3WMcu6PRmnDnkMJqrqP3e_g==",
+      "encrypted_content": "gAAAAABqjgp52150o0G-mNDLzQ5p1K3lxzWMcMnt-sHRti5caIvfkV2oSNIgshLMgCrnhpqrChTYwSWVnrMdwLk5VQwb9lyWrbQbmyPj-BF7UDK2HGH9-Y0W4EEnNvQSBPOx2eGs4MHzbCglrncnNEqNM6iDM2wCipO-lYs8JpBSIgCsjaEvRCIyAEpFth-lKTwSVC5pDY6aU3KkgensaZP6bPtC2WIqzBLi3z2S60F0mHYy2RVnhbFssrWi9afDvQC2FyLm5D4nJxxsfwSLw9huwf7jLWTY206uvd8y-vgISN0l5HIJPaXm5h3NCZV9FGQGbAU8g0q6C1QF0LkPX3R5LRv397u7ZGvwe9cPN-kKK-_pZorwH6UbYYMnc88HgUdRSld7aBLBIDl0KXNufSLjtLGFBLqk7FNnMvyhbPCVM2FSioWjSD9JYRGTUXS8SIGNDEDItgzQl0NC4hyeaMQ8iphDQssGoFw2oUyjowQSatBMK6Qi1GPYwQ2h16u0UPiONJGBTNvYlHsbuQFfO4tQBaSwGpNqDCT2o-qymIDo4yTPnfdJ4ewOPnHHJeNIiEAkFmojMhdO6halIqUOf5NTOLVg06MpnIZyqyZX3uWHXu_c7VvQAI9nNif4j0-gGOFqQ1rWShvEVkAHzXPyS4Rptb13ry3lJu0wELtEadTsnnj0mYdfaM_LvRVmWUV-9y3b-72MPEPojBbPd7-8UlzZcczRrvM2I85L25BhrNRPKKEFWkl3sFVZAUzcYq7tnsp4KsB8F_SH-tjDTpy1WSgpYwHgBCMrN9Gk7wVy8GkeRUfHdGM7Rg7t0et_tWrtmltQxv5y9oTQCasRxElRJ-21KtTAD2-QnaW3d3Jyp4hUv5zL4CdrI87XGiZKAE2qx8hhpKdWTX4KQ7lfKtQPORyKFlGSr92mA4yZVyksdCokNjr1lYjPE6jbTRIzmPDwqhw1BT-Ifh23s9TDCRy8nNWCBMSreXlJ-jgqfdttjGZP8gfBSRZJH_74KKkSFqJIkKaukjsUcJSpx9CBOHved7n353ngF7tqdFB_F1mzxPvBsT98qkEo5ezeRBSWrhqwG8slitCWhnZGX8xgevrX7Y07w8f6lSkCDFnXFWCflpmh45RyiLwHIl8wry95murkmjBi7Ik9hXbv37RmnEMW7OPCQJI_GRDJND4v8ELEmjEB7apuAq2P5LIwsDlRHCJ08dpzOFVEmMRS7RiUy_8-CLxu9TFpAzKNhYC2oQ9GrpsFPyS51c_fn37m_50iPrgnCkktBW3Fq1UD6lYCvcxwMQEF6g86SGD-OQkcJGws5JaAZfIZq-Ronx1QxZx_UA6ZkCNf5nSBmCaPOcSgABMR32SCs83FebGgvTg_pSUzhl9mnUwnQXaw03spqLNI-uFhyzdFopKM9v9P",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "call_id": "call_RF4QrnMO1LLUDFBjrA7m2D7e",
+      "input": "const r = await tools.exec_command({cmd:\"for f in ORIENTATION.md orchestrator.md mission.md roles/dev.md d001.md; do echo \\\"===== $f =====\\\"; sed -n '1,260p' \\\"/home/<USER:1>/.local/share/cs-campaign/input/$f\\\"; done\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":40000}); text(r.output);\n",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+    },
+    {
+      "call_id": "call_RF4QrnMO1LLUDFBjrA7m2D7e",
+      "output": [
+        {
+          "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
+          "type": "input_text"
+        },
+        {
+          "text": "===== ORIENTATION.md =====\n# Campaign member orientation\n\nYou are `orchestrator`, running as the **orchestrator** of campaign `csrcxsub`.\n\nThis file is written by the harness at creation. It describes your environment and\nthe one rule everything runs on. It does not describe the work — that is in the\nfiles listed below.\n\n## What you have\n\n- **`~/subject`** — your own clone of the repository, on branch `cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>`.\n  Nobody else commits to that branch.\n\nFiles placed in `~/.local/share/cs-campaign/input` for you:\n\n- `orchestrator.md`\n- `mission.md`\n- `roles/dev.md`\n\n**Read all of them before you begin.** They are the only statement of what you are\nhere to do.\n\n## The one rule\n\nWork reaches you as **dispatches** — read your current one with\n`cs-campaign-member inbox`. A dispatch stays open until you close it:\n\n    cs-campaign-member reply --file <path-to-your-summary>\n\n**Do not stop until you have replied.** If you end your turn without a reply, the\nwork is not done in anyone's eyes but yours: you will simply be prodded to reply,\nand your unsaved reasoning may be gone. Reply, then stop.\n\nTwo more obligations, both irreversible if skipped:\n\n- **Commit your work to your own branch.** Your machine is destroyed at the end of\n  the campaign; a commit on your branch is the only way anything survives. Your\n  reply automatically records whether your branch really differs from its base —\n  an empty branch under a confident reply speaks for itself.\n- **Write durable results to `~/.local/share/cs-campaign/output`** — reports, findings, anything\n  that should outlive the run and is not source code.\n\n## Your team\n\nYou did not choose this team and you cannot change it. These members exist, each in\nits own machine, each with its own clone:\n\n- `dev` (codex) — brief: `.local/share/cs-campaign/input/roles/dev.md`\n\nRead each teammate's brief before allocating work: it states what that member owns\nand what it must not touch.\n\n## Running the campaign\n\nYour whole loop is: **decide → send → wait → judge → repeat.**\n\n- `cs-campaign-member send <member> --file <path>` gives a teammate work. If its\n  dispatch is open, your message continues it; if closed, a new dispatch opens —\n  you never classify, the tool computes it. Put everything the teammate needs in\n  the file: it may not see what you see, and it cannot ask.\n- `cs-campaign-member wait` blocks while everyone works. Recovery is not your\n  job: wait prods a stalled teammate and restarts a wedged one by itself, and\n  returns only when a **judgment** is due — a reply to judge, a dead node to plan\n  around, a free teammate to assign.\n- Judge every reply against the work, not the words: `cs-campaign-member read\n  <member>` for its reply (which carries measured branch evidence),\n  `cs-campaign-member fetch <member>` for the branch itself. Good enough →\n  `accept <member>`. Not good enough → send rework, saying precisely what is\n  wrong. Accepting a first attempt is a decision, not a default.\n- Record what only you know: `cs-campaign-member note plan --file …` for work\n  not yet dispatched, `note assessment --file …` when something changed — a risk\n  found, a machine lost (record that immediately; only the operator can fix a\n  machine). Never on a schedule.\n\nWrite dispatch files, do not type prose into the shell: your own shell rewrites\nbackticks and $(…) before any tool sees them. `--file -` reads stdin; a quoted\nheredoc (`<<'EOF'`) keeps the bytes intact.\n\n## Ending the campaign\n\nYour dispatch `m1` is the mission, and your reply to it ends the campaign — the\nreply command and its required `--outcome` vocabulary are stated in the mission\ndispatch itself. Reply only when the campaign is concluded; between judgments,\ncall `wait` again. **Never end your turn without either calling `wait` or\nreplying.**\n===== orchestrator.md =====\nYou run this campaign and judge it; you write no code yourself.\n\nDispatch the task to dev with everything it needs, judge the reply by fetching\nthe branch rather than believing the report, accept only work that meets every\ncriterion, then reply to your mission with the honest outcome.\n===== mission.md =====\n# Mission: greet, tested\n\nDeliver src/greet.py with greet(name) returning \"Hello, <name>!\" and\ntests/test_greet.py covering a normal name and the empty string, with\npython3 -m unittest discover -s tests exiting 0.\n\nAll three satisfied is met. This is a small mission: if it stalls, wrap up\nhonestly rather than continuing.\n===== roles/dev.md =====\nYou own the subject repository.\n\nImplement exactly what each dispatch asks, run the tests you write, commit to\nyour own branch before replying, and tell the truth in your reply.\n===== d001.md =====\nThis is dispatch d001: confirm your briefing before any work is assigned.\n\n1. Run: cs-campaign-member check-inputs\n   It prints any briefing file you were promised that is absent.\n2. Read ~/.config/cs-campaign/member.json, and then every file it lists under \"inputs\", in order.\n3. Write a file (e.g. /tmp/readback.json) holding EXACTLY this JSON, on a single line:\n\n{\"member\":\"orchestrator\",\"role\":\"orchestrator\",\"branch\":\"<your branch, from member.json>\",\"missing\":[<output of check-inputs, as strings, else empty>],\"goal\":\"<one sentence, in your own words: what this campaign is asking you to accomplish>\",\"scope\":\"<one sentence: what you own and what you must not touch>\",\"obligations\":\"<one sentence: what this campaign requires of you, and what happens to your work if you do not do it>\"}\n\n4. Reply with it: cs-campaign-member reply --file /tmp/readback.json\n\nDo not perform any of the work yet. Your reply closes this dispatch.",
+          "type": "input_text"
+        }
+      ],
+      "type": "custom_tool_call_output"
+    },
+    {
+      "encrypted_content": "gAAAAABqjgp9rG0dqbQkerxzrsGuz1caVOmmrPJSoib0jho3wOOkBhD-cCoejlb2W6wysExzlqQYwB3--mGo9U1b3hkOE4-IMsO6RMWrniNgjdtg3lSDcgEZkWknRyMmEuh6ZogC21PpCM1kqZU5U80shHqeUF0mmieGuDviyFWsNxgo359QD7yvMnyQLjYLr68jrapnHlCd3AzAv3_fXe91zX-g4-5TAo-rPlK9VovYzjI-OWODCZWkIxaOd-DUR6likI2RFatUzdWVXnYCqLZbNc-WrxYeb9ktx0zE01zXf9hNoAqNcqDt7111R-_JHoKyxh5fEJB0qDFHXWg6Sd0-J4Sllumk-WPf9Qq__ZMsmVKpYc5xpqvHJk2Hy-c3jGaWNOlPy9-LRykRtbekrDkFiE68f5l9UqSKl8QnI6tI9XROeJQpQkZ1ofFKpTWeOaQNUe_jqFduY26ilHG1ANwZhU0VoOGjmjQwCzOcRXylVyDo3HSbczQzq493OJ8gKI7NYrSGcOEv9aKjM5Hy-uhLJeXfADGIkXYBh_th7_SSDUtg36VaA6a_1rrU90W8rci2CvH3JUXOSYmKhUZO3fEZ2cgF6Uuid1hd2p9kofMVFex4qF7mtOgSKH-5bgRIr7DxJuetCcWBX-yFu1t6bWQfxnaTPnrXBlDLvomT8B5CkJjnQ1v4CRyrIJ-iK65qfzCKdCN0j9LV-8jfs6P7qWsfPhq5jnkwYdASLvFsrgMwJJyK29CZZTHrMmh6WmxQ7txQxEOHbpjlR8nxVfcBEf6Vh_D4SMJ1I9f25W8dzs49uDht_Xs2USJHxVg03xIsPCNn4v7BHj4sIv_pY1ryzVxcRYLR2yFIMrIz4mMnX74hKNWW4cphVu-k6zn7GyBwdEJg0PHTLD9ccCoRBz1rGW7b4tyjx0gdO_oVDlEv7Gq-5fhdNYRZPMklHtYfqJY_pLwrbBWUpUtuf8n55Z8Ivn5xWlb9DeHP9N2jLXw8HTNjppo0zQOuZm9PH3BAQSRMVt71kZ70Yx9I4vB4_-PTXaDJO2vsHwVC1cSa1sz5jfWM247NWqu3_8BkJjS7fflfn5Sz6KEXdjiMVnRDGwJrbf38qMU57iiP1ru1Kep5tuamE5F5PahTEofVFV1gPGGVVcD7upKpo30KwD5rqTWdEddUr1ftoKSKmIrYv6D6m7Aseoa6RB9O7--3IqNbbJfvntL0KiWLdyjgBTHU4G4b3Vzxhaj2nnCRcYZIFehD6W0ya7iPq_MK2WwyK5qs0PYOi3V7DypDKk70uPOQMFFZYlhD7JBnRn7_acKJiwTH3cczHrerfCgXZoQ4_8wOqgp6Ex4yqgVPS9ihem6akzuOgau81jnYoq8GL1miAssqR2lrIVEjLOG-a5r_3jr_J4amdWPZKM0iCDCDIwS4poqw1PIH2pjymW4gdlOm6gNF0cbDGHFcLy8HQqtGYYqlampf1nAUBbMDnIK7H_IAm71LtZC3ysPPOf99vpUdYNg88uPC59d8GTlNer0=",
       "summary": [],
       "type": "reasoning"
     },
     {
       "content": [
         {
-          "text": "The briefing is complete. Dispatch `d001` is only a readback gate, so I’m checking for missing promised inputs and will reply with the exact one-line JSON; I will not assign or implement mission work yet.",
+          "text": "The briefing establishes that this dispatch is readback-only: I must verify the promised inputs, summarize my role exactly, and close `d001` without assigning or implementing the mission work yet.",
           "type": "output_text"
         }
       ],
@@ -426,14 +410,14 @@
       "type": "message"
     },
     {
-      "call_id": "call_ucJ5nK5N84nUqSj1X2NDGrtl",
-      "input": "const r = await tools.exec_command({cmd:\"cs-campaign-member check-inputs\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":10000}); text(JSON.stringify({exit_code:r.exit_code,output:r.output}));\n",
+      "call_id": "call_z56IoRlRx8WlS8BPbwCZKlWW",
+      "input": "const r = await tools.exec_command({cmd:\"cs-campaign-member check-inputs\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(JSON.stringify({exit_code:r.exit_code,output:r.output}));\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_ucJ5nK5N84nUqSj1X2NDGrtl",
+      "call_id": "call_z56IoRlRx8WlS8BPbwCZKlWW",
       "output": [
         {
           "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
@@ -447,19 +431,19 @@
       "type": "custom_tool_call_output"
     },
     {
-      "encrypted_content": "gAAAAABqin3dum93U-en1VqJIw_MQsajeTW-KS2zYFcFfoeZW9C8i5HLMO7kbHu3m9IGngS9tqo1_YdkQN-_IftfIoI72fFDFJUEx1fNYcfNqTq5ZtJ3oLohzyNjGQjU3OjzVNq7hqSzHWCWIhVainMZ5FfvllLIg431fxMUsoNfVe0FUW8jKkthwEZPtW64nSmb1SmGwcSAmAgd8kyl8Liq1ZlBoZX_PfCPvW4cL81nij5S4zbRK7MLltj1yyduosW801DeG6VVO04rMFIK9hSu-u_k8nHXcoHGgSffFVW1l0e5sddowldWi16V_NQZIxR3AquNBk0jY8GyQwvDulP-IJt7iMQfpzuNaGTvXGatCsANnGu_x_06HsslSNaIXhpBBfscCCYrclErXlPDnOfKU-50Lr8F-SZztsSEB2AllhTZmr_AbGcR3vcc8qnkyRSPfLCYBE-I6cCzh9Tzg2PoKOJWKWvajk51TJ7jn9ozdth5DE0lqkYVUTSb8i5AGVUF8Xbd4ARd7F56FvArjm3yHt1BEcPtJJQDhTPexUPBSgdOd3npCNfz4OP-8UD5DZH_Rm1tByo5a2F5nOvGPb2Ss3lrQ7YH0dk04ZRqYNpPfvVOeXxwfxKfSfP0JaLE5lLTdj0YG_Kr0SAo1Ogw-Rpdk9nmy16iGHHXLjGOs0_TbZmShdwhOeUVnL1TdngNA-fiW52HP_vhwpOe3fahm21kwdk75W9VvgGGBt3FCgZRJvViZ2Tula1Ci2_JLs1RRw36XQgLK-RGOjjPPGpgvi5LqCsC_9Xri9yVBN4XyNwJp7zFjPppR9lDzwynwPjDSZ1ov2tMwGClR7kxl3J05dxJKR17WY_lQrEFfrBajHACA2yEINDA2wvh-tgLQJxf5FaYo8Guvm1JB6L1_E89ZND_kNeUsfSFt5BwG00vSgIfqYD-qxlTxvpHkGjQySfqtvLqTdHKkA5jX3wo3XYnOICY1uuHchyP2maHKfFJ3BggrqN-nkbNJQZxUxuBPwJDEAKEg33adRzv3SSE_3DIN9zB6vgPWSPUXqtZAefOuNz-s2TkMr7_htgGrOKfWYJgOd-DadFqPrljEGClZSBlaDQJ3f8APcqTk_32RcB9igOgPVdwVO2Bq6DwHrAOGMVMSrnlQ626VPH3Wq9q6O_s1-tK1hKHR6GVcJ-iLa7oSSWsG5U2t0gOmAaZHp1KY6UoRGSQxrKv5mfANxKtB8SiUMtkrx3IWDjFsy0GXpB_xhLX44w3zMfJddNlRz7gklYUhqFUgGCIyJUe7Do_sHFzXqri8_LFehIf0Vts8ngMhm8YJZ24fQsJvs1s408fXmhdh85PH48FTRBwtcYqUIuWl15cE12Jg5sUcbK3qQEAdWfr2a_Pmd-QK4u0M1dXMltlqaIVXgrN1kPfeb7o0KEw4YdWOnEjEPl-8FSqL0q3HnG6YirdAHcTobCE6br_Lxsty9Bis3PudegNqoWhlU6V3hKR0xFHl5dE087zrb_dOtJDedsFO2JvjwX3TaaxjbNNETUUmXfpZgr-2lCHyGNcOt4QCqvJGjMD4vbl6DCu4CTtIFxxBD1jGVSICfl645PIda_ojWLo4e4cNx_iH1kJ3TzLd3o8gDFbidUbuPlqElCd1ovw64cI7OzU9w4wwEDe_Dn0VW1Kba10PYC4U7Y0AhWUlfxIhdsPISEacjHRN3rzvcTG-ICE0DzZCLjBFagyIufbHTKJ0hoKEosm9AWuhzGTPnr92mWvn3ZZv6ZcRRcKNDNaAIUiBvg=",
+      "encrypted_content": "gAAAAABqjgqDAk7-8gUVpoPSr-xCIfZrD7yNyzsd2wtvs2ERQVezcwkkn-dIU4U4jBdRd1VLaPOaiNXRpYF1J0DfcQnzmqP-rFhLl_QJW_-COjvmA6Zas8yTae2e56B85Jy4rfYLb6KSmvLX8qJKvXWLO4L_0kPXpHGhytyIR9GSuvzYGjHqkvxsEskOEYk4t3qST1FfxnBHcH82V0U1MLxG1teHnP0UO0JiNXfnT7sk2EEkaC1GEekGJOsfGsldDgyXNehqrYNETkKCaynPWJQUV1Bi6tsUsa0Pg0WSRVAReqRTyiB9xxCNLMRUSeC9HK8PqmnjTILsXKgVq2hhBTiv60RI6V858xrCg5fPkc70u12udI4EZRBHOEl73y4hxid4XUGtB0w7mS0wj6Wvtz7Dh8NqkXwUenjcMP7h_bzAIN9-tj8vfK9jYTTWC3LTP3cBaHNqoFfUdQvf3wq_5xwjRkFP1hXt21OX_3Bl-g1dC2j6ap9OlrIq_d_QBWDlergoqgqiLQnYH5iGPIxgQmNlODvaEVsNcz0R2Djqt6Ve8AA1fVwIPg-snpPOYCEzCkgZT0XEJ8EmnMmygXB3miVrkivsmZpQi4UqCwse4LOYVEU9-a77yNXOtl-6XyGe0CnCx7JhrVROd6TjeSY4sNy4UWAbopWye7UEBzAOgHCbKjyn_wLMM9adRcvZCVKXudZgCDvXM5Nnf8vTuk0EKrWPklY0Oavg-fbSUQEbuVw6cXEmMxL6mlYtTMunqJnR10Sm_P1KMIlc-QotvMO1Eb26l4VOgvK3izsUtuFBJEF3VL9qvvPEHWSM230tyDo-Nn6jALEjsb7tzKXd3aMOOvDGGFFmxXx9zohAtmpeQP7cIRCEQYq8mf24Toh27w5KEe7Uis8IZ2Ta3aEy7H4WHH4oZB_BENlM4IxphA4y9Nd1Bc4boLZ2NFVFcYz1A9Uw75eVHU9-ILt0TCVlR67Hd1-sa2FiXyQFWKaHMU-PDw0aUHLoB9bNLlCn_HQAcYUY22N12eCU7Ztj8SjmOaOX-NDJF4flZlsVD1sGgwU4ihIgiGpOcJjPYJsDVyydF6ebgipNyiyKEslqtF-KSVTk4vO34z4qmh7n-cLk2plxgssOAcJDl97YmRD1zl8kRRqGROCYCEzEA5GtmF8tIvAxJ4pmEm6W9d800mSf-Iqst7RhnWC7nFIHjkokiMClLv_aixs_M2iVihFs4jIIeHueEhhChqMrimlFCVj4lebvgWwgfS5TVmHVsYY96b_5QADtICLthitSWLuYL66ph3OlHwJ-RtJ9MuGwk0mUfeyWiUaWtc9hLXTFM9Hh96k23mXm-eY4H_q60JlaKhpbJtCuEqVlIt1JvPzwo-JR99gHhH3u3wdK8tMRIpNr7VsXr6bcgkqAKBqRyICBN22YNuNHRcEr_7dtPyZY2dpcstcPsI_W2UNNHVKu15hXctSVtMDYo6K9q6klUFH9XDv__A-qKCkmzfmK-y4WS87uicavxnKkwDPtO--7tVNu4C4SXDV70TuoZ4TIWKjkVDEtmJpszFlYWbPvV7mxWxVDXszlPRchb1kUZJYelVrj7iKf8s9OFC0R6AnsEotA6XQb52wpqhkbolsV9JvfrbWze1IbepOs6kTODIrZE8vGCKp1aMqhkNUwkDnz77czFYOdRVCbTwUy8R8TwKZD6PL7VV1pxPEyK3xxN1lmdpNe_fMqj1Fumbv1rsRdXfnukmqokKHUZyTRyutYrgT5ajGFCSVm3oxziik3P1y6wPNc61jAjlypX2iEOgIWkOEbRAX-EIRkPBgKZ_6vsnDZ8lGFTfsOTuWr4Gn0ZbboAZlV2-P8vS35wVde2udhvG0h7889weSyhhkDyVBdvmvsj5OIWtMuMANmLhqOr1cwezXSBMliKmtyUyvsZKIl8Szj9NFkw23Cyke29kN7yN6zgw==",
       "summary": [],
       "type": "reasoning"
     },
     {
-      "call_id": "call_kYLuULZQVCKNuykMz7G6Qayo",
-      "input": "const patch = \"*** Begin Patch\\n*** Add File: /tmp/readback.json\\n+{\\\"member\\\":\\\"orchestrator\\\",\\\"role\\\":\\\"orchestrator\\\",\\\"branch\\\":\\\"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\\\",\\\"missing\\\":[],\\\"goal\\\":\\\"Deliver a tested src/greet.py whose greet(name) returns Hello, <name>! for normal and empty-string inputs, with unittest discovery passing.\\\",\\\"scope\\\":\\\"I own orchestration and judgment of the dev's repository work and must not write the code myself.\\\",\\\"obligations\\\":\\\"I must dispatch and verify the work, preserve durable results and commits, and reply to every dispatch or the work is treated as stopped and uncommitted work is destroyed with the machine.\\\"}\\n*** End Patch\";\ntext(await tools.apply_patch(patch));\n",
+      "call_id": "call_X0c8fwsLvNGOeZZgHiKkJu1T",
+      "input": "const patch = \"*** Begin Patch\\n*** Add File: /tmp/readback.json\\n+{\\\"member\\\":\\\"orchestrator\\\",\\\"role\\\":\\\"orchestrator\\\",\\\"branch\\\":\\\"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\\\",\\\"missing\\\":[],\\\"goal\\\":\\\"Deliver a tested src/greet.py whose greet(name) returns the required greeting for normal and empty names and whose unittest suite passes.\\\",\\\"scope\\\":\\\"I own campaign orchestration and judgment, while the dev owns the subject repository and I must not write code myself.\\\",\\\"obligations\\\":\\\"I must dispatch complete work to dev, fetch and judge its committed branch, preserve durable results in campaign output, and reply to every dispatch, or uncommitted and unreported work will be lost when the machine is destroyed.\\\"}\\n*** End Patch\";\ntext(await tools.apply_patch(patch));\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_kYLuULZQVCKNuykMz7G6Qayo",
+      "call_id": "call_X0c8fwsLvNGOeZZgHiKkJu1T",
       "output": [
         {
           "text": "Script completed\nWall time 0.0 seconds\nOutput:\n",
@@ -473,26 +457,26 @@
       "type": "custom_tool_call_output"
     },
     {
-      "encrypted_content": "gAAAAABqin3kMjVnZvch7mV_Gu8ftVieEHkSo4YB9x8X3y61axg-FJEVu1WVgXC7n-CNy6DevjNrpXKg8k_17vfvaaPyDN9ySrHrQhkw8dQelgJkVp1Lev-RZo4Bx3dlhQgtPtrNIgljEvlOZmkt0s_2RMukx690rILyFUJbP6N7hW4hpMEi42dmohkvKuvhfZTxEu-0OvClssBEMaPFj-aIHrgLVs6E5ygVHdvb8YluBqzuysbWU20c3JH1UJK0k9-hffXxlRlL9Z9osIsqbrot6IZlkP01GFqoOscSBPj3chrGC9WFUtBN2-paoV4JzZOk5vaZvFDviIY_hrfOBtJMLif6QksBIWihNyocU-EG9kxdPzRbuzTt3K9gXJSHsqkMsml7Ky2rBe4jEqzSUFthW1YdneJUrKmh13YSmk5JetMpLi4M1CM36jlXXicEW0E_7tWZtekv1AmO6VQlEDktyFy-3MV4U3Ol6HZ0aPzreBKMDNXfZWEgdRJeOT_dGXNA3mWCu7dYQLsnJ5iGz4hW9iVj69MlmNuMs26pRsezRSYu2b4dWXsoUHILVaaVgR23oftkhaZVrsf1bpYqJa6bwO93oCKnl7NC85NUMSd5mwJWPpxS-_2qabd2wtMC9Cx89j-GBOU2smSsfQLQGFA6HvN4qNmPhZsmNSpHz4fI0rt_7m2Bha_UT6RgSuoty6qHjEFaNkEjYJjebMbzdFbFIUeMDfad_qAPxDK57Z5o9wUUi8-Ut0VsgEkULOCUTBuHW4nfzb4-e_k7GAZIfFIZ0XKhbCTSkxztBMK86g6LdozJiEEKemYvNS5ObInRldjxtxwFLE-Z3p_tGV2yyfJ6l9TMUjyeOT6jJXJSx2Egl6nA-SWM1gaCr35XR2XHeaSdD3mRiV-JqQEF4m3h7FxhFGxwNXrYLc3JJg_Z8p3O8NK8Nlm5xWV2d5aO90ooztHMtuHRowIlpQ4KKcHQ-tuQUkznME7vp4ms5vBjmRzvoIsiDfbg2CYo8haKAP6myGsEvnBlOVY-Au21kvRLqaxrqJ2_Q5gsW2dgm4Ufdw16wEJ4Awn_EB3xhu3Qh2ZMoiWy_635PK4u4jnYv8k0gvbnNsHWvOZbDo-5gxJ2U0RJT8FzkeGGAt52YSk5EPbiKGcKezPdZ7QQYKpfIclnDavVmH6hoMymDSEYDTa0uaN5cQmKp1A_u5SiDrZW0rAAkvxDo8AlaK3olLjIPrKdQTmzvZXhFfE5h8YDZ1Ka4fOzjgum1TaN5m7Iq16kBCk_8cfMGoCryt5My1gdiiFAYxU-7u9OmfG7WHKu02FKvFUlC7Q9YpP79LbqfHFbp6dDpEaksm_DmzTNAtaqTdZc4g9TBh2uR2_nGg==",
+      "encrypted_content": "gAAAAABqjgqIg_TPUXGoUqJsOYYVzlaaoQjEQD6QH3avdCg8hpIihX6CcR_PKQYzf3-NtZiykmQFOPG0aPn9Kb4GvGb2NLCYmgZzfl__YBQY-uA3Mk0uMYyCNmUCCK77DhwB6lk9DWLLgasGdtnHEYPP22u42txZfh9dSipRB30CAj_JTVVWj1l5wDticFULJxe0TG6H67byBsYnQ8adsho-xspOLpjmvR0N_3qY7WHNGgb3r2u0j5OP6_AB_oNsneVZDOHV5bXaXDt0v9tRAR5mvXxMN0zlpThA2658_qQrDLgxNVIqWiWDtclrKrb-9kCXwHp1-EsQvptE2IgZtsBIcL9T8aY1wLGIzlSZA7JtoQOkpL-kHyuKlWkFouDeV1vsHw69VCMFxRNavTCrx3Q8SVy7GqYCphuo2AAXSRd0LyWcpUalFgdbXGTosZoXgZ50V8Icr0y8aEvf_1uXs2PnP59Qq4kjToyaU7kuGHe1W9IaT6OVapLTea3ZTKoO3ifdr7Lp-2dE3Yil4d6P2t-gXsaXJKl0raDN_g2sp00gy3QUU3OlgoLsWj-kKx3lSOZR9eknWm9gz49u0zJm1adbBUo_TP2fjWwrV9xib2dPRiOR7oaaCVILiexAZn4m6g-LaBotI9eOEH3Obyay_pLeP12r59HFXP64kmidV5A8iy90DjWAb_PTwfRT4AXAkA850zbPTytQNN3cnlTyNiHcZyQqmwfjJGYH1S8tSeVYLiABsEQrx4lSfs-pDk56zCBg7btlxU2oV9sFFOhqMqgbBKk4y9nvYHb7-hTqnh3Ma0yckQrpQoVaLNC9ijmJdquwbVZzGbgTpzd2vAFZgIobDLxhh_ZeBz2ph6pGBxYP6F018HhpJlKPCRCgxeOnLLY9Hfpth8dMbd3Cs7LYuRDX-GFmkDDXVJDLSzpvmc_2S96IYO3_NuSKZ9X84s0EDX26UDTni38Wgeb9WPv6gMaWKgujIf74nuM0E_283UMKqMHDbYlo3A8huU2FryB2DqvC62Q7PFz21QgIPPZfUxyhjMiE2lonnTC4bnVph-_sd6eCaeqF994DeIOIp9GF73L50a63wsOJr_392O6Yd4ToYhk2mj0LefOt-Nai0De_1JtPyMDDcKlIv5v2s-yF-PcnxxQRLZtfxq9hdmXr43DAFFTbCkrn2cy5SYfPSGvkkzT5fophcFMQL5hImHOsJw6FaLcqOpYa-HL0aKOyCOMgoRtqiVuxMexRafCgg4Fjnbo5imCkwXGXF2IOVUFseQ_ko7xFJpFs0--IUkgSVgQn9CDNNcdmbzX6FTMFPwYQZatj8rIeWt0EtjuIe7qn19mrHbkJGeVxFAkFqcHAzLqfSzU5Nr6s2g==",
       "summary": [],
       "type": "reasoning"
     },
     {
-      "call_id": "call_9632s2NHFc6KanV4RM1Gjx4p",
+      "call_id": "call_3l5SJOfiUcfIfseq17mFHbj4",
       "input": "const r = await tools.exec_command({cmd:\"wc -l /tmp/readback.json && sed -n '1p' /tmp/readback.json && cs-campaign-member reply --file /tmp/readback.json\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output);\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_9632s2NHFc6KanV4RM1Gjx4p",
+      "call_id": "call_3l5SJOfiUcfIfseq17mFHbj4",
       "output": [
         {
           "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "1 /tmp/readback.json\n{\"member\":\"orchestrator\",\"role\":\"orchestrator\",\"branch\":\"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\",\"missing\":[],\"goal\":\"Deliver a tested src/greet.py whose greet(name) returns Hello, <name>! for normal and empty-string inputs, with unittest discovery passing.\",\"scope\":\"I own orchestration and judgment of the dev's repository work and must not write the code myself.\",\"obligations\":\"I must dispatch and verify the work, preserve durable results and commits, and reply to every dispatch or the work is treated as stopped and uncommitted work is destroyed with the machine.\"}\nreplied to d001 — the dispatch is closed. You may finish your turn.\n",
+          "text": "1 /tmp/readback.json\n{\"member\":\"orchestrator\",\"role\":\"orchestrator\",\"branch\":\"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\",\"missing\":[],\"goal\":\"Deliver a tested src/greet.py whose greet(name) returns the required greeting for normal and empty names and whose unittest suite passes.\",\"scope\":\"I own campaign orchestration and judgment, while the dev owns the subject repository and I must not write code myself.\",\"obligations\":\"I must dispatch complete work to dev, fetch and judge its committed branch, preserve durable results in campaign output, and reply to every dispatch, or uncommitted and unreported work will be lost when the machine is destroyed.\"}\nreplied to d001 — the dispatch is closed. You may finish your turn.\n",
           "type": "input_text"
         }
       ],
@@ -501,7 +485,7 @@
     {
       "content": [
         {
-          "text": "Dispatch `d001` completed and replied to successfully. No campaign implementation work was started.",
+          "text": "Dispatch `d001` completed and closed successfully. All four listed briefing inputs were present, and the required one-line JSON readback was submitted.",
           "type": "output_text"
         }
       ],
@@ -520,9 +504,14 @@
       "type": "message"
     },
     {
+      "encrypted_content": "gAAAAABqjgqcm8yqXjE90ows1R-XWVHp4NvUaNaFTnqMkwJxnjP3lqzCDirD00LU1DK2_sR5oNwXPBlX5cfpG-MKV1Fp_a04PJfiBdKhAO99ILEOoqVryRGjBHT8OYyoyZSobQzBZUBl1rNT159FKbzZ4eW2nUn7XBEd8yoAIF9RquJ68c5FesAap6qhnEZrOiDrg_Cy9baW6vb2E_L51V5Jwt4hAJppaQa6lfaXcvjBbyXp1lMS0u7RBQJ5FUYRsUh8HM0ykgr4yaBc5YqUCdf_3uedHhEthr4h2ozERmJrYYqEn6UK3-pCS-Qrn89fFlbL-Qee8XvD576S_qoX5xJ3x47RlhPA0T4CZTTaTtS6-eUxzIC1jlfcFkah0lFW42YVeIYweSv3bnU7TvmNhnQG5sz5Rx36JCLFYYETeirqUX-Vmn38lqSTRBgndtt3yZCtyjdL_oL4rBVDM-FpNlCdHXIb5fqTw7U4ZAeg462_XBReWO3Li3Qpy0CraGWL09LgF61enNtL3wa-c1Kluzq2ZKbBngQJokDjMFswATFEF0QDAYDlWPfQ9frEUwIreHj3853Ea3RtOm-SXjDF2cTR2CJ0H2K4BQSqvWWdjLaPvVT7-sZ47tC-c8L-QbmEDbeAHyKlDLV4nC56Knpbf-wBYesUSlPV7v-1kDhD6x6qr9gkiVtxH82U-M4Fn9x927w81lwkjNUu4w2PS_cfgjxC4REyd8y4stLpFJYERe2flrkzw_WFEgsI1_Dio7fCgUZZX80zfEM96KQO4hcmXSTuU7RnKZGct7b1yBtHNAfXAE-6V5zCNOyIHe_9A40Umnhp3vUZJv6ikyNLLeqhUWgPnoSPhkuwH4NzjzYVYtFN6ONcL3PWMlfPR51y6UOFiwY1LETZJC6DBs-ahesfjSwcC9wGC6ksKmaqvJdVNdNg41Cct7kXZE727bYrRy5rHGXGWsDwgaKje4gPU43bXfU8xvdcGZ53-SdOE0rb1gpOZOkLR4k7wJlgC3d4832id3UrTTiUI6k94BtXyPXzsTBhQ9eF2CFAi7A5vq5DlEGcxaZ-Rcd-z9d3Wi_840tdyO4sGMmHpSzv151JroROrs7lZBna-RSCkhpWykGAQ3eujNUJAefkHSvGKthdVvh5Arltdr0OtjbcWzoxt8ewpg0hC1M2R42hu9TEtz2YbD2lsUZQLLlzH97F4DRmyH7YzVkBf59_LvfPw1rEfPI5ldFGJYPUF8dFbHzHOC3GsfX_NA45qHtsr0No2bj2y7dOCb_aBIdb1y9v7pKHnhNJNj1I3I4WRQJrAQ==",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
       "content": [
         {
-          "text": "I’ll read mission dispatch `m1`, then run the required orchestrator loop: delegate to `dev`, inspect branch evidence and tests, request rework if needed, and close the mission with an honest outcome.",
+          "text": "I’ll read the mission dispatch, then run the campaign strictly as orchestrator: assign the implementation to `dev`, verify the committed branch and tests, and only then close `m1` with an evidence-based outcome.",
           "type": "output_text"
         }
       ],
@@ -531,14 +520,14 @@
       "type": "message"
     },
     {
-      "call_id": "call_Nx4GbQrLoYbHA0ZBsOjH5XmM",
-      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,300p' /home/<USER:1>/.local/share/cs-campaign/input/m1.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":30000}); text(r.output);\n",
+      "call_id": "call_VhV81EWfM5AUdXLVvK0aipx0",
+      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,280p' /home/<USER:1>/.local/share/cs-campaign/input/m1.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":30000}); text(r.output);\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_Nx4GbQrLoYbHA0ZBsOjH5XmM",
+      "call_id": "call_VhV81EWfM5AUdXLVvK0aipx0",
       "output": [
         {
           "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
@@ -552,14 +541,14 @@
       "type": "custom_tool_call_output"
     },
     {
-      "encrypted_content": "gAAAAABqin37x2ihvsnlfTfIXyJBYbSCtEg_52uphkBrbOhXzjM2VjUYKC5etfmAZgee2CRwe4IgC6KvoisKtzqxXsPLd2H-SUXE1oIUG1voy_KHSbqKp1ybosY0Yo9iL3DhUc7BN05u_LDhapmgbqMJNy9KdATHhKVpiJux7eW_Is5yDAv_h2Lw0kuwp_QI49d_V1IFNjhR1PDNtlVq0-YJQx6RgF-oGQINbio9xTIaPczPP2m7_FjEQ7Kzcr4_3FYrZ-buAIelBaGScF3rxZfUihOe4Dr69t6fZE6MQxGWcsrqKi3Q34CkHwRcLLn8pqtTGzxnQWZ-Z55AXgVQrjUonHWKpFv8OIuzTd4hqEE0flUHtwRuN3b7K41YeVwW96CmE_4q_0GgCe_PEXV8Ze_XidQrIX8qJoeQ7a1yqNLRgSmjYQQAL326wk8cqKomnMec3OmdczkAtTRzi3QjN7CNaJ3wA2orszTKOhh0LFv78SdSVsPyvfsvtitsZcmrt8eO8hMGwa45yc8yHQ8J5F53Zz7VLzDQrm1cyRLkxGniiakQOxl-U7_v9PJTnvTVRRrGTNPjWZ0hxnR6obN5iw2xa7Ys1QVNZjfkts2t6HvZ03OudyXmIyPuNeY_PqFQju0_RYtVNNCn8Du7Aqpg1OLWYhaV9CaiYB6_sTWBb9ppPpOclX_OeOAimTQF6DQXAtL5rCezqtpQcnyek4xPqHAAa7hR3H7s70PlZYizcVYyMn4kjnACSic577ISOLsNd5Rf7PNCJLxciLbkX4Zix3OmmuerQNuFPY7wV64qGU2u1gbWzeYjnLcP5UCpjd3_yERuVlQMPb8Wrtl0ZYPbPJJ5q4JYSGb61eOlfOx8MwBQcZQ-73LSDlFOTcUrTpqvqmGUYxYzJ26ugKGNagNlTG3rmRNDwu0mBcwNnw8o1yTAlFr39zo7cuNkngwX87OgA7ErYI4-04__RUi6WlgI377qI8XtXaDol3k89e1kz6wP_NVrd1PIOv-eltaNhA0jqduLndcW-RdwYlysK_N3ffFFgmfmaXq6ypF5v5q1Wn9TAuArsC-1zd4qWtdd3B6xnzr44Ul3g5PExsIqWs-2TnoSRNM_plXsf6clUM20_OEsvzuTQb4qqbO5UPiE3-zZxy4BP7ZnNUbdrD_FUcjGPpc7Tevh04x3JsgBN6UvZ4HGDJVttt1D0giki0vNYVDFR3etSlSj65mFnJaQXMLe8EWzMkMpPkc-wHoGpNcLaIc1Y944URJjS7PYbsohxkOCKi__xj4-eF1T1McEaahIPQX92o07QxwqtfM57FYE4todGNIeUPVlAC-vO6GNDmv9cV9dC5l5EsdhW-2u6d6DRpQkmWtj0kuvarv5k4mzEIZI2wd8M5t-ONrCu1V6nUzaxUmDsKX61_O7xqKPKomO3SKC4bERgy_IT0TqaHkQnSaUuA-bStTCFttDuXipodsE8BV5_bfOKbmUPmFMMLkyEuJHlTSenYGbwkRv5wBc5h-wy_6bplmz64atSoy8zbLve2Zhu9fFXkb03ozigrLGcglVuiBkV8oG9Wq80Z7TGfUmUl_SRgF-5f1kaBEfALRrTS7SYqybe3k6Mlh08rMvRNIuE9vZuHNxlZD8sAYmWea1ZcjuLlW_KFMj_gAys8A2GvLR49rvBUQtY0NI0_Jz-rGGWjqR8kU9KJJZS612ZAmdHK-3ou-dWdQ6DPt3zfGn9vg43B27m9v4REEWj0vLOfCPV_WrEPxRSg==",
+      "encrypted_content": "gAAAAABqjgqhkLeJiPPZS_ek4sYVfekKxg3mCSBly6W1RW3k3fej9TJ7-Mlx3PTvR_8QEWLQA5iFy0mZny1RuAIy54YJ0I3PHlc2Jwbv3R6T9nDrPhpyl3aieCRXkGa5s3JKFM9lJLGP9-Dsm4EA6fdXvwfjjuYAPnVPNwYk7oh03WmMLAbPy4ZoxpkKRqs4bwNCwJeuDgp6p6fVZEVA307-UcfukzCnhFdjJLqlnsCgUpkJKFQ4NfaDwVmC7xLFBcp_7G2gsIZVmIAE454SbjkdgDzPiz_Y7h0GqKqRPBaassRuzU5XGNmkXQr50UPwf4r2ddFNkJ6O489eOUr9gUW5wQQiKryM1hEj_HHtcUYRvHc1l-jOtVY7BsamzDAUgh6oix5Wkede_v6He13FH_FW-LY7MY0x3RKxDkweViDHenL-DvvEFfLh0phMfZ26JuzO9Z7vvjsk8gecNLQmJrPxDOc8H58tkB9bOySC7VtJfjPKrG3vKKop5GRk-iPE7G6I9GkeJNsdeQKos-qId6MrixmLlrgshm6lclKtWUCmpFcGg-SiUWtbMj5LSlMw6kLR58mmnwB9m4_dxIG4eM4Xok3caJhDvqD9uIF7dqiC0xUsLbVkzmaoHkn06mFrhHiyOss_7TXmub7EBHGj3HTm65DefuQQplZQfUWOaSR5trizfkEKDYpzeSb0mgMCKybMqy7c4oo4IKN9lA5VKn1tvYUOUCQYGK03bSaEHU77tID0R8M_b9wNpz3IPSHRuu8ERD17JSkUdNM1mEY0RDynUJjrVETSk5H6Xiae9qFUY-_dHm5RDOHxTRp3NMUBsJ94l4YHg4SVk_QN8MT8yFkV5jyNRap5fWlYD9LvlUaQkXxj6yXSZ2-HdEAm5YgqgOIKkoU4Xp_Hamz3RS7vUBH5_bI7gftQepglRPHUBDsaG_yawHGbps3ckuFme_lsjS664O2VwlYIPpt26U9QcJocJZo4FaIGFVZDmiS8Q1akKztuspqMfFv9Vqo_uLpw-b0QbrTdyqYPgfkrdBqGPWsJeZrkXUgucJStx6kLXU-uKQ6CmOH0oB02DWVPevoq0kCQJu73KWfk-HFcrVE7hw2Ty6EZRwh8dU47Pdh_b1sOPoHqxsw9T2gR5Lxzn3IGUvWGRKykZ3QBYCTtOjgzvprbnGOiqQ_utEvYwTQQATNKxudZlLc0HsTo0YzOJes5HW-4OCoZ6fdNfnJ3gbteXYFdXAZIZIiJo0FxL0TkNbiW83ZCqBcvoN4LfYKQtYnIIELj16REoBEcd7Us5043URXRRMQpFv74pVNoeJH0NXGAjzZW9e9I5liAzfFduo6KmB6xf1882RcgqUpUJ5tjDuHWH0on55alqc09YP9Ypc-PGmMyr8ca0--mUkq1dxg-TOP1FJZ8-cq3CnaM5QSGGpR8dIcW1UhryS5FA0GQIZA3puaoUkO4e6v9iDtmuz9yBvUDk3oApKq6I5uk-W0WE-DjrkzMoZjLOD6rXl0LrBPQ61_lOIMhtzC2S8k1xIgYy6afgGCKBeVT8llInfe7BCDGvB_j-Gm-HjzU20AAnWO1nwVbJq5tvEyx_KdjD6bdCmbKaSGXD1yfiEVZ7YKcVl_5tuQzSeGVNje90cLz1SNyNtceKSDa-ooprxUHCA43JZrL30OjRYgo933zTLHqa-CkUX9r27H_Zl7iE6iWhCIs_xmxsnQmspg=",
       "summary": [],
       "type": "reasoning"
     },
     {
       "content": [
         {
-          "text": "The mission has three concrete acceptance criteria: implementation behavior, two specified test cases, and a passing discovery command. I’m recording that plan and dispatching the complete task to `dev`; I will assess the actual fetched branch rather than relying on its summary.",
+          "text": "The mission has three binary acceptance criteria: the implementation file, tests for both specified inputs, and a clean `unittest discover` run. I’m recording that plan and sending `dev` a complete implementation-and-verification dispatch now.",
           "type": "output_text"
         }
       ],
@@ -568,14 +557,14 @@
       "type": "message"
     },
     {
-      "call_id": "call_KMPpZSTyhu13ED1ejbVdzfCq",
-      "input": "const p1 = \"*** Begin Patch\\n*** Add File: /tmp/dev-m1.md\\n+# Mission implementation\\n+\\n+In your `~/subject` repository, implement exactly this mission:\\n+\\n+- Add `src/greet.py` with a function `greet(name)` that returns the exact string `Hello, <name>!`.\\n+- Add `tests/test_greet.py` with unittest coverage for a normal name and the empty string.\\n+- Ensure `python3 -m unittest discover -s tests` exits 0.\\n+\\n+Keep the change narrowly scoped. Run the required test command, inspect the final diff, commit all mission work to your own branch, then reply with the commit identifier, changed files, and exact test result. Do not leave required work uncommitted.\\n*** Add File: /home/<USER:1>/.local/share/cs-campaign/output/m1-plan.md\\n+# Mission m1 plan\\n+\\n+Dispatch the greet implementation and tests to dev. When dev replies, read the measured reply, fetch its branch, inspect the tree and commit relative to the declared base, independently run `python3 -m unittest discover -s tests`, and verify normal-name and empty-string coverage. Accept only if all mission criteria are met; otherwise send precise rework and wait again.\\n*** End Patch\";\ntext(await tools.apply_patch(p1));\n",
+      "call_id": "call_4W2SAELWrkHGyPFAP2V6otUn",
+      "input": "const patch = \"*** Begin Patch\\n*** Add File: /tmp/campaign-plan.md\\n+# Plan\\n+\\n+1. Dispatch the full greet implementation and test requirements to `dev`.\\n+2. Wait for its committed reply, then read the measured evidence and fetch its branch.\\n+3. Inspect the fetched diff and independently run `python3 -m unittest discover -s tests` on that branch.\\n+4. Accept only if all three mission criteria are satisfied; otherwise request precise rework and repeat.\\n+5. Save a durable assessment and close the mission with the honest outcome.\\n*** Add File: /tmp/dev-dispatch.md\\n+# Implement and test the greeting function\\n+\\n+In your `subject` repository, satisfy the complete mission:\\n+\\n+- Create `src/greet.py` with a `greet(name)` function that returns exactly `Hello, <name>!`.\\n+- Create `tests/test_greet.py` with unittest coverage for a normal name and the empty string.\\n+- Ensure `python3 -m unittest discover -s tests` exits 0.\\n+\\n+Keep the change exact and minimal. Run the specified test command, inspect the resulting files, commit all work to your own branch, and reply with the commit and test evidence. Do not leave required source or test files uncommitted.\\n*** End Patch\";\ntext(await tools.apply_patch(patch));\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_KMPpZSTyhu13ED1ejbVdzfCq",
+      "call_id": "call_4W2SAELWrkHGyPFAP2V6otUn",
       "output": [
         {
           "text": "Script completed\nWall time 0.0 seconds\nOutput:\n",
@@ -589,44 +578,39 @@
       "type": "custom_tool_call_output"
     },
     {
-      "encrypted_content": "gAAAAABqin4DAdE1m8eSetG5reyENEPM2tXmpUq4e0UumdlPOJ4wHjZVNGe9M2aw2STp0f5Y-K1DW1Aaafoiu4p30KID8RHV_t7145DPWVitxdaIbF0J0VcHdhG7acRdAoUsCgNiebrqhKHTh3P6hhnLw0gqNriGt2oZAwgL_-PS2HGzAUiM1-httCemy7QegBZocPhbrQRyIt8b1mEXzGjLaD3q0TAcr2S1on00U7EC8Qv4WTWVvd7NN8Mn2yuK7KM5ksQ56R8ygUt0q7BnulNYm8X3CcBpcDGnSsN_mFndWzok71nOxOKiVyMTpbedAcythQNuRBfA0i0MggFgneM5IKeAncRu0Oh6B-7150L-iErbgVx_G3B4f8_FwukHYhcIzXC57TNJhPEs0n9v91WysmuO23RbbNNVXpdh5uz5evCBdhfcKVWinchMBcMihX5lnNp2liT-bIkrP4_qVRcnMM1tk1ot8-df8UF30W2GQPh3TdtqdVql6BFE6wwFFMaYXkl1nVG_4o0-CmcZtoZhdCj2eu8rW3qeP7rCbYU3jtwd-ULFLZIawnDcPTwFRVQrPStu6cJifisZ5SY4LhyKdZBPcHUeMo8l_DOiQldvtGGoxY6sPiV4B3cjY7SYZevTyZz7U_iXzZfvbiR-fCJCqa0kP8KU6YI1NpNitkCGScM85Agz6-qSOv9wsLs6xACqaPG_isIl9rhnoJ8CApBI2YjkRO6trDSnfZAJDa32aQH45o8KfewbOP0cHyIvziFgw6l1OWfTLoA-XktJ1o0ijEKCTp0MpJ8QIZYznsdyM6A7efBVp1GfmbgCqD3TkQWXHd-DBqQH1-4f82iUSrSE9nn_Bf6dukBmiuKNO4Y9SG0vVwuK46D0HVch3m64xRdqAJqOOs3MPheoMbokdEcxr-Um1ijKWsYJ9nSXOUOPIjuDwnAnxAR3TC-XILu_QRd2tbsvWX7YjEGzEo9KtRwAHoiUtS6vldzgNsLK2UGLl2VVAMT1iJjkDF7ntXLzVvAzVJG5B94gv6gM2lt12a-pnxOt3Sk5BJ_-bXZglkcdQhAj7r0lhuZEXA9aX1w3uo6xdCMKWkqCwtqpKWcbiHmdNj0HX9DUduBFaA_HYyTdu1R4xSV3dzF2upP6nAxnybjw8cK1vhKESZYJaMvamL8KbLAlCP1maAUTtM6yZ5a5i8vDn-IT1GLJJaOzLFzvBuXmJbTJjUN6i-9MQtoEupnnWcBByH_FGsqP93ULXkRbSQoA5JzG7B8OEQSrARhoPoBBJt5NsolV8R_YwyVlPZEKT4k1XhMDvjJs9EYy443Q9SArkHnGaB6ddN4ZMBUHDIjTIWocNWBh",
-      "summary": [],
-      "type": "reasoning"
-    },
-    {
-      "call_id": "call_VI2rWgWYKg699hZgL2UtEGIz",
-      "input": "const rs = await Promise.all([\n  tools.exec_command({cmd:\"cs-campaign-member note plan --file /home/<USER:1>/.local/share/cs-campaign/output/m1-plan.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":10000}),\n  tools.exec_command({cmd:\"cs-campaign-member send dev --file /tmp/dev-m1.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":10000})\n]); rs.forEach((r,i)=>text(`${i===0?\"NOTE\":\"SEND\"}\\n${r.output}`));\n",
+      "call_id": "call_WrPE9i6JAypd3QFuFuIaXtUH",
+      "input": "const results = await Promise.all([\n  tools.exec_command({cmd:\"cs-campaign-member note plan --file /tmp/campaign-plan.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":10000}),\n  tools.exec_command({cmd:\"cs-campaign-member send dev --file /tmp/dev-dispatch.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":10000})\n]); for (const r of results) text(r.output);\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_VI2rWgWYKg699hZgL2UtEGIz",
+      "call_id": "call_WrPE9i6JAypd3QFuFuIaXtUH",
       "output": [
         {
-          "text": "Script completed\nWall time 3.8 seconds\nOutput:\n",
+          "text": "Script completed\nWall time 3.4 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "NOTE\nrecorded plan\n",
+          "text": "recorded plan\n",
           "type": "input_text"
         },
         {
-          "text": "SEND\ndev/d002 opened\n",
+          "text": "dev/d002 opened\n",
           "type": "input_text"
         }
       ],
       "type": "custom_tool_call_output"
     },
     {
-      "encrypted_content": "gAAAAABqin4MInhwKI5WoFC3Yxh7RG6Bx1pCde3dsp-dySkejx9tUrS7mM6hEeeq8qwTVWpMsG8HlOOrGgAEWc6Y4o7RJv6yWXOll3EFg0rXZUDKINUG_LQnTfaCVyVLMlwRXKgJ8KTzHoFew4KBu9holkSGbx40r2Hb7Op2cKOqeKplJc3hQFy28xAxvIpwBwqlU5B-FJBYvf78jayGEpzsqV91bGOGuZ9QRfCFf_040B7CRnoJexFedUwvaXVYjn03uYGIS5bdXp7jtR1wUbEQNrzoshSLp8w0-GeScpzk5sbCMSAd9G1IkL-zxH895mwc2gV1UGUSUXvEUgneCT578g9z7nwzzVVMbULxg1TdccmelI1TFMmkU3QrIIzjiFeR8jE4NQf96HeTJuAWCG4vUDkhl_xcodEe_kHC-qa2E-Q9u2_iyiUaeqOkZjg3iGVaw2-DD7_PjBfNIpLnfNQzQ2INiLb9tcXhoaUL19euoC8fRQKFr3JvjLtZkGQSv19WTXZJstBXH5JAsXKpPDIa6rCd9rW0ocfr7tONeiWCCUf_PACnE4hznrGdjvi85LhFAaH_Od7eNM62MDMlKj9l-3a8xVXpKNzu-VNuTLD3NZrRTgLv6L1jcONVwal99ZZcrWZ4rMU9lrtRRfyGJ3qRT_QJ42XHge6hGOGaD1Xr72JGfcWMro-0toqLNEHU538HjGmQoSNUFqGjx_KuYmN750lEQqus-B6NLYHYvy4I2tXQfukpTST4Bs3a4gYAKyr_EnkpNelnV9RXReg5HshS7iYLk_HArkGgqbKbYvP4Np0KDd7Ux1oX8ctZ7ZqKkw0p0hSubZClH-HU0L2ZBeS0IHZyjIl6S-xL5dPkp9zV_TGmVbTs-yW1UIma9JhNAhygCU5OZMkf8QFHOjsV8IB7EG4_UfWOUuOCJXvdUzddwAGsOjjKtZZXarBesCNVCPkucoDXJUlpRKqss1ytJlzmxPYAvNQGk1R_a8diK4HD_vRt2sBl2gm4QepDnkQYMgmEfY_gl5XrU8W4ySP4TyPpj3HzLg-uOCJCEt9vk1cXoVFIk4RlZlFCNlri2FOxLhfVZvHBAQRMGCZDmEyBGgTxqnFtcIOLEZgS4ZFTLJAlomANg57fsqEPQdSMmasQGRLg6ssm7uV2rsVpL4V6TR_sA1h8GOTHSH6r7ixhRQj3f5MULHGdxi4yozaBiCogLhgE4zhIRSd7YFVRGi4L1i8t7x4OGqOXiK1ul0SrbOwkriCNbKPl1knoAC9rfBO2cmROtql949eEJsSkuscw5zXHYL8Ben6C_lawtTvFg465GaRKMyKgYW4MxcV3MQnlWfDrtTnkBJqMejnJZM0Ob6A6MeWIgj_CZ9tVme4xLw7Ma9YMnmyP0i0=",
+      "encrypted_content": "gAAAAABqjgqxeyzkcGIxwW1XmjFLGU_zgdIfT2p95A29aGrF8k_-2UaaE9s8D3t-3po5AtVIzoG3WkEawoD3z--DaR8YkeeDlZqD0Yk91fYGT_GmH5ihG8wBt2OD3hvqG2jv5BnWuHj9f1RTfbGmgF_Lm6aOoWcBO9HmOnEzd9KcdcLLfyi3CR4y8_C0XRNvQLKhcuCHmbKhzAoK_EmrnP5170GOBV4WcvAo7Tq4tFhBcq3Gph7bATtXjQn5HpU93D5_t6c0ieJiSub3juCA2yxM9zCP378xvQTTKEJIT8t1BHefex5pH6slzYX0KwG8b9JRiQ6wuDxLayj7tfCnpK1lEPHVyLOflfcvcmYvSrjvcTXPRjXpTLGYOSx6lqEcCLYjB0bCTxyxIGpY5fPBKfk0_eAzCYOTMiVnQRzOKAXOlW3MGUZzljOA3Ra3UzOTZDrL3agl3IoPPHp5Toh94tC77Nx5IIE_HQU3KrfraSngz3PDVZmyXJt-gOptvuagMTo_Zcp48jYJHtAfk2f8Gy1Wsyxts58lPAJiiXfmvwMeQ74U6MfCinqs8xc98OuDoFM8a6ZfYo0JcRTjdz95EhyCxsWAeXveZcqpSsnWBLuawUOUHgTQ39WPrLqGKrZOzusdlIHWlpKw0Rns-D8T5uxumqyef4Rw0t8JvVT8Cdrvrw1dryBnjm8uuVuyHkuDXFXN8Imqj7xjN6DtUd9wXGXykJflgb3W3CdXceD0naz3u38hDRrc2ISjy6Y-yThBetzJgWM8xoCkgkSU3BVAVUe589Yg9D-AISZ2sIawefuZrX9_nCo_kvPenmXCIaxK6t-wbKxqiE7RkUZw42XBSLAh3UqcpLkUkyrwmvo0ylCg3wOoX-GL6E1f5B3o1Xcn4-c3sH7joPRCIjkdRqNnHZut_d2ptAI-bgTBmLah4FGDuKqh5G5yD4qSBdgAu3VyT9jMafVdc2TUCZ9glVNQd0o6bHeN-lWHxsK6lq9AgXeB0vUlTtHphrtEPMaQpOz8jARGIfMgG6bFa7vqjnswVMgC-KJVcIoxIQO1WPtyqWPrs2xZZcueC6wdsSH1oGDpiP6KqzZoCMuvVrUz6ptICdbvSGVyuMBPNSyILR6iNZHn4z18M7A9cDI3UIJD45CiA_-nmR-QMVJigCxqB-GVHMuW6bg4pgIkQV1QnhyWRbCdloBAyhRuLfhaWHzOubd9twS5DL16CVFpVGbI5SB6R3Mr_ZB87WadJ8NUwxPglND3dDaUVUFEZUYpinzsG3yimqc2LL2O4WU67bKuGk5ecKyJUwTSQAcEHNfv16P-1-DmspB41VyMU4GdJiorNDnBREbSOJtoCIpp",
       "summary": [],
       "type": "reasoning"
     },
     {
       "content": [
         {
-          "text": "`dev` is working under dispatch `d002`. I’m entering the campaign wait mechanism now; it will return when there is a reply or another judgment is required.",
+          "text": "`dev/d002` is open with the full task. I’ll now let the campaign monitor handle progress and recovery; when a reply arrives, I’ll validate the actual branch rather than relying on the report alone.",
           "type": "output_text"
         }
       ],
@@ -635,55 +619,47 @@
       "type": "message"
     },
     {
-      "call_id": "call_RP59qhltrEBoA2ZzNjLR6Olm",
-      "input": "const r = await tools.exec_command({cmd:\"cs-campaign-member wait\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":30000,\"max_output_tokens\":20000}); text(r.output); if(r.session_id) text(`SESSION_ID=${r.session_id}`);\n",
+      "call_id": "call_TyGca3rd02nig8qBPTOHmOiA",
+      "input": "const r = await tools.exec_command({cmd:\"cs-campaign-member wait\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":30000,\"max_output_tokens\":20000,\"tty\":true}); text(JSON.stringify(r));\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_RP59qhltrEBoA2ZzNjLR6Olm",
+      "call_id": "call_TyGca3rd02nig8qBPTOHmOiA",
       "output": [
         {
           "text": "Script completed\nWall time 30.2 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "",
-          "type": "input_text"
-        },
-        {
-          "text": "SESSION_ID=8184",
+          "text": "{\"chunk_id\":\"0cc31b\",\"wall_time_seconds\":30.001176049,\"session_id\":76574,\"original_token_count\":0,\"output\":\"\"}",
           "type": "input_text"
         }
       ],
       "type": "custom_tool_call_output"
     },
     {
-      "encrypted_content": "gAAAAABqin4uf_0CE-r1TOYTs64ie_VjoxthzqkAJL-kkSHF4QHr22zVaaeoR10s_i_kTnwYbL7SCi1n0bDtPkyPgh7G4QP-3sHaoXwQ9JJ3wxnCflCyGWiksKT_5XR-9stgK3zGRmQz_8bJvNkIGDP9yq3aQoJ-1IFvXZeorAykXUXkBPdwYxXnYhuu049BpygGQqT56ZASKFNBb2FHNT7SMSYnnL14usPy-RN80NccqPEyLQMWZ2rmgKGTHy1nHoyi_FFHfm-tssFx0F8fN6s-EgGTfRFAwhlqYC6BzOCRn_ioXlz4l5uRpHHnUT2uUKlw2hDPEo8hZIQogLIxIpkB1aKaDEAA6S0Mhv3Qa1gw3jg5Hfn8RSiPjW7DiGzRIWFN3S1k5mPyun2toYhim_i4DjII3RmTgFNppaFyCYEJSA2C-ExzDhSJB4fcqh0K70t3i5tgSh32Al1gXeOCMdaM-HwRcgY2GkdiV3N5uX-2mNa1jkOVtjQ60byBdnHnRLqtVaiol5Hyj2O4jwlD5qMFfvefhokV4TakhxQqWEnagTRp0vCZtfxKu4ULAIolia_DBdxc_6rqKx6Yg6D9kOjAyfN950rsluTbqF2Z4LQnLCBLzrTFQeyPaTuKmGGTSykE_ASsFZyy1fX_TmpwEXbLK5V1vIiLjAkiv1sPutw6dTzdNH1G_NWymzrIECRWJC7pRiD_bYBvuXKWn6lCNtHO8gk23ltSt337JDScuR2kMFLjLXXqi0zDly2ne_8Glp7G4rSlqqAdCe_UsS-K4jjf8VhJmL6ZFMjH9V-FMU3TPBNXgRu1NHDsgYClz49b-NyLOQvqWAnRnfbhA6z844yzlIXw7kd-QGtaathV9QYk_AEugKOGPWybtYuHXfyUrpZitlqMeRXMj-XvVzWYGkK9bdQiXBLHOlBeTe-EtSRqXOwT1nQMYwkp7AwRi52uUDWPSslBbcCKonKok11D-zN855eUw6kJlu3oTwdaKRkaQFggWKfztmCKyHPnPzBzalfd3-Forch6cGF2rEugPm2_6tegYx0NSSRFQe2J12lkLWaqnMo9h-9JxU-totBfWATurTegYTGxqtnQpiOVlSfCwydyjbrzFhg_GiB7klk3oCTHBep6Q0ibVr9wn6DgISWsSRsDU_3LOBvi8wB7-WuUXAmOkOFsOOEEPQ9jpffktkeFKeMB0TwBDDqkqIAJGdE6cOLBrkeraysxB5Fv2nH0aCtuK_TkFMYG9VQ2CrnQsD02mAgKjY2YzDH3skRDRyNf7DszJKmJrd_mGBVeYLrQrTSPTBYFJoUuiS5IhoOaZFMkUIjZfybeRA6j_91KCqG4SsUf5ICGJ7E5li9dvXsCCTU26SjJcdYxSZlf227L6SjlWpn0pvd5zqvVfzT3Vwv1SmQD_M8s",
+      "encrypted_content": "gAAAAABqjgrT64cg-wXvVVpzj7TyiOPM5v2Cf_VMJnF4_MIOclfgqhCJ7ex-4CDtV1yKFNwPTcqFGHRGIrkGZJrNdJ8sDmtv3fTCMCdN5rIz1P5OpScebLhDA7oxQ6oI3jiSRDtVYYWVRXoHzbA7WSmLAE-fQmks_neAvOMRp01MsstvIB7R6lLaKyi5kbCisMMEnmVmClgoHWJYstGB2Z5XPI0ecnvzANuI4YnVodTtciwg7YIUqDJzcJg5XGUvqCR2YLpCq6CzF5O4Ml1MPOlxC7DN4Bww3xpzQLeUg7MHyNkAKnHv670c2W3A7Y69RgUa9HfIs0-hWM6YkW1hsNCas3HMUv-U4WOywtt8dWX8N1hkMyVycyASV1FEbYqvpfLZHyLw_zaGOeNU8uY9OBOIviQawACTQPiRFNX8A6hz3uO3zAY8qC18yIJuZxXzMncmIJx_CZzb9wA59EmGP14N3CmrjzTqrpx-64vYPiE-T8PxJyk7qXud-JMPyiGaPF-uDNh_uLW16FP0z6cKevLkdVfvSvhsGvrPb_BwKwB6-6GKIrQlc-UIMUYxl6xwtkUreg5MsCP6b9eoA443drQMZzFFIE-ywofQd_WAYronr4-JXepxTDiNxffmB6kOC0mH9NhSdq9KXodCEUFwqKCjo1uumNZUAQOO6hG7dT8wYftx5d7WrzqBp-srd1OHgeGpXnRP-E9eH7G0pMVOiwELewgYfyBWc243jnhr9r7RhzFltuxfjLWiD4pCRkaQgq0IzO2OZC3jW2XdloHQQvVh4vzpH_amq91OCRyCBSuCvTfIagBmPl-5bqZCs4CNObanD41ou5W2CTj3lPuLSw8WtB1djNmQpH0Q5TfT9DG7qb_j5-UJc8BUr3RL61xDl_yOilQ7jVB8w4QfnAFTbb-_r1PHBWujDshhICRzEHqXmcRmWL1EFJgwvor04WrECCwH64YlALFsh5Af-uQ534PqyGQ7ZYaGDMEZ5xXfLEvoBVT6p5lHk8YoV_BRRCy5CwiA6fRAYkrwiDumz9Fc48ppxI_LJpFYlOOF64iBrhJa6sMLwucxpKhBAWYRqt5AafzPVaYMBta_A-U9_JF_D5_8I8CNwQGn_d_mxHaAygIYPQrJ9wsbqGWBP6AdRXIKnq_ynJhqRO2Mit2-53EZjBIIo2pvUMFENjRuC3B4_wlWjDHMXo5indPAnLecL-maOPWmSywYdCaOJ0p0b24O6UOxZ04Y_m-TlvB2Pl9Q0oLYYi28FSLpv6mKX7N_DfINMt8GFwgGgHUycXtIy1pfnexQDvWPrw13JlTO-Su27UTnjLhL3lGDwfk=",
       "summary": [],
       "type": "reasoning"
     },
     {
-      "call_id": "call_A3m105G6uSy2NuEiTupb3Hsw",
-      "input": "const r = await tools.write_stdin({session_id:8184,chars:\"\",yield_time_ms:30000,max_output_tokens:20000}); text(r.output); if(r.session_id) text(`SESSION_ID=${r.session_id}`);\n",
+      "call_id": "call_ooK4jDaHJXX8sj2vcNFetiH0",
+      "input": "const r = await tools.write_stdin({session_id:76574,chars:\"\",yield_time_ms:30000,max_output_tokens:20000}); text(JSON.stringify(r));\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_A3m105G6uSy2NuEiTupb3Hsw",
+      "call_id": "call_ooK4jDaHJXX8sj2vcNFetiH0",
       "output": [
         {
-          "text": "Script completed\nWall time 30.0 seconds\nOutput:\n",
+          "text": "Script completed\nWall time 28.7 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "",
-          "type": "input_text"
-        },
-        {
-          "text": "SESSION_ID=8184",
+          "text": "{\"chunk_id\":\"24edf9\",\"wall_time_seconds\":28.66076965,\"exit_code\":0,\"original_token_count\":72,\"output\":\"wait returned — a judgment is due.\\r\\n\\r\\nnode           state            dispatch detail\\r\\ndev            node-replied     d002     reply present, not accepted\\r\\n\\r\\ndev replied to d002: read it (`cs-campaign-member read dev`), then `accept dev` or send rework with `send dev --file <path>`.\\r\\n\"}",
           "type": "input_text"
         }
       ],

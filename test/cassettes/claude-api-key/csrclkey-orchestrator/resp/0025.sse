@@ -1,33 +1,21 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeK5w9BpC2R9WKbqeUDX5","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":977,"cache_read_input_tokens":56928,"cache_creation":{"ephemeral_5m_input_tokens":977,"ephemeral_1h_input_tokens":0},"output_tokens":2,"service_tier":"standard","inference_geo":"global"}}   }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeQBZesrLKfHbfgoRtFHk","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":42,"cache_creation_input_tokens":232,"cache_read_input_tokens":54335,"cache_creation":{"ephemeral_5m_input_tokens":232,"ephemeral_1h_input_tokens":0},"output_tokens":20,"service_tier":"standard","inference_geo":"global"}}     }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}             }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_0114ymsJxMW7DHJXszU629Ja","name":"Bash","input":{},"caller":{"type":"direct"}}      }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EvgDCqgBCBEYAipAObwGrj1/z3WbVajAJcHtXfTTUP64PSjsLG0YvtwGsZFOoTjVkpmRI/bT6BwzJWwkcaeenrW4JhmO6t1DSzJwuzIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEB4aFA8rRS4c55cfnpWb6maIAQGoAfj6qdQGsAECEgwwzG19zErkMyuMub4aDOT+JEjlr8ZxMUz9zCIw3XarmqC8JEf3wylmGMlcw6QPe3SZ1PaSqdeuBlsAWoLzDkGJKi453JxVl3nE5EXEKvwBpNYz134/mYwjuvKjPq4QPeLepsze1A2EqKZoMouitn5FILVuGoqBKRwwgyCsPPBMHdCND6iUHOvZTIkE8e1hR3fhj4fzu1ASXu/YJtg5ZpA+z7SZq5/Gd6gDmZCHuxtxe1HSxVZLDTOFWJ+dOe9Njrrn50N1vbVXLoGdTH+4OSf/MiU7v3AXaTVEH76nFobPGagWKLJWLJIUpV1ZZgBZL7HrzE7tYpKF4A0a1sd8cddHfq2QW/wqd+bM5HJ+0iyD+ZaATBCRMZDe2nrQK0eWxM+eFu+1TzlUIr6Jt1HeWzlXXE3U8ZDIRVWVO3Ea9pg67AoMw56ywaIfqI7TGAE="}              }
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member accept dev\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0           }
-
-event: content_block_start
-data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01FaQS8YA1i7dxm3LwDg5kUv","name":"Bash","input":{},"caller":{"type":"direct"}}       }
-
-event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"ls -la ~/.local/share/cs-campaign/output 2\u003e\u00261; mkdir -p ~/.local/share/cs-campaign/output\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
-
-event: content_block_stop
-data: {"type":"content_block_stop","index":1    }
+data: {"type":"content_block_stop","index":0            }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":977,"cache_read_input_tokens":56928,"output_tokens":181,"output_tokens_details":{"thinking_tokens":86}},"context_management":{"applied_edits":[]}   }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":42,"cache_creation_input_tokens":232,"cache_read_input_tokens":54335,"output_tokens":58,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}   }
 
 event: message_stop
-data: {"type":"message_stop"        }
+data: {"type":"message_stop"              }
 
