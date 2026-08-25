@@ -50,7 +50,7 @@ jobs:
       - name: linters
         run: |
           set -euo pipefail
-          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
           go install golang.org/x/tools/cmd/deadcode@latest
           go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
           go install github.com/codesweep-ai/vcr/cmd/cs-vcr@latest
@@ -101,7 +101,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
       - run: go install golang.org/x/tools/cmd/deadcode@latest
       - run: make lint
       - run: make deadcode

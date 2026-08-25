@@ -33,7 +33,7 @@ By opening a pull request you agree that your contribution ships under the
 Install the tools once. `golangci-lint` is pinned, because it gains checks between releases.
 
 ```bash
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
 go install golang.org/x/tools/cmd/deadcode@latest
 go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
 go install github.com/codesweep-ai/ledger/cmd/cs-ledger@latest

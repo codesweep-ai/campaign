@@ -38,7 +38,7 @@ func decodeEmbeddedBase64(t *testing.T, command string, n int) []byte {
 	if len(parts) <= n {
 		t.Fatalf("command has %d payloads, want > %d: %q", len(parts)-1, n, command)
 	}
-	token := strings.SplitN(parts[n], " ", 2)[0]
+	token, _, _ := strings.Cut(parts[n], " ")
 	decoded, err := base64.StdEncoding.DecodeString(token)
 	if err != nil {
 		t.Fatalf("decode payload %d: %v", n, err)
