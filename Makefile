@@ -33,7 +33,7 @@ COVERFLAGS  = -covermode=atomic -coverpkg=$(shell go list ./... | paste -sd, -)
 
 .PHONY: help guestbin build build-go build-go-embedded install uninstall test test-smoke \
         test-integration fixtures fixtures-strict coverage coverage-check coverage-baseline \
-        covmap covmap-scripts vet fmt fmt-check lint deadcode docs oss \
+        covmap covmap-scripts vet fmt fmt-check lint deadcode prose refs oss \
         fixtures-check surface cs-lint-installed ledger check snapshot \
         release release-check clean
 
@@ -313,9 +313,12 @@ deadcode:
 	@out="$$(deadcode -test -tags=smoke ./...)"; \
 	if [ -n "$$out" ]; then echo "$$out"; exit 1; fi
 
-## docs: the prose rules, and the references the documents make
-docs: cs-lint-installed
+## prose: check how this repository's documents are written
+prose: cs-lint-installed
 	$(CS_LINT) prose
+
+## refs: check that everything the documents point at is there
+refs: cs-lint-installed
 	$(CS_LINT) refs
 
 ## oss: the rules this repo has to satisfy as a published project
@@ -326,8 +329,9 @@ oss: cs-lint-installed
 surface: build cs-lint-installed
 	$(CS_LINT) surface
 
-# The three targets above are one shared tool: github.com/codesweep-ai/lint.
-# docs asks for no binary and runs first; surface reads the one build makes.
+# The four targets above are one shared tool: github.com/codesweep-ai/lint.
+# prose and refs ask for no binary and run first; surface reads the one
+# build makes.
 # Its knobs for this repo live in .cs-lint.yaml, and `cs-lint <linter> --explain`
 # says what each rule wants.
 cs-lint-installed:
@@ -355,7 +359,7 @@ fixtures-check:
 	@scripts/fixtures-check.sh
 
 ## check: the full local gate — fmt, vet, the linters, and the unit tier
-check: fmt-check vet lint deadcode test coverage-check fixtures-check docs oss surface
+check: fmt-check vet lint deadcode test coverage-check fixtures-check prose refs oss surface
 
 ## snapshot: local release dry-run into dist/ (all platforms, archives, checksums)
 ##

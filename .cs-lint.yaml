@@ -121,10 +121,11 @@ oss:
   project: cs-campaign
   githubRepo: codesweep-ai/campaign
 
-  # True once the repository is public. Published history cannot be rewritten,
-  # so the two rules that scan past commits for a leak report as warnings from
-  # that point on. Flip this in the same commit that makes the repository
-  # public.
+  # True once the repository is public. From that point a finding about a commit
+  # a remote already carries reports as a warning, because rewriting one is a
+  # decision about every clone somebody else made. A finding about a commit no
+  # remote has stays an error, because an amend still reaches it. Flip this in
+  # the same commit that makes the repository public.
   published: false
 
   docSet:
@@ -147,5 +148,5 @@ oss:
   # tests name.
   emailAllow: ["github.com", "anthropic.com"]
 
-  requiredTargets: ["build", "test", "check", "lint", "docs", "oss", "clean"]
+  requiredTargets: ["build", "test", "check", "lint", "prose", "refs", "oss", "clean"]
   expectedTargets: ["help", "install", "uninstall", "fmt", "fmt-check", "vet", "deadcode"]
