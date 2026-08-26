@@ -30,7 +30,17 @@ By opening a pull request you agree that your contribution ships under the
 
 ## Before you push
 
-Install the tools once. `golangci-lint` is pinned, because it gains checks between releases.
+One command:
+
+```bash
+make ci
+```
+
+That is every gate the CI workflow has, on this machine and in the order the workflow takes them,
+so a green run here is a green run there. `make check` is the faster subset to keep beside you
+while you work, and `make ci` is the one that has to pass.
+
+It shells out to tools the Go distribution does not carry. Install them once:
 
 ```bash
 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
@@ -39,21 +49,22 @@ go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
 go install github.com/codesweep-ai/ledger/cmd/cs-ledger@latest
 ```
 
-Then run these, in order:
+`golangci-lint` is pinned to the version CI runs, so a release that gains checks reaches you when
+you move the pin rather than on an unrelated pull request. `cs-lint` is not pinned: CI installs it
+from source the same way you do, so a check it gains reaches you on the day it lands.
 
-```bash
-make check         # gofmt, go vet, the Go linters, the unit tests and the prose checks
-make ledger        # the issue records, and whether ledger.html is current
-make test-smoke    # the whole protocol on real machines, with the model turns replayed
-git status         # commit whatever the run regenerated under covmap/
-```
+One tier sits outside the gate. `make test-smoke` runs the whole protocol on real machines with
+the model turns replayed, in about ten minutes and for no money. Run it when you touch the
+protocol, and commit whatever it regenerates under `covmap/`.
 
-`make test-smoke` takes about ten minutes and spends no money, because it replays the committed
-cassettes instead of calling a provider.
+**`go test` caches.** A run reporting every package `(cached)` has executed nothing. After
+changing branches, rebasing or pulling, use `go test -count=1 ./...`. A cached green after moving
+eleven commits is not evidence.
 
-**`go test` caches.** A run reporting every package `(cached)` has executed nothing. After changing
-branches, rebasing or pulling, use `go test -count=1 ./...`. A cached green after moving eleven
-commits is not evidence.
+This repository keeps a **ledger** of open issues in `ledger/`. Read
+[`ledger/AGENTS.md`](ledger/AGENTS.md) before you start work, and follow it as you go. A commit
+that touches `ledger/` needs `cs-ledger render && cs-ledger check` to pass first, and
+`make ledger` runs the check half.
 
 ## Design rules
 
