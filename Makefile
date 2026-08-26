@@ -361,6 +361,15 @@ fixtures-check:
 ## check: the full local gate — fmt, vet, the linters, and the unit tier
 check: fmt-check vet lint deadcode test coverage-check fixtures-check prose refs oss surface
 
+# say prints a heading above each gate, so a long run reads as a list rather
+# than as a wall. Bold where a terminal is reading it and plain where a pipe
+# is: `make ci > ci.log` should leave a log somebody can read. The escapes are
+# the same ones scripts/check.sh uses in tracer, which is where the shape came
+# from.
+define say
+@if [ -t 1 ]; then printf '\n\033[1m==> %s\033[0m\n' "$(1)"; else printf '\n==> %s\n' "$(1)"; fi
+endef
+
 ## ci: every gate the CI workflow runs, on this machine
 ##
 ## One Linux leg of .github/workflows/ci.yml, in the order CI runs it, so a
@@ -370,10 +379,15 @@ check: fmt-check vet lint deadcode test coverage-check fixtures-check prose refs
 ## Firecracker host, and replays a recorded cassette. Run it with
 ## `make test-smoke` where the host can carry it.
 ci:
+	$(call say,the gate a contributor runs before pushing)
 	@$(MAKE) --no-print-directory check
+	$(call say,build)
 	@$(MAKE) --no-print-directory build-go
+	$(call say,release manifest)
 	@$(MAKE) --no-print-directory release-check
+	$(call say,ledger)
 	@$(MAKE) --no-print-directory ledger
+	$(call say,the behaviour map)
 	go test ./internal/covmap/... -run TestCoverageHTMLCurrent -count=1
 	git diff --exit-code -- covmap/
 	@printf '\nci: every gate ran. Not reproduced here: build-test on macOS, the\n'

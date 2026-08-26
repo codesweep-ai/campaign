@@ -41,7 +41,7 @@ build from a clone.
 
 ### Or build from source
 
-Needs **Go 1.25 or newer**. `goreleaser` is optional and only stamps the version.
+Needs **Go 1.27 or newer**. `goreleaser` is optional and only stamps the version.
 
 ```bash
 git clone https://github.com/codesweep-ai/campaign && cd campaign
