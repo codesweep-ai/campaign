@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -147,6 +148,12 @@ func (a *app) archiveFleetVerdict(ctx context.Context, root string, campaign *mo
 // member's work. The opencode transcript export is the realistic case, because
 // it shells out once per recorded session.
 const archiveCollectBound = 2 * time.Minute
+
+// archiveExportBound is how much of a transcript collection's bound the
+// opencode session export may spend before the tar that follows it runs
+// regardless. A fraction of archiveCollectBound, deliberately: the readable
+// export is the nice-to-have and the raw db is the evidence.
+const archiveExportBound = 45 * time.Second
 
 // collect runs one collection command in a member under that bound, so a hung
 // command becomes a marker naming the deadline rather than an indefinite wait.
@@ -320,7 +327,26 @@ func (a *app) archiveTranscripts(ctx context.Context, base string, member model.
 		// cs-opencode wrapper so the profile's OPENCODE_DB is used. The export
 		// carries prompts, replies, tool calls, and per-message error/completed
 		// evidence, and contains no credential material.
-		pre = `umask 077; mkdir -p "$HOME/.cs-opencode/export"; for id in $(cs-opencode db "SELECT id FROM session" --format tsv 2>/dev/null); do case "$id" in ses_*) cs-opencode export "$id" > "$HOME/.cs-opencode/export/$id.json" 2>/dev/null || rm -f "$HOME/.cs-opencode/export/$id.json" ;; esac; done; `
+		//
+		// Bounded and niced, because this runs on the member's own machine and
+		// each session costs a whole opencode start. It shares one deadline
+		// with the tar below and runs first, so an export that takes the lot
+		// leaves no tarball at all — and `audit` reads a missing or empty
+		// cli-evidence.tgz as "declared opencode but produced no transcript;
+		// another CLI did the work". A member that was merely slow must not be
+		// able to look like a lying one. The raw db is always collected;
+		// whatever exports finish are collected with it, and a partial file is
+		// removed by the same `|| rm -f` that a failed export takes, since a
+		// timed-out export exits non-zero too.
+		bound := a.exportBound
+		if bound == 0 {
+			bound = archiveExportBound
+		}
+		pre = fmt.Sprintf(`umask 077; mkdir -p "$HOME/.cs-opencode/export"; timeout -k 5 %s sh -c 'for id in $(cs-opencode db "SELECT id FROM session" --format tsv 2>/dev/null); do case "$id" in ses_*) nice -n 10 cs-opencode export "$id" > "$HOME/.cs-opencode/export/$id.json" 2>/dev/null || rm -f "$HOME/.cs-opencode/export/$id.json" ;; esac; done' || true; `,
+			// Seconds with a fraction: timeout takes it, and a test bound of a
+			// few hundred milliseconds must not truncate to 0, which timeout
+			// reads as "no limit".
+			strconv.FormatFloat(bound.Seconds(), 'f', -1, 64))
 	}
 	command := fmt.Sprintf("cd \"$HOME\" && %sfiles=; for f in %s; do [ -e \"$f\" ] && files=\"$files $f\"; done; [ -n \"$files\" ] && tar -czf - $files || tar -czf - --files-from /dev/null", pre, allow)
 	target := filepath.Join(base, "transcript", "cli-evidence.tgz")

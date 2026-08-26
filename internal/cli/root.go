@@ -37,6 +37,10 @@ type app struct {
 	// collectBound is how long one archive collection command may run inside a
 	// member. Zero means archiveCollectBound; tests set it small.
 	collectBound time.Duration
+	// exportBound is how long the opencode session export may run inside a
+	// member before the tar after it runs regardless. Zero means
+	// archiveExportBound; tests set it small.
+	exportBound time.Duration
 }
 
 func Execute() error {

@@ -806,6 +806,12 @@ Anything that failed to collect leaves an `INCOMPLETE-*` marker beside where it 
 Each collection command is bounded, so a member that stops answering leaves a marker naming the
 deadline rather than holding the archive open.
 
+A collection that prepares readable evidence before copying the raw kind gives the preparation its
+own smaller bound, and copies whatever it produced. The opencode session exports beside that
+adapter's SQLite database are the case. A slow member can therefore hand back fewer exports than it
+has sessions, and never fewer databases. `audit` reads an empty evidence tarball as another CLI
+having done the work, so the raw stream is the one that must always be collected.
+
 ### 5.8 The pin
 
 `~/.config/cs-campaign/pin.json`: the time it was recorded, the `cs-sandbox` version, the sha256 of
