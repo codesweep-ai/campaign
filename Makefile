@@ -371,7 +371,7 @@ check: fmt-check vet lint deadcode test coverage-check fixtures-check prose refs
 ## `make test-smoke` where the host can carry it.
 ci:
 	@$(MAKE) --no-print-directory check
-	@$(MAKE) --no-print-directory build
+	@$(MAKE) --no-print-directory build-go
 	@$(MAKE) --no-print-directory release-check
 	@$(MAKE) --no-print-directory ledger
 	go test ./internal/covmap/... -run TestCoverageHTMLCurrent -count=1
