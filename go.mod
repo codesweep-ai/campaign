@@ -8,12 +8,13 @@ require (
 )
 
 require (
-	github.com/codesweep-ai/ledger v0.0.0-20260826052602-c645f1744ac6 // indirect
-	github.com/codesweep-ai/lint v0.0.0-20260826044750-ad09a633ab9d // indirect
-	github.com/codesweep-ai/sandbox v0.0.0-20260826054622-d2cb928d89b9 // indirect
-	github.com/codesweep-ai/vcr v0.0.0-20260826054048-c8c01a821efd // indirect
+	github.com/codesweep-ai/ledger v0.0.0-20260826154712-f3d4cf8989eb // indirect
+	github.com/codesweep-ai/lint v0.0.0-20260826152054-3acef36b8e16 // indirect
+	github.com/codesweep-ai/sandbox v0.0.0-20260826171442-c36e1fe91606 // indirect
+	github.com/codesweep-ai/vcr v0.0.0-20260826160252-bd9e6f2b8ab6 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
+	golang.org/x/mod v0.40.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
