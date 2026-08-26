@@ -524,6 +524,7 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 	// costs the whole ceiling. One such run cost half an hour.
 	deadline := time.Now().Add(opts.ceiling)
 	stopped := 0
+	busy := ""
 	for time.Now().Before(deadline) {
 		obs, oerr := a.observeCampaign(context.Background(), campaign)
 		if oerr == nil {
@@ -554,7 +555,21 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 			}
 			if obs.Mission != nil {
 				run.verdict = obs.Mission
-				break
+				// The verdict ends the campaign, not the machines. Archiving
+				// now would read a member that is still running its turn: on a
+				// host short of CPU the agent's guest saturates, every
+				// collection burns its whole bound against it, and the run
+				// fails on INCOMPLETE markers that describe the archive rather
+				// than the campaign.
+				//
+				// The orchestrator is replayed here, so its judgment costs a
+				// cassette lookup while the agent's work costs real seconds —
+				// the verdict routinely lands first. Waiting for the workers to
+				// go quiet is what makes the archive a reading of a finished
+				// campaign.
+				if busy = stillWorking(obs.Derived); busy == "" {
+					break
+				}
 			}
 		}
 		time.Sleep(15 * time.Second)
@@ -562,6 +577,12 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 	if run.verdict == nil {
 		keepEvidence(t, a, campaign, "no-verdict")
 		t.Fatalf("no mission reply within %s", opts.ceiling)
+	}
+	if busy != "" {
+		keepEvidence(t, a, campaign, "agent-still-working")
+		t.Fatalf("the campaign reached its verdict but %s is still working after %s; "+
+			"archiving a member mid-turn reports the collection's deadline rather than the campaign",
+			busy, opts.ceiling)
 	}
 
 	run.archive = archiveRoot
@@ -614,6 +635,29 @@ func proveCampaignBehaviours(t *testing.T, cli string, tier covmap.Tier) {
 // reports stopped once the settling window has passed, so this is a minute of
 // genuine silence rather than a turn starting up.
 const stalledPolls = 4
+
+// stillWorking names an agent that is mid-turn, or "" when the workers have
+// all gone quiet. The orchestrator is excluded: it has replied by the time this
+// is asked, and its own rung is above.
+//
+// Only node-working counts. node-free and node-replied are a member at rest
+// with nothing running on its machine, which is all the archive needs.
+//
+// An earlier version of this driver failed a node for holding node-working past
+// its stall threshold and settling window, on the theory that nothing else
+// bounds that state. Reproducing the CI failure showed why that is wrong: a
+// starved agent holds node-working for many minutes while making steady
+// progress, and its state is indistinguishable from a wedged one. The campaign
+// ceiling is the honest bound, and what the run actually needs is not to
+// archive underneath a member that is still running.
+func stillWorking(nodes []nodeView) string {
+	for _, n := range nodes {
+		if n.Role != "orchestrator" && n.State == string(protocol.StateWorking) {
+			return n.Name
+		}
+	}
+	return ""
+}
 
 // keepEvidence archives a failing campaign somewhere that outlives the test.
 //
