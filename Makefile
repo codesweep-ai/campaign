@@ -4,7 +4,7 @@
 # run before pushing, and it is what CI runs.
 
 GORELEASER ?= goreleaser
-CS_LINT    ?= cs-lint
+CS_LINT    ?= go tool cs-lint
 BIN        := bin/cs-campaign
 PKG        := ./cmd/cs-campaign
 VIEWERBIN  := bin/cs-dispatch-viewer
@@ -34,7 +34,7 @@ COVERFLAGS  = -covermode=atomic -coverpkg=$(shell go list ./... | paste -sd, -)
 .PHONY: help guestbin build build-go build-go-embedded install uninstall test test-smoke \
         test-integration fixtures fixtures-strict coverage coverage-check coverage-baseline \
         covmap covmap-scripts vet fmt fmt-check lint deadcode prose refs oss \
-        fixtures-check surface cs-lint-installed ledger check ci snapshot \
+        fixtures-check surface ledger check ci snapshot \
         release release-check clean
 
 .DEFAULT_GOAL := help
@@ -357,19 +357,19 @@ deadcode:
 	if [ -n "$$out" ]; then echo "$$out"; exit 1; fi
 
 ## prose: check how this repository's documents are written
-prose: cs-lint-installed
+prose:
 	$(CS_LINT) prose
 
 ## refs: check that everything the documents point at is there
-refs: cs-lint-installed
+refs:
 	$(CS_LINT) refs
 
 ## oss: the rules this repo has to satisfy as a published project
-oss: cs-lint-installed
+oss:
 	$(CS_LINT) oss
 
 ## surface: check the docs against the binary, the code and the build
-surface: build cs-lint-installed
+surface: build
 	$(CS_LINT) surface
 
 # The four targets above are one shared tool: github.com/codesweep-ai/lint.
@@ -377,19 +377,9 @@ surface: build cs-lint-installed
 # build makes.
 # Its knobs for this repo live in .cs-lint.yaml, and `cs-lint <linter> --explain`
 # says what each rule wants.
-cs-lint-installed:
-	@command -v $(CS_LINT) >/dev/null 2>&1 || { \
-		echo "cs-lint is not installed: go install github.com/codesweep-ai/lint/cmd/cs-lint@latest" >&2; \
-		exit 2; \
-	}
-
 ## ledger: validate the issue records and prove ledger.html is current
 ledger:
-	@command -v cs-ledger >/dev/null 2>&1 || { \
-		echo "cs-ledger is not installed: go install github.com/codesweep-ai/ledger/cmd/cs-ledger@latest" >&2; \
-		exit 2; \
-	}
-	cs-ledger check ledger
+	go tool cs-ledger check ledger
 
 ## fixtures-check: prove the committed cassettes replay under this cs-vcr
 ##

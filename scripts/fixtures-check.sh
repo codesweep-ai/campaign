@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prove the committed cassettes can still be replayed by the cs-vcr on PATH.
+# Prove the committed cassettes can still be replayed by the pinned cs-vcr.
 #
 # A cassette is keyed by a normalization ruleset, and cs-vcr bumps that ruleset
 # when the meaning of a key changes. Replaying a cassette across such a bump
@@ -16,16 +16,12 @@
 # one process and no machine, which is what lets `make check` carry it.
 #
 # Exit 0 when every cassette replays under the current ruleset, or when there is
-# nothing to check: no cs-vcr on PATH is a missing tool rather than a broken
-# fixture, and no cassettes at all is a repository that has not recorded any.
+# nothing to check: no cassettes at all is a repository that has not recorded
+# any. cs-vcr itself is pinned in go.mod and run with `go tool`, so it is always
+# there and this no longer skips for a missing tool.
 set -euo pipefail
 
 root=${1:-test/cassettes}
-
-if ! command -v cs-vcr >/dev/null 2>&1; then
-  echo "fixtures: cs-vcr is not on PATH; skipping the cassette ruleset check" >&2
-  exit 0
-fi
 
 shopt -s nullglob
 scenarios=("$root"/*/)
@@ -52,7 +48,7 @@ for scenario in "${scenarios[@]}"; do
   done
   [ ${#members[@]} -eq 0 ] && continue
 
-  if ! output=$(cs-vcr cassette verify --config "$config" "${members[@]}" 2>&1); then
+  if ! output=$(go tool cs-vcr cassette verify --config "$config" "${members[@]}" 2>&1); then
     echo "$output" >&2
     echo "  re-record with: make fixtures FIXTURE_TESTS='TestLiveRecordsACassette/$name'" >&2
     status=1

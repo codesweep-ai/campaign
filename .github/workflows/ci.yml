@@ -52,8 +52,6 @@ jobs:
           set -euo pipefail
           go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
           go install golang.org/x/tools/cmd/deadcode@latest
-          go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
-          go install github.com/codesweep-ai/vcr/cmd/cs-vcr@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       # The same one command a contributor runs before pushing
@@ -121,10 +119,6 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - name: cs-lint
-        run: |
-          go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: make prose
 
   # The rules this repository has to satisfy as a published project: the
@@ -144,10 +138,6 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - name: cs-lint
-        run: |
-          go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: make refs
 
   # The rules this repository has to satisfy as a published project: the
@@ -166,10 +156,6 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - name: cs-lint
-        run: |
-          go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: make oss
 
   # The documented interface against the real one: every command they name
@@ -186,10 +172,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: cs-lint
-        run: |
-          go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: make surface
 
   # The ledger's freshness gate. CONTRIBUTING.md asks for a render and a check
@@ -205,9 +187,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: install cs-ledger
-        run: go install github.com/codesweep-ai/ledger/cmd/cs-ledger@latest
-      - run: cs-ledger check ledger
+      - run: make ledger
 
   # The whole dispatch protocol on real machines, with the model's answers
   # replayed. This is the job that proves the harness rather than its parts: two

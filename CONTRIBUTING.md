@@ -45,13 +45,13 @@ It shells out to tools the Go distribution does not carry. Install them once:
 ```bash
 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
 go install golang.org/x/tools/cmd/deadcode@latest
-go install github.com/codesweep-ai/lint/cmd/cs-lint@latest
-go install github.com/codesweep-ai/ledger/cmd/cs-ledger@latest
 ```
 
 `golangci-lint` is pinned to the version CI runs, so a release that gains checks reaches you when
-you move the pin rather than on an unrelated pull request. `cs-lint` is not pinned: CI installs it
-from source the same way you do, so a check it gains reaches you on the day it lands.
+you move the pin rather than on an unrelated pull request. The four `cs-` tools the gates use need
+no install: they are pinned in `go.mod` and run with `go tool`. `make repin` moves those pins to the
+branch tip, and `make versions` says which builds the gates used. A campaign still resolves
+`cs-sandbox` and the agent CLIs from PATH at run time, which is what `pin.json` records.
 
 One tier sits outside the gate. `make test-smoke` runs the whole protocol on real machines with
 the model turns replayed, in about ten minutes and for no money. Run it when you touch the
