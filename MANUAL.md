@@ -444,7 +444,7 @@ help.
 | `restart <agent>` | Drops its session and re-anchors it against its open dispatch. |
 | `accept <agent>` | Records its current reply as accepted, which frees the agent. |
 | `note plan\|assessment --file F\|-` | Appends to the log. Re-planning is another `plan` entry. |
-| `wait [--for SECS]` | Blocks. Recovery runs itself. Returns when a judgement is due, or when the chunk elapses: `--for` seconds, 240 by default. |
+| `wait [--for SECS]` | Blocks. Recovery runs itself. Returns when a judgement is due — a reply to judge, or a node gone stuck — or when the chunk elapses: `--for` seconds, 240 by default. A free teammate is not a judgement; it is named on the elapsed line instead. |
 | `fetch <agent> [repo]` | Fetches its branch to `refs/remotes/campaign/<agent>/<repo>`. |
 | `push <agent> [repo]` | Pushes HEAD to it at `refs/campaign/orchestrator`. |
 
@@ -641,6 +641,12 @@ profile's digest, and a member reads its own policy from a file its model is sho
 either would change what a recorded session is matched on. Replaying a cassette is what it is
 for, where a turn answers in milliseconds and an interval sized for real turns is most of the run.
 
+How long one `wait` blocks is the same class of number, and is kept out of the policy set for the
+same reason. It is 240 seconds unless the caller asks otherwise with `--for`, sized to sit inside
+every agent CLI's cap on a single tool call. The environment can override both, `--for`
+included, through `CS_CAMPAIGN_WAIT_SECONDS`. A replay serves a recorded model that asked for the campaign's number, so an override that
+argument could beat would bound nothing.
+
 `defaults.deadline` is the campaign wall clock as a duration from create, such as `90m` or `6h`. It
 stops nothing by itself. The orchestrator's judgement enforces the deadline, and the machine uses
 the value only as the `elapsedSeconds` default.
@@ -677,6 +683,7 @@ the value only as the `elapsedSeconds` default.
 | `CS_SANDBOX_INSTANCES_DIR` | `cs-campaign` | Where `cs-sandbox` keeps instances, for the socket-path budget check. |
 | `CS_SANDBOX_HOME` | `cs-campaign` | Fallback root for the same check when the instances directory is unset. |
 | `CS_CAMPAIGN_POLL_SECONDS` | `cs-campaign`, `cs-campaign-member` | Overrides `policy.pollSeconds` for the wait loop alone. |
+| `CS_CAMPAIGN_WAIT_SECONDS` | `cs-campaign-member`, forwarded by `cs-campaign` | Overrides how long one `wait` blocks, `--for` included. |
 | `XDG_DATA_HOME` | `cs-campaign` | Last fallback for the same check. |
 
 Precedence for the instances directory is `CS_SANDBOX_INSTANCES_DIR`, then `CS_SANDBOX_HOME`, then

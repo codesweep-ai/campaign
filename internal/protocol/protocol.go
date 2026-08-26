@@ -340,3 +340,36 @@ func PollInterval(pol Policy) time.Duration {
 	}
 	return time.Duration(pol.PollSeconds) * time.Second
 }
+
+// DefaultWaitSeconds is how long one `wait` blocks before returning with its
+// snapshot and asking to be called again. PROTOCOL.md §8: the wait is chunked
+// rather than one long block, because agent CLIs bound how long a single tool
+// call may run, and 240s sits well inside every adapter's cap.
+//
+// It is not a Policy number, and deliberately so — see WaitChunk.
+const DefaultWaitSeconds = 240
+
+// WaitChunk resolves the chunk bound in seconds. secs is what the caller asked
+// for: the wait's --for, else DefaultWaitSeconds.
+//
+// CS_CAMPAIGN_WAIT_SECONDS overrides it, --for included, for the same reason
+// CS_CAMPAIGN_POLL_SECONDS overrides pollSeconds: the replay tier has to bound
+// its own wall clock, and what it replays is a recorded model that asked for
+// the campaign's number. An override the argument could beat would not bound
+// anything.
+//
+// Like the poll override it is neither policy nor profile configuration. The
+// campaign ID is the digest of the rendered profile and a member reads its
+// policy from a file its model is shown, so a number in either would
+// invalidate every committed cassette.
+//
+// Zero is honoured: one pass, no blocking, which is what the unit tier drives
+// the ladder with.
+func WaitChunk(secs int) int {
+	if v := os.Getenv("CS_CAMPAIGN_WAIT_SECONDS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			return n
+		}
+	}
+	return secs
+}

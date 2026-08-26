@@ -531,16 +531,39 @@ func safeReadPath(p string) bool {
 
 // cmdWait is the shape PROTOCOL.md §8 gives the orchestrator's wait, with the
 // mechanical ladder of PROTOCOL.md §5 run inside it: block, poll every node
-// into one snapshot, perform the moves in code, and return only when the next
-// arrow is a judgment — node-replied, node-stuck, or node-free.
+// into one snapshot, perform the moves in code, and return only when a
+// judgment is due.
+//
+// A judgment is a WORLD EVENT that needs a decision code cannot make:
+// node-replied and node-stuck, and those two only (SPEC.md R125). Both become
+// true on their own — PROTOCOL.md §5's "world events", against which
+// `dispatch`, `continue` and `accept` are dispatcher actions — and neither has
+// a mechanical move left to run.
+//
+// node-free is deliberately NOT one, though it once was. The only arrows into
+// it are `accept` and campaign start: a dispatcher action and an initial
+// condition, both the orchestrator's own. Returning for it woke the model to
+// report what the model itself had just done. Worse, it could not be waited
+// out — a phased fleet parks seats on purpose, nothing on a node ever clears
+// the state, and no instrument says "I am leaving this one free" — so wait
+// returned on its first snapshot, before sleeping once, for the rest of the
+// campaign. Live, a model met that, reasoned correctly that looping on it
+// would spend a turn per poll, backgrounded a poller and ended its turn, which
+// nothing can wake and the host reads as node-stopped.
+//
+// Nothing is hidden by leaving it out: printSnapshot names every node's state
+// on every return, the elapsed chunk included, and the elapsed line names the
+// free nodes outright. A free seat is reported exactly as often as before —
+// only the short-circuit is gone.
 func cmdWait(env *envState, args []string) error {
-	chunk := 240
+	chunk := protocol.DefaultWaitSeconds
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--for" && i+1 < len(args) {
 			_, _ = fmt.Sscanf(args[i+1], "%d", &chunk)
 			i++
 		}
 	}
+	chunk = protocol.WaitChunk(chunk)
 	pol := env.policy()
 	deadline := time.Now().Add(time.Duration(chunk) * time.Second)
 	blind := map[string]int{}
@@ -554,7 +577,7 @@ func cmdWait(env *envState, args []string) error {
 		// 4). Delivering into the snapshot's known-open dispatch is safe either
 		// way: a reply that raced us has closed it, and the reply check
 		// precedes everything on the next look.
-		var judgment []string
+		var judgment, free []string
 		for _, n := range names {
 			o := obs[n].Obs
 			switch o.State {
@@ -574,8 +597,11 @@ func cmdWait(env *envState, args []string) error {
 						acted = append(acted, msg)
 					}
 				}
-			case protocol.StateReplied, protocol.StateStuck, protocol.StateFree:
+			case protocol.StateReplied, protocol.StateStuck:
 				judgment = append(judgment, n)
+			case protocol.StateFree:
+				// Named on the elapsed line, never a reason to return.
+				free = append(free, n)
 			}
 		}
 		if len(judgment) > 0 {
@@ -591,8 +617,6 @@ func cmdWait(env *envState, args []string) error {
 					fmt.Printf("%s replied to %s: read it (`cs-campaign-member read %s`), then `accept %s` or send rework with `send %s --file <path>`.\n", n, obs[n].Obs.Dispatch, n, n, n)
 				case protocol.StateStuck:
 					fmt.Printf("%s is stuck (%s): it can take no further work — every item assigned to it is unreachable. Decide what becomes of its queue, and record an assessment.\n", n, obs[n].Obs.Detail)
-				case protocol.StateFree:
-					fmt.Printf("%s is free: dispatch its next task with `send %s --file <path>`, or leave it free if nothing remains.\n", n, n)
 				}
 			}
 			return nil
@@ -600,11 +624,22 @@ func cmdWait(env *envState, args []string) error {
 		if time.Now().After(deadline) {
 			// "nothing actionable" would be a lie in a chunk that ran the
 			// ladder (seen live: it printed above its own recovery report).
+			what := "nothing actionable"
 			if len(acted) > 0 {
-				fmt.Printf("wait chunk elapsed (%ds) — recovery performed, no judgment due yet; call `wait` again.\n\n", chunk)
-			} else {
-				fmt.Printf("wait chunk elapsed (%ds) — nothing actionable; call `wait` again.\n\n", chunk)
+				what = "recovery performed, no judgment due yet"
 			}
+			// Same lie, the other way: an idle teammate under "nothing
+			// actionable" reads as a fleet with nothing left to give. A free
+			// node is assignable — it is just not a judgment, because the
+			// orchestrator is what freed it. Name it here, do not return for it.
+			if len(free) > 0 {
+				is := "is"
+				if len(free) > 1 {
+					is = "are"
+				}
+				what += fmt.Sprintf("; %s %s free (assign with `send`, or leave free)", strings.Join(free, ", "), is)
+			}
+			fmt.Printf("wait chunk elapsed (%ds) — %s; call `wait` again.\n\n", chunk, what)
 			printSnapshot(obs, names)
 			if len(acted) > 0 {
 				fmt.Printf("\nrecovery performed while waiting:\n  %s\n", strings.Join(acted, "\n  "))

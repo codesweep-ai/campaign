@@ -42,6 +42,10 @@ type fakeWorld struct {
 	// afterProbe runs after a probe is served and before the next command —
 	// the gap in which the world can change under the snapshot (finding 4).
 	afterProbe func()
+	// probes counts probes served. A wait that blocks polls more than once;
+	// one that short-circuits polls exactly once per node. Counting them
+	// proves the block without a wall clock to be flaky about.
+	probes int
 	// collide holds message names a concurrent sender claims first: the next
 	// delivery to such a name materialises the winner's file and fails with
 	// the collision marker, as the noclobber script does.
@@ -68,6 +72,7 @@ func (w *fakeWorld) sshOut(host, command string) ([]byte, error) {
 			}
 		}
 		fmt.Fprintf(&b, "DRIVERS %d\n", a.drivers)
+		w.probes++
 		if w.afterProbe != nil {
 			w.afterProbe()
 		}
@@ -467,5 +472,222 @@ func TestStartTurnNamesNoWorkingDirectory(t *testing.T) {
 	}
 	if strings.Contains(line, " -d ") {
 		t.Errorf("a turn names no working directory, so it runs in the member's $HOME:\n%s", line)
+	}
+}
+
+// namedAgent is settledAgent under a chosen name, for the multi-seat fleets the
+// free-node tests need.
+func namedAgent(name string, msgNames ...string) *fakeAgent {
+	a := settledAgent(msgNames...)
+	a.name = name
+	return a
+}
+
+// SPEC.md R125 — the regression this file exists for.
+//
+// A phased fleet parks seats on purpose: `dev` works while `parked` sits with
+// nothing, deliberately. node-free used to count as a judgment, so wait
+// returned on its first snapshot, before sleeping once — and kept doing it for
+// the rest of the campaign, because nothing on a node ever clears the state and
+// the orchestrator has no instrument that says "leave this one free". Live, a
+// model met that, reasoned it would spend a turn per poll, backgrounded a
+// poller and ended its turn, which nothing can wake.
+//
+// wait must block the chunk out instead.
+func TestWaitDoesNotReturnForAFreeNode(t *testing.T) {
+	dev := namedAgent("dev", "d001.md")
+	dev.drivers = 1 // working
+	w := &fakeWorld{agents: map[string]*fakeAgent{
+		"dev-box":    dev,
+		"parked-box": namedAgent("parked"), // no dispatch ever opened: node-free
+	}}
+	installFakeWorld(t, w)
+	env := waitEnv(t, w)
+
+	out, err := captureStdout(t, func() error { return cmdWait(env, []string{"--for", "2"}) })
+	if err != nil {
+		t.Fatalf("wait: %v\n%s", err, out)
+	}
+	if strings.Contains(out, "judgment is due") {
+		t.Fatalf("a deliberately parked teammate is not a judgment — wait must keep blocking:\n%s", out)
+	}
+	if !strings.Contains(out, "chunk elapsed") {
+		t.Fatalf("wait must block the chunk out and report the elapse:\n%s", out)
+	}
+	// Two agents per snapshot: more than two probes means it slept and looked
+	// again rather than returning on the first look.
+	if w.probes <= len(w.agents) {
+		t.Fatalf("wait returned on its first snapshot (%d probes for %d agents) — it did not block", w.probes, len(w.agents))
+	}
+	if len(w.delivered) != 0 || len(w.sessionCmds) != 0 {
+		t.Fatalf("neither a working nor a free node is touched: %+v %v", w.delivered, w.sessionCmds)
+	}
+}
+
+// The elapsed line must name the free nodes. "nothing actionable" above a
+// snapshot showing an idle teammate is the same lie the recovery case already
+// guards against — a free seat is assignable, it is just not a judgment.
+func TestWaitElapsedLineNamesFreeNodes(t *testing.T) {
+	dev := namedAgent("dev", "d001.md")
+	dev.drivers = 1
+	w := &fakeWorld{agents: map[string]*fakeAgent{
+		"dev-box":  dev,
+		"docs-box": namedAgent("docs"),
+		"qa-box":   namedAgent("qa"),
+	}}
+	installFakeWorld(t, w)
+	env := waitEnv(t, w)
+
+	out, err := captureStdout(t, func() error { return cmdWait(env, []string{"--for", "0"}) })
+	if err != nil {
+		t.Fatalf("wait: %v\n%s", err, out)
+	}
+	head, _, _ := strings.Cut(out, "\n")
+	if !strings.Contains(head, "docs, qa are free") {
+		t.Fatalf("the elapsed line must name every free node, in roster order:\n%s", head)
+	}
+	if !strings.Contains(head, "assign with `send`, or leave free") {
+		t.Fatalf("the elapsed line must say both are legitimate:\n%s", head)
+	}
+	if !strings.Contains(head, "nothing actionable;") {
+		t.Fatalf("the free clause extends the headline, it does not replace it:\n%s", head)
+	}
+	// And the snapshot still carries the states, as it always did.
+	if !strings.Contains(out, "docs") || !strings.Contains(out, "node-free") {
+		t.Fatalf("the snapshot must still name every node's state:\n%s", out)
+	}
+}
+
+// One free node reads "is free", not "are free".
+func TestWaitElapsedLineAgreesWithOneFreeNode(t *testing.T) {
+	dev := namedAgent("dev", "d001.md")
+	dev.drivers = 1
+	w := &fakeWorld{agents: map[string]*fakeAgent{
+		"dev-box": dev,
+		"qa-box":  namedAgent("qa"),
+	}}
+	installFakeWorld(t, w)
+	env := waitEnv(t, w)
+
+	out, err := captureStdout(t, func() error { return cmdWait(env, []string{"--for", "0"}) })
+	if err != nil {
+		t.Fatalf("wait: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "qa is free") {
+		t.Fatalf("one free node takes the singular:\n%s", out)
+	}
+}
+
+// A chunk with nothing free keeps the bare headline — the free clause is added,
+// never always-on.
+func TestWaitElapsedLineOmitsFreeClauseWhenNoneAreFree(t *testing.T) {
+	dev := namedAgent("dev", "d001.md")
+	dev.drivers = 1
+	w := &fakeWorld{agents: map[string]*fakeAgent{"dev-box": dev}}
+	installFakeWorld(t, w)
+	env := waitEnv(t, w)
+
+	out, err := captureStdout(t, func() error { return cmdWait(env, []string{"--for", "0"}) })
+	if err != nil {
+		t.Fatalf("wait: %v\n%s", err, out)
+	}
+	if strings.Contains(out, "free (") {
+		t.Fatalf("nothing is free; the headline must not say otherwise:\n%s", out)
+	}
+	if !strings.Contains(out, "nothing actionable; call `wait` again") {
+		t.Fatalf("the bare headline must survive:\n%s", out)
+	}
+}
+
+// The other half of R125: a world event still returns. A node whose ladder is
+// spent is node-stuck, and that needs a decision no code can make.
+func TestWaitStillReturnsOnStuck(t *testing.T) {
+	// Two continues and one restart, which is waitEnv's whole budget.
+	stuck := namedAgent("dev", "d001.md", "d001.001.md", "d001.002.md", "d001.003.restart.md")
+	w := &fakeWorld{agents: map[string]*fakeAgent{
+		"dev-box":    stuck,
+		"parked-box": namedAgent("parked"), // free, and must not be the reason
+	}}
+	installFakeWorld(t, w)
+	env := waitEnv(t, w)
+
+	out, err := captureStdout(t, func() error { return cmdWait(env, []string{"--for", "600"}) })
+	if err != nil {
+		t.Fatalf("wait: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "judgment is due") || !strings.Contains(out, "dev is stuck") {
+		t.Fatalf("an exhausted ladder is a judgment and must return:\n%s", out)
+	}
+	if strings.Contains(out, "parked is free") {
+		t.Fatalf("a free node must not be given judgment guidance:\n%s", out)
+	}
+	if w.probes != len(w.agents) {
+		t.Fatalf("a judgment on the first snapshot must return at once, got %d probes", w.probes)
+	}
+}
+
+// A free node must not mask a judgment sitting beside it: the reply still
+// returns, and the free node is not reported as one.
+func TestWaitReturnsOnReplyBesideAFreeNode(t *testing.T) {
+	replied := namedAgent("dev", "d001.md")
+	replied.replies["d001"] = true
+	w := &fakeWorld{agents: map[string]*fakeAgent{
+		"dev-box":    replied,
+		"parked-box": namedAgent("parked"),
+	}}
+	installFakeWorld(t, w)
+	env := waitEnv(t, w)
+
+	out, err := captureStdout(t, func() error { return cmdWait(env, []string{"--for", "600"}) })
+	if err != nil {
+		t.Fatalf("wait: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "dev replied to d001") {
+		t.Fatalf("the reply is still the judgment:\n%s", out)
+	}
+	if strings.Contains(out, "parked is free") {
+		t.Fatalf("the free node must not be dressed as a judgment:\n%s", out)
+	}
+}
+
+// The chunk bound is honoured from the environment, and the headline prints the
+// number actually used — the wiring the replay tier depends on.
+func TestWaitChunkHonoursTheEnvironmentOverride(t *testing.T) {
+	t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", "0")
+	dev := namedAgent("dev", "d001.md")
+	dev.drivers = 1
+	w := &fakeWorld{agents: map[string]*fakeAgent{"dev-box": dev}}
+	installFakeWorld(t, w)
+	env := waitEnv(t, w)
+
+	// No --for at all: the default is what the override has to beat.
+	out, err := captureStdout(t, func() error { return cmdWait(env, nil) })
+	if err != nil {
+		t.Fatalf("wait: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "chunk elapsed (0s)") {
+		t.Fatalf("the override must replace the default and be reported as used:\n%s", out)
+	}
+	if w.probes != 1 {
+		t.Fatalf("a zero chunk is one pass, got %d probes", w.probes)
+	}
+}
+
+// And it beats an explicit --for, which is the point: a replay serves a
+// recorded model that asked for the campaign's number.
+func TestWaitChunkOverrideBeatsFor(t *testing.T) {
+	t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", "0")
+	dev := namedAgent("dev", "d001.md")
+	dev.drivers = 1
+	w := &fakeWorld{agents: map[string]*fakeAgent{"dev-box": dev}}
+	installFakeWorld(t, w)
+	env := waitEnv(t, w)
+
+	out, err := captureStdout(t, func() error { return cmdWait(env, []string{"--for", "3600"}) })
+	if err != nil {
+		t.Fatalf("wait: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "chunk elapsed (0s)") {
+		t.Fatalf("an override --for could beat would bound nothing:\n%s", out)
 	}
 }

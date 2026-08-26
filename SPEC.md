@@ -417,6 +417,23 @@ not anything is being emitted.*
 node. Only a run of consecutive failures past the operator's threshold **MAY** become the
 conclusion that the machine is gone.
 
+**R125.** The dispatcher's blocking `wait` **MUST** return only on a judgment. A judgment is a
+**world event** that needs a decision no code can make: `node-replied` and `node-stuck`, those two
+and no others. `node-free` **MUST NOT** end a block. *Its only arrows in are `accept` and campaign
+start, a dispatcher action and an initial condition, both the dispatcher's own. Returning for it
+wakes the model to report what the model itself just did. It also cannot be waited out. A phased
+fleet parks seats deliberately, nothing on a node ever clears the state, and no instrument records
+"leave this one free". So the wait returns on its first snapshot, before sleeping once, for the rest
+of the campaign. Observed live: a model met that, reasoned correctly that looping on it spends a
+turn per poll, then backgrounded a poller and ended its turn. Nothing can wake that, and the host
+reads it as a stopped orchestrator.* A free node **MUST** still be named when the chunk elapses, so
+deferring the signal costs no visibility.
+
+**R126.** The chunk a `wait` blocks for **MUST** be bounded, and overridable outside the profile on
+the same terms as `pollSeconds` (§6.1). *R125 makes that bound load-bearing. Before it, a free node
+short-circuited nearly every chunk, so the number was rarely reached. A replay tier that cannot
+shorten it pays the full chunk on every recorded `wait`.*
+
 ### 4.6 Team conformance
 
 **R66.** Each member **MUST** be provisioned for exactly one declared CLI, and the declaration
@@ -826,6 +843,12 @@ outside the policy an implementation records. A replay tier needs a shorter inte
 campaign. That number in the profile, or in a member's recorded policy, would change the bytes a
 recorded session is matched on.
 
+The chunk one `wait` blocks for is the same class of number, and is kept out of the policy set for
+the same reason. It defaults to 240 seconds, short enough for every agent CLI's cap on a single tool
+call (PROTOCOL.md §8). The caller may ask for another with `--for`. The environment can override both,
+`--for` included, through `CS_CAMPAIGN_WAIT_SECONDS`. What a replay tier replays is a recorded model that asked for the
+campaign's number, so an override the argument could beat would bound nothing (R126).
+
 `defaults.deadline` is the campaign wall clock as a duration from create, such as `90m` or `6h`. It
 stops nothing by itself: the orchestrator's judgement enforces the deadline, and the machine uses it
 only as the `elapsedSeconds` default.
@@ -854,6 +877,8 @@ otherwise.
 | `CS_CAMPAIGN_GUEST_BIN` | `cs-campaign` | A guest binary to install instead of the embedded one. |
 | `CS_SANDBOX_BIN` | `cs-campaign` | The `cs-sandbox` executable to invoke. Default `cs-sandbox`. |
 | `CS_SANDBOX_INSTANCES_DIR`, `CS_SANDBOX_HOME`, `XDG_DATA_HOME` | `cs-campaign` | Where `cs-sandbox` keeps instances, for the socket-path budget check in R11. |
+| `CS_CAMPAIGN_POLL_SECONDS` | `cs-campaign`, `cs-campaign-member` | Overrides `pollSeconds` where the wait sleeps (§6.1). |
+| `CS_CAMPAIGN_WAIT_SECONDS` | `cs-campaign-member`, forwarded by `cs-campaign` | Overrides how long one `wait` blocks, `--for` included (§6.1, R126). |
 
 Files a campaign reads or writes are listed in [`MANUAL.md`](MANUAL.md).
 

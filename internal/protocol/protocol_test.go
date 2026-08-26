@@ -321,3 +321,48 @@ func TestAcceptanceIsPerNode(t *testing.T) {
 		t.Fatalf("acceptance text: %s", got)
 	}
 }
+
+// The wait chunk resolves like the poll interval: the caller's number unless
+// the environment overrides it. SPEC.md R126.
+func TestWaitChunkResolution(t *testing.T) {
+	if got := WaitChunk(DefaultWaitSeconds); got != 240 {
+		t.Fatalf("with no override the caller's number stands, got %d", got)
+	}
+	if got := WaitChunk(600); got != 600 {
+		t.Fatalf("--for must stand with no override, got %d", got)
+	}
+	t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", "7")
+	if got := WaitChunk(DefaultWaitSeconds); got != 7 {
+		t.Fatalf("the override must replace the default, got %d", got)
+	}
+	// The point of the override: what a replay replays is a recorded model that
+	// asked for the campaign's number, so --for must not be able to beat it.
+	if got := WaitChunk(3600); got != 7 {
+		t.Fatalf("the override must beat --for, got %d", got)
+	}
+	// Zero is a real chunk — one pass, no blocking — not an unset value.
+	t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", "0")
+	if got := WaitChunk(240); got != 0 {
+		t.Fatalf("zero must be honoured as one pass, got %d", got)
+	}
+	// Junk is ignored rather than fatal, as with the poll override.
+	t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", "soon")
+	if got := WaitChunk(240); got != 240 {
+		t.Fatalf("an unparseable override falls back to the caller's number, got %d", got)
+	}
+	t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", "-5")
+	if got := WaitChunk(240); got != 240 {
+		t.Fatalf("a negative override falls back to the caller's number, got %d", got)
+	}
+}
+
+// DefaultWaitSeconds must stay inside the tightest cap an agent CLI puts on a
+// single tool call (PROTOCOL.md §8 chunks the wait for exactly this reason).
+// Claude Code's Bash tool caps one command at 600s, which is the tightest of
+// the supported adapters; a default above it could never complete a chunk.
+func TestDefaultWaitSecondsFitsAnAgentToolCall(t *testing.T) {
+	const tightestToolCallCap = 600
+	if DefaultWaitSeconds >= tightestToolCallCap {
+		t.Fatalf("a chunk of %ds cannot complete under a %ds tool-call cap", DefaultWaitSeconds, tightestToolCallCap)
+	}
+}

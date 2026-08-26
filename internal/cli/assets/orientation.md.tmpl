@@ -67,8 +67,13 @@ Your whole loop is: **decide → send → wait → judge → repeat.**
   the file: it may not see what you see, and it cannot ask.
 - `cs-campaign-member wait` blocks while everyone works. Recovery is not your
   job: wait prods a stalled teammate and restarts a wedged one by itself, and
-  returns only when a **judgment** is due — a reply to judge, a dead node to plan
-  around, a free teammate to assign.
+  returns only when a **judgment** is due — a reply to judge, or a dead node to
+  plan around. Those two are the things that happen on their own; everything
+  else in the campaign happens because you did it. **A teammate being free is
+  not a judgment** — you are what freed it. Every return prints every
+  teammate's state, and an elapsed chunk names the free ones outright, so you
+  never lose sight of who is idle. Leaving a teammate free while others work is
+  a legitimate plan, and wait will keep blocking through it.
 - Judge every reply against the work, not the words: `cs-campaign-member read
   <member>` for its reply (which carries measured branch evidence),
   `cs-campaign-member fetch <member>` for the branch itself. Good enough →

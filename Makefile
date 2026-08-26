@@ -152,9 +152,21 @@ SMOKE_TESTS ?= TestSmokeReplay
 ## is shown, so a number in either would invalidate every committed cassette.
 CS_CAMPAIGN_POLL_SECONDS ?= 2
 
+## The chunk one `wait` blocks for, shortened for this tier for the same reason
+## and on the same terms. It used to be reached only by a campaign with nothing
+## free, because a free node short-circuited the chunk; a wait that returns only
+## on a real judgment reaches it on every quiet call instead. The recorded
+## orchestrators call bare `wait`, so each replayed campaign would otherwise
+## spend the full 240s there — against a campaign phase measured at 29s.
+##
+## It overrides `--for` too, which is the point: what is replayed is a recorded
+## model that asked for the campaign's number.
+CS_CAMPAIGN_WAIT_SECONDS ?= 4
+
 test-smoke:
 	@scripts/coverage.sh reset smoke
 	CS_CAMPAIGN_POLL_SECONDS=$(CS_CAMPAIGN_POLL_SECONDS) \
+	  CS_CAMPAIGN_WAIT_SECONDS=$(CS_CAMPAIGN_WAIT_SECONDS) \
 	  CS_COVERDIR=$(COVER_ABS)/smoke go test -tags smoke $(COVERFLAGS) \
 	  -count=1 -p 1 -v -timeout 2400s -run '$(SMOKE_TESTS)' ./internal/cli \
 	  -args -test.gocoverdir=$(COVER_ABS)/smoke

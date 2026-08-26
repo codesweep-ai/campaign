@@ -597,6 +597,13 @@ func createArgs(campaign *model.Campaign, member model.Member) []string {
 	if v := os.Getenv("CS_CAMPAIGN_POLL_SECONDS"); v != "" {
 		args = append(args, "--env", "CS_CAMPAIGN_POLL_SECONDS="+v)
 	}
+	// And the wait-chunk override, on identical terms — it bounds how long the
+	// orchestrator's wait blocks, and the orchestrator is a member, so the
+	// number has to be inside the guest to have any effect at all. See
+	// protocol.WaitChunk.
+	if v := os.Getenv("CS_CAMPAIGN_WAIT_SECONDS"); v != "" {
+		args = append(args, "--env", "CS_CAMPAIGN_WAIT_SECONDS="+v)
+	}
 	// Declared environment first, so a --env the profile asked for is present
 	// whichever way the auth branch below goes.
 	for _, e := range member.Profile.Env {

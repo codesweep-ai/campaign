@@ -1,0 +1,20 @@
+{
+  "id": "SAC-004",
+  "title": "wait returns immediately whenever any teammate is free, so a phased campaign cannot block",
+  "type": "defect",
+  "severity": "high",
+  "status": "in-progress",
+  "foundBy": "user report (host), from a cs-campaign issue review compiled off the open-source-ui-b campaign runs",
+  "opened": "2026-08-25",
+  "resolved": null,
+  "stint": "2026-08-25 wait judgment-set session",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The orchestrator's blocking `wait` counted `node-free` as a judgment, alongside `node-replied` and `node-stuck`. It therefore returned on its first snapshot whenever any teammate had no open dispatch, before sleeping once.\n\nA phased campaign always has such teammates by design. One seat works while the others sit idle on purpose. Nothing on a node ever clears `node-free`, and the orchestrator has no instrument that records the decision to leave a seat free. So every `wait` call returned immediately for the rest of the campaign.\n\nMeasured on this branch before the fix. A fleet of one working member and one deliberately idle member, with `wait --for 600`, returned in 132 microseconds.\n\nThe cost is not the wasted call. A model that meets an instantly returning blocking primitive reasons that looping on it spends a turn per poll. In the run that found this, the orchestrator backgrounded a poll loop and ended its turn instead. Nothing can re-invoke a model from a background process, so the host observed a stopped orchestrator four minutes after create.\n\nThe rule underneath it: `node-free` is not a world event. Its only arrows in are `accept` and campaign start, per PROTOCOL.md section 5, and both are the orchestrator's own doing. Returning for it woke the model to report what the model itself had just done.\n\nSPEC.md was silent on what ends a block, which is why the three-state set could sit unchallenged. That silence is part of the defect.",
+  "notes": [],
+  "links": []
+}
