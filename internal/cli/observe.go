@@ -75,7 +75,13 @@ func (a *app) observeCampaign(ctx context.Context, campaign *model.Campaign) (ob
 	if orchestrator == nil {
 		return obs, errors.New("campaign has no orchestrator")
 	}
-	logBytes, logErr := a.sandbox.memberOutput(ctx, *orchestrator, "cat ~/"+guestLogFile+" 2>/dev/null || true")
+	// Bounded like a probe, and for the same reason: this read comes before
+	// every probe below, so a wedged orchestrator would block the whole
+	// observation — including the states that say the orchestrator is wedged.
+	// The empty log an expired read leaves is already the tolerated case.
+	logCtx, cancelLog := context.WithTimeout(ctx, a.sandbox.probeBound())
+	logBytes, logErr := a.sandbox.memberOutput(logCtx, *orchestrator, "cat ~/"+guestLogFile+" 2>/dev/null || true")
+	cancelLog()
 	entries := protocol.ParseLog(logBytes)
 	obs.Claimed = entries
 	if logErr == nil && len(logBytes) > 0 {

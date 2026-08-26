@@ -29,17 +29,43 @@ type sandboxCLI struct {
 	// WaitDelay bounds the wait for a cancelled command's pipes. Zero means
 	// defaultWaitDelay; tests set it small.
 	WaitDelay time.Duration
+	// ProbeBound bounds one probe round trip. Zero means defaultProbeBound;
+	// tests set it small.
+	ProbeBound time.Duration
 }
 
 // defaultWaitDelay is how long a cancelled cs-sandbox call may hold its pipes
 // open before they are closed out from under whatever still owns them.
 const defaultWaitDelay = 5 * time.Second
 
+// defaultProbeBound is how long one probe of one node may take.
+//
+// A failed probe is already a fact the caller knows what to do with: it counts
+// towards blindProbes, and a run of them is the conclusion that the machine is
+// gone. A probe that never RETURNS is not a failure, so without a bound it
+// defeats that contract completely — the observer blocks on the one wedged
+// member it exists to notice, and every rung computed from a state stops being
+// reached. Measured on a smoke run that sat in one observeCampaign call for
+// seven minutes and then failed at the archive, which is the only path here
+// that already had a deadline.
+//
+// Well under the default pollSeconds: the probe is one round trip running a
+// short shell script, so anything near this bound is a member in trouble
+// rather than a member being slow.
+const defaultProbeBound = 20 * time.Second
+
 func (s sandboxCLI) waitDelay() time.Duration {
 	if s.WaitDelay != 0 {
 		return s.WaitDelay
 	}
 	return defaultWaitDelay
+}
+
+func (s sandboxCLI) probeBound() time.Duration {
+	if s.ProbeBound != 0 {
+		return s.ProbeBound
+	}
+	return defaultProbeBound
 }
 
 func newSandbox() sandboxCLI {
@@ -157,7 +183,12 @@ func (s sandboxCLI) sessionLog(ctx context.Context, w io.Writer, member model.Me
 // probeMember is the one round trip of PROTOCOL.md §6, from the host: every
 // fact about one node, or a probe failure — a fact about the observation,
 // not the node.
+//
+// Bounded, so a wedged member becomes that probe failure rather than an
+// indefinite wait in whatever is observing.
 func (s sandboxCLI) probeMember(ctx context.Context, member model.Member) (protocol.Facts, bool) {
+	ctx, cancel := context.WithTimeout(ctx, s.probeBound())
+	defer cancel()
 	out, err := s.memberOutput(ctx, member, protocol.ProbeScript(member.CLI))
 	if err != nil {
 		return protocol.Facts{}, true
