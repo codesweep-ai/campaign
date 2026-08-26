@@ -34,7 +34,7 @@ COVERFLAGS  = -covermode=atomic -coverpkg=$(shell go list ./... | paste -sd, -)
 .PHONY: help guestbin build build-go build-go-embedded install uninstall test test-smoke \
         test-integration fixtures fixtures-strict coverage coverage-check coverage-baseline \
         covmap covmap-scripts vet fmt fmt-check lint deadcode prose refs oss \
-        fixtures-check surface cs-lint-installed ledger check snapshot \
+        fixtures-check surface cs-lint-installed ledger check ci snapshot \
         release release-check clean
 
 .DEFAULT_GOAL := help
@@ -360,6 +360,24 @@ fixtures-check:
 
 ## check: the full local gate — fmt, vet, the linters, and the unit tier
 check: fmt-check vet lint deadcode test coverage-check fixtures-check prose refs oss surface
+
+## ci: every gate the CI workflow runs, on this machine
+##
+## One Linux leg of .github/workflows/ci.yml, in the order CI runs it, so a
+## red build is something you can see before you push rather than after.
+##
+## The smoke tier is left out: it boots real machines through cs-sandbox on a
+## Firecracker host, and replays a recorded cassette. Run it with
+## `make test-smoke` where the host can carry it.
+ci:
+	@$(MAKE) --no-print-directory check
+	@$(MAKE) --no-print-directory build
+	@$(MAKE) --no-print-directory release-check
+	@$(MAKE) --no-print-directory ledger
+	go test ./internal/covmap/... -run TestCoverageHTMLCurrent -count=1
+	git diff --exit-code -- covmap/
+	@printf '\nci: every gate ran. Not reproduced here: build-test on macOS, the\n'
+	@printf 'smoke tier, and the coverage job that merges tiers from other runners.\n'
 
 ## snapshot: local release dry-run into dist/ (all platforms, archives, checksums)
 ##
