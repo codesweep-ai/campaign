@@ -8,57 +8,114 @@
 # every reported problem is a real one: a check that cries wolf is worse than
 # no check.
 
+# The documentation block: the set of documents the checks read, then one
+# section per documentation linter.
 docs:
-  # The domain terms a reader of this project cannot infer. Each must be
-  # introduced where a document first uses it: glossed on the spot, defined in a
-  # glossary table, or linked to the page that defines it. The SPEC's vocabulary
-  # table is where they come from.
-  glossary:
-    - campaign
-    - orchestrator
-    - dispatch
-    - readback
-    - adapter
-    - orientation
-    - manifest
-    - covmap
-    - settling window
-    - turn driver
+  # The set `refs` and `surface` read the claims from. PROTOCOL.md is a
+  # standalone page the document set adds, and both linters read it too.
+  extraDocs:
+    - PROTOCOL.md
 
-  # Words that legitimately start a sentence in lower case, which is nearly
-  # always a command name. Without them the splitter reads "Nothing matches.
-  # cs-campaign exits 1." as one seven-word sentence and reports a length that
-  # is not real.
-  lowercaseStarters:
-    - cs-campaign
-    - cs-campaign-member
-    - cs-dispatch-viewer
-    - cs-sandbox
-    - cs-ledger
-    - goreleaser
-    - golangci-lint
-    - deadcode
-    - gofmt
+  prose:
+    # The domain terms a reader of this project cannot infer. Each must be
+    # introduced where a document first uses it: glossed on the spot, defined in a
+    # glossary table, or linked to the page that defines it. The SPEC's vocabulary
+    # table is where they come from.
+    glossary:
+      - campaign
+      - orchestrator
+      - dispatch
+      - readback
+      - adapter
+      - orientation
+      - manifest
+      - covmap
+      - settling window
+      - turn driver
 
-  # Verbs the shared list does not carry, added when a real verb trips the
-  # epigram check. Pattern fragments rather than literals, so "mints?" covers
-  # both numbers. Only what is this project's own belongs here.
-  # The things this repository counts for itself. The agent tool surface grows
-  # whenever cs-sandbox ships another wrapper, so a number written into a
-  # sentence is right today and wrong at the next pin, with nothing to fail
-  # when it drifts. Name what reports the number instead.
-  countable:
-    - agent tools
-    - members?
-    - dispatches
-    - fixtures?
+    # Words that legitimately start a sentence in lower case, which is nearly
+    # always a command name. Without them the splitter reads "Nothing matches.
+    # cs-campaign exits 1." as one seven-word sentence and reports a length that
+    # is not real.
+    lowercaseStarters:
+      - cs-campaign
+      - cs-campaign-member
+      - cs-dispatch-viewer
+      - cs-sandbox
+      - cs-ledger
+      - goreleaser
+      - golangci-lint
+      - deadcode
+      - gofmt
 
-  projectVerbs:
-    - "dispatch(?:es|ed)?"
-    - "restate[sd]?"
-    - "re-anchors?"
-    - "mints?"
-    - "harvests?"
+    # Verbs the shared list does not carry, added when a real verb trips the
+    # epigram check. Pattern fragments rather than literals, so "mints?" covers
+    # both numbers. Only what is this project's own belongs here.
+    # The things this repository counts for itself. The agent tool surface grows
+    # whenever cs-sandbox ships another wrapper, so a number written into a
+    # sentence is right today and wrong at the next pin, with nothing to fail
+    # when it drifts. Name what reports the number instead.
+    countable:
+      - agent tools
+      - members?
+      - dispatches
+      - fixtures?
+
+    projectVerbs:
+      - "dispatch(?:es|ed)?"
+      - "restate[sd]?"
+      - "re-anchors?"
+      - "mints?"
+      - "harvests?"
+
+  refs:
+    placeholderOK:
+      - "acme/profile.yaml"
+      - "acme/mission.md"
+      - "acme/roles/*.md"
+      - "hello/profile.yaml"
+      - "nudge.md"
+      - "./runs/acme-1"
+      - "acme-1.html"
+
+    prereqOK: ["goreleaser", "cs-sandbox", "cs-ledger", "golangci-lint", "deadcode"]
+
+  surface:
+    tool: cs-campaign
+    toolPath: bin/cs-campaign
+
+    envPrefix: CS_CAMPAIGN_
+
+    sourceSkip:
+      "cmd/cs-campaign-member": "the guest binary's settings are read inside a member, not set by a user on the host"
+      "internal/covmap": "the behaviour map's buffer is test instrumentation"
+
+    # Read-only, offline, and safe to run in a checkout on every gate. A verb that
+    # writes belongs nowhere near this list: a checker that writes can mask the
+    # staleness another gate exists to catch.
+    safeVerbs:
+      - version
+      - ls
+      - validate
+
+    sampleSkip:
+      "cs-campaign ls": "the sample shows a live campaign; this checkout's state directory is empty"
+      "cs-campaign version": "the sample is a build stamp, and every checkout prints its own"
+      "cs-dispatch-viewer version": "the same build stamp, from the other binary"
+      "cs-campaign doctor": "the sample is a host with cs-sandbox, its agent tools and a pin; a clean machine has none of them"
+      "cs-campaign init acme --orchestrator codex --agent backend=claude --agent qa=codex": "init writes files, so re-running it would scaffold into the checkout"
+      "cs-campaign init hello --orchestrator codex --agent worker=codex": "the same, for the install page's own steps"
+      "cs-campaign validate acme/profile.yaml": "the sample is the acme workspace a reader scaffolds, not a file this repo carries"
+      "cs-campaign validate hello/profile.yaml": "the same, for the install page"
+      "cs-campaign plan acme --profile acme/profile.yaml": "the same workspace, and plan resolves paths that exist only there"
+      "cs-campaign plan hello --profile hello/profile.yaml | head -8": "the same, for the install page"
+      "cs-campaign observe acme": "the sample is a running campaign, which no gate may create"
+      "cs-campaign create acme --profile acme/profile.yaml": "create boots real virtual machines and spends model tokens"
+      "cs-campaign audit acme": "audit probes a live fleet"
+      "cs-campaign fetch acme/backend": "fetch reaches a live member"
+      "cs-campaign send acme --file nudge.md": "send reaches a live orchestrator"
+      "cs-campaign restart acme": "restart reaches a live orchestrator"
+      "cs-campaign pin --note \"cs-sandbox dd879be; live smoke PASS on firecracker\"": "pin records this host's own tool surface, which no other host shares"
 
 oss:
   project: cs-campaign
@@ -91,55 +148,3 @@ oss:
 
   requiredTargets: ["build", "test", "check", "lint", "docs", "oss", "clean"]
   expectedTargets: ["help", "install", "uninstall", "fmt", "fmt-check", "vet", "deadcode"]
-
-walkthrough:
-  tool: cs-campaign
-  toolPath: bin/cs-campaign
-
-  extraDocs:
-    - PROTOCOL.md
-
-  envPrefix: CS_CAMPAIGN_
-
-  # Read-only, offline, and safe to run in a checkout on every gate. A verb that
-  # writes belongs nowhere near this list: a checker that writes can mask the
-  # staleness another gate exists to catch.
-  safeVerbs:
-    - version
-    - ls
-    - validate
-
-  sampleSkip:
-    "cs-campaign ls": "the sample shows a live campaign; this checkout's state directory is empty"
-    "cs-campaign version": "the sample is a build stamp, and every checkout prints its own"
-    "cs-dispatch-viewer version": "the same build stamp, from the other binary"
-    "cs-campaign doctor": "the sample is a host with cs-sandbox, its agent tools and a pin; a clean machine has none of them"
-    "cs-campaign init acme --orchestrator codex --agent backend=claude --agent qa=codex": "init writes files, so re-running it would scaffold into the checkout"
-    "cs-campaign init hello --orchestrator codex --agent worker=codex": "the same, for the install page's walkthrough"
-    "cs-campaign validate acme/profile.yaml": "the sample is the acme workspace a reader scaffolds, not a file this repo carries"
-    "cs-campaign validate hello/profile.yaml": "the same, for the install page"
-    "cs-campaign plan acme --profile acme/profile.yaml": "the same workspace, and plan resolves paths that exist only there"
-    "cs-campaign plan hello --profile hello/profile.yaml | head -8": "the same, for the install page"
-    "cs-campaign observe acme": "the sample is a running campaign, which no gate may create"
-    "cs-campaign create acme --profile acme/profile.yaml": "create boots real virtual machines and spends model tokens"
-    "cs-campaign audit acme": "audit probes a live fleet"
-    "cs-campaign fetch acme/backend": "fetch reaches a live member"
-    "cs-campaign send acme --file nudge.md": "send reaches a live orchestrator"
-    "cs-campaign restart acme": "restart reaches a live orchestrator"
-    "cs-campaign pin --note \"cs-sandbox dd879be; live smoke PASS on firecracker\"": "pin records this host's own tool surface, which no other host shares"
-
-  placeholderOK:
-    - "acme/profile.yaml"
-    - "acme/mission.md"
-    - "acme/roles/*.md"
-    - "hello/profile.yaml"
-    - "nudge.md"
-    - "./runs/acme-1"
-    - "acme-1.html"
-
-  sourceSkip:
-    "cmd/cs-campaign-member": "the guest binary's settings are read inside a member, not set by a user on the host"
-    "internal/covmap": "the behaviour map's buffer is test instrumentation"
-
-  prereqOK: ["goreleaser", "cs-sandbox", "cs-ledger", "golangci-lint", "deadcode"]
-
