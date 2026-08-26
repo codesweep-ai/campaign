@@ -35,7 +35,6 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/codesweep-ai/campaign/internal/cli.version={{ .Version }}
     goos: [linux]
     goarch: [amd64, arm64]
     mod_timestamp: "{{ .CommitTimestamp }}" # reproducible builds
@@ -49,7 +48,6 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/codesweep-ai/campaign/dispatch-viewer/internal/cli.version={{ .Version }}
     goos: [linux]
     goarch: [amd64, arm64]
     mod_timestamp: "{{ .CommitTimestamp }}"
