@@ -415,10 +415,15 @@ not anything is being emitted.*
 
 **R65.** A failed probe **MUST** be treated as a fact about the observation rather than about the
 node. Only a run of consecutive failures past the operator's threshold **MAY** become the
-conclusion that the machine is gone. A probe **MUST** be bounded, so a node that stops answering
-becomes one of those failures. *A probe that never returns is not a failure, and an unbounded one
-defeats this rule entirely: the observation blocks on the single node it exists to notice, and every
-state computed from it stops being reached, this conclusion included.*
+conclusion that the machine is gone. A probe **MUST** be bounded. *An unbounded one defeats this
+rule entirely: the observation blocks on the single node it exists to notice, and every state
+computed from it stops being reached, this conclusion included.*
+
+A probe that missed that bound **MUST NOT** count towards the conclusion. *An error comes back from a
+machine that answered, and a run of them is evidence it has died. A missed bound is silence, which a
+machine under load produces as readily as a machine that is gone. A node starved of CPU misses the
+bound while working steadily, and calling it gone is the same mistake as calling a slow node
+stalled.*
 
 **R125.** The dispatcher's blocking `wait` **MUST** return only on a judgment. A judgment is a
 **world event** that needs a decision no code can make: `node-replied` and `node-stuck`, those two

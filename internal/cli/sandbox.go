@@ -187,13 +187,28 @@ func (s sandboxCLI) sessionLog(ctx context.Context, w io.Writer, member model.Me
 // Bounded, so a wedged member becomes that probe failure rather than an
 // indefinite wait in whatever is observing.
 func (s sandboxCLI) probeMember(ctx context.Context, member model.Member) (protocol.Facts, bool) {
-	ctx, cancel := context.WithTimeout(ctx, s.probeBound())
+	facts, failed, _ := s.probeMemberDeadline(ctx, member)
+	return facts, failed
+}
+
+// probeMemberDeadline is probeMember, and also says whether the failure was the
+// member missing its deadline rather than answering with one.
+//
+// The two are different facts. An error comes back from a machine that
+// answered, and a run of them is the evidence that it is gone. A deadline is
+// silence, and silence is what a machine under load produces as readily as a
+// machine that has died — a starved guest misses this bound while making steady
+// progress. Counting one as the other let a bounded probe report "machine gone"
+// about a member that was merely busy, which is the same mistake as calling a
+// slow node stalled.
+func (s sandboxCLI) probeMemberDeadline(ctx context.Context, member model.Member) (protocol.Facts, bool, bool) {
+	pctx, cancel := context.WithTimeout(ctx, s.probeBound())
 	defer cancel()
-	out, err := s.memberOutput(ctx, member, protocol.ProbeScript(member.CLI))
+	out, err := s.memberOutput(pctx, member, protocol.ProbeScript(member.CLI))
 	if err != nil {
-		return protocol.Facts{}, true
+		return protocol.Facts{}, true, errors.Is(pctx.Err(), context.DeadlineExceeded)
 	}
-	return protocol.ParseProbe(string(out)), false
+	return protocol.ParseProbe(string(out)), false, false
 }
 
 // putMemberFile materialises one $HOME-relative file inside a member.

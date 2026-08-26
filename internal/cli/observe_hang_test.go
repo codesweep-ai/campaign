@@ -10,16 +10,18 @@ import (
 	"github.com/codesweep-ai/campaign/internal/protocol"
 )
 
-// A member whose probe never returns must read as a probe failure and let the
-// observation finish. Compute already turns a failed probe into
-// node-unreachable, and a run of them into node-stuck — but a probe that hangs
-// is not a failure, so before the bound one wedged member blocked
-// observeCampaign itself, and with it every state computed from it, including
-// the states that say a member is gone.
+// A member whose probe never returns must let the observation finish, and must
+// read as unreachable rather than gone.
 //
-// Measured on a smoke run that sat in one observeCampaign call for seven
-// minutes and then failed at the archive, which was the only path here that
-// already had a deadline.
+// Before the bound, one wedged member blocked observeCampaign itself, and with
+// it every state computed from it — measured on a smoke run that sat in a
+// single call for seven minutes and then failed at the archive, the only path
+// here that already had a deadline.
+//
+// node-unreachable, not node-stuck: the bound alone turned that hang into a run
+// of failures reading "machine gone" about a member that was starved but
+// working, which a later smoke run then reproduced. Silence is not an answer,
+// and only answers are evidence a machine has died.
 func TestObserveBoundsAHangingProbe(t *testing.T) {
 	tool := filepath.Join(t.TempDir(), "fake-sandbox")
 	if err := os.WriteFile(tool, []byte("#!/bin/sh\nsleep 300\n"), 0o700); err != nil {
@@ -61,9 +63,9 @@ func TestObserveBoundsAHangingProbe(t *testing.T) {
 		t.Fatalf("expected a state per member, got %d", len(got.obs.Derived))
 	}
 	for _, n := range got.obs.Derived {
-		if n.State != string(protocol.StateStuck) {
+		if n.State != string(protocol.StateUnreachable) {
 			t.Errorf("%s: a member that never answers its probe must read as %s, got %s (%s)",
-				n.Name, protocol.StateStuck, n.State, n.Detail)
+				n.Name, protocol.StateUnreachable, n.State, n.Detail)
 		}
 	}
 }

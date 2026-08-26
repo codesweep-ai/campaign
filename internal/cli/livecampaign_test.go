@@ -640,8 +640,11 @@ const stalledPolls = 4
 // all gone quiet. The orchestrator is excluded: it has replied by the time this
 // is asked, and its own rung is above.
 //
-// Only node-working counts. node-free and node-replied are a member at rest
-// with nothing running on its machine, which is all the archive needs.
+// node-working counts, and so does node-unreachable: a member too busy to
+// answer its probe is the one the archive least wants to read, and treating a
+// look that learned nothing as permission to proceed would archive exactly the
+// machine this waits for. node-free and node-replied are a member at rest with
+// nothing running on its machine, which is all the archive needs.
 //
 // An earlier version of this driver failed a node for holding node-working past
 // its stall threshold and settling window, on the theory that nothing else
@@ -652,7 +655,10 @@ const stalledPolls = 4
 // archive underneath a member that is still running.
 func stillWorking(nodes []nodeView) string {
 	for _, n := range nodes {
-		if n.Role != "orchestrator" && n.State == string(protocol.StateWorking) {
+		if n.Role == "orchestrator" {
+			continue
+		}
+		if n.State == string(protocol.StateWorking) || n.State == string(protocol.StateUnreachable) {
 			return n.Name
 		}
 	}

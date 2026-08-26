@@ -139,7 +139,15 @@ var observeBurstDelay = time.Second
 // seconds apart, not a poll interval — a conclusion reached in ~10s, for a
 // human who can simply look again.
 func (a *app) probeWithBurst(ctx context.Context, member model.Member, pol protocol.Policy) (protocol.Facts, bool, int) {
-	facts, failed := a.sandbox.probeMember(ctx, member)
+	facts, failed, missedDeadline := a.sandbox.probeMemberDeadline(ctx, member)
+	// A member that missed its deadline is not answering yet; it is not
+	// answering that it is broken. Bursting here would spend the bound over and
+	// over against a machine we already know is too busy to reply, and arrive
+	// at the run of failures that means "gone" — about a node that is working.
+	// One look, reported as the single unreachable look it was.
+	if missedDeadline {
+		return facts, failed, 1
+	}
 	blindRun := 1
 	for failed && blindRun < pol.Resolve().BlindProbes {
 		select {
