@@ -569,6 +569,12 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 		t.Fatalf("archive: %v", err)
 	}
 	if incomplete, _ := archiveIncomplete(run.archive); len(incomplete) > 0 {
+		// The markers name which collections failed; their bodies say why, and
+		// the driver logs beside them say what the member was doing at the
+		// time. All three live under archiveRoot, which is a t.TempDir — so
+		// without this the one artifact that explains the failure is written
+		// and then deleted by the assertion that reads its filename.
+		keepEvidence(t, a, campaign, "archive-incomplete")
 		t.Fatalf("archive incomplete: %v", incomplete)
 	}
 	if findings := a.verifyFleetLive(context.Background(), campaign); len(findings) > 0 {
