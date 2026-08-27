@@ -204,10 +204,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      # One tag for the build and for the tests. `--slim --with-agents` would
-      # default to exactly this, but `make test-smoke` reads the variable rather
-      # than the flag, so naming it here is what points the two at one image.
-      CS_SANDBOX_IMAGE: localhost/cs-sandbox:ci-agents
+      # CS_SANDBOX_IMAGE is NOT set here. cs-sandbox names each image variant
+      # after the version that built it, so the reference cannot be written down
+      # ahead of resolving `@latest`; the install step below asks the binary for
+      # it and exports it for the rest of the job.
+      #
       # Out of ~/.cache and into the workspace, so the pack and unpack steps
       # below have a single path to name.
       CS_SANDBOX_FC_CACHE: ${{ github.workspace }}/bin/fc-cache
@@ -282,6 +283,21 @@ jobs:
           # cache entry, which is the stale image this key exists to prevent.
           test -n "$ver" || { echo "cannot read the cs-sandbox version" >&2; exit 1; }
           echo "sandbox=$ver" >> "$GITHUB_OUTPUT"
+          # The image this job builds, boots and saves, asked of the binary that
+          # names it rather than written out here. cs-sandbox gives each variant
+          # its own package, and `--slim --with-agents` is the only one that can
+          # run an agent, so a reference composed by hand here would drift the
+          # moment sandbox renamed anything and fail at `command -v claude`.
+          #
+          # Exported, because it is load-bearing twice: `build` tags it, and the
+          # `cs-sandbox create` inside every smoke scenario boots it. Left unset,
+          # create would look for the full sandbox image, which this job never
+          # builds. It is the published reference rather than a local tag, so
+          # the build can pull it where that package is reachable from here; it
+          # falls back to building, which is what the old local tag always did.
+          image=$("$(go env GOPATH)/bin/cs-sandbox" version --images | awk '$1=="image-slim-agents"{print $2}')
+          test -n "$image" || { echo "cannot read the cs-sandbox slim-agents image name" >&2; exit 1; }
+          echo "CS_SANDBOX_IMAGE=$image" >> "$GITHUB_ENV"
 
       # Packed, not cached in place. The base rootfs is a 32 GiB file that is
       # almost entirely holes: `tar --sparse` stores it in a few hundred
