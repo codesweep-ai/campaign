@@ -515,9 +515,16 @@ endef
 ## One Linux leg of .github/workflows/ci.yml, in the order CI runs it, so a
 ## red build is something you can see before you push rather than after.
 ##
-## The smoke tier is left out: it boots real machines through cs-sandbox on a
-## Firecracker host, and replays a recorded cassette. Run it with
-## `make test-smoke` where the host can carry it.
+## The smoke tier is in, because CI runs it and this target exists to be what CI
+## is. It provisions itself — setup-smoke supplies the pinned tools and builds
+## the guest image where the host has none — so it costs about ten minutes on a
+## Firecracker host and rather more on a cold one. Where the host cannot carry
+## it the tier skips itself, and this stays green: a pass here is the gates,
+## plus as much of the smoke tier as this machine can run.
+##
+## It runs last. Everything above it answers in seconds to a couple of minutes,
+## and a run that is going to fail on gofmt should say so before it boots a
+## virtual machine.
 ci:
 	$(call say,the gate a contributor runs before pushing)
 	@$(MAKE) --no-print-directory check
@@ -530,8 +537,10 @@ ci:
 	$(call say,the behaviour map)
 	go test ./internal/covmap/... -run TestCoverageHTMLCurrent -count=1
 	git diff --exit-code -- covmap/
-	@printf '\nci: every gate ran. Not reproduced here: build-test on macOS, the\n'
-	@printf 'smoke tier, and the coverage job that merges tiers from other runners.\n'
+	$(call say,the whole protocol on real machines with the turns replayed)
+	@$(MAKE) --no-print-directory test-smoke
+	@printf '\nci: every gate ran. Not reproduced here: build-test on macOS, and\n'
+	@printf 'the coverage job that merges tiers from other runners.\n'
 
 ## snapshot: local release dry-run into dist/ (all platforms, archives, checksums)
 ##

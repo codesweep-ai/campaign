@@ -54,9 +54,10 @@ branch tip, and `make versions` says which builds the gates used. A campaign res
 and the agent CLIs from PATH at run time, and `doctor` compares what it finds against those same
 `go.mod` pins.
 
-One tier sits outside the gate. `make test-smoke` runs the whole protocol on real machines with
-the model turns replayed, in about ten minutes and for no money. Run it when you touch the
-protocol, and commit whatever it regenerates under `covmap/`.
+The smoke tier is part of that gate, and `make ci` runs it last. `make test-smoke` runs the whole
+protocol on real machines with the model turns replayed, in about ten minutes and for no money;
+where a host cannot carry it, it skips itself. Run it on its own when you touch the protocol, and
+commit whatever it regenerates under `covmap/`.
 
 **`go test` caches.** A run reporting every package `(cached)` has executed nothing. After
 changing branches, rebasing or pulling, use `go test -count=1 ./...`. A cached green after moving
