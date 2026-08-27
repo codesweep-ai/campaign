@@ -102,7 +102,7 @@ prompt, read a transcript and restart a session. The three families are `claude`
 cs-sandbox install-agent-tools
 ```
 
-That places 21 tools on your `PATH`: for each family, `cs-<cli>`, `cs-<cli>-remote`,
+That places the agent tools on your `PATH`: for each family, `cs-<cli>`, `cs-<cli>-remote`,
 `cs-<cli>-remote-forget`, `cs-<cli>-remote-output`, `cs-<cli>-remote-sessions`,
 `cs-<cli>-remote-status` and `cs-<cli>-turn`. A missing one fails at create with
 `required agent tool <name> not found on PATH`.
@@ -122,14 +122,17 @@ right one:
 
 ```console
 $ cs-campaign doctor
-upstream surface is not the one this cs-campaign was built against:
-  cs-sandbox on PATH is v0.0.0-20260801120000-aaaaaaaaaaaa, this build was made against
-  v0.0.0-20260826171442-c36e1fe91606 - install the one this build names:
-  go install github.com/codesweep-ai/sandbox/cmd/cs-sandbox@v0.0.0-20260826171442-c36e1fe91606
+...
+upstream (checked against this build's go.mod):
+  NO  cs-sandbox on PATH is v0.0.0-20260801120000-aaaaaaaaaaaa, this build was made against
+      v0.0.0-20260827001716-910b73da3b6c — install the one this build names:
+      go install github.com/codesweep-ai/sandbox/cmd/cs-sandbox@v0.0.0-20260827001716-910b73da3b6c
+
+1 issue(s) to fix above.
 ```
 
-Paste that command and the two agree. Moving the surface on purpose is a `go.mod` change in this
-repository, followed by a rebuild and a reinstall.
+Paste that `go install` line and the two agree. Moving the surface on purpose is a `go.mod` change
+in this repository, followed by a rebuild and a reinstall.
 
 ## 5. Verify the installation
 
@@ -144,7 +147,7 @@ cs-sandbox (required):
   ok  cs-sandbox supports ls --json
   ok  cs-sandbox supports sandbox groups
 
-agent tooling (required - one family per CLI):
+agent tooling (required — one family per CLI):
   ok  claude remote tool family
   ok  codex remote tool family
   ok  opencode remote tool family
@@ -152,12 +155,12 @@ agent tooling (required - one family per CLI):
 upstream (checked against this build's go.mod):
   ok  cs-sandbox on PATH is the one this build names: v0.0.0-20260827001716-910b73da3b6c
   ok  cs-vcr on PATH matches this build (v0.0.0-20260826160252-bd9e6f2b8ab6)
-  ok  not on PATH (fine - a campaign needs none of them): cs-lint cs-ledger cs-tracer
+  ok  not on PATH (fine — a campaign needs none of them): cs-lint cs-ledger cs-tracer
 
 state:
   ok  state directory: /home/user/.config/cs-campaign/campaigns
 
-All good - try: cs-campaign init <name>
+All good — try: cs-campaign init <name>
 ```
 
 Then scaffold a campaign and check it, which allocates nothing and costs nothing:

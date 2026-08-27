@@ -179,7 +179,7 @@ cs-dispatch-viewer ./runs/acme-1 -o acme-1.html
 ## Quickstart
 
 [INSTALL.md](INSTALL.md) covers the one-time host setup: the binaries, a group-aware
-[`cs-sandbox`](https://github.com/codesweep-ai/sandbox), its agent tools, and the pin. After that a
+[`cs-sandbox`](https://github.com/codesweep-ai/sandbox) and its agent tools. After that a
 campaign is five commands:
 
 ```bash

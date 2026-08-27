@@ -382,7 +382,7 @@ cs-sandbox (required):
   ok  cs-sandbox supports ls --json
   ok  cs-sandbox supports sandbox groups
 
-agent tooling (required - one family per CLI):
+agent tooling (required — one family per CLI):
   ok  claude remote tool family
   ok  codex remote tool family
   ok  opencode remote tool family
@@ -390,13 +390,16 @@ agent tooling (required - one family per CLI):
 upstream (checked against this build's go.mod):
   ok  cs-sandbox on PATH is the one this build names: v0.0.0-20260827001716-910b73da3b6c
   ok  cs-vcr on PATH matches this build (v0.0.0-20260826160252-bd9e6f2b8ab6)
-  ok  not on PATH (fine - a campaign needs none of them): cs-lint cs-ledger cs-tracer
+  ok  not on PATH (fine — a campaign needs none of them): cs-lint cs-ledger cs-tracer
 
 state:
   ok  state directory: /home/user/.config/cs-campaign/campaigns
 
-All good - try: cs-campaign init <name>
+All good — try: cs-campaign init <name>
 ```
+
+Every check is measured and reported, so a host with two gaps is told about both rather than about
+one at a time. The exit status is set once, from the whole report.
 
 The upstream surface is named by the `go.mod` embedded in this binary at build time, so there is no
 pin file and nothing to record. `cs-sandbox` at another version fails `doctor` and refuses `create`.
@@ -405,8 +408,8 @@ and one at another version gets a line rather than a refusal.
 
 With a campaign name, it re-verifies that campaign's instantiation. It checks each member's harness
 against what `cs-sandbox agent-tools` says it ships, manifest fidelity, guest controls, the family
-guard actually firing, and each member's declared CLI present in its own machine. `create` ends by running it. **If it is not
-green, do not dispatch.** Fix it or destroy it.
+guard actually firing, and each member's declared CLI present in its own machine. `create` ends by
+running it. **If it is not green, do not dispatch.** Fix it or destroy it.
 
 ### manual, version
 
@@ -690,7 +693,7 @@ the host's value without the value passing through campaign state.
 | Code | Meaning |
 |---|---|
 | 0 | The command did what it says. Read the output: an archive can be incomplete at exit 0. |
-| 1 | Any failure. The message names what failed and what to do about it. |
+| 1 | Any failure. The message names what failed and what to do about it; `doctor` names them in the report above its verdict. |
 | 70 | The family guard is installed but broken: the real tool it stands in for is missing or will not exec. `cs-campaign-member` only. |
 | 78 | The family guard refused a wrong-family call against a member. `cs-campaign-member` only. |
 

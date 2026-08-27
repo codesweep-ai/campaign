@@ -84,7 +84,7 @@ computed from that node's own machine rather than remembered.
 | **manifest** | The orchestrator's machine-readable roster of its teammates. |
 | **settling window** | The grace period after any message, during which a node with no live turn driver still reads as working. |
 | **ladder** | The mechanical recovery sequence a dispatcher runs: templated continues, then a restart re-anchor. |
-| **pin** | The recorded sha256 of every upstream tool a campaign runs on, with a note saying why that surface is trusted. |
+| **pin** | The `cs-sandbox` version a `cs-campaign` build names, read from the `go.mod` embedded in that binary. |
 | **family guard** | The refusal that fires when a per-CLI remote tool is aimed at a member of a different CLI family. |
 | **solo** | A `cs-sandbox` property that withholds the SSH login credential from a member. Agents are solo; the orchestrator is not. |
 | **covmap** | The behaviour map: an authored rubric of behaviours, filled only by records that tests emit as they prove them. |
@@ -130,8 +130,8 @@ It reads an archive and writes one file.
 ### 3.4 What a campaign runs on
 
 A campaign needs a group-aware `cs-sandbox` and, for each supported CLI, that CLI's session and
-remote tools. `cs-campaign` shells out to them and never links them. The exact set is recorded in
-the pin.
+remote tools. `cs-campaign` shells out to them and never links them. `cs-sandbox` ships that set and
+reports it, so the exact list is read from `cs-sandbox agent-tools` rather than kept here.
 
 ---
 
@@ -706,7 +706,7 @@ One JSON document per campaign, `version: 2`. It records:
 - campaign identity, the group, the network and the gateway port;
 - the engine, the create checkpoint and the timestamps;
 - the profile path and digest, the overrides and the resolved policy;
-- the resolved deadline and the pin verdict at create;
+- the resolved deadline and the upstream verdict at create;
 - one record per member.
 
 A member record carries its identity: role, CLI, bare sandbox name, qualified reference, address,
@@ -1309,8 +1309,8 @@ the orchestrator's judgement rather than the bill.
    malformed one is ignored rather than reported.
 4. **Readback structure is checked, not its coverage.** A member can satisfy the structural check
    with a restatement that omits most of its brief, and only a human reading it would notice.
-5. **The pin covers the host's tools, and each member's harness is checked separately.** Nothing
-   yet reconciles the two into one verdict an operator can read at a glance.
+5. **The upstream check covers the host's tools, and each member's harness is checked separately.**
+   Nothing yet reconciles the two into one verdict an operator can read at a glance.
 6. **Adapter capability declarations are not enforced against the installed CLI.** An adapter that
    claims a capability its CLI has lost fails at the first turn rather than at create.
 7. **Nothing bounds an archive's size.** A long campaign's transcripts can be large, and collection
