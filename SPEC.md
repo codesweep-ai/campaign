@@ -86,6 +86,7 @@ computed from that node's own machine rather than remembered.
 | **ladder** | The mechanical recovery sequence a dispatcher runs: templated continues, then a restart re-anchor. |
 | **pin** | The `cs-sandbox` version a `cs-campaign` build names, read from the `go.mod` embedded in that binary. |
 | **family guard** | The refusal that fires when a per-CLI remote tool is aimed at a member of a different CLI family. |
+| **yolo** | A `cs-sandbox` property that runs a member's agent with no approval prompt and under a profile carrying no rule able to block a tool call. Every member is yolo. |
 | **solo** | A `cs-sandbox` property that withholds the SSH login credential from a member. Agents are solo; the orchestrator is not. |
 | **covmap** | The behaviour map: an authored rubric of behaviours, filled only by records that tests emit as they prove them. |
 
@@ -152,6 +153,15 @@ keys keep it a reachability bug.*
 **R4.** The orchestrator **MUST** be an agent-type sandbox, never a user-type one. *It sits atop
 the autonomous tier and must not be able to authenticate to the host or to a user-tier review
 sandbox.*
+
+**R4a.** Every member sandbox, the orchestrator's included, **MUST** be created `yolo`: its agent
+runs with no approval prompt, and under a profile carrying no rule able to block a tool call.
+*A campaign runs unattended by construction (goal 7). The operator watches the host, not a guest's
+terminal, so a prompt inside a member is a stop nobody is there to answer. Dropping the prompt alone
+would not be enough, because a deny rule outlives it and hard-blocks the call instead, which is the
+worse failure: it cannot be escalated to anyone. The sandbox is what makes this safe. A member holds
+no ambient host identity (R17) and can reach nothing outside its own campaign (R15), so the
+authority an approval protects is not there to be granted.*
 
 **R5.** A member **MUST NOT** receive the host container socket. Agents **MAY** run nested containers
 inside their own sandbox.
@@ -1184,16 +1194,18 @@ is the opposite of what this gate is for.
 
 ## 8. Conformance
 
-An implementation conforms when it satisfies R1 to R124 and can demonstrate each of the following
-by test.
+An implementation conforms when it satisfies R1 to R124, R4a included, and can demonstrate each
+of the following by test.
 
 **Isolation.** Two concurrent campaigns cannot resolve or connect to one another by name or raw
 address, and neither one's SSH trust material authenticates to the other's members. A solo agent
 cannot authenticate over SSH to the orchestrator, to siblings or to the host, and has no network
 path to another campaign. A solo agent can reach a deliberately exposed application port within its
 own campaign without gaining shell control. No member accesses the host container socket, and no
-member receives ambient source-hosting, host SSH, cloud or credential-helper identity. Destroying
-one campaign leaves another fully operational.
+member receives ambient source-hosting, host SSH, cloud or credential-helper identity. Every
+member sandbox, the orchestrator's included, is created `yolo`, and no member's tool call is
+stopped by an approval prompt or a deny rule. Destroying one campaign leaves another fully
+operational.
 
 **Lifecycle.** Destroying a campaign reclaims its group, so no network, key pair, gateway, gateway
 port, tap prefix or fabric directory outlives the campaign that created it. A failed host command
