@@ -36,17 +36,14 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # The four tools `make check` shells out to. golangci-lint is pinned
-      # because it gains checks between releases: unpinned, somebody else's
-      # release becomes a red build on a pull request that touched nothing.
+      # The two tools `make check` shells out to that the Go distribution does
+      # not carry. golangci-lint is pinned because it gains checks between
+      # releases: unpinned, somebody else's release becomes a red build on a
+      # pull request that touched nothing.
       #
-      # cs-vcr is deliberately NOT pinned, and it is here for `fixtures-check`
-      # rather than for a linter. That gate asks whether the committed
-      # cassettes still replay under the cs-vcr a run would actually use, and
-      # the smoke job below installs @latest — so pinning it here would only
-      # move the discovery to the expensive job that boots machines. Its
-      # absence is not an error either: fixtures-check skips when cs-vcr is
-      # missing, which is what keeps `make check` runnable on a laptop.
+      # The cs- tools are not here. They are pinned in go.mod and the gates run
+      # them with `go tool`, so `fixtures-check` asks about the same cs-vcr a
+      # run would use without anything being installed onto PATH.
       - name: linters
         run: |
           set -euo pipefail
@@ -197,21 +194,42 @@ jobs:
   #
   # It needs no checkout of the sibling repositories: cs-sandbox embeds its own
   # image tree and builds the guest image and the Firecracker artifacts itself,
-  # and `go install ...@latest` resolves both tools to a pseudo-version of their
-  # branch tip, since neither is tagged yet.
+  # and `make tools` builds both at the versions go.mod pins.
+  #
+  # Those pins, and not @latest, are what this job has to run. `create` refuses a
+  # cs-sandbox that is not the one the binary under test was built against, so a
+  # job on @latest is green only while nothing has landed in sandbox since the
+  # last `make repin` — and red, at the upstream gate, on the first commit that
+  # does. Pinning also makes the cache key below a property of this repository
+  # rather than of another repository's branch tip.
   smoke:
     name: smoke (ubuntu-latest)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       # CS_SANDBOX_IMAGE is NOT set here. cs-sandbox names each image variant
-      # after the version that built it, so the reference cannot be written down
-      # ahead of resolving `@latest`; the install step below asks the binary for
-      # it and exports it for the rest of the job.
+      # after the version that built it, so the reference is derived rather than
+      # written down; the tools step below asks the binary for it and exports it
+      # for the rest of the job.
       #
       # Out of ~/.cache and into the workspace, so the pack and unpack steps
       # below have a single path to name.
       CS_SANDBOX_FC_CACHE: ${{ github.workspace }}/bin/fc-cache
+
+      # The variant this job can afford, for every `cs-sandbox build` it reaches:
+      # the step below, and the one `make setup-smoke` runs if it ever finds this
+      # host short. The shipped image is 9.3 GB and a hosted runner does not have
+      # the disk — every attempt died partway through `podman build` with "no
+      # space left on device". The slim image is the same Containerfile with the
+      # developer toolchains dropped.
+      #
+      # --with-agents is what this repository needs beyond the plain slim image
+      # cs-sandbox's own CI uses: every scenario here drives claude, codex or
+      # opencode INSIDE the member, and the readback runs `command -v <cli>`
+      # before anything else, so a member without them fails before the first
+      # dispatch. The mission itself asks only for git and python3, both of which
+      # the slim base already carries.
+      SANDBOX_BUILD_FLAGS: --engine firecracker --slim --with-agents
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -253,32 +271,28 @@ jobs:
           sudo chmod 0666 /dev/kvm
           test -w /dev/kvm || { echo "/dev/kvm still not writable" >&2; exit 1; }
 
+      # `make tools` is the same target a contributor runs: it installs
+      # cs-sandbox and cs-vcr at the go.mod pins into bin/tools, static for
+      # cs-vcr, and puts the agent tools cs-sandbox ships beside them. Running
+      # the target rather than restating it here is what keeps this job and a
+      # developer's machine on one surface — including the CGO_ENABLED=0 that
+      # keeps cs-vcr runnable inside a distroless container, which is the kind
+      # of detail a second copy loses.
       - name: install cs-sandbox and cs-vcr
         id: tools
         if: steps.cassette.outputs.present == 'true'
         run: |
           set -euo pipefail
-          go install github.com/codesweep-ai/sandbox/cmd/cs-sandbox@latest
-          # CGO_ENABLED=0 for cs-vcr, and it is load-bearing. The proxy is
-          # bind-mounted into gcr.io/distroless/static-debian12 — no libc, no
-          # dynamic loader — so it has to be static. A runner has gcc, so the
-          # default build is cgo and therefore dynamic, and the container then
-          # dies at exec with "/usr/local/bin/cs-vcr: No such file or directory":
-          # the kernel reporting the missing ELF interpreter, not a missing
-          # binary. Every model call then fails and each scenario burns its
-          # ceiling, so the job times out rather than saying what broke.
-          CGO_ENABLED=0 go install github.com/codesweep-ai/vcr/cmd/cs-vcr@latest
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-          # What the cache below is keyed on. Both tools resolve to @latest, so
-          # the image they build changes without anything in this repository
-          # changing — a key made from files here would serve a stale image
-          # until somebody happened to touch go.sum.
+          make tools
+          echo "$PWD/bin/tools" >> "$GITHUB_PATH"
+          # What the cache below is keyed on: the pinned version, so the entry
+          # moves when `make repin` moves the pin and not before.
           #
           # NR==1 because `cs-sandbox version` prints the image it names on a
           # second line. Without it $2 is taken from every line, $ver arrives
           # here multi-line, and the write below is rejected as an invalid
           # workflow output rather than as anything about versions.
-          ver=$("$(go env GOPATH)/bin/cs-sandbox" version | awk 'NR==1{print $2}')
+          ver=$(bin/tools/cs-sandbox version | awk 'NR==1{print $2}')
           # An empty key segment would collapse every sandbox version onto one
           # cache entry, which is the stale image this key exists to prevent.
           test -n "$ver" || { echo "cannot read the cs-sandbox version" >&2; exit 1; }
@@ -295,7 +309,7 @@ jobs:
           # builds. It is the published reference rather than a local tag, so
           # the build can pull it where that package is reachable from here; it
           # falls back to building, which is what the old local tag always did.
-          image=$("$(go env GOPATH)/bin/cs-sandbox" version --images | awk '$1=="image-slim-agents"{print $2}')
+          image=$(bin/tools/cs-sandbox version --images | awk '$1=="image-slim-agents"{print $2}')
           test -n "$image" || { echo "cannot read the cs-sandbox slim-agents image name" >&2; exit 1; }
           echo "CS_SANDBOX_IMAGE=$image" >> "$GITHUB_ENV"
 
@@ -312,23 +326,17 @@ jobs:
           path: bin/ci-artifacts
           key: cs-sandbox-ci-${{ runner.os }}-${{ steps.tools.outputs.sandbox }}
 
-      # --slim is what makes this job possible at all. The shipped guest image is
-      # 9.3 GB and takes tens of minutes; a hosted runner does not have the disk,
-      # and every attempt died partway through `podman build` with "no space left
-      # on device". The slim image is the same Containerfile with the developer
-      # toolchains dropped.
-      #
-      # --with-agents is what this repository needs beyond the plain slim image
-      # cs-sandbox's own CI uses: every scenario here drives claude, codex or
-      # opencode INSIDE the member, and the readback runs `command -v <cli>`
-      # before anything else, so a member without them fails before the first
-      # dispatch. The mission itself asks only for git and python3, both of which
-      # the slim base already carries.
+      # SANDBOX_BUILD_FLAGS, set on the job above, is why this asks for the slim
+      # image with agents rather than the 9.3 GB one — and the same variable
+      # reaches `make setup-smoke` later, so the two cannot ask for different
+      # images.
       - name: build the guest image and the Firecracker artifacts
         if: steps.cassette.outputs.present == 'true' && steps.artifacts.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
-          cs-sandbox build --engine firecracker --slim --with-agents
+          # Unquoted on purpose: these are several flags, not one argument.
+          # shellcheck disable=SC2086
+          cs-sandbox build $SANDBOX_BUILD_FLAGS
           mkdir -p bin/ci-artifacts
           podman save --format oci-archive -o bin/ci-artifacts/image.tar "$CS_SANDBOX_IMAGE"
           tar --sparse -C "$CS_SANDBOX_FC_CACHE" -czf bin/ci-artifacts/fc-artifacts.tar.gz .
@@ -350,11 +358,16 @@ jobs:
           tar -C "$CS_SANDBOX_FC_CACHE" -xzf bin/ci-artifacts/fc-artifacts.tar.gz
 
       # Both paths land here, so a cache hit is held to the same bar as a build.
-      - name: the agent tools, and the artifacts this host will boot
+      #
+      # The agent tools are already in bin/tools — `make tools` put them there
+      # beside the cs-sandbox that ships them. What is left is the verdict, and
+      # it is a gate here rather than the report `make setup-smoke` prints: a
+      # developer's machine that cannot boot a microVM should skip the tier, and
+      # this one is built to run it, so anything short of ready is a failure.
+      - name: the artifacts this host will boot
         if: steps.cassette.outputs.present == 'true'
         run: |
           set -euo pipefail
-          cs-sandbox install-agent-tools
           cs-sandbox doctor --engine firecracker
 
       # All five scenarios. opencode-fireworks was left out here for a member

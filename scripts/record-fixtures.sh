@@ -19,6 +19,17 @@ set -euo pipefail
 cd "$(dirname -- "${BASH_SOURCE[0]}")/.."
 repo=$PWD
 
+# The tools this recording runs on: cs-sandbox and cs-vcr at the go.mod pins,
+# built into this checkout by `make tools` and put ahead of everything else.
+#
+# Built here rather than assumed. The preflight below reports what it found and
+# refuses a cs-sandbox that is not the pinned one, and both questions are only
+# worth asking of the binaries the run will actually get — `make fixtures-strict`
+# puts this same directory on PATH for the tests themselves, so without this the
+# script would be vouching for one surface and recording on another.
+make tools >/dev/null
+export PATH="$repo/bin/tools:$PATH"
+
 check_only=0
 [[ ${1:-} == --check ]] && check_only=1
 

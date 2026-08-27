@@ -31,7 +31,7 @@ COVERDIR   ?= .coverage
 COVER_ABS  := $(abspath $(COVERDIR))
 COVERFLAGS  = -covermode=atomic -coverpkg=$(shell go list ./... | paste -sd, -)
 
-.PHONY: help guestbin build build-go build-go-embedded install uninstall test test-smoke \
+.PHONY: help guestbin build build-go build-go-embedded install uninstall test tools setup-smoke test-smoke \
         test-integration fixtures fixtures-strict coverage coverage-check coverage-baseline \
         covmap covmap-scripts vet fmt fmt-check lint deadcode prose refs oss \
         fixtures-check surface ledger check ci snapshot \
@@ -159,13 +159,107 @@ test:
 	@scripts/coverage.sh reset unit
 	CS_COVERDIR=$(COVER_ABS)/unit go test $(COVERFLAGS) ./... -args -test.gocoverdir=$(COVER_ABS)/unit
 
+# The tool surface every tier that boots a machine runs on.
+#
+# cs-sandbox boots the members and cs-vcr serves the cassette, and a campaign
+# resolves both from PATH at run time. "Whatever is installed" is not good
+# enough: `create` refuses a cs-sandbox that is not the one this build names, so
+# a tier needs the go.mod pins specifically. These targets put them in a
+# directory of this repository's own and run against that — a fresh machine
+# needs no `make install` in a sibling checkout, and the developer's
+# ~/.local/bin is left as they arranged it.
+#
+# bin/tools rather than bin: cs-sandbox reads dir(dir(argv0)) and treats it as a
+# sandbox checkout when it holds a go.mod, and bin/cs-sandbox would point that
+# at THIS repository's root. It falls back to its embedded assets when it finds
+# no image/ tree there, so bin would work today — by the fallback rather than by
+# design, which is not a thing to build a tier on. bin is also where
+# cs-campaign itself is built.
+TOOLSDIR   := $(abspath bin/tools)
+SANDBOX    := $(TOOLSDIR)/cs-sandbox
+WITH_TOOLS := PATH="$(TOOLSDIR):$$PATH"
+
+## tools: cs-sandbox, cs-vcr and the agent tools in bin/tools, at the go.mod pins
+##
+## `go install` with no @version resolves through go.mod, so what lands here is
+## the pin by construction and `make repin` moves it — there is no second place
+## recording a version, and nothing to keep in step by hand. Measured at about a
+## second with a warm module cache and near nothing when the binaries are
+## current, which is what lets it be a prerequisite rather than a step somebody
+## has to remember.
+##
+## CGO_ENABLED=0 for cs-vcr is load-bearing. The proxy is bind-mounted into
+## gcr.io/distroless/static-debian12 — no libc, no dynamic loader — so a cgo
+## build (the default wherever there is a gcc) dies at exec with
+## "/usr/local/bin/cs-vcr: No such file or directory": the kernel reporting the
+## missing ELF interpreter, not a missing binary. Every model call then fails,
+## each scenario burns its ceiling, and the tier times out rather than saying
+## what broke.
+##
+## The agent tools come from cs-sandbox because cs-sandbox is what ships them,
+## and they are installed beside it so the whole directory is one function of
+## one pin. Run with bin/tools already on PATH so the command does not offer to
+## add it to a shell profile, which is the opposite of the point here.
+tools:
+	@mkdir -p $(TOOLSDIR)
+	@GOBIN=$(TOOLSDIR) go install github.com/codesweep-ai/sandbox/cmd/cs-sandbox
+	@CGO_ENABLED=0 GOBIN=$(TOOLSDIR) go install github.com/codesweep-ai/vcr/cmd/cs-vcr
+	@out="$$($(WITH_TOOLS) $(SANDBOX) install-agent-tools $(TOOLSDIR))" && printf '%s\n' "$$out" | head -1
+
+## What `cs-sandbox build` is asked for when this host has no image yet. The
+## default builds the image a real campaign uses, which is the one `create`
+## looks for when CS_SANDBOX_IMAGE is unset. CI overrides it with
+## `--slim --with-agents`, because the shipped image is 9.3 GB and a hosted
+## runner does not have the disk — and CI sets CS_SANDBOX_IMAGE to match, since
+## each variant has a package of its own.
+SANDBOX_BUILD_FLAGS ?= --engine firecracker
+
+## setup-smoke: the host state a tier that boots machines needs, at the pinned versions
+##
+## A prerequisite of test-smoke rather than a paragraph in a document, so a
+## machine that has never built a sibling project reaches a passing tier with one
+## command. The live tiers below take the same setup and the same prerequisite;
+## the name is the tier that always needs it, not the only one that does.
+##
+## Cheap when the host is already set up, which is what makes that safe:
+## cs-sandbox's own doctor answers in about two seconds, offline and read-only,
+## and only a NO from it runs the build. The gate is not decoration —
+## `cs-sandbox build` asks the registry for the image before it considers
+## building one, so running it unconditionally would put a network round trip in
+## front of every smoke run and a full image build in front of every offline one.
+##
+## The image reference carries the pinned version, so `make repin` renames the
+## image this host is asked for, doctor reports it missing, and the rebuild
+## happens without anybody deciding to.
+##
+## A host that boots no microVMs is reported and passed over rather than failed.
+## test-smoke skips itself, saying which, on such a machine, and a setup step
+## that turned that skip into a failure would take the tier away from every
+## machine that cannot run it — which is most of them. The two doctors report on
+## the same terms: the tier decides what it can run. A build that was actually
+## attempted and then failed does fail the target, because a host that got that
+## far has a fault rather than a limitation.
+setup-smoke: tools
+	@if ! command -v podman >/dev/null 2>&1 || [ ! -w /dev/kvm ]; then \
+		echo "setup-smoke: this host boots no microVMs (needs podman and a writable /dev/kvm) — test-smoke will skip"; \
+	elif $(WITH_TOOLS) $(SANDBOX) doctor --engine firecracker >/dev/null 2>&1; then \
+		echo "setup-smoke: the guest image and the Firecracker artifacts are current"; \
+	else \
+		$(WITH_TOOLS) $(SANDBOX) build $(SANDBOX_BUILD_FLAGS); \
+	fi
+	@$(WITH_TOOLS) $(SANDBOX) doctor --engine firecracker || \
+		echo "setup-smoke: cs-sandbox doctor says this host is not ready; test-smoke will skip what it cannot run"
+	@$(WITH_TOOLS) go run ./cmd/cs-campaign doctor || \
+		echo "setup-smoke: cs-campaign doctor says the surface is not the one this tree names"
+
 ## test-smoke: the whole protocol on real VMs, with the model turns replayed
 ##
 ## Boots real Firecracker machines and runs a campaign end to end, serving every
 ## model call from the committed cassette through a cs-vcr on the campaign's own
 ## fabric. It holds no credential and reaches no provider, which is what makes it
-## the tier CI runs on every push. Needs /dev/kvm, podman, a group-aware
-## cs-sandbox and cs-vcr; it skips itself, saying which, where one is missing.
+## the tier CI runs on every push. Needs /dev/kvm and podman; `setup-smoke`
+## supplies cs-sandbox, cs-vcr and the agent tools, and the tier skips itself,
+## saying which, where the host cannot carry it.
 ##
 ## -p 1 because the members share one host's memory, one fabric address range
 ## and one pool of gateway ports. -v because a run boots machines and would
@@ -206,9 +300,10 @@ CS_CAMPAIGN_POLL_SECONDS ?= 2
 ## model that asked for the campaign's number.
 CS_CAMPAIGN_WAIT_SECONDS ?= 4
 
-test-smoke:
+test-smoke: setup-smoke
 	@scripts/coverage.sh reset smoke
-	CS_CAMPAIGN_POLL_SECONDS=$(CS_CAMPAIGN_POLL_SECONDS) \
+	$(WITH_TOOLS) \
+	  CS_CAMPAIGN_POLL_SECONDS=$(CS_CAMPAIGN_POLL_SECONDS) \
 	  CS_CAMPAIGN_WAIT_SECONDS=$(CS_CAMPAIGN_WAIT_SECONDS) \
 	  CS_COVERDIR=$(COVER_ABS)/smoke go test -tags smoke $(COVERFLAGS) \
 	  -count=1 -p 1 -v -timeout 2400s -run '$(SMOKE_TESTS)' ./internal/cli \
@@ -234,9 +329,9 @@ DOTENV = set -a; [ -f .env ] && . ./.env; set +a;
 ## it is `make fixtures` and nothing else.
 INTEGRATION_TESTS ?= TestLiveMatrix|TestLiveHeterogeneousFleet
 
-test-integration:
+test-integration: setup-smoke
 	@scripts/coverage.sh reset integration
-	$(DOTENV) CS_CAMPAIGN_LIVE=1 CS_COVERDIR=$(COVER_ABS)/integration go test -tags integration $(COVERFLAGS) \
+	$(DOTENV) $(WITH_TOOLS) CS_CAMPAIGN_LIVE=1 CS_COVERDIR=$(COVER_ABS)/integration go test -tags integration $(COVERFLAGS) \
 	  -count=1 -p 1 -v -timeout 5400s -run '$(INTEGRATION_TESTS)' ./internal/cli \
 	  -args -test.gocoverdir=$(COVER_ABS)/integration
 
@@ -255,16 +350,16 @@ test-integration:
 ## that recorded it, because the campaign ID is that profile's digest.
 FIXTURE_TESTS ?= TestLiveRecordsACassette
 
-fixtures:
-	$(DOTENV) CS_CAMPAIGN_LIVE=1 CS_CAMPAIGN_RECORD=1 go test -tags integration -count=1 -p 1 -v -timeout 7200s \
+fixtures: setup-smoke
+	$(DOTENV) $(WITH_TOOLS) CS_CAMPAIGN_LIVE=1 CS_CAMPAIGN_RECORD=1 go test -tags integration -count=1 -p 1 -v -timeout 7200s \
 	  ./internal/cli -run '$(FIXTURE_TESTS)'
 
 ## fixtures-strict: the same recording, with a skip treated as a failure. For a
 ## host that holds every credential and means to re-record all five: a missing
 ## one skips under `fixtures`, and a run that recorded nothing reports the same
 ## green as one that recorded everything. scripts/record-fixtures.sh runs this.
-fixtures-strict:
-	$(DOTENV) CS_CAMPAIGN_LIVE=1 CS_CAMPAIGN_RECORD=1 CS_CAMPAIGN_STRICT=1 \
+fixtures-strict: setup-smoke
+	$(DOTENV) $(WITH_TOOLS) CS_CAMPAIGN_LIVE=1 CS_CAMPAIGN_RECORD=1 CS_CAMPAIGN_STRICT=1 \
 	  go test -tags integration -count=1 -p 1 -v -timeout 7200s ./internal/cli -run '$(FIXTURE_TESTS)'
 
 ## coverage: merge every tier present under $(COVERDIR) and print the report
