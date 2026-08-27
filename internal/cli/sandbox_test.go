@@ -222,9 +222,16 @@ func TestDoctorRejectsUnversionedSandbox(t *testing.T) {
 case "$1" in version) echo legacy;; ls) echo '[]';; esac
 `)
 	a := &app{store: store.Store{Dir: t.TempDir()}, sandbox: sandboxCLI{Bin: filepath.Join(dir, "fake-sandbox")}}
+	var out strings.Builder
 	cmd := a.doctorCmd()
-	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "unrecognized cs-sandbox version") {
-		t.Fatalf("doctor version error = %v", err)
+	cmd.SetOut(&out)
+	// The report carries the finding and the return carries only the verdict,
+	// so what an operator reads is what this asserts on.
+	if err := cmd.Execute(); err == nil {
+		t.Fatalf("doctor accepted a build that reports no version:\n%s", out.String())
+	}
+	if !strings.Contains(out.String(), "unrecognized cs-sandbox version") {
+		t.Fatalf("doctor did not name the cause:\n%s", out.String())
 	}
 }
 
@@ -274,10 +281,14 @@ case "$1" in
 esac
 `)
 	a := &app{store: store.Store{Dir: t.TempDir()}, sandbox: sandboxCLI{Bin: filepath.Join(dir, "fake-sandbox")}}
+	var out strings.Builder
 	cmd := a.doctorCmd()
-	cmd.SetOut(&strings.Builder{})
-	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "does not support sandbox groups") {
-		t.Fatalf("doctor group error = %v", err)
+	cmd.SetOut(&out)
+	if err := cmd.Execute(); err == nil {
+		t.Fatalf("doctor accepted a cs-sandbox without groups:\n%s", out.String())
+	}
+	if !strings.Contains(out.String(), "does not support sandbox groups") {
+		t.Fatalf("doctor did not name the cause:\n%s", out.String())
 	}
 }
 

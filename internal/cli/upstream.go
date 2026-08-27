@@ -221,24 +221,27 @@ func (a *app) agentToolHashes(ctx context.Context) (map[string]string, error) {
 	return answer.Tools, nil
 }
 
-// reportUpstream prints the upstream verdict for doctor: an error return means
-// doctor must fail.
-func (a *app) reportUpstream(ctx context.Context, out func(string)) error {
+// reportUpstream writes the upstream verdict into a doctor report. A deviation
+// is a failed check, which is what makes doctor exit non-zero.
+func (a *app) reportUpstream(ctx context.Context, p *doctorPrinter) {
 	report := a.verifyUpstream(ctx)
-	if len(report.Deviations) > 0 {
-		return fmt.Errorf("upstream surface is not the one this cs-campaign was built against:\n  %s\ndo not campaign on a surface this build does not name",
-			strings.Join(report.Deviations, "\n  "))
+	if len(report.Deviations) == 0 {
+		p.ok("cs-sandbox on PATH is the one this build names: %s", report.SandboxVersion)
 	}
-	out("ok  cs-sandbox on PATH is the one this build names: " + report.SandboxVersion)
+	for _, deviation := range report.Deviations {
+		// The deviation already ends in the command that fixes it. A second
+		// clause appended here ran the two together into one unreadable line,
+		// and a NO in a doctor report already says not to proceed.
+		p.bad("%s", deviation)
+	}
 	for _, note := range report.Notes {
-		out("ok  " + note)
+		p.ok("%s", note)
 	}
-	// Last, and NOT as an ok line. A finding rendered with the badge of good
-	// news is worse than one not printed at all.
+	// Last within the group, so the lines an operator may want to act on are
+	// the ones nearest the summary.
 	for _, warning := range report.Warnings {
-		out("WARN " + warning)
+		p.warn("%s", warning)
 	}
-	return nil
 }
 
 // gateUpstream enforces the manifest before any provisioning: a deviating

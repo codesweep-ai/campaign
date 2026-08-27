@@ -137,15 +137,27 @@ repository, followed by a rebuild and a reinstall.
 
 ```console
 $ cs-campaign doctor
-ok  cs-sandbox version v0.0.0-20260826171442-c36e1fe91606
-ok  cs-sandbox supports ls --json
-ok  cs-sandbox supports sandbox groups
-ok  claude remote tool family
-ok  codex remote tool family
-ok  opencode remote tool family
-ok  not on PATH (fine - a campaign needs none of them): cs-lint cs-ledger cs-tracer
-ok  cs-sandbox on PATH is the one this build names: v0.0.0-20260826171442-c36e1fe91606
-ok  state directory: /home/user/.config/cs-campaign/campaigns
+cs-campaign doctor
+
+cs-sandbox (required):
+  ok  cs-sandbox version v0.0.0-20260827001716-910b73da3b6c
+  ok  cs-sandbox supports ls --json
+  ok  cs-sandbox supports sandbox groups
+
+agent tooling (required - one family per CLI):
+  ok  claude remote tool family
+  ok  codex remote tool family
+  ok  opencode remote tool family
+
+upstream (checked against this build's go.mod):
+  ok  cs-sandbox on PATH is the one this build names: v0.0.0-20260827001716-910b73da3b6c
+  ok  cs-vcr on PATH matches this build (v0.0.0-20260826160252-bd9e6f2b8ab6)
+  ok  not on PATH (fine - a campaign needs none of them): cs-lint cs-ledger cs-tracer
+
+state:
+  ok  state directory: /home/user/.config/cs-campaign/campaigns
+
+All good - try: cs-campaign init <name>
 ```
 
 Then scaffold a campaign and check it, which allocates nothing and costs nothing:

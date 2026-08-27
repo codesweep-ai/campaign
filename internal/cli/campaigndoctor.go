@@ -45,14 +45,15 @@ func (a *app) campaignDoctor(ctx context.Context, out io.Writer, campaign *model
 		return errors.New("campaign has no orchestrator")
 	}
 	var problems []string
+	p := newDoctorPrinter(out, "cs-campaign doctor — "+campaign.Name)
 	report := func(ok bool, format string, args ...any) {
 		line := fmt.Sprintf(format, args...)
 		if ok {
-			fmt.Fprintln(out, "ok  "+line)
-		} else {
-			fmt.Fprintln(out, "BAD "+line)
-			problems = append(problems, line)
+			p.ok("%s", line)
+			return
 		}
+		p.bad("%s", line)
+		problems = append(problems, line)
 	}
 
 	// The harness the MEMBERS run. This goes first and touches every
@@ -62,8 +63,10 @@ func (a *app) campaignDoctor(ctx context.Context, out io.Writer, campaign *model
 	// the state the campaign booted with. (Check 3's guard probe is deliberately
 	// wrong-family, so the guard refuses before the real tool — and its deploy —
 	// is reached; ordering this first keeps that from being load-bearing.)
+	p.section("member harness (the tools the members actually run)")
 	remedy := a.reportMemberHarness(ctx, campaign, report)
 
+	p.section("instantiation (manifest, controls, guard, member CLIs)")
 	// 1. Manifest fidelity: the roster the guard and helper route by must be
 	// the roster the campaign record declares — name, CLI, sandbox, session.
 	//
@@ -133,13 +136,15 @@ func (a *app) campaignDoctor(ctx context.Context, out io.Writer, campaign *model
 	}
 
 	if len(problems) > 0 {
+		p.summary("")
 		// The remedy block is printed to out rather than folded into the error:
-		// it is a procedure, and it belongs after the ok/BAD list the operator
-		// just read, not wrapped inside a one-line failure.
+		// it is a procedure, and it belongs after the checks the operator just
+		// read, not wrapped inside a one-line failure.
 		fmt.Fprint(out, remedy)
 		return fmt.Errorf("campaign %s FAILED its doctor (%d problems) — do not dispatch; fix the instantiation or destroy:\n  %s",
 			campaign.Name, len(problems), strings.Join(problems, "\n  "))
 	}
+	p.summary("this campaign is wired as declared; dispatch with: cs-campaign send " + campaign.Name)
 	return nil
 }
 

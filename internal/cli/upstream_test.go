@@ -117,14 +117,17 @@ func TestDoctorFailsLoudlyOnVersionDrift(t *testing.T) {
 	if err == nil {
 		t.Fatalf("doctor must fail when cs-sandbox is not the pinned one, got:\n%s", out)
 	}
+	// Asserted on the report rather than the error: doctor prints its findings
+	// and returns a terse sentinel, so the report is what an operator reads.
 	for _, want := range []string{
-		"not the one this cs-campaign was built against",
+		"this build was made against",
 		"v0.0.0-20990101000000-ffffffffffff",
 		pinnedSandbox(t),
 		"go install " + sandboxModule + "/cmd/cs-sandbox@",
+		"issue(s) to fix above",
 	} {
-		if !strings.Contains(err.Error(), want) {
-			t.Fatalf("drift error missing %q: %v", want, err)
+		if !strings.Contains(out, want) {
+			t.Fatalf("drift report missing %q:\n%s", want, out)
 		}
 	}
 }
