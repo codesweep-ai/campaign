@@ -125,12 +125,13 @@ type Member struct {
 	// at all.
 	Model  string `json:"model,omitempty"`
 	Effort string `json:"effort,omitempty"`
-	// Harness is the pin verdict for the tools THIS member runs, recorded for
-	// the same reason as Model/Effort: an archive that cannot answer "what
-	// harness did this seat run on?" leaves the question to be re-derived from
+	// Harness is the verdict for the tools THIS member runs, recorded for the
+	// same reason as Model/Effort: an archive that cannot answer "what harness
+	// did this seat run on?" leaves the question to be re-derived from
 	// timestamps later, which is how this was found. Members receive their
-	// tools from the image seed, not from the host's ~/.local/bin the host-side
-	// pin verifies, so this is the only record of the plane where work happens.
+	// tools from the image seed, not from the host's ~/.local/bin the upstream
+	// check verifies, so this is the only record of the plane where work
+	// happens.
 	Harness *HarnessCheck `json:"harness,omitempty"`
 	// SeededInputs maps each operator-authored file placed in this member's
 	// input channel to its sha256. Recorded because an archive that shows a
@@ -241,13 +242,16 @@ type HarnessCheck struct {
 //
 // There is no "pinned" flag: a built binary always carries its own manifest, so
 // there is always something to compare against, and the un-validated state the
-// flag used to describe cannot occur. Notes are the non-fatal findings (a
-// sibling tool at another version, or absent); Deviations are what refused the
-// create unless Accepted records that an operator overrode it.
+// flag used to describe cannot occur. Deviations are what refused the create
+// unless Accepted records that an operator overrode it. Warnings are true
+// findings that refuse nothing, such as a sibling tool at a version this build
+// does not name. Notes are the good news, a matching or absent sibling
+// included, recorded so the archive can say what the host actually held.
 type UpstreamCheck struct {
 	CheckedAt      time.Time `json:"checkedAt"`
 	SandboxVersion string    `json:"sandboxVersion,omitempty"`
 	Deviations     []string  `json:"deviations,omitempty"`
+	Warnings       []string  `json:"warnings,omitempty"`
 	Notes          []string  `json:"notes,omitempty"`
 	Accepted       bool      `json:"accepted,omitempty"`
 }

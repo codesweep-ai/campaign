@@ -81,14 +81,20 @@ func toolPins() map[string]string {
 	return pins
 }
 
-// upstreamReport is what one look at the host surface found.
+// upstreamReport is what one look at the host surface found, in the three
+// grades it can be read as.
 //
-// Deviations and Notes are separate because they are read differently: a
-// deviation refuses a create, a note is a line an operator may want and must
-// never be counted against them.
+// Deviations refuse a create. Warnings are true findings that do not: a sibling
+// on PATH at a version this build does not name will disagree with `go tool`
+// about something, and the operator should know, but no campaign is worse for
+// it. Notes are the good news, including a sibling that is simply absent.
+//
+// Kept apart because they print differently, and a warning rendered with an
+// `ok` prefix is worse than not printing it at all.
 type upstreamReport struct {
 	SandboxVersion string
 	Deviations     []string
+	Warnings       []string
 	Notes          []string
 }
 
@@ -170,12 +176,17 @@ func (a *app) verifyUpstream(ctx context.Context) upstreamReport {
 		got := probeVersion(ctx, t.bin)
 		switch {
 		case want == "":
-			report.Notes = append(report.Notes, t.bin+" is on PATH but this build's go.mod pins no version for it")
+			report.Warnings = append(report.Warnings, t.bin+" is on PATH but this build's go.mod pins no version for it")
 		case got == "":
-			report.Notes = append(report.Notes, t.bin+" is on PATH but did not answer `"+t.bin+" version`, so it cannot be identified")
+			report.Warnings = append(report.Warnings, t.bin+" is on PATH but did not answer `"+t.bin+" version`, so it cannot be identified")
 		case got != want:
-			report.Notes = append(report.Notes, fmt.Sprintf("%s on PATH is %s, this build names %s — `go install %s/cmd/%s@%s` to agree with it",
+			report.Warnings = append(report.Warnings, fmt.Sprintf("%s on PATH is %s, this build names %s — `go install %s/cmd/%s@%s` to agree with it",
 				t.bin, got, want, t.module, t.bin, want))
+		default:
+			// Said out loud, not passed over in silence. A check that prints
+			// nothing when it matches leaves "compared, and they agree"
+			// indistinguishable from "never compared".
+			report.Notes = append(report.Notes, t.bin+" on PATH matches this build ("+want+")")
 		}
 	}
 	if len(absent) > 0 {
@@ -214,14 +225,19 @@ func (a *app) agentToolHashes(ctx context.Context) (map[string]string, error) {
 // doctor must fail.
 func (a *app) reportUpstream(ctx context.Context, out func(string)) error {
 	report := a.verifyUpstream(ctx)
-	for _, note := range report.Notes {
-		out("ok  " + note)
-	}
 	if len(report.Deviations) > 0 {
 		return fmt.Errorf("upstream surface is not the one this cs-campaign was built against:\n  %s\ndo not campaign on a surface this build does not name",
 			strings.Join(report.Deviations, "\n  "))
 	}
 	out("ok  cs-sandbox on PATH is the one this build names: " + report.SandboxVersion)
+	for _, note := range report.Notes {
+		out("ok  " + note)
+	}
+	// Last, and NOT as an ok line. A finding rendered with the badge of good
+	// news is worse than one not printed at all.
+	for _, warning := range report.Warnings {
+		out("WARN " + warning)
+	}
 	return nil
 }
 
@@ -234,6 +250,7 @@ func (a *app) gateUpstream(ctx context.Context, out io.Writer, campaign *model.C
 		CheckedAt:      time.Now().UTC(),
 		SandboxVersion: report.SandboxVersion,
 		Deviations:     report.Deviations,
+		Warnings:       report.Warnings,
 		Notes:          report.Notes,
 		Accepted:       accept && len(report.Deviations) > 0,
 	}
@@ -259,6 +276,7 @@ func (a *app) archiveUpstreamFingerprint(ctx context.Context, root string) {
 		BuiltAgainst   map[string]string `json:"builtAgainst"`
 		SandboxVersion string            `json:"sandboxVersion"`
 		Deviations     []string          `json:"deviations,omitempty"`
+		Warnings       []string          `json:"warnings,omitempty"`
 		Notes          []string          `json:"notes,omitempty"`
 		AgentTools     map[string]string `json:"agentTools,omitempty"`
 		Error          string            `json:"error,omitempty"`
@@ -267,6 +285,7 @@ func (a *app) archiveUpstreamFingerprint(ctx context.Context, root string) {
 		BuiltAgainst:   toolPins(),
 		SandboxVersion: report.SandboxVersion,
 		Deviations:     report.Deviations,
+		Warnings:       report.Warnings,
 		Notes:          report.Notes,
 	}
 	if tools, err := a.agentToolHashes(ctx); err != nil {

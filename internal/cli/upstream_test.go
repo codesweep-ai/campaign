@@ -240,16 +240,39 @@ func TestSiblingToolsAreReportedButNeverGate(t *testing.T) {
 	if len(report.Deviations) != 0 {
 		t.Fatalf("a mismatched sibling must not refuse a campaign: %v", report.Deviations)
 	}
-	joined = strings.Join(report.Notes, "\n")
+	joined = strings.Join(report.Warnings, "\n")
 	if !strings.Contains(joined, "cs-vcr on PATH is v0.0.0-WRONG") {
-		t.Fatalf("a mismatched sibling must be named: %v", report.Notes)
+		t.Fatalf("a mismatched sibling must be named: %v", report.Warnings)
 	}
 	if !strings.Contains(joined, "go install github.com/codesweep-ai/vcr/cmd/cs-vcr@") {
-		t.Fatalf("the note must carry the command that agrees with the pin: %v", report.Notes)
+		t.Fatalf("the warning must carry the command that agrees with the pin: %v", report.Warnings)
 	}
-	// And doctor still passes on it.
+	// A finding, not good news: rendered as an ok line it would read as the
+	// opposite of what it says.
+	if len(report.Notes) > 0 && strings.Contains(strings.Join(report.Notes, "\n"), "v0.0.0-WRONG") {
+		t.Errorf("a mismatch must not be filed as a note: %v", report.Notes)
+	}
+	// And doctor still passes on it, because none of this stops a campaign.
 	if out, err := runDoctor(t, a); err != nil {
-		t.Fatalf("doctor must not fail on a sibling note: %v\n%s", err, out)
+		t.Fatalf("doctor must not fail on a sibling warning: %v\n%s", err, out)
+	}
+}
+
+// A sibling that matches gets a line of its own. Printing nothing on a match
+// leaves "compared, and they agree" indistinguishable from "never compared",
+// which is the whole doubt these checks exist to remove.
+func TestAMatchingSiblingIsReportedByName(t *testing.T) {
+	a, _ := installUpstream(t, pinnedSandbox(t))
+	pinned := toolPins()["github.com/codesweep-ai/vcr"]
+	dir := installFakeTool(t, "cs-vcr", `case "$1" in version) echo 'cs-vcr `+pinned+` (linux/amd64, go1.27.0)';; esac`)
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+filepath.Dir(a.sandbox.Bin))
+
+	report := a.verifyUpstream(context.Background())
+	if len(report.Warnings) != 0 {
+		t.Fatalf("a matching sibling is not a finding: %v", report.Warnings)
+	}
+	if !strings.Contains(strings.Join(report.Notes, "\n"), "cs-vcr on PATH matches this build ("+pinned+")") {
+		t.Fatalf("a matching sibling must be named with its version: %v", report.Notes)
 	}
 }
 
