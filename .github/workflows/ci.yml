@@ -272,7 +272,12 @@ jobs:
           # the image they build changes without anything in this repository
           # changing — a key made from files here would serve a stale image
           # until somebody happened to touch go.sum.
-          ver=$("$(go env GOPATH)/bin/cs-sandbox" version | awk '{print $2}')
+          #
+          # NR==1 because `cs-sandbox version` prints the image it names on a
+          # second line. Without it $2 is taken from every line, $ver arrives
+          # here multi-line, and the write below is rejected as an invalid
+          # workflow output rather than as anything about versions.
+          ver=$("$(go env GOPATH)/bin/cs-sandbox" version | awk 'NR==1{print $2}')
           # An empty key segment would collapse every sandbox version onto one
           # cache entry, which is the stale image this key exists to prevent.
           test -n "$ver" || { echo "cannot read the cs-sandbox version" >&2; exit 1; }

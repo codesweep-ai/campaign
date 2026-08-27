@@ -41,7 +41,7 @@ echo "Recording from:"
 echo "  repo             $repo"
 echo "  branch           $(git rev-parse --abbrev-ref HEAD)"
 echo "  logins under     $login_home"
-echo "  cs-sandbox       $(cs-sandbox version 2>/dev/null | awk '{print $2}' || echo MISSING)"
+echo "  cs-sandbox       $(cs-sandbox version 2>/dev/null | awk 'NR==1{print $2}' || echo MISSING)"
 echo "  built against    $(awk '/codesweep-ai\/sandbox / {print $2; exit}' go.mod 2>/dev/null || echo '?')"
 echo
 
@@ -101,7 +101,10 @@ if [[ -w /dev/kvm ]]; then ok "/dev/kvm is writable"; else bad "/dev/kvm is not 
 echo
 echo "Upstream:"
 pinned=$(awk '/codesweep-ai\/sandbox / {print $2; exit}' go.mod 2>/dev/null || echo "")
-live=$(cs-sandbox version 2>/dev/null | awk '{print $2}' || echo "")
+# NR==1 because `cs-sandbox version` names the image it would use on a second
+# line. Reading $2 from every line makes $live multi-line, and the comparison
+# below then reports a mismatch on a host that is perfectly in step.
+live=$(cs-sandbox version 2>/dev/null | awk 'NR==1{print $2}' || echo "")
 if [[ -n $pinned && $pinned == "$live" ]]; then
   ok "go.mod names cs-sandbox $pinned, which is what is installed"
 else
