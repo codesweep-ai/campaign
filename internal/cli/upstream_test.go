@@ -45,10 +45,21 @@ esac
 `
 }
 
-// installUpstream fakes a host surface and returns the app plus the path of the
-// fake binary, so a test can move the surface underneath a running check.
+// installUpstream fakes a COMPLETE host surface and returns the app plus the
+// path of the fake binary, so a test can move the surface underneath a running
+// check.
+//
+// The agent tools are installed too, not just the sandbox. Doctor checks them
+// before it reaches the upstream report, so a helper that left them out would
+// pass on a developer's machine — where a real ~/.local/bin is on PATH — and
+// fail in CI, which is exactly what it did.
 func installUpstream(t *testing.T, sandboxVersion string) (*app, string) {
 	t.Helper()
+	for _, cli := range []string{"claude", "codex", "opencode"} {
+		for _, suffix := range []string{"-remote", "-remote-output", "-turn"} {
+			installFakeTool(t, "cs"+"-"+cli+suffix, `exit 0`)
+		}
+	}
 	dir := installFakeTool(t, "fake-sandbox", fakeSandbox(sandboxVersion, map[string]string{"cs-claude": strings.Repeat("a", 64)}))
 	bin := filepath.Join(dir, "fake-sandbox")
 	return &app{store: store.Store{Dir: t.TempDir()}, sandbox: sandboxCLI{Bin: bin}}, bin
