@@ -221,16 +221,25 @@ SANDBOX_BUILD_FLAGS ?= --engine firecracker
 ## command. The live tiers below take the same setup and the same prerequisite;
 ## the name is the tier that always needs it, not the only one that does.
 ##
-## Cheap when the host is already set up, which is what makes that safe:
-## cs-sandbox's own doctor answers in about two seconds, offline and read-only,
-## and only a NO from it runs the build. The gate is not decoration —
-## `cs-sandbox build` asks the registry for the image before it considers
-## building one, so running it unconditionally would put a network round trip in
-## front of every smoke run and a full image build in front of every offline one.
+## Cheap when the host is already set up, which is what makes that safe: podman
+## is asked whether the image a run would boot is there, and only its absence
+## runs the build. That guard is not decoration — `cs-sandbox build` asks the
+## registry for the image before it considers building one, so running it
+## unconditionally would put a network round trip in front of every smoke run
+## and a full image build in front of every offline one.
 ##
-## The image reference carries the pinned version, so `make repin` renames the
-## image this host is asked for, doctor reports it missing, and the rebuild
-## happens without anybody deciding to.
+## The question goes to podman rather than to `cs-sandbox doctor`, which is the
+## obvious place to put it and the wrong one: doctor reports an unbuilt image as
+## a warning and still exits 0, so a probe reading its exit code would call every
+## fresh machine ready and build nothing — which is the one case this target
+## exists for. Measured, on a host with the image renamed away.
+##
+## The image asked about is the one `create` will boot: CS_SANDBOX_IMAGE where it
+## is set, and the reference cs-sandbox names for itself otherwise. Both carry
+## the pinned version, so `make repin` renames the image this host is asked for
+## and the rebuild happens without anybody deciding to. Nothing here asks after
+## the Firecracker artifacts: the same build makes them, and cs-sandbox fetches
+## what is missing on the first `create`.
 ##
 ## A host that boots no microVMs is reported and passed over rather than failed.
 ## test-smoke skips itself, saying which, on such a machine, and a setup step
@@ -242,10 +251,13 @@ SANDBOX_BUILD_FLAGS ?= --engine firecracker
 setup-smoke: tools
 	@if ! command -v podman >/dev/null 2>&1 || [ ! -w /dev/kvm ]; then \
 		echo "setup-smoke: this host boots no microVMs (needs podman and a writable /dev/kvm) — test-smoke will skip"; \
-	elif $(WITH_TOOLS) $(SANDBOX) doctor --engine firecracker >/dev/null 2>&1; then \
-		echo "setup-smoke: the guest image and the Firecracker artifacts are current"; \
 	else \
-		$(WITH_TOOLS) $(SANDBOX) build $(SANDBOX_BUILD_FLAGS); \
+		image=$${CS_SANDBOX_IMAGE:-$$($(SANDBOX) version --images | awk '$$1=="image"{print $$2}')}; \
+		if podman image exists "$$image"; then \
+			echo "setup-smoke: $$image is built"; \
+		else \
+			$(WITH_TOOLS) $(SANDBOX) build $(SANDBOX_BUILD_FLAGS); \
+		fi; \
 	fi
 	@$(WITH_TOOLS) $(SANDBOX) doctor --engine firecracker || \
 		echo "setup-smoke: cs-sandbox doctor says this host is not ready; test-smoke will skip what it cannot run"
