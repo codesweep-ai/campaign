@@ -5,6 +5,12 @@
 
 GORELEASER ?= goreleaser
 CS_LINT    ?= go tool cs-lint
+# The linters the gates shell out to, all pinned and all built from the module
+# cache, so a fresh checkout runs `make check` with nothing installed by hand.
+# deadcode and actionlint are `tool` directives in go.mod and run with `go tool`.
+# golangci-lint is one in go.golangci.mod, which says at its head why it needs a
+# module file of its own.
+GOLANGCI   := bin/tools/golangci-lint
 BIN        := bin/cs-campaign
 PKG        := ./cmd/cs-campaign
 VIEWERBIN  := bin/cs-dispatch-viewer
@@ -33,7 +39,7 @@ COVERFLAGS  = -covermode=atomic -coverpkg=$(shell go list ./... | paste -sd, -)
 
 .PHONY: help guestbin build build-go build-go-embedded install uninstall test tools setup-smoke test-smoke \
         test-integration fixtures fixtures-strict coverage coverage-check coverage-baseline \
-        covmap covmap-scripts vet fmt fmt-check lint deadcode prose refs oss \
+        covmap covmap-scripts vet fmt fmt-check lint deadcode actionlint prose refs oss \
         fixtures-check surface ledger check ci snapshot \
         release release-check clean
 
@@ -96,30 +102,34 @@ build-go:
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(VIEWERLDFLAGS)' -o $(VIEWERBIN) $(VIEWERPKG)
 
 ## versions: what this build is made of — this repo's binary, every pinned tool,
-## the Go toolchain, and whether a workspace is overriding the go.mod pins. Each
-## line is read by asking that binary its own version. It deliberately depends on
-## nothing and runs from source: reporting a version must not trigger a build.
+## the Go toolchain, and whether a workspace is overriding the go.mod pins. The
+## binary answers for itself; every tool is read out of the module file that
+## pins it, which is the one place a `go tool` run can get it from. It
+## deliberately depends on nothing and runs from source: reporting a version
+## must not trigger a build.
 ## -buildvcs=true because `go run` leaves out the VCS stamp by default, and that
 ## stamp is the version now that nothing injects one with -X.
 .PHONY: versions
 versions:
 	@if out="$$(go run -buildvcs=true -ldflags '$(LDFLAGS)' $(PKG) version 2>&1)"; then \
-		printf '%-12s %-42s %s\n' '$(notdir $(BIN))' "$$(printf '%s\n' "$$out" | awk 'NR==1{print $$2}')" 'this repo'; \
+		printf '%-14s %-42s %s\n' '$(notdir $(BIN))' "$$(printf '%s\n' "$$out" | awk 'NR==1{print $$2}')" 'this repo'; \
 	else \
-		printf '%-12s %s\n' '$(notdir $(BIN))' "FAILED — $$(printf '%s\n' "$$out" | head -1)"; \
+		printf '%-14s %s\n' '$(notdir $(BIN))' "FAILED — $$(printf '%s\n' "$$out" | head -1)"; \
 	fi
-	@for t in $$(go list tool 2>/dev/null); do \
-		if out="$$(go tool $$t version 2>&1)"; then \
-			printf '%-12s %s\n' "$$(basename $$t)" "$$(printf '%s\n' "$$out" | awk 'NR==1{print $$2}')"; \
-		else \
-			printf '%-12s %s\n' "$$(basename $$t)" "FAILED — $$(printf '%s\n' "$$out" | head -1)"; \
-		fi; \
+	@ver='{{with .Module}}{{if .Replace}}{{.Replace.Path}}{{else if .Version}}{{.Version}}{{else}}{{.Dir}}{{end}}{{end}}'; \
+	for t in $$(go list tool 2>/dev/null); do \
+		v="$$(go list -f "$$ver" $$t 2>/dev/null)"; \
+		printf '%-14s %s\n' "$$(basename $$t)" "$${v:-FAILED}"; \
+	done; \
+	for t in $$(GOWORK=off go list -modfile=go.golangci.mod tool 2>/dev/null); do \
+		v="$$(GOWORK=off go list -modfile=go.golangci.mod -f "$$ver" $$t 2>/dev/null)"; \
+		printf '%-14s %s\n' "$$(basename $$t)" "$${v:-FAILED}"; \
 	done
-	@printf '%-12s %s\n' 'go' "$$(go env GOVERSION)"
+	@printf '%-14s %s\n' 'go' "$$(go env GOVERSION)"
 	@w="$$(go env GOWORK)"; \
 	case "$$w" in \
-		''|off) printf '%-12s %s\n' 'workspace' 'off — versions above are go.mod pins' ;; \
-		*)      printf '%-12s %s\n' 'workspace' "$$w — local checkouts override the go.mod pins" ;; \
+		''|off) printf '%-14s %s\n' 'workspace' 'off — versions above are go.mod pins' ;; \
+		*)      printf '%-14s %s\n' 'workspace' "$$w — local checkouts override the go.mod pins" ;; \
 	esac
 
 ## repin: move every codesweep-ai tool pin to its branch tip, then report. Uses
@@ -433,18 +443,25 @@ fmt-check:
 		exit 1; \
 	fi
 
+# Built rather than run with `go tool`, because -modfile is refused in workspace
+# mode. The build is the only step that reads go.golangci.mod, so only the build
+# turns the workspace off; the linter then runs with it back on, against the
+# checkouts a workspace is there to serve. A rebuild costs about a fifth of a
+# second once the binary is current, which is what lets it be a prerequisite
+# rather than a step somebody remembers.
+$(GOLANGCI): go.golangci.mod
+	@mkdir -p $(@D)
+	@GOWORK=off go build -modfile=go.golangci.mod -o $@ \
+		github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+
 ## lint: the Go rules from .golangci.yml (see that file for what is on and why)
 ##
 ## Once per build tag: a tag hides a file from the linter exactly as it hides
 ## it from the compiler, and the live tiers are entirely behind tags.
-lint:
-	@command -v golangci-lint >/dev/null 2>&1 || { \
-		echo "golangci-lint is not installed; see https://golangci-lint.run/welcome/install/" >&2; \
-		exit 2; \
-	}
-	golangci-lint run
-	golangci-lint run --build-tags=integration
-	golangci-lint run --build-tags=smoke
+lint: $(GOLANGCI)
+	$(GOLANGCI) run
+	$(GOLANGCI) run --build-tags=integration
+	$(GOLANGCI) run --build-tags=smoke
 
 ## deadcode: functions no entry point reaches
 ##
@@ -452,16 +469,17 @@ lint:
 ## so a function whose only caller lives in another package looks used. Drop
 ## -test and it answers a softer question: what only a test keeps alive?
 deadcode:
-	@command -v deadcode >/dev/null 2>&1 || { \
-		echo "deadcode is not installed: go install golang.org/x/tools/cmd/deadcode@latest" >&2; \
-		exit 2; \
-	}
-	@out="$$(deadcode -test ./...)"; \
+	@out="$$(go tool deadcode -test ./...)"; \
 	if [ -n "$$out" ]; then echo "$$out"; exit 1; fi
-	@out="$$(deadcode -test -tags=integration ./...)"; \
+	@out="$$(go tool deadcode -test -tags=integration ./...)"; \
 	if [ -n "$$out" ]; then echo "$$out"; exit 1; fi
-	@out="$$(deadcode -test -tags=smoke ./...)"; \
+	@out="$$(go tool deadcode -test -tags=smoke ./...)"; \
 	if [ -n "$$out" ]; then echo "$$out"; exit 1; fi
+
+## actionlint: the workflow files, which the forge validates only by refusing to
+## run them. Extra runner labels it does not know about go in .github/actionlint.yaml.
+actionlint:
+	go tool actionlint
 
 ## prose: check how this repository's documents are written
 prose:
@@ -528,6 +546,8 @@ endef
 ci:
 	$(call say,the gate a contributor runs before pushing)
 	@$(MAKE) --no-print-directory check
+	$(call say,actionlint)
+	@$(MAKE) --no-print-directory actionlint
 	$(call say,build)
 	@$(MAKE) --no-print-directory build-go
 	$(call say,release manifest)

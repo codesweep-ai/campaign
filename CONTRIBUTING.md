@@ -40,19 +40,17 @@ That is every gate the CI workflow has, on this machine and in the order the wor
 so a green run here is a green run there. `make check` is the faster subset to keep beside you
 while you work, and `make ci` is the one that has to pass.
 
-It shells out to tools the Go distribution does not carry. Install them once:
+No linter needs installing. Every one the gates shell out to is pinned and built from the module
+cache on first use: `golangci-lint`, `deadcode`, `actionlint` and the `cs-` tools. `make repin`
+moves the `cs-` pins to the branch tip, and `make versions` says which builds the gates used. A
+campaign resolves `cs-sandbox` and the agent CLIs from PATH at run time, and `doctor` compares what
+it finds against those same `go.mod` pins.
 
-```bash
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
-go install golang.org/x/tools/cmd/deadcode@latest
-```
+Moving a linter pin is an edit to `go.mod`, or to `go.golangci.mod` for `golangci-lint`. A linter
+release reaches you when you ask for it, not on an unrelated pull request.
 
-`golangci-lint` is pinned to the version CI runs, so a release that gains checks reaches you when
-you move the pin rather than on an unrelated pull request. The `cs-` tools the gates use need no
-install: they are pinned in `go.mod` and run with `go tool`. `make repin` moves those pins to the
-branch tip, and `make versions` says which builds the gates used. A campaign resolves `cs-sandbox`
-and the agent CLIs from PATH at run time, and `doctor` compares what it finds against those same
-`go.mod` pins.
+`goreleaser` is the one program still expected on the PATH. `make ci` validates the release
+manifest with it, and `make build` falls back to `go build` where it is absent.
 
 The smoke tier is part of that gate, and `make ci` runs it last. `make test-smoke` runs the whole
 protocol on real machines with the model turns replayed, in about ten minutes and for no money;

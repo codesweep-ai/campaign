@@ -36,20 +36,10 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # The two tools `make check` shells out to that the Go distribution does
-      # not carry. golangci-lint is pinned because it gains checks between
-      # releases: unpinned, somebody else's release becomes a red build on a
-      # pull request that touched nothing.
-      #
-      # The cs- tools are not here. They are pinned in go.mod and the gates run
-      # them with `go tool`, so `fixtures-check` asks about the same cs-vcr a
-      # run would use without anything being installed onto PATH.
-      - name: linters
-        run: |
-          set -euo pipefail
-          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
-          go install golang.org/x/tools/cmd/deadcode@latest
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      # No linter install step: golangci-lint, deadcode and actionlint are pinned
+      # as Go tools, so the gates build them from the module cache at the
+      # versions this repository records. An unpinned linter would turn somebody
+      # else's release into a red build on a pull request that touched nothing.
 
       # The same one command a contributor runs before pushing
       # (CONTRIBUTING.md): fmt, vet, the Go linters, the unit tier and all
@@ -96,10 +86,24 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
-      - run: go install golang.org/x/tools/cmd/deadcode@latest
       - run: make lint
       - run: make deadcode
+
+  # An invalid workflow file fails the run with zero jobs and no annotation in
+  # the API, which is the least legible failure the forge produces. actionlint
+  # is pinned as a Go tool in go.mod, so a clean `make actionlint` on a laptop
+  # means a clean one here. Extra runner labels it does not know about live in
+  # .github/actionlint.yaml.
+  actionlint:
+    name: workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: make actionlint
 
   # The prose rules from CONTRIBUTING.md, checked by cs-lint. Its own job
   # because it needs no matrix and builds nothing of this repository, so it
