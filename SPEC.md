@@ -476,9 +476,11 @@ required capability is absent or the adapter cannot safely operate, and **MUST N
 because a patch version changed. *A version floor that refuses a working build is worse than a
 warning nobody reads, because knowing better cannot override it.*
 
-**R75.** A toolchain whose tools are present but not the pinned ones **MUST** be reported as a
-deviation rather than accepted. Accepting one deliberately **MUST** be recorded on the campaign it
-built.
+**R75.** A toolchain whose tools are present but not the ones the host binary was built against
+**MUST** be reported as a deviation rather than accepted. Accepting one deliberately **MUST** be
+recorded on the campaign it built. The reference **MUST** be the `go.mod` embedded in the binary at
+build time, never a file on the host. A reference an operator can write is one that can disagree
+with the code it certifies.
 
 ### 4.7 The command-line contract
 
@@ -817,14 +819,22 @@ adapter's SQLite database are the case. A slow member can therefore hand back fe
 has sessions, and never fewer databases. `audit` reads an empty evidence tarball as another CLI
 having done the work, so the raw stream is the one that must always be collected.
 
-### 5.8 The pin
+### 5.8 The upstream reference
 
-`~/.config/cs-campaign/pin.json`: the time it was recorded, the `cs-sandbox` version, the sha256 of
-every pinned tool, and a note saying what was run and what it proved.
+There is no pin file. The `go.mod` embedded in the `cs-campaign` binary names the `cs-sandbox` it
+was built against, and every check compares the host to that.
 
-Where the host also has the replay surface, `cs-vcr` today, its hash and its normalization ruleset
-are recorded beside them. They are recorded separately: a campaign host that cannot record or replay
-a cassette does not have it, and must not read as deviating for that.
+`doctor` and `create` compare the `cs-sandbox` on `PATH` to it, and a deviation refuses a create.
+The sibling `cs-` tools are compared the same way and reported, never gating. A host that runs
+campaigns needs none of them, and one at another version earns a line rather than a refusal.
+
+What a member should be running is `cs-sandbox agent-tools`, which reports the sha256 of every agent
+tool that build ships. `cs-sandbox` puts those files on a host and seeds them into every member, so
+it is the only thing that can answer. A second description on the campaign side is what let a host
+read as correct while its guests did not.
+
+`upstream-fingerprint.json` in an archive records what this campaign was built against, what the
+host answered, and the shipped tool hashes at archive time.
 
 ---
 
@@ -887,7 +897,6 @@ otherwise.
 | Variable | Read by | Effect |
 |---|---|---|
 | `CS_CAMPAIGN_STATE_DIR` | `cs-campaign` | Where campaign state lives. Default `$XDG_CONFIG_HOME/cs-campaign/campaigns`. |
-| `CS_CAMPAIGN_PIN` | `cs-campaign` | Where the pin lives. Default `~/.config/cs-campaign/pin.json`. |
 | `CS_CAMPAIGN_GUEST_BIN` | `cs-campaign` | A guest binary to install instead of the embedded one. |
 | `CS_SANDBOX_BIN` | `cs-campaign` | The `cs-sandbox` executable to invoke. Default `cs-sandbox`. |
 | `CS_SANDBOX_INSTANCES_DIR`, `CS_SANDBOX_HOME`, `XDG_DATA_HOME` | `cs-campaign` | Where `cs-sandbox` keeps instances, for the socket-path budget check in R11. |

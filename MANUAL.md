@@ -28,7 +28,6 @@ cs-campaign audit [<campaign>] [--archive DIR]
 cs-campaign destroy <campaign> [--archive] [--archive-output DIR] [--force]
 cs-campaign ls [--json]
 cs-campaign doctor [<campaign>]
-cs-campaign pin [--update] [--note TEXT]
 cs-campaign manual | version
 
 cs-campaign-member <verb> [args]
@@ -186,7 +185,7 @@ heavy host load a member's first turn can miss it. The failure names the member 
 end: `create` is checkpoint-resumable, so running the same `create` again continues the still-open
 readback dispatch rather than starting over.
 
-`--accept-upstream-change` proceeds past a pin deviation and records the deviation on the campaign.
+`--accept-upstream-change` proceeds past an upstream deviation and records it on the campaign.
 
 ### observe
 
@@ -372,45 +371,30 @@ cs-campaign doctor [<campaign>]
 ```
 
 With no argument, checks the host surface: the `cs-sandbox` build, each CLI's remote tool family,
-the pin, and the state directory.
+the sibling `cs-` tools, and the state directory.
 
 ```console
 $ cs-campaign doctor
-ok  cs-sandbox version 0.0.1-snapshot-dd879be
+ok  cs-sandbox version v0.0.0-20260826171442-c36e1fe91606
 ok  cs-sandbox supports ls --json
 ok  cs-sandbox supports sandbox groups
 ok  claude remote tool family
 ok  codex remote tool family
 ok  opencode remote tool family
-ok  upstream matches pin: 0.0.1-snapshot-dd879be + 21 tools (pinned 2026-08-19)
+ok  not on PATH (fine - a campaign needs none of them): cs-lint cs-ledger cs-tracer
+ok  cs-sandbox on PATH is the one this build names: v0.0.0-20260826171442-c36e1fe91606
 ok  state directory: /home/user/.config/cs-campaign/campaigns
 ```
 
+The upstream surface is named by the `go.mod` embedded in this binary at build time, so there is no
+pin file and nothing to record. `cs-sandbox` at another version fails `doctor` and refuses `create`.
+The sibling `cs-` tools are reported and never gate: a host that runs campaigns needs none of them,
+and one at another version gets a line rather than a refusal.
+
 With a campaign name, it re-verifies that campaign's instantiation. It checks each member's harness
-against the pin, manifest fidelity, guest controls, the family guard actually firing, and each
-member's declared CLI present in its own machine. `create` ends by running it. **If it is not
+against what `cs-sandbox agent-tools` says it ships, manifest fidelity, guest controls, the family
+guard actually firing, and each member's declared CLI present in its own machine. `create` ends by running it. **If it is not
 green, do not dispatch.** Fix it or destroy it.
-
-### pin
-
-```sh
-cs-campaign pin [--update] [--note TEXT]
-```
-
-Records the validated upstream surface: the `cs-sandbox` version and the sha256 of all 21 agent
-tools, with a note saying why they are trusted. A host that also has `cs-vcr` records the replay
-surface beside it: that binary's hash, and the normalization ruleset deciding whether a committed
-cassette still replays. A host without `cs-vcr` records none of that, and does not read as deviating
-for it.
-
-```console
-$ cs-campaign pin --note "live smoke PASS on firecracker, 102.6s"
-pinned 0.0.1-snapshot-dd879be + 21 tools -> /home/user/.config/cs-campaign/pin.json
-commit the repo copy of this pin so the acceptance is reviewed
-```
-
-Plain `pin` refuses to overwrite a pin the live surface deviates from. That refusal is the feature:
-re-validate the upstream first, then `pin --update`.
 
 ### manual, version
 
@@ -555,7 +539,7 @@ Severity reflects the kind of problem.
 | `--repo PATH` | `create`, `plan`, `init` | A repository cloned into every member. |
 | `--set PATH=VALUE` | `create`, `plan` | Override one supported profile path, repeatable. |
 | `--dry-run` | `create`, `plan` | Resolve only; create nothing. |
-| `--accept-upstream-change` | `create`, `plan` | Proceed despite a pin deviation, recording it on the campaign. |
+| `--accept-upstream-change` | `create`, `plan` | Proceed despite an upstream deviation, recording it on the campaign. |
 | `--dir DIR` | `init` | Scaffold into DIR instead of the campaign name. |
 | `--file PATH` | `send` | Read the message text from a file. |
 | `--output DIR` | `archive` | Where the archive is written. |
@@ -563,8 +547,6 @@ Severity reflects the kind of problem.
 | `--archive-output DIR` | `destroy` | Archive destination. Requires `--archive`. |
 | `-f`, `--force` | `destroy` | Force member destruction. |
 | `--archive DIR` | `audit` | Audit a preserved archive instead of live machines. |
-| `--update` | `pin` | Replace a pin the live surface deviates from. |
-| `--note TEXT` | `pin` | Why this surface is trusted. |
 | `-o PATH` | `cs-dispatch-viewer` | Where the page is written. |
 
 `--profile` is mutually exclusive with the quick fleet flags, and `--agent` is mutually exclusive
@@ -658,7 +640,6 @@ the value only as the `elapsedSeconds` default.
 | `$XDG_CONFIG_HOME/cs-campaign/campaigns/<name>.json` | host | One campaign's record. |
 | `$XDG_CONFIG_HOME/cs-campaign/campaigns/.<name>.lock` | host | The per-campaign write lock. |
 | `$XDG_CONFIG_HOME/cs-campaign/campaigns/<name>.log-mirror.jsonl` | `observe` | A copy of the orchestrator's log, so the claim survives a lost machine. |
-| `~/.config/cs-campaign/pin.json` | `pin` | The validated upstream surface. |
 | `<archive>/campaign.json` | `archive` | The record as the campaign ended. |
 | `<archive>/campaign-profile.yaml` | `archive` | The profile the campaign was declared with. |
 | `<archive>/readback.json` | `archive` | Every member's restatement of its job. |
@@ -677,7 +658,6 @@ the value only as the `elapsedSeconds` default.
 | Variable | Read by | Effect |
 |---|---|---|
 | `CS_CAMPAIGN_STATE_DIR` | `cs-campaign` | Where campaign state lives. Default `$XDG_CONFIG_HOME/cs-campaign/campaigns`. |
-| `CS_CAMPAIGN_PIN` | `cs-campaign` | Where the pin lives. Default `~/.config/cs-campaign/pin.json`. |
 | `CS_CAMPAIGN_GUEST_BIN` | `cs-campaign` | Install this guest binary instead of the embedded one. |
 | `CS_SANDBOX_BIN` | `cs-campaign` | The `cs-sandbox` executable to invoke. Default `cs-sandbox`. |
 | `CS_SANDBOX_INSTANCES_DIR` | `cs-campaign` | Where `cs-sandbox` keeps instances, for the socket-path budget check. |
@@ -713,14 +693,11 @@ fallback. Install a group-aware build.
 
 A CLI family's remote tools are missing. Run `cs-sandbox install-agent-tools`.
 
-**`WARN upstream surface UNPINNED`**
+**`upstream surface is not the one this cs-campaign was built against`**
 
-No pin exists, so this campaign runs on an unvalidated surface. Validate, then `cs-campaign pin
---note "<what you ran, and what it proved>"`.
-
-**`refusing to overwrite a pin the live surface deviates from`**
-
-The tools have moved under you. Re-run the validation on the new surface, then `pin --update`.
+The `cs-sandbox` on your `PATH` is a different build from the one this binary names. The message
+carries the `go install` line that fixes it. If you moved upstream on purpose, bump the `go.mod`
+pin, rebuild and reinstall, or pass `--accept-upstream-change` to record the deviation and proceed.
 
 **`readback FAILED — N member(s) could not confirm their briefing; do not dispatch`**
 
@@ -809,7 +786,7 @@ machine is gone.
 
 `validate`, `plan`, `ls`, `audit`, `transcript`, `manual` and `doctor` with no argument change
 nothing. `init` writes files and refuses to overwrite. `create`, `send`, `restart`, `fetch`,
-`archive`, `destroy` and `pin` change state. So do two commands that read: `doctor <campaign>`
+`archive` and `destroy` change state. So do two commands that read: `doctor <campaign>`
 records each member's refreshed harness verdict, and `observe` mirrors the orchestrator's log beside
 the campaign record.
 

@@ -8,6 +8,7 @@ package cli
 // manifest, guard symlinks and probes behave as they would in the VM.
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -66,6 +67,12 @@ func seedMiniGuest(t *testing.T, home, memberCLI string) string {
 			t.Fatal(err)
 		}
 	}
+	// A mini guest is a HEALTHY member: it holds exactly what the fake
+	// cs-sandbox says it ships. Seeded here rather than per test, because every
+	// create now runs the harness check and a guest with an empty ~/.local/bin
+	// would fail it for a reason none of those tests is about. A test that
+	// wants a divergence breaks one tool afterwards, where it reads.
+	seedMemberTools(t, home)
 	t.Setenv("FAKE_HOME", home)
 	return home
 }
@@ -76,10 +83,23 @@ func miniGuestApp(t *testing.T) (*app, string) {
 	t.Helper()
 	dir := t.TempDir()
 	tool := filepath.Join(dir, "fake-sandbox")
+	// The version this cs-campaign was built against, read from the same
+	// embedded manifest the check compares to: a literal here would be a second
+	// copy of the pin, and every go.mod bump would silently start refusing the
+	// whole mini-guest suite for the wrong reason.
+	shipped, err := json.Marshal(struct {
+		Version string            `json:"version"`
+		Tools   map[string]string `json:"tools"`
+	}{toolPins()[sandboxModule], shippedTools()})
+	if err != nil {
+		t.Fatal(err)
+	}
 	body := `#!/bin/sh
 case "$1" in
-  # the pin comparison reads the version before it hashes anything.
-  version) echo 'cs-sandbox 0.0.1-snapshot-mini (linux/amd64, go1.25.0)' ;;
+  # the upstream comparison reads the version before it reaches anything else.
+  version) echo 'cs-sandbox ` + toolPins()[sandboxModule] + ` (linux/amd64, go1.27.0)' ;;
+  # what a faithful member should be running, which is cs-sandbox's to say.
+  agent-tools) echo '` + string(shipped) + `' ;;
   ls) echo '[]' ;;
   create) : ;;
   # create reads each member's record back for its branch and address.
@@ -298,7 +318,7 @@ func TestDoctorSavesItsHarnessWithoutRevertingTheRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	loaded.Members[1].Harness = &model.HarnessCheck{Pinned: true, Tools: map[string]string{"cs-claude": "abc"}}
+	loaded.Members[1].Harness = &model.HarnessCheck{Tools: map[string]string{"cs-claude": "abc"}}
 
 	// Meanwhile, another command records something on the other member.
 	concurrent, err := a.store.Load("acme")
@@ -316,7 +336,7 @@ func TestDoctorSavesItsHarnessWithoutRevertingTheRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if final.Members[1].Harness == nil || !final.Members[1].Harness.Pinned {
+	if final.Members[1].Harness == nil || final.Members[1].Harness.Tools["cs-claude"] != "abc" {
 		t.Fatal("doctor did not record the harness it measured")
 	}
 	if final.Members[0].Readback == nil {

@@ -111,28 +111,25 @@ You also need the coding agents themselves, and a way for each to authenticate. 
 inherits a host login for its family, or is granted an API key by environment-variable name. Sign in
 on the host for the families whose logins you plan to inherit.
 
-## 4. Record the pin
+## 4. Install the cs-sandbox this build names
 
-The pin is the sha256 of `cs-sandbox` and every agent tool it ships, with a note saying why that
-surface is trusted. `pin.json` records what was hashed, so the list is read there rather than
-counted here. `create` refuses a surface that deviates from it, which is what stops a campaign from
-running on tools nobody validated.
+There is nothing to record. Every `cs-campaign` binary carries its own `go.mod`, embedded at build
+time, and that manifest names the `cs-sandbox` it was built against. `doctor` and `create` compare
+your `PATH` against it, and `create` refuses a surface it does not name.
 
-Validate the surface first, then record it:
-
-```bash
-cs-campaign pin --note "cs-sandbox <sha>; live smoke PASS on firecracker"
-```
+Run `doctor`. If your `cs-sandbox` is a different build, it prints the exact command to install the
+right one:
 
 ```console
-$ cs-campaign pin --note "cs-sandbox dd879be; live smoke PASS on firecracker"
-pinned 0.0.1-snapshot-dd879be + 21 tools -> /home/user/.config/cs-campaign/pin.json
-commit the repo copy of this pin so the acceptance is reviewed
+$ cs-campaign doctor
+upstream surface is not the one this cs-campaign was built against:
+  cs-sandbox on PATH is v0.0.0-20260801120000-aaaaaaaaaaaa, this build was made against
+  v0.0.0-20260826171442-c36e1fe91606 - install the one this build names:
+  go install github.com/codesweep-ai/sandbox/cmd/cs-sandbox@v0.0.0-20260826171442-c36e1fe91606
 ```
 
-The note is the whole point of the record. A pin taken without running the validation is
-indistinguishable afterwards from one that was earned. Until a pin exists, `create` prints
-`WARN upstream surface UNPINNED` and proceeds.
+Paste that command and the two agree. Moving the surface on purpose is a `go.mod` change in this
+repository, followed by a rebuild and a reinstall.
 
 ## 5. Verify the installation
 
@@ -140,13 +137,14 @@ indistinguishable afterwards from one that was earned. Until a pin exists, `crea
 
 ```console
 $ cs-campaign doctor
-ok  cs-sandbox version 0.0.1-snapshot-dd879be
+ok  cs-sandbox version v0.0.0-20260826171442-c36e1fe91606
 ok  cs-sandbox supports ls --json
 ok  cs-sandbox supports sandbox groups
 ok  claude remote tool family
 ok  codex remote tool family
 ok  opencode remote tool family
-ok  upstream matches pin: 0.0.1-snapshot-dd879be + 21 tools (pinned 2026-08-19)
+ok  not on PATH (fine - a campaign needs none of them): cs-lint cs-ledger cs-tracer
+ok  cs-sandbox on PATH is the one this build names: v0.0.0-20260826171442-c36e1fe91606
 ok  state directory: /home/user/.config/cs-campaign/campaigns
 ```
 
@@ -213,11 +211,11 @@ source <(cs-campaign completion bash)
 | Path | What |
 |---|---|
 | `$XDG_CONFIG_HOME/cs-campaign/campaigns/` | One JSON record per campaign, plus its lock file. |
-| `~/.config/cs-campaign/pin.json` | The validated upstream surface. |
 | wherever you point `--output` | Archives. Nothing is written under the config directory. |
 
-`CS_CAMPAIGN_STATE_DIR` moves the first, and `CS_CAMPAIGN_PIN` moves the second. Everything else
-lives in the sandboxes, which `cs-sandbox` owns.
+`CS_CAMPAIGN_STATE_DIR` moves the first. Everything else lives in the sandboxes, which `cs-sandbox`
+owns. The upstream surface is named by the `go.mod` inside the binary, so it needs no file and no
+path of its own.
 
 No credential is stored in any of these. A profile names environment variables and login families;
 the values stay in your environment and in the members that were granted them.
@@ -234,15 +232,15 @@ cs-campaign version # must match the working tree's HEAD
 **Never upgrade while a campaign is live.** `make install` replaces the binary underneath a running
 team, and the guest binary in the members is the one that was embedded at create.
 
-When `cs-sandbox` or an agent tool moves, the order is build, then validate, then pin, never pin
-first. [CONTRIBUTING.md](CONTRIBUTING.md) has the full procedure.
+When `cs-sandbox` or an agent tool moves, the order is build, then validate, then bump the `go.mod`
+pin. [CONTRIBUTING.md](CONTRIBUTING.md) has the full procedure.
 
 ## Uninstalling
 
 ```bash
 cs-campaign ls                         # destroy any campaign still listed
 make uninstall PREFIX="$HOME/.local"   # or rm the two binaries by hand
-rm -rf ~/.config/cs-campaign           # campaign records and the pin
+rm -rf ~/.config/cs-campaign           # campaign records
 ```
 
 Archives live wherever you wrote them and are not touched.

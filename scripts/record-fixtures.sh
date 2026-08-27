@@ -42,7 +42,7 @@ echo "  repo             $repo"
 echo "  branch           $(git rev-parse --abbrev-ref HEAD)"
 echo "  logins under     $login_home"
 echo "  cs-sandbox       $(cs-sandbox version 2>/dev/null | awk '{print $2}' || echo MISSING)"
-echo "  pinned           $(python3 -c 'import json;print(json.load(open("pin.json"))["sandboxVersion"])' 2>/dev/null || echo '?')"
+echo "  built against    $(awk '/codesweep-ai\/sandbox / {print $2; exit}' go.mod 2>/dev/null || echo '?')"
 echo
 
 missing=0
@@ -93,17 +93,20 @@ done
 if [[ -w /dev/kvm ]]; then ok "/dev/kvm is writable"; else bad "/dev/kvm is not writable — the members are microVMs"; missing=1; fi
 
 # A deviating surface stops `create` on the first member, after the proxy is up
-# and the group exists. The version is the half that moves when cs-sandbox is
-# rebuilt, and comparing it costs nothing. Read only: `cs-campaign pin` WRITES.
+# and the group exists. Asking here costs nothing and names it before the wait.
+#
+# go.mod is the reference, exactly as it is for `cs-campaign doctor`: a built
+# cs-campaign carries that manifest and refuses any other cs-sandbox. Read from
+# the checkout rather than from the binary because this script runs in one.
 echo
-echo "Upstream pin:"
-pinned=$(python3 -c 'import json;print(json.load(open("pin.json"))["sandboxVersion"])' 2>/dev/null || echo "")
+echo "Upstream:"
+pinned=$(awk '/codesweep-ai\/sandbox / {print $2; exit}' go.mod 2>/dev/null || echo "")
 live=$(cs-sandbox version 2>/dev/null | awk '{print $2}' || echo "")
 if [[ -n $pinned && $pinned == "$live" ]]; then
-  ok "pin.json names cs-sandbox $pinned, which is what is installed"
+  ok "go.mod names cs-sandbox $pinned, which is what is installed"
 else
-  bad "pin.json names cs-sandbox ${pinned:-?} and this host has ${live:-?}"
-  bad "  re-validate and re-pin (CONTRIBUTING.md), or create will refuse"
+  bad "go.mod names cs-sandbox ${pinned:-?} and this host has ${live:-?}"
+  bad "  go install github.com/codesweep-ai/sandbox/cmd/cs-sandbox@${pinned:-<version>}, or create will refuse"
   missing=1
 fi
 

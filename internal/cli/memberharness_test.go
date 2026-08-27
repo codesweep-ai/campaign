@@ -9,6 +9,8 @@ package cli
 // divergence survive a green pre-flight.
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,26 +38,46 @@ exit 0`
 
 func fakeToolBytes() []byte { return []byte("#!/bin/sh\n" + fakeToolBody + "\n") }
 
-// pinnedMiniGuest installs the complete 21-tool surface on BOTH planes with
-// identical bytes — the host PATH that gateUpstream hashes, and the mini-guest's
-// ~/.local/bin that the check hashes — then pins from the host. The two
-// planes share the path ~/.local/bin in reality too (the guest home is the host
-// user's name), which is exactly why nothing noticed they had diverged.
-func pinnedMiniGuest(t *testing.T, a *app, home string) string {
+// shippedToolNames is what the fake cs-sandbox claims to ship. It is test data
+// on purpose: the expectation now comes from cs-sandbox, so a test that wants a
+// faithful member must state what a faithful member holds rather than reach for
+// a list the product keeps.
+func shippedToolNames() []string {
+	var names []string
+	for _, cli := range []string{"claude", "codex", "opencode"} {
+		for _, suffix := range []string{"", "-remote", "-remote-forget", "-remote-output", "-remote-sessions", "-remote-status", "-turn"} {
+			names = append(names, "cs-"+cli+suffix)
+		}
+	}
+	return names
+}
+
+// shippedTools is that list with the hash a faithful copy has.
+func shippedTools() map[string]string {
+	sum := fmt.Sprintf("%x", sha256.Sum256(fakeToolBytes()))
+	tools := map[string]string{}
+	for _, name := range shippedToolNames() {
+		tools[name] = sum
+	}
+	return tools
+}
+
+// seedMemberTools installs the shipped surface on BOTH planes with identical
+// bytes — the host PATH the campaign drives through, and the mini-guest's
+// ~/.local/bin that the harness check hashes. The two planes share the path
+// ~/.local/bin in reality too (the guest home is the host user's name), which
+// is exactly why nothing noticed they had diverged.
+func seedMemberTools(t *testing.T, home string) string {
 	t.Helper()
-	t.Setenv("CS_CAMPAIGN_PIN", filepath.Join(t.TempDir(), "pin.json"))
 	guestBin := filepath.Join(home, ".local", "bin")
 	if err := os.MkdirAll(guestBin, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range memberPinnedToolNames() {
+	for _, name := range shippedToolNames() {
 		installFakeTool(t, name, fakeToolBody)
 		if err := os.WriteFile(filepath.Join(guestBin, name), fakeToolBytes(), 0o700); err != nil {
 			t.Fatal(err)
 		}
-	}
-	if out, err := runPin(t, a); err != nil {
-		t.Fatalf("pin: %v\n%s", err, out)
 	}
 	return guestBin
 }
@@ -64,17 +86,17 @@ func pinnedMiniGuest(t *testing.T, a *app, home string) string {
 // doctor runs, configureOrchestrator has replaced 15 of the 21 tools with
 // symlinks to cs-campaign-guard; a check that hashed ~/.local/bin blindly would
 // report 15 deviations on this, the healthiest campaign there is.
-func TestCampaignDoctorPassesAMemberOnThePinnedHarness(t *testing.T) {
+func TestCampaignDoctorPassesAMemberOnTheShippedHarness(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "doctor", covmap.TierUnit)
 	a, home := miniGuestApp(t)
-	pinnedMiniGuest(t, a, home)
+	seedMemberTools(t, home)
 	out, err := createMiniCampaign(t, a)
 	if err != nil {
 		t.Fatalf("create on a faithful harness: %v\n%s", err, out)
 	}
 	for _, want := range []string{
-		"member orchestrator runs the pinned harness (21 tools match",
-		"member fixer runs the pinned harness (21 tools match",
+		"member orchestrator runs the tools cs-sandbox",
+		"member fixer runs the tools cs-sandbox",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("create output missing %q:\n%s", want, out)
@@ -100,7 +122,7 @@ func TestCampaignDoctorPassesAMemberOnThePinnedHarness(t *testing.T) {
 func TestCreateRefusesAMemberRunningAStaleDriver(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "doctor", covmap.TierUnit)
 	a, home := miniGuestApp(t)
-	guestBin := pinnedMiniGuest(t, a, home)
+	guestBin := seedMemberTools(t, home)
 	stale := []byte("#!/bin/sh\n# the pre-fix driver\nexit 0\n")
 	if err := os.WriteFile(filepath.Join(guestBin, "cs-codex-turn"), stale, 0o700); err != nil {
 		t.Fatal(err)
@@ -110,9 +132,9 @@ func TestCreateRefusesAMemberRunningAStaleDriver(t *testing.T) {
 		t.Fatalf("create accepted a member running an unpinned harness:\n%s", out)
 	}
 	for _, want := range []string{
-		"runs a harness that is NOT the pinned one",
-		"cs-codex-turn: content differs (pinned ",
-		"HOW TO FIX — a member's harness is not the pinned harness.",
+		"runs a harness cs-sandbox did NOT ship",
+		"cs-codex-turn: content differs (cs-sandbox ships ",
+		"HOW TO FIX — a member's harness is not the one cs-sandbox ships.",
 		"cs-sandbox build",
 		"Do NOT patch the tool inside the member",
 		"Do NOT re-run a dispatch and read success as proof",
@@ -135,12 +157,12 @@ func TestCreateRefusesAMemberRunningAStaleDriver(t *testing.T) {
 func TestCampaignDoctorNamesAMissingMemberTool(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "doctor", covmap.TierUnit)
 	a, home := miniGuestApp(t)
-	guestBin := pinnedMiniGuest(t, a, home)
+	guestBin := seedMemberTools(t, home)
 	if err := os.Remove(filepath.Join(guestBin, "cs-opencode-turn")); err != nil {
 		t.Fatal(err)
 	}
 	out, _ := createMiniCampaign(t, a)
-	if !strings.Contains(out, "cs-opencode-turn: absent from the member's ~/.local/bin (pinned ") {
+	if !strings.Contains(out, "cs-opencode-turn: absent from the member's ~/.local/bin (cs-sandbox ships ") {
 		t.Fatalf("output does not name the missing tool:\n%s", out)
 	}
 }
@@ -149,20 +171,35 @@ func TestCampaignDoctorNamesAMissingMemberTool(t *testing.T) {
 // unmeasurable member fails rather than being skipped.
 func TestMemberHarnessFailsClosedWhenItCannotHash(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "doctor", covmap.TierUnit)
-	dir := t.TempDir()
-	t.Setenv("CS_CAMPAIGN_PIN", filepath.Join(dir, "pin.json"))
-	if err := os.WriteFile(filepath.Join(dir, "pin.json"),
-		[]byte(`{"sandboxVersion":"0.0.1-snapshot-test","tools":{"cs-codex-turn":"deadbeef"}}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	sandboxDir := installFakeTool(t, "fake-sandbox", `echo "PROBE-ERROR sha256sum not available in this member"`)
 	a := &app{store: store.Store{Dir: t.TempDir()}, sandbox: sandboxCLI{Bin: filepath.Join(sandboxDir, "fake-sandbox")}}
-	_, pinned, err := a.memberHarness(t.Context(), model.Member{Name: "worker", Ref: "worker.g"})
-	if !pinned {
-		t.Fatal("pin was not loaded")
-	}
+	_, err := a.memberHarness(t.Context(), model.Member{Name: "worker", Ref: "worker.g"},
+		map[string]string{"cs-codex-turn": "deadbeef"})
 	if err == nil || !strings.Contains(err.Error(), "sha256sum not available") {
 		t.Fatalf("an unhashable member did not fail closed: %v", err)
+	}
+}
+
+// A cs-sandbox that will not say what it ships leaves the whole fleet
+// unmeasurable, which must read as the same unknown a failed probe is. An empty
+// expectation would instead have every member match it trivially, turning the
+// one check that speaks for the guests into a line that always says ok.
+func TestCampaignDoctorFailsWhenTheShippedSurfaceCannotBeRead(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "doctor", covmap.TierUnit)
+	sandboxDir := installFakeTool(t, "fake-sandbox", `case "$1" in agent-tools) exit 7;; esac`)
+	a := &app{store: store.Store{Dir: t.TempDir()}, sandbox: sandboxCLI{Bin: filepath.Join(sandboxDir, "fake-sandbox")}}
+	campaign := &model.Campaign{Name: "mini", Members: []model.Member{{Name: "worker", CLI: "codex", Ref: "worker.g"}}}
+
+	var lines []string
+	remedy := a.reportMemberHarness(t.Context(), campaign, func(ok bool, format string, args ...any) {
+		lines = append(lines, fmt.Sprintf(format, args...))
+	})
+	joined := strings.Join(lines, "\n")
+	if !strings.Contains(joined, "UNVERIFIABLE") {
+		t.Fatalf("an unreadable shipped surface must not pass silently:\n%s", joined)
+	}
+	if remedy == "" || !strings.Contains(remedy, "HOW TO FIX") {
+		t.Fatalf("the operator must still get the procedure:\n%s", remedy)
 	}
 }
 
@@ -172,7 +209,7 @@ func TestMemberHarnessFailsClosedWhenItCannotHash(t *testing.T) {
 func TestArchiveFlagsAHarnessChangedDuringTheRun(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "doctor", covmap.TierUnit)
 	a, home := miniGuestApp(t)
-	guestBin := pinnedMiniGuest(t, a, home)
+	guestBin := seedMemberTools(t, home)
 	if out, err := createMiniCampaign(t, a); err != nil {
 		t.Fatalf("create: %v\n%s", err, out)
 	}

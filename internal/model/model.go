@@ -227,22 +227,29 @@ type Campaign struct {
 
 // HarnessCheck is one member's upstream tool surface, measured inside the
 // member. Tools maps tool name -> sha256 of the file that would actually
-// execute (following the move-aside for guarded tools). Deviations is
-// empty when the member matches the pin.
+// execute (following the move-aside for guarded tools). Deviations is empty
+// when the member runs the tools cs-sandbox says it ships.
 type HarnessCheck struct {
 	CheckedAt  time.Time         `json:"checkedAt"`
-	Pinned     bool              `json:"pinned"`
 	Tools      map[string]string `json:"tools,omitempty"`
 	Deviations []string          `json:"deviations,omitempty"`
 	Error      string            `json:"error,omitempty"`
 }
 
+// UpstreamCheck is the host surface as create found it, against the go.mod
+// embedded in the cs-campaign that built this campaign.
+//
+// There is no "pinned" flag: a built binary always carries its own manifest, so
+// there is always something to compare against, and the un-validated state the
+// flag used to describe cannot occur. Notes are the non-fatal findings (a
+// sibling tool at another version, or absent); Deviations are what refused the
+// create unless Accepted records that an operator overrode it.
 type UpstreamCheck struct {
-	CheckedAt  time.Time `json:"checkedAt"`
-	Pinned     bool      `json:"pinned"`
-	PinVersion string    `json:"pinVersion,omitempty"`
-	Deviations []string  `json:"deviations,omitempty"`
-	Accepted   bool      `json:"accepted,omitempty"`
+	CheckedAt      time.Time `json:"checkedAt"`
+	SandboxVersion string    `json:"sandboxVersion,omitempty"`
+	Deviations     []string  `json:"deviations,omitempty"`
+	Notes          []string  `json:"notes,omitempty"`
+	Accepted       bool      `json:"accepted,omitempty"`
 }
 
 // Sandbox is one row of `cs-sandbox ls --json`. Ref is the only field safe to

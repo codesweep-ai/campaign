@@ -70,10 +70,10 @@ func (a *app) doctorCmd() *cobra.Command {
 		if err != nil {
 			return fmt.Errorf("cs-sandbox version probe: %w", err)
 		}
-		// The same pattern the pin records with, rather than a second copy of
-		// it: doctor and pin must agree on what a version even is, or a
-		// surface reads as pinned here and unrecognized there.
-		match := sandboxVersionPattern.FindString(reported)
+		// The same reading the upstream check uses, rather than a second copy
+		// of it: doctor and the manifest check must agree on what a version
+		// even is, or a surface reads as named here and unrecognized there.
+		match := toolVersion(reported)
 		if match == "" {
 			return fmt.Errorf("unrecognized cs-sandbox version output %q (need a group-aware build with ls --json support)", reported)
 		}
@@ -133,7 +133,7 @@ func (a *app) doctorCmd() *cobra.Command {
 		}
 		// Presence above, identity here — a passing doctor must mean
 		// "the surface we validated", not "a surface that answers".
-		if err = a.reportPin(context.Background(), func(line string) { fmt.Fprintln(c.OutOrStdout(), line) }); err != nil {
+		if err = a.reportUpstream(context.Background(), func(line string) { fmt.Fprintln(c.OutOrStdout(), line) }); err != nil {
 			return err
 		}
 		fmt.Fprintln(c.OutOrStdout(), "ok  state directory:", a.store.Dir)

@@ -143,43 +143,47 @@ func (a *app) campaignDoctor(ctx context.Context, out io.Writer, campaign *model
 	return nil
 }
 
-// reportMemberHarness checks every member's upstream tool surface against the
-// pin and returns the remedy block to print if any member deviates.
+// reportMemberHarness checks every member's tool surface against what
+// cs-sandbox ships and returns the remedy block to print if any member
+// deviates.
 //
 // A member that cannot be measured FAILS rather than being skipped: an
 // unanswerable probe is the same "certified but unverified" state the row
-// exists to remove. An unpinned host warns and moves on, matching reportPin —
-// with no pin there is nothing to deviate from.
+// exists to remove. The reference is fetched ONCE for the fleet — it is one
+// answer about the host, and asking per member would run the same probe eight
+// times to learn the same thing.
 func (a *app) reportMemberHarness(ctx context.Context, campaign *model.Campaign, report func(bool, string, ...any)) string {
-	var deviated bool
-	var pinVersion string
-	if pin, pinned, err := loadPin(); err == nil && pinned {
-		pinVersion = pin.SandboxVersion
+	sandboxVersion := toolPins()[sandboxModule]
+	want, err := a.agentToolHashes(ctx)
+	if err != nil {
+		// Nothing to compare against is not "every member is fine". It is the
+		// same unknown a failed probe is, and it covers the whole fleet.
+		report(false, "member harnesses UNVERIFIABLE: %v — these members may be running any code at all", err)
+		return harnessRemedy(campaign.Name, sandboxVersion)
 	}
+	var deviated bool
 	for i := range campaign.Members {
 		member := &campaign.Members[i]
-		check, pinned, err := a.memberHarness(ctx, *member)
+		check, err := a.memberHarness(ctx, *member, want)
 		switch {
 		case err != nil:
-			member.Harness = &model.HarnessCheck{CheckedAt: time.Now().UTC(), Pinned: pinned, Error: err.Error()}
+			member.Harness = &model.HarnessCheck{CheckedAt: time.Now().UTC(), Error: err.Error()}
 			deviated = true
 			report(false, "member %s (%s) harness UNVERIFIABLE: %v — this member may be running any code at all", member.Name, member.CLI, err)
-		case !pinned:
-			report(true, "member %s harness not compared: no pin on this host (run `cs-campaign pin`)", member.Name)
 		case len(check.Deviations) > 0:
 			member.Harness = &check
 			deviated = true
-			report(false, "member %s (%s) runs a harness that is NOT the pinned one — %d of %d tools deviate:\n      %s",
-				member.Name, member.CLI, len(check.Deviations), len(memberPinnedToolNames()), strings.Join(check.Deviations, "\n      "))
+			report(false, "member %s (%s) runs a harness cs-sandbox did NOT ship — %d of %d tools deviate:\n      %s",
+				member.Name, member.CLI, len(check.Deviations), len(want), strings.Join(check.Deviations, "\n      "))
 		default:
 			member.Harness = &check
-			report(true, "member %s runs the pinned harness (%d tools match %s)", member.Name, len(check.Tools), pinVersion)
+			report(true, "member %s runs the tools cs-sandbox %s ships (%d match)", member.Name, sandboxVersion, len(check.Tools))
 		}
 	}
 	if !deviated {
 		return ""
 	}
-	return harnessRemedy(campaign.Name, pinVersion)
+	return harnessRemedy(campaign.Name, sandboxVersion)
 }
 
 // saveHarness records what the doctor just measured, and only that.

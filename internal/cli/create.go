@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/codesweep-ai/campaign/internal/model"
@@ -242,31 +241,6 @@ type createOpts struct {
 	acceptUpstream                        bool
 }
 
-// gateUpstream enforces the pin before any provisioning: a deviating
-// surface refuses create unless the operator explicitly accepts, and either
-// way the verdict is recorded on the campaign. An unpinned environment warns
-// loudly but proceeds — the absence of validation is itself recorded.
-func (a *app) gateUpstream(ctx context.Context, out io.Writer, campaign *model.Campaign, accept bool) error {
-	deviations, pin, pinned, err := a.verifyPin(ctx)
-	if err != nil {
-		return err
-	}
-	campaign.Upstream = &model.UpstreamCheck{CheckedAt: time.Now().UTC(), Pinned: pinned, PinVersion: pin.SandboxVersion, Deviations: deviations, Accepted: accept && len(deviations) > 0}
-	if !pinned {
-		fmt.Fprintln(out, "WARN upstream surface UNPINNED — this campaign runs on an unvalidated surface")
-		return nil
-	}
-	if len(deviations) == 0 {
-		return nil
-	}
-	if !accept {
-		return fmt.Errorf("upstream surface deviates from pin %s:\n  %s\nre-validate and re-pin, or --accept-upstream-change to proceed with the deviation recorded",
-			pin.SandboxVersion, strings.Join(deviations, "\n  "))
-	}
-	fmt.Fprintf(out, "WARN proceeding on a deviating upstream surface, recorded on the campaign:\n  %s\n", strings.Join(deviations, "\n  "))
-	return nil
-}
-
 func (a *app) createCmd(plan bool) *cobra.Command {
 	opts := new(createOpts)
 	use, short := "create <name>", "Create a campaign"
@@ -308,7 +282,7 @@ func (a *app) createCmd(plan bool) *cobra.Command {
 	flags.StringVar(&opts.repo, "repo", "", "repository cloned into every member")
 	flags.BoolVar(&opts.dry, "dry-run", false, "resolve only; create nothing")
 	flags.StringArrayVar(&opts.sets, "set", nil, "override a supported profile path (path=value, repeatable)")
-	flags.BoolVar(&opts.acceptUpstream, "accept-upstream-change", false, "proceed despite a pin deviation, recording it on the campaign")
+	flags.BoolVar(&opts.acceptUpstream, "accept-upstream-change", false, "proceed despite an upstream deviation, recording it on the campaign")
 	return cmd
 }
 

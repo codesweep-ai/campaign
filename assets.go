@@ -20,3 +20,20 @@ import _ "embed"
 //
 //go:embed MANUAL.md
 var ManualMD string
+
+// GoMod is this binary's own module manifest, embedded so a built cs-campaign
+// carries the versions it was built against.
+//
+// It is the reference every upstream check compares to, and it has to travel
+// inside the executable because that is the only place it survives. `make
+// install` copies the binary to ~/.local/bin and a release ships a tarball, so
+// by the time `doctor` runs there is usually no checkout on the host at all,
+// and any go.mod found on disk would belong to some other tree at some other
+// revision.
+//
+// Embedded rather than stamped in with -ldflags for the same reason ManualMD is
+// a file: the bytes reviewed in the repository and the bytes in the binary are
+// the same bytes, so the two cannot drift and no generator sits between them.
+//
+//go:embed go.mod
+var GoMod string

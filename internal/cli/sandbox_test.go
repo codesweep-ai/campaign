@@ -62,7 +62,7 @@ func TestDestroyArchiveBlocksOnIncompleteAndRetries(t *testing.T) {
 	calls := filepath.Join(dir, "calls")
 	body := `#!/bin/sh
 case "$1" in
-  ls)
+` + upstreamCases() + `  ls)
     # Reflect destroys: once destroy has been called, the sandbox is gone.
     if [ -f "$CALLS" ]; then printf '%s\n' '[]'; else printf '%s\n' '[{"ref":"worker.grp","name":"worker","group":"grp","status":"running"}]'; fi ;;
   exec)
@@ -139,7 +139,7 @@ func TestCreateResumesAfterInjectedMemberFailure(t *testing.T) {
 	failOnce := filepath.Join(dir, "fail-once")
 	body := `#!/bin/sh
 case "$1" in
-  ls)
+` + upstreamCases() + `  ls)
     printf '['
     first=1
     if [ -f "$RESOURCES" ]; then
@@ -230,9 +230,13 @@ case "$1" in version) echo legacy;; ls) echo '[]';; esac
 
 func TestDoctorChecksVersionJSONAndRemoteFamilies(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "doctor", covmap.TierUnit)
+	// The version this build names, read from the embedded manifest rather than
+	// written out: doctor now refuses any other, so a literal here would make
+	// every go.mod bump fail this test for a reason it is not about.
+	pinned := toolPins()[sandboxModule]
 	dir := installFakeTool(t, "fake-sandbox", `
 case "$1" in
-  version) echo 'cs-sandbox 0.1.0-dev (linux/amd64, go1.25.0)';;
+  version) echo 'cs-sandbox `+pinned+` (linux/amd64, go1.27.0)';;
   ls) echo '[]';;
   group) echo '[]';;
 esac
@@ -249,7 +253,7 @@ esac
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"cs-sandbox version 0.1.0-dev", "supports ls --json", "supports sandbox groups", "claude remote tool family", "codex remote tool family", "opencode remote tool family"} {
+	for _, want := range []string{"cs-sandbox version " + pinned, "supports ls --json", "supports sandbox groups", "claude remote tool family", "codex remote tool family", "opencode remote tool family"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("doctor output missing %q:\n%s", want, out.String())
 		}
@@ -403,7 +407,7 @@ func TestCreateRefusesExistingGeneratedGroup(t *testing.T) {
 	tool := filepath.Join(dir, "fake-sandbox")
 	body := `#!/bin/sh
 case "$1" in
-  ls) printf '[{"ref":"foreign.%s","name":"foreign","group":"%s","status":"running"}]\n' "$COLLISION_GROUP" "$COLLISION_GROUP" ;;
+` + upstreamCases() + `  ls) printf '[{"ref":"foreign.%s","name":"foreign","group":"%s","status":"running"}]\n' "$COLLISION_GROUP" "$COLLISION_GROUP" ;;
   *) printf '%s\n' "$*" >> "$CALLS" ;;
 esac
 `
@@ -476,7 +480,7 @@ func TestCreateAdoptsTheBranchSandboxActuallyMade(t *testing.T) {
 	tool := filepath.Join(dir, "fake-sandbox")
 	body := `#!/bin/sh
 case "$1" in
-  ls) echo '[]' ;;
+` + upstreamCases() + `  ls) echo '[]' ;;
   inspect)
     printf '%s\n' '{"ref":"'"$2"'","repos":[{"dir":"app","source":"/src/app","branch":"refs/upstream/decides/this"}]}' ;;
   exec)
@@ -523,7 +527,7 @@ func TestCreateReadsRecordEvenWithoutRepos(t *testing.T) {
 	tool := filepath.Join(dir, "fake-sandbox")
 	body := `#!/bin/sh
 case "$1" in
-  ls) echo '[]' ;;
+` + upstreamCases() + `  ls) echo '[]' ;;
   inspect) printf '%s\n' '{"ref":"'"$2"'","ip":"10.89.0.55","repos":[]}' ;;
   exec)
     mkdir -p "$FAKE_HOME/.local/bin"

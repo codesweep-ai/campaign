@@ -48,10 +48,11 @@ go install golang.org/x/tools/cmd/deadcode@latest
 ```
 
 `golangci-lint` is pinned to the version CI runs, so a release that gains checks reaches you when
-you move the pin rather than on an unrelated pull request. The four `cs-` tools the gates use need
-no install: they are pinned in `go.mod` and run with `go tool`. `make repin` moves those pins to the
-branch tip, and `make versions` says which builds the gates used. A campaign still resolves
-`cs-sandbox` and the agent CLIs from PATH at run time, which is what `pin.json` records.
+you move the pin rather than on an unrelated pull request. The `cs-` tools the gates use need no
+install: they are pinned in `go.mod` and run with `go tool`. `make repin` moves those pins to the
+branch tip, and `make versions` says which builds the gates used. A campaign resolves `cs-sandbox`
+and the agent CLIs from PATH at run time, and `doctor` compares what it finds against those same
+`go.mod` pins.
 
 One tier sits outside the gate. `make test-smoke` runs the whole protocol on real machines with
 the model turns replayed, in about ten minutes and for no money. Run it when you touch the
@@ -125,23 +126,25 @@ behaviour map, and how coverage is measured. Read it before you run anything abo
 
 ## Upgrading the upstream surface
 
-`cs-campaign` runs on `cs-sandbox` plus the agent tools it ships, and `pin.json` records the sha256
-of every one with a note saying why they are trusted. `create` refuses a deviating surface unless
-`--accept-upstream-change` records the deviation on the campaign.
+`cs-campaign` runs on `cs-sandbox` plus the agent tools it ships. The reference is the `go.mod`
+embedded in the binary at build time, so the surface a build expects and the surface it was compiled
+against cannot disagree. `create` refuses a deviating one unless `--accept-upstream-change` records
+the deviation on the campaign.
 
-The order is **build, then validate, then pin**, never pin first:
+The order is **build, then validate, then bump the pin**, never the pin first:
 
 1. Build and install the new `cs-sandbox`. Rebuild the guest image if its `image/` changed, or
    members keep the old tools.
 2. Run `make test-integration`. This is the validation, and it must pass on the new surface.
-3. Run `cs-campaign pin --update --note "<what you ran, and what it proved>"`.
-4. Commit the repo copy of `pin.json`, so the acceptance is reviewable.
+3. Move the pin with `GOPROXY=direct go get -tool
+   github.com/codesweep-ai/sandbox/cmd/cs-sandbox@<revision>`, then run `make build install`.
+4. Say in the commit message what you ran and what it proved.
 
-`pin --update` exists because plain `pin` refuses to overwrite a deviating pin. That refusal is the
-feature. The note is the whole point of the record: a pin recorded without running step 2 is
-indistinguishable from one that was earned.
+Step 4 is the whole record. `go.mod` says which version; only the commit can say that somebody ran
+step 2 against it. `make repin` moves every pin to its branch tip in one go, so a commit from it
+carries the same obligation.
 
-**Never `make install` in the sandbox repo while a campaign is live.** It replaces the pinned binary
+**Never `make install` in the sandbox repo while a campaign is live.** It replaces the binary
 underneath a running team.
 
 ## Issues

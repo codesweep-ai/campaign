@@ -1,10 +1,10 @@
 package cli
 
-// The pin answers for the host, and the host is not where the work
-// happens. `doctor` hashes the operator's ~/.local/bin and reports the surface
-// verified; members receive their tools from the image cs-sandbox builds, and
-// nothing spanned the boundary. On trial-01 the pin line named the very
-// revision that fixed the driver while all three guests ran the one before it.
+// The host is not where the work happens. `doctor` checks the operator's
+// PATH and reports the surface verified; members receive their tools from the
+// image cs-sandbox builds, and nothing spanned the boundary. On trial-01 the
+// upstream line named the very revision that fixed the driver while all three
+// guests ran the one before it.
 //
 // This is the same comparison pointed at the plane that matters. Three
 // mechanics, each verified against a live microVM (2026-08-11) rather than read
@@ -28,6 +28,12 @@ package cli
 //     the step that would make members look right just before an orchestrator
 //     makes them wrong again).
 //
+// What a healthy member should be running comes from `cs-sandbox agent-tools`,
+// never from a list kept here. cs-sandbox ships those files and seeds them into
+// every member, so it is the only thing that can answer; a second description
+// on this side is precisely how a host came to read as correct while its guests
+// did not.
+//
 // Detection only: the fix belongs at the image, not in the member. See
 // harnessRemedy for why patching a guest is refused rather than offered.
 
@@ -45,30 +51,18 @@ import (
 	"github.com/codesweep-ai/campaign/internal/model"
 )
 
-// memberPinnedToolNames is the pinned surface MINUS cs-sandbox: a member never
-// drives sandboxes, so the binary is absent there by design and demanding it
-// would report a deviation on every healthy member.
-func memberPinnedToolNames() []string {
-	var names []string
-	for _, name := range pinnedToolNames() {
-		if name != "cs-sandbox" {
-			names = append(names, name)
-		}
-	}
-	return names
-}
-
-// memberToolProbe hashes, inside the member, the file each pinned name would
+// memberToolProbe hashes, inside the member, the file each expected name would
 // actually execute. It follows the move-aside: on the orchestrator the
-// cs-*-remote family is replaced by symlinks to cs-campaign-member (the guard face) with the real
-// tools under ~/.local/share/cs-campaign/real, so hashing ~/.local/bin blindly
-// would report 15 deviations on every healthy campaign.
+// cs-*-remote family is replaced by symlinks to cs-campaign-member (the guard
+// face) with the real tools under ~/.local/share/cs-campaign/real, so hashing
+// ~/.local/bin blindly would report a deviation per guarded tool on every
+// healthy campaign.
 //
 // A missing sha256sum is reported rather than skipped: "we asked and cannot
 // tell" is precisely the state this check exists to remove.
-func memberToolProbe() string {
+func memberToolProbe(names []string) string {
 	return `command -v sha256sum >/dev/null 2>&1 || { echo "PROBE-ERROR sha256sum not available in this member"; exit 0; }; ` +
-		`for t in ` + strings.Join(memberPinnedToolNames(), " ") + `; do ` +
+		`for t in ` + strings.Join(names, " ") + `; do ` +
 		`p="$HOME/` + guestBinDir + `/$t"; r="$HOME/` + guestRealToolsDir + `/$t"; ` +
 		`if [ -L "$p" ]; then l=$(readlink "$p"); ` +
 		`case "${l##*/}" in ` +
@@ -80,21 +74,19 @@ func memberToolProbe() string {
 
 var sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-// memberHarness measures one member's upstream tool surface and compares it to
-// the pin. pinned=false means no pin exists — the caller warns, exactly as the
-// host-side check does, rather than inventing a verdict.
-func (a *app) memberHarness(ctx context.Context, member model.Member) (check model.HarnessCheck, pinned bool, err error) {
-	pin, pinned, err := loadPin()
-	if err != nil || !pinned {
-		return model.HarnessCheck{}, pinned, err
-	}
-	out, err := a.sandbox.memberOutput(ctx, member, memberToolProbe())
+// memberHarness measures one member's tool surface and compares it to what
+// cs-sandbox says it ships. want is passed in rather than fetched per member:
+// it is one answer for the whole fleet, and asking once keeps a doctor over
+// eight members from running eight identical probes of the host.
+func (a *app) memberHarness(ctx context.Context, member model.Member, want map[string]string) (model.HarnessCheck, error) {
+	names := sortedToolNames(want)
+	out, err := a.sandbox.memberOutput(ctx, member, memberToolProbe(names))
 	if err != nil {
-		return model.HarnessCheck{}, true, fmt.Errorf("harness probe failed: %w", err)
+		return model.HarnessCheck{}, fmt.Errorf("harness probe failed: %w", err)
 	}
 	text := string(out)
 	if strings.Contains(text, "PROBE-ERROR") {
-		return model.HarnessCheck{}, true, fmt.Errorf("harness probe failed: %s", firstLineContaining(text, "PROBE-ERROR"))
+		return model.HarnessCheck{}, fmt.Errorf("harness probe failed: %s", firstLineContaining(text, "PROBE-ERROR"))
 	}
 	observed := map[string][2]string{} // tool -> {state, value}
 	for line := range strings.SplitSeq(text, "\n") {
@@ -102,9 +94,8 @@ func (a *app) memberHarness(ctx context.Context, member model.Member) (check mod
 			observed[fields[0]] = [2]string{fields[1], fields[2]}
 		}
 	}
-	check = model.HarnessCheck{CheckedAt: time.Now().UTC(), Pinned: true, Tools: map[string]string{}}
-	for _, name := range memberPinnedToolNames() {
-		want := pin.Tools[name]
+	check := model.HarnessCheck{CheckedAt: time.Now().UTC(), Tools: map[string]string{}}
+	for _, name := range names {
 		got, reported := observed[name]
 		state, value := got[0], got[1]
 		if sha256Pattern.MatchString(value) {
@@ -114,27 +105,27 @@ func (a *app) memberHarness(ctx context.Context, member model.Member) (check mod
 		case !reported:
 			check.Deviations = append(check.Deviations, name+": the member did not answer for this tool")
 		case state == "missing":
-			check.Deviations = append(check.Deviations, fmt.Sprintf("%s: absent from the member's ~/%s (pinned %.12s…)", name, guestBinDir, want))
+			check.Deviations = append(check.Deviations, fmt.Sprintf("%s: absent from the member's ~/%s (cs-sandbox ships %.12s…)", name, guestBinDir, want[name]))
 		case state == "guarded-missing":
-			check.Deviations = append(check.Deviations, fmt.Sprintf("%s: guarded, but the real tool is absent from ~/%s (pinned %.12s…)", name, guestRealToolsDir, want))
+			check.Deviations = append(check.Deviations, fmt.Sprintf("%s: guarded, but the real tool is absent from ~/%s (cs-sandbox ships %.12s…)", name, guestRealToolsDir, want[name]))
 		case state == "symlink":
-			check.Deviations = append(check.Deviations, fmt.Sprintf("%s: is a symlink to %q, which is neither the pinned tool nor the guard", name, value))
-		case value != want:
-			check.Deviations = append(check.Deviations, fmt.Sprintf("%s: content differs (pinned %.12s…, member %.12s…)", name, want, value))
+			check.Deviations = append(check.Deviations, fmt.Sprintf("%s: is a symlink to %q, which is neither the shipped tool nor the guard", name, value))
+		case value != want[name]:
+			check.Deviations = append(check.Deviations, fmt.Sprintf("%s: content differs (cs-sandbox ships %.12s…, member has %.12s…)", name, want[name], value))
 		}
 	}
 	sort.Strings(check.Deviations)
-	return check, true, nil
+	return check, nil
 }
 
 // archiveMemberHarness re-measures every member's harness at archive time and
 // diffs it against what doctor last recorded, then writes both into the
 // evidence. Create-time alone would not have caught trial-01's actual sin: that
 // fleet read its driver source, diagnosed the divergence itself, and then
-// hand-patched the binary on all three guests mid-run — an unpinned harness
-// modification no campaign record noted. A create-vs-archive delta is what
-// makes that visible after the fact, and it must run BEFORE destroy, for the
-// same reason verify-fleet does.
+// hand-patched the binary on all three guests mid-run — a harness modification
+// no campaign record noted. A create-vs-archive delta is what makes that
+// visible after the fact, and it must run BEFORE destroy, for the same reason
+// verify-fleet does.
 //
 // Best-effort, like the host fingerprint: a probe failure is recorded inside
 // the file rather than aborting evidence collection.
@@ -145,33 +136,40 @@ func (a *app) archiveMemberHarness(ctx context.Context, root string, campaign *m
 		Recorded   map[string]string `json:"recordedByLastDoctor,omitempty"`
 		RecordedAt string            `json:"recordedAt,omitempty"`
 		AtArchive  map[string]string `json:"atArchive,omitempty"`
-		Deviations []string          `json:"deviationsFromPin,omitempty"`
+		Deviations []string          `json:"deviationsFromShipped,omitempty"`
 		Changed    []string          `json:"changedSinceLastDoctor,omitempty"`
 		Error      string            `json:"error,omitempty"`
 	}
 	snapshot := struct {
 		At      time.Time `json:"at"`
-		Pinned  bool      `json:"pinned"`
+		Shipped string    `json:"shippedBy,omitempty"`
 		Members []row     `json:"members"`
 	}{At: time.Now().UTC()}
 	var anomalies []string
+	want, wantErr := a.agentToolHashes(ctx)
+	if wantErr == nil {
+		snapshot.Shipped = "cs-sandbox agent-tools"
+	}
 	for _, member := range campaign.Members {
 		entry := row{Member: member.Name, CLI: member.CLI}
 		if member.Harness != nil {
 			entry.Recorded = member.Harness.Tools
 			entry.RecordedAt = member.Harness.CheckedAt.Format(time.RFC3339)
 		}
-		check, pinned, err := a.memberHarness(ctx, member)
-		snapshot.Pinned = pinned
 		switch {
-		case err != nil:
-			entry.Error = err.Error()
-			anomalies = append(anomalies, fmt.Sprintf("%s: harness could not be measured at archive time: %v", member.Name, err))
-		case !pinned:
-			entry.Error = "no pin on this host to compare against"
+		case wantErr != nil:
+			// One failure for the whole fleet, recorded per member so a reader
+			// of one row is never left to infer why it is empty.
+			entry.Error = wantErr.Error()
 		default:
+			check, err := a.memberHarness(ctx, member, want)
+			if err != nil {
+				entry.Error = err.Error()
+				anomalies = append(anomalies, fmt.Sprintf("%s: harness could not be measured at archive time: %v", member.Name, err))
+				break
+			}
 			entry.AtArchive, entry.Deviations = check.Tools, check.Deviations
-			for _, name := range memberPinnedToolNames() {
+			for _, name := range sortedToolNames(want) {
 				before, had := entry.Recorded[name]
 				after, has := check.Tools[name]
 				if had && has && before != after {
@@ -183,18 +181,21 @@ func (a *app) archiveMemberHarness(ctx context.Context, root string, campaign *m
 					member.Name, len(entry.Changed), strings.Join(entry.Changed, ", ")))
 			}
 			if len(check.Deviations) > 0 {
-				anomalies = append(anomalies, fmt.Sprintf("%s: harness deviates from the pin at archive time: %s",
+				anomalies = append(anomalies, fmt.Sprintf("%s: harness deviates from what cs-sandbox ships, at archive time: %s",
 					member.Name, strings.Join(check.Deviations, "; ")))
 			}
 		}
 		snapshot.Members = append(snapshot.Members, entry)
+	}
+	if wantErr != nil {
+		anomalies = append(anomalies, "the fleet's harness could not be measured at all: "+wantErr.Error())
 	}
 	if encoded, err := json.MarshalIndent(snapshot, "", "  "); err == nil {
 		_ = os.WriteFile(filepath.Join(root, "member-harness.json"), append(encoded, '\n'), 0o600)
 	}
 	if len(anomalies) > 0 {
 		_ = os.WriteFile(filepath.Join(root, "HARNESS-ANOMALY.txt"), []byte(strings.Join(append([]string{
-			"The harness these members ran is not the harness the pin certifies.",
+			"The harness these members ran is not the harness cs-sandbox ships.",
 			"A tool that CHANGED during the run was modified after create — either by a",
 			"host-driven dispatch redeploying cs-*-turn, or by someone patching a guest.",
 			"",
@@ -219,20 +220,21 @@ func firstLineContaining(text, needle string) string {
 // diagnosis without the procedure would leave the next operator to improvise
 // the same unrecorded repair, so the fix is spelled out in full, including the
 // two plausible wrong turns.
-func harnessRemedy(campaign string, pinVersion string) string {
+func harnessRemedy(campaign string, sandboxVersion string) string {
 	return strings.Join([]string{
 		"",
-		"HOW TO FIX — a member's harness is not the pinned harness.",
+		"HOW TO FIX — a member's harness is not the one cs-sandbox ships.",
 		"",
 		"  What this means: members do NOT run the tools in your ~/.local/bin. They run the",
 		"  copy baked into the sandbox image, and the image's home skeleton (/sandbox/home)",
 		"  is copied into a member ONCE, on its first boot. So a member created from a stale",
-		"  image keeps stale tools for its entire life, and no reboot repairs it. The host-side",
-		"  pin line above (`upstream matches pin`) speaks only for the host.",
+		"  image keeps stale tools for its entire life, and no reboot repairs it. The",
+		"  upstream line above (`cs-sandbox on PATH is the one this build names`) speaks",
+		"  only for the host.",
 		"",
 		"  Fix it at the image, in this order:",
 		"    1. cd <your cs-sandbox checkout> && git log -1 --oneline",
-		"         confirm the tree is the pinned revision " + pinVersion,
+		"         confirm the tree is " + sandboxVersion + ", which this cs-campaign was built against",
 		"    2. cs-sandbox build",
 		"         rebuilds the podman image AND the Firecracker rootfs members boot from;",
 		"         a stale rootfs is what produced this on trial-01, and rebuilding only one",
@@ -244,20 +246,20 @@ func harnessRemedy(campaign string, pinVersion string) string {
 		"    5. cs-campaign doctor " + campaign,
 		"         this check must print ok before you dispatch anything",
 		"",
-		"  Do NOT patch the tool inside the member. It is an unpinned harness modification",
-		"  that no campaign record notes, it leaves the image stale so your next campaign",
-		"  reproduces this exactly, and of the 21 tools only cs-*-turn would even survive.",
+		"  Do NOT patch the tool inside the member. It is a harness modification that no",
+		"  campaign record notes, it leaves the image stale so your next campaign",
+		"  reproduces this exactly, and of all the tools only cs-*-turn would even survive.",
 		"",
 		"  Do NOT re-run a dispatch and read success as proof. `cs-<cli>-remote` deploys",
 		"  cs-<cli>-turn onto whatever machine it drives before running (md5 compare + scp),",
 		"  so ANY host-driven dispatch — including one that fails on auth without running a",
 		"  turn — silently overwrites that one file with the host's copy. The symptom",
-		"  disappears while the other 20 tools stay stale, and an orchestrator-driven",
+		"  disappears while every other tool stays stale, and an orchestrator-driven",
 		"  dispatch then pushes the orchestrator's stale driver straight back onto agents.",
 		"",
-		"  If the deviation is INTENDED (you moved upstream deliberately), do not work around",
-		"  it here: re-validate the new surface, `cs-campaign pin --update --note '<why>'`,",
-		"  commit the pin, rebuild the image, then recreate the campaign.",
+		"  If you moved upstream deliberately, do not work around it here: bump the",
+		"  cs-sandbox pin in this repository's go.mod, re-validate, rebuild the image, then",
+		"  recreate the campaign.",
 		"",
 	}, "\n")
 }
