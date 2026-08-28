@@ -338,7 +338,7 @@
     {
       "content": [
         {
-          "text": "I’ll load the campaign manifest and all listed inputs first, then follow the dispatch instructions and submit the required summary reply.",
+          "text": "I’ll load the campaign manifest and all listed inputs first, then execute the dispatch instructions and submit the required reply.",
           "type": "output_text"
         }
       ],
@@ -347,55 +347,47 @@
       "type": "message"
     },
     {
-      "call_id": "call_nzhQRs3r5chBlvzjrZcV8D9D",
-      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,240p' /home/<USER:1>/.config/cs-campaign/member.json\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output);\n",
+      "call_id": "call_Lp36edvBt3pbG6BNFSdvRz0m",
+      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,240p' ~/.config/cs-campaign/member.json\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output);\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_nzhQRs3r5chBlvzjrZcV8D9D",
+      "call_id": "call_Lp36edvBt3pbG6BNFSdvRz0m",
       "output": [
         {
-          "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
+          "text": "Script completed\nWall time 0.2 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "{\n  \"campaign\": \"csrcxsub\",\n  \"member\": \"dev\",\n  \"role\": \"agent\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"8a7a00450e5bd6b354f1f8c5c390df241ccbb502\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-08-25T22:34:20.618972424Z\"\n}\n",
+          "text": "{\n  \"campaign\": \"csrcxsub\",\n  \"member\": \"dev\",\n  \"role\": \"agent\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"e51faade3c2859021b01421031139d7998dd4de5\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-08-28T07:00:13.991270615Z\"\n}\n",
           "type": "input_text"
         }
       ],
       "type": "custom_tool_call_output"
     },
     {
-      "encrypted_content": "gAAAAABqjgp5tggcKCJGJfO8Qx4tmNjMWIMw5Z38g1BZzQvNFh7VxRwp90wUN8wCSbGSLbxdIRTPz6wrYIT4T0x0DYtIpNYL1l2apdckAbjDGl-gD4H18qZoeuX5zJtrbzjNVlj5gwNOOrCdV_QnI84YJbZAOogQAJwfC69R--q-5_0ro84nsLn7ILubhj7Yt9bi7s68R4QTdgDj8wy3ezfRdtIj1ngQrhPScbZaAmv4VC7V__8JtRyJzFhguC96cGdUP90nmH4Wrv6Vp0SZetqbZY0910e4SnQY6DpvB-EJIoZ9ULq_BE3n-dOnhJ_VMALfiLGDWtjnpBVPmZDPq2bBFpClnHS-1LKRe-0qgKdM_nKMAvsRmTNlbTlXwBSC0dZZu3qMaObwyZ1aYijDQa8_mfkWm4C2Vo9hHywyT8fgyzV1DT7O5tqEDT8zgcwJnOrCYm7IWeyGrwju3cxQVKJISXzS3AY3vI-JLaUvyouJZqB3wYCzVjOpnSlJjtKUURGkCRSqNHZ3U0GueISrPFzq7-0FwoZiCnYrPSy-7_SqmGcMIFUmrGwS-cpVw2inESAVK7LHyv3jsA4-90T9QHEuZJtU8nHFYHrm8ypUohZLxQ3FCJFCglJ_s2l4rgXStuPnbxGIT8L0NLkNVgn-kUZJGdmCN6MNFA5zzBtZMIF4V6v49ClJCto3xbNJKZkDF2kqNcdktkHKPUwfDfZTcqQCC3PUmSPkF7gURW20oSU5ru_Y6HcHlH0fdRFGp7VVmIwfgRlVroHXUhFpH_2kxOjZd1xkqgwiB27e5KN0wsN6T4WQktsbViEjtSp4XZRPnHP52owMauZGhPhhGsiaNhVKtD_LGJS9hzF_piRzNt_UIxyFRl_wtH0cWXThuiwo4KXChXMQxYZzY_5uGCCEIbb3wk1HQGxmOq2JBZzRWL8yjel0_odXyVGeLiDEObBI7l2ry4dffNE8wHDHodHoEdcXfuTw8qIbubS8_lmaR8HKO9UgwWngTRY9M_7q2ZFZ-dNGTVGawMQMcUFooU4U4W3VN7tUFfqmRY8AXOTcR0EZSbrHdUlB69sg6qiKiR5W8mPjzdYF7BWiBhJAafDENq5Ef-yJeqf8mhueKXmzfZz73DBn1yj2IUKPGoiG7XAEhx3FpD0NKazNmc0UWjJMPM7wtwFUXr9C6JcjJdYKxXSiwej8wmd1w6KO7NBM2m77QodBj5vT-v_3WV-ugP8Os437p3XRBLFoxCKDgtYfTVAXs7PPc5AVhKj6UytclWQUxLOgSipRrEsIv9EDChHU6aHVTu5HB1gEvTMDHMk3jh2_lKeR_WbMCFs=",
+      "encrypted_content": "gAAAAABqkSQToZ49SYtAZdi0rBCkiM8kamCQRMW1tGY12ZNxHPCL-ylcu9-Zf1lDWMSzC1nqu-WqsS1tM-P9ki6I9MHtEstEwkbu6V4iFd9w8F7JqaEfLbYgeDwu1LVOLIsSY2sULuCzBZxpsDlf9Sw_2VUn0sCb7SbsoyJ6hDnZOsUuu5klgHZ_fM23MfqkXU8v-894q5f0qEUx0-IVBFWoS1R9_lT5X8dTJTJZs_jeXTLGRNw8Cg5WDA6oe5e8oMXsvFC3GioEdmzTDz-xtGwROVT-AlR57UnwgOygIJnLdMCbrT1vLnH11P_FJYbIuHy_uikTe7zjuT7A4D9EclNHw8kxNdVNjoTBteBnTAzxu_FqRTDaOB9FHQo9Tp2f1Dqk-BoW3HlYTtD8qcwPNe1Xvf0rEA48-iroqzV9zamyJZOt10vNs0RmVTMktAKiZv2CNP1jAJXxN9mychN6kl4df24L3jRbLNkA6cF9UGvVQ7El5c8dRbj-wk0Sqt84eeY0vzrN7z-w3CCq5LRZHICZhP2HA-xXG03t5OWjPwnZmCYmMjzCz_uOhovSR1nL3TkBy9mvCj7NEffsEAjGoJLt94TxN7Xi42J6DMq9vlHVyuInW0lBCESCMokkJdXF3-vNKrllI53y_vN84VSJY1WsfnOSvnhSPAgTfnKj8EbcVMC20yW9HhleWAwPIakLhfLtQeL3NHXqAg5ErMQUo4T_XEDenU_Ucdb_6Dmx-L1XRl7fWhrVPzM8H8_IXYb1EkhMAKy6GjWrWqPTkX1NkK-urpQpR6AVVhKRdWKFASY-2_VBkJeXiZHEK4KtO1-c1SiqlA0MbcQI8rF1n6ybIeFNSIpYnrhhlZ00zaxOPZZ2K5lcdlnLVTPD-aFJHck38dOL7EnNCqdiGSvnBiJDRldLeWjM8lMPJ8n3poNZfvKbCb_-5T0aiedDA-BjQSE93uR-tF2vjgvm8eevIHf_jwbUe_E0sExfYZbLUzfiz4RDDJLL2BndcgF4s6PqPPL5U0Qt4GnC14CBJObfoQkwmY3NMzf9caA9KQyVAz7xi4aT1WsIm-710rScLFAcvWSMoP85U6w7Ny1COdS-InU8s6PnxZ39zto-nGiJefj-Z8Ww5iYJhfyCnlD2RQ_fAaRxlpaG-UNbXHmVOQ6zn0xCIzJq2_qKBmwFOgNR2O7liIGsl13NMU1XRw7mD_oGaHHFsvt3xEhjvJmfeXZYyGpI_TMVdlA_ymTji2INE6l0Gvycx1E7ZrRnYmEYO_7jTmatN07JJ5FdJLM9YGwKMptx0vMoyWolCBn6Hl7WZZIiyt1QANgKTJzLaok=",
       "summary": [],
       "type": "reasoning"
     },
     {
-      "call_id": "call_RmW6KE9HiJCof3LS52sIepuw",
-      "input": "const files = [\n  \"/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md\",\n  \"/home/<USER:1>/.local/share/cs-campaign/input/dev.md\",\n  \"/home/<USER:1>/.local/share/cs-campaign/input/d001.md\"\n];\nconst rs = await Promise.all(files.map(path => tools.exec_command({cmd:`sed -n '1,260p' '${path}'`,workdir:\"/home/<USER:1>\",yield_time_ms:10000,max_output_tokens:30000})));\nfor (let i=0;i<rs.length;i++){ text(`===== ${files[i]} =====\\n${rs[i].output}`); }\n",
+      "call_id": "call_AEHuWHXyUXZjs1JP1yZE1r88",
+      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,260p' ~/.local/share/cs-campaign/input/ORIENTATION.md && sed -n '1,320p' ~/.local/share/cs-campaign/input/dev.md && sed -n '1,360p' ~/.local/share/cs-campaign/input/d001.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":30000}); text(r.output);\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_RmW6KE9HiJCof3LS52sIepuw",
+      "call_id": "call_AEHuWHXyUXZjs1JP1yZE1r88",
       "output": [
         {
-          "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
+          "text": "Script completed\nWall time 0.0 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md =====\n# Campaign member orientation\n\nYou are `dev`, running as the **agent** of campaign `csrcxsub`.\n\nThis file is written by the harness at creation. It describes your environment and\nthe one rule everything runs on. It does not describe the work — that is in the\nfiles listed below.\n\n## What you have\n\n- **`~/subject`** — your own clone of the repository, on branch `cs-sandbox/<DEV:1>.<GROUP:1>`.\n  Nobody else commits to that branch.\n\nFiles placed in `~/.local/share/cs-campaign/input` for you:\n\n- `dev.md`\n\n**Read all of them before you begin.** They are the only statement of what you are\nhere to do.\n\n## The one rule\n\nWork reaches you as **dispatches** — read your current one with\n`cs-campaign-member inbox`. A dispatch stays open until you close it:\n\n    cs-campaign-member reply --file <path-to-your-summary>\n\n**Do not stop until you have replied.** If you end your turn without a reply, the\nwork is not done in anyone's eyes but yours: you will simply be prodded to reply,\nand your unsaved reasoning may be gone. Reply, then stop.\n\nTwo more obligations, both irreversible if skipped:\n\n- **Commit your work to your own branch.** Your machine is destroyed at the end of\n  the campaign; a commit on your branch is the only way anything survives. Your\n  reply automatically records whether your branch really differs from its base —\n  an empty branch under a confident reply speaks for itself.\n- **Write durable results to `~/.local/share/cs-campaign/output`** — reports, findings, anything\n  that should outlive the run and is not source code.\n\n## Reporting\n\nYou have no route to the orchestrator or to any other member. You cannot ask\nquestions, and nothing you write travels on its own. The orchestrator sees three\nthings — make all three count:\n\n- **Your branch** — it fetches and inspects your commits. The real record.\n- **Your reply** — what you did, what you changed, whether your tests passed, and\n  anything you could not do. This is the only message it receives from you.\n- **`~/.local/share/cs-campaign/output`** — files you leave there, readable on request.\n\nIf you are blocked or believe your task is wrong, say so plainly **in a reply**\n(`cs-campaign-member reply --needs-input --file …`) and stop. Do not expand your\nscope to work around it, and do not guess at what was meant.\n",
-          "type": "input_text"
-        },
-        {
-          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/dev.md =====\nYou own the subject repository.\n\nImplement exactly what each dispatch asks, run the tests you write, commit to\nyour own branch before replying, and tell the truth in your reply.\n",
-          "type": "input_text"
-        },
-        {
-          "text": "===== /home/<USER:1>/.local/share/cs-campaign/input/d001.md =====\nThis is dispatch d001: confirm your briefing before any work is assigned.\n\n1. Run: cs-campaign-member check-inputs\n   It prints any briefing file you were promised that is absent.\n2. Read ~/.config/cs-campaign/member.json, and then every file it lists under \"inputs\", in order.\n3. Write a file (e.g. /tmp/readback.json) holding EXACTLY this JSON, on a single line:\n\n{\"member\":\"dev\",\"role\":\"agent\",\"branch\":\"<your branch, from member.json>\",\"missing\":[<output of check-inputs, as strings, else empty>],\"goal\":\"<one sentence, in your own words: what this campaign is asking you to accomplish>\",\"scope\":\"<one sentence: what you own and what you must not touch>\",\"obligations\":\"<one sentence: what this campaign requires of you, and what happens to your work if you do not do it>\"}\n\n4. Reply with it: cs-campaign-member reply --file /tmp/readback.json\n\nDo not perform any of the work yet. Your reply closes this dispatch.",
+          "text": "# Campaign member orientation\n\nYou are `dev`, running as the **agent** of campaign `csrcxsub`.\n\nThis file is written by the harness at creation. It describes your environment and\nthe one rule everything runs on. It does not describe the work — that is in the\nfiles listed below.\n\n## What you have\n\n- **`~/subject`** — your own clone of the repository, on branch `cs-sandbox/<DEV:1>.<GROUP:1>`.\n  Nobody else commits to that branch.\n\nFiles placed in `~/.local/share/cs-campaign/input` for you:\n\n- `dev.md`\n\n**Read all of them before you begin.** They are the only statement of what you are\nhere to do.\n\n## The one rule\n\nWork reaches you as **dispatches** — read your current one with\n`cs-campaign-member inbox`. A dispatch stays open until you close it:\n\n    cs-campaign-member reply --file <path-to-your-summary>\n\n**Do not stop until you have replied.** If you end your turn without a reply, the\nwork is not done in anyone's eyes but yours: you will simply be prodded to reply,\nand your unsaved reasoning may be gone. Reply, then stop.\n\nTwo more obligations, both irreversible if skipped:\n\n- **Commit your work to your own branch.** Your machine is destroyed at the end of\n  the campaign; a commit on your branch is the only way anything survives. Your\n  reply automatically records whether your branch really differs from its base —\n  an empty branch under a confident reply speaks for itself.\n- **Write durable results to `~/.local/share/cs-campaign/output`** — reports, findings, anything\n  that should outlive the run and is not source code.\n\n## Reporting\n\nYou have no route to the orchestrator or to any other member. You cannot ask\nquestions, and nothing you write travels on its own. The orchestrator sees three\nthings — make all three count:\n\n- **Your branch** — it fetches and inspects your commits. The real record.\n- **Your reply** — what you did, what you changed, whether your tests passed, and\n  anything you could not do. This is the only message it receives from you.\n- **`~/.local/share/cs-campaign/output`** — files you leave there, readable on request.\n\nIf you are blocked or believe your task is wrong, say so plainly **in a reply**\n(`cs-campaign-member reply --needs-input --file …`) and stop. Do not expand your\nscope to work around it, and do not guess at what was meant.\nYou own the subject repository.\n\nImplement exactly what each dispatch asks, run the tests you write, commit to\nyour own branch before replying, and tell the truth in your reply.\nThis is dispatch d001: confirm your briefing before any work is assigned.\n\n1. Run: cs-campaign-member check-inputs\n   It prints any briefing file you were promised that is absent.\n2. Read ~/.config/cs-campaign/member.json, and then every file it lists under \"inputs\", in order.\n3. Write a file (e.g. /tmp/readback.json) holding EXACTLY this JSON, on a single line:\n\n{\"member\":\"dev\",\"role\":\"agent\",\"branch\":\"<your branch, from member.json>\",\"missing\":[<output of check-inputs, as strings, else empty>],\"goal\":\"<one sentence, in your own words: what this campaign is asking you to accomplish>\",\"scope\":\"<one sentence: what you own and what you must not touch>\",\"obligations\":\"<one sentence: what this campaign requires of you, and what happens to your work if you do not do it>\"}\n\n4. Reply with it: cs-campaign-member reply --file /tmp/readback.json\n\nDo not perform any of the work yet. Your reply closes this dispatch.",
           "type": "input_text"
         }
       ],

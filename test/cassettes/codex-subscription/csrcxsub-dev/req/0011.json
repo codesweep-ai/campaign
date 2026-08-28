@@ -336,9 +336,14 @@
       "type": "message"
     },
     {
+      "encrypted_content": "gAAAAABqkSRhiSYFIea5AjeO5EmwFXbV8fQBzhAnf9oP-qNk20-Whcu9yCXjVrMnGwRyf3-LX_aThTwj8eyZxZr3u4dc0gIfdEWlUhCZ05xD6GQUGW5tRHc2bJf2gIgbOPQXby-NSRwcGcv7bCiXU8YDm4kPd6WnZwk5j3eQ0MuppoIljfF-NSuflzqfWhc40aC6Ps1b2xB4YnNxWZ_2hsG9xNtCb_1oS0xc_A23JNuoRK7q3IhKEPnI8tKmZ4DSU6LXjPL1LNsQR2BFoMZ1CayaS0HzYES66-XM7BlWDqjDbP8D1Jw5UCnUW3RIBF_quqLCYXFS43PwVcZ8k0ftRwuYsQ23awBkA6K2DfF5OLnQZigMm60HfHxr_5_AetuPOKGquiNRSsIqhMKiG98CV6xnyjiJNnT-9sgue-WCKL5cEZS0QuL9A2TVINmSusRNJF4OcMQOi_WAUXAD0pe5t2FWpYfTe2yy7jDtOunkA1q2oVuvYgB6PeBafBYZfanQemwAAH7ZxRx9MiZ1rPghHbeRC8u4uyPSlpTyeFypkmfZMmbsaTqWlqce5GQoBClCYzh3cvtOWFF-EC91imVH7r2kJh2afsGO0puX53KQSK4rReBJCSET_CS7jh37HyKxFOC1vwc-GqSBButVKzTxOWFiPY-nJT2DmANKx6MGCpVbJl2-WB0lJaPxQSfeDHN-IJ54osO7C9h3vALMJGx4VebocwRp93-mHjSrTc2QC7hm5sZf6mwUkMk6hRDRhojHdWEu2l5p83l_7wu34DoaSx_JwBrVUJXKX7UB1kCMwVZE9IYPbNN8oSNPnid4aNfJBlYlZDMhPc_3kr3SZC1ZNtRsoJXHniHUE0dNuaZGQxYe9uM4kmSOf_sKUx_3xCkxigXufugCq0C863u6fMLlpBFajNhrA5SakEUSf5aA8v-49Y9U7yhPUqVs9ZPWcGPEvShTRmzeQ1lgvxDWdHS2H8QGegjC1jYQB-R_TAgntV00baBcY3eJgHg0gmKi1la3mjDK49tqUD8f6Q7d-D5ttm_NV9ZOk5ho8d7OkUdEXQSh1kgxp9l4VmKzt_Q4YUI0SXPkxwvfZdeFwq8jlYIYmtdLV7Q3eGM3_phSJjNGIf9T353Ff_DLHQGnoJT6eGtb3qpe18_1lEPd8Q95GrXLZTNgRSPsJp6dAi5mA-GeEjlamfX6RgH63ignkhWHn-zSscEIYWO9FyWt4_vpPe21EE14L7SyDsGvU97dvZCj3oAPlziv8TCu3S7ujN6BhSYgxz-YSN5ndTU4oxjiw0xXW_PkZJqE_F41XXszSWSdwAwtfvB2m9yU0BBpA54LqFSycnSFrOqcT7Zv",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
       "content": [
         {
-          "text": "I’ll load the campaign manifest, read every declared input plus dispatch `d002`, then carry out its instructions and submit the required summary reply.",
+          "text": "I’ll load the campaign manifest and all listed inputs first, then follow dispatch `d002` and submit the required summary reply.",
           "type": "output_text"
         }
       ],
@@ -347,21 +352,21 @@
       "type": "message"
     },
     {
-      "call_id": "call_I5inpIw2RychAcxogLQPFGo3",
+      "call_id": "call_utbVrjDbtkeS8PimmzcNcKOZ",
       "input": "const r = await tools.exec_command({cmd:\"sed -n '1,240p' /home/<USER:1>/.config/cs-campaign/member.json\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output);\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_I5inpIw2RychAcxogLQPFGo3",
+      "call_id": "call_utbVrjDbtkeS8PimmzcNcKOZ",
       "output": [
         {
           "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "{\n  \"campaign\": \"csrcxsub\",\n  \"member\": \"dev\",\n  \"role\": \"agent\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"8a7a00450e5bd6b354f1f8c5c390df241ccbb502\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-08-25T22:34:20.618972424Z\"\n}\n",
+          "text": "{\n  \"campaign\": \"csrcxsub\",\n  \"member\": \"dev\",\n  \"role\": \"agent\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"e51faade3c2859021b01421031139d7998dd4de5\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-08-28T07:00:13.991270615Z\"\n}\n",
           "type": "input_text"
         }
       ],

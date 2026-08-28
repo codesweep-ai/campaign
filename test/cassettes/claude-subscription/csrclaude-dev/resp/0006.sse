@@ -1,33 +1,21 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeQB8vFd3FN8TrbNmPHCA","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":42,"cache_creation_input_tokens":114,"cache_read_input_tokens":47244,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":114},"output_tokens":3,"service_tier":"standard","inference_geo":"not_available"}}              }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeUdQuftNo8uoqqYCht4P","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":42,"cache_creation_input_tokens":650,"cache_read_input_tokens":46997,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":650},"output_tokens":17,"service_tier":"standard","inference_geo":"not_available"}}               }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}            }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01TeaCdrWtbdrNUgShjDfLSk","name":"Bash","input":{},"caller":{"type":"direct"}}        }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EvcFCqgBCBEYAipA7M6mepgQA1Koh9fx8DdY1WoXyEiuEDBY0Uw3AtS1toGqbpPIV227LMiXKe++COdvDAKmu1PtqO9SE11y8dRW2zIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEG94+jXKlXrvOUX+TiQXeSOIAQGoAcmRuNQGsAECEgxf4e0Sw3e+a3fCEp8aDDbkRuUZ2QTdeQcJPSIwavPURkSY/zn2OGbk3ViDw1xcYFc4KKbl22sNu3C24XavdqkEPZCs2N3mqVBQa1cUKvsDre1Y5ZGx7zZu42y4CY9VIY1ApKucnThVvwd7Ia+dBE0AMvBLDXbe+nA/EwGwkDROLgpohK1P4TlwVMBobD/d0U1zkaJFZCRqf9J/pCPPZsttpXAbGwCfzF8FoV21XYVqCg/ajtA/yWekFKSj0dUHkh9F1unZR6XjEUvmqR0z0Wfe0KCpa3zWL1Lfj5wOfsslm1/59f+Y4EvH3CqBk1MwiN/2QXcjsRE5fXTFOjIkvUYG2xFey20pceKmt+pZfiIdF7EEydRUF+8m+kEJrxFdSr7Lc92GF+t3ei6ihVVTov7FV+dRYh5RPGlzPH7WSA+ZWCR+PCN7RcnGxphZWd1qPN6q+/gMXhbxvk5y8QvVHOagOuDkNlR939hGaEdmtbXbs8SVerrsWg/o5RzrOnWoqSVr0xmdjdHryL+68rgtHLTelERo4WjLr4g1LcPrRNH4fJFXN61sH71BlCrScr8sTXf/cfbtwdp+NXTpX8o4WQtG/UJr48S5vWQ7zN7+vo5IjqKvkU1Er9hTlXXTYczZM83BGmIl/bXx4FAdoAneqzbh6vJnQhJW+OhwOwO3oxieFnxlTkxUPkivbjoASV4+/gqXnWe4AmhHiY5bIdS06JQEmcgCjwgfBVMraBU8IOBMPVDIeMDRZQRwHGYiUWiuEzyfvZfr45d9ChjbGAE="}}
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member reply --file /tmp/readback.json\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0             }
-
-event: content_block_start
-data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_012iayaJZZNiERy3TiLYQQRv","name":"Write","input":{},"caller":{"type":"direct"}}         }
-
-event: content_block_delta
-data: {"delta":{"partial_json":"{\"file_path\": \"/tmp/readback.json\", \"content\": \"{\\\"member\\\":\\\"dev\\\",\\\"role\\\":\\\"agent\\\",\\\"branch\\\":\\\"cs-sandbox/<DEV:1>.<GROUP:1>\\\",\\\"missing\\\":[],\\\"goal\\\":\\\"Implement exactly what each dispatch in this campaign asks me to do to the subject repository, testing my changes as I go.\\\",\\\"scope\\\":\\\"I own my clone of the subject repository on my own branch and must implement only what dispatches ask, without expanding scope or touching other members' work.\\\",\\\"obligations\\\":\\\"I must commit my work to my own branch and reply to each dispatch with a summary before stopping, or else my work is lost when the machine is destroyed and an unreplied dispatch is treated as stopped and continued.\\\"}\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
-
-event: content_block_stop
-data: {"type":"content_block_stop","index":1            }
+data: {"type":"content_block_stop","index":0          }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":42,"cache_creation_input_tokens":114,"cache_read_input_tokens":47244,"output_tokens":485,"output_tokens_details":{"thinking_tokens":186}},"context_management":{"applied_edits":[]}    }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":42,"cache_creation_input_tokens":650,"cache_read_input_tokens":46997,"output_tokens":67,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}             }
 
 event: message_stop
-data: {"type":"message_stop"      }
+data: {"type":"message_stop"       }
 
