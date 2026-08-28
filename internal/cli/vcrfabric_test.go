@@ -302,7 +302,9 @@ lookahead: 8
 # a replay serves the cassette without resolving any of this. It is per scenario
 # because the client's own surface does not reveal it: codex on a subscription
 # talks to the ChatGPT backend, and the same client with a key talks to the API.
-default_provider: %s
+#
+# One entry, named the way this scenario's base URL names it. The prefix carries
+# that name, so nothing has to be inferred from the request.
 providers:
   %s:
     base_url: %s
@@ -312,9 +314,9 @@ normalize:
     - {pattern: "orchestrator-[0-9a-f]{8}", as: "<ORCHESTRATOR>"}
     - {pattern: "dev-[0-9a-f]{8}", as: "<DEV>"}
     - {pattern: "cs[a-z0-9]+-[0-9a-f]{8}", as: "<GROUP>"}
-    - {pattern: "(?:/home/|-home-)(%[4]s)", as: "<USER>"}
-    - {pattern: "(%[4]s %[4]s)", as: "<USER_GROUP>"}
-`, sc.vcrProvider, sc.vcrProvider, sc.vcrUpstream, regexp.QuoteMeta(me.Username)), 0o600)
+    - {pattern: "(?:/home/|-home-)(%[3]s)", as: "<USER>"}
+    - {pattern: "(%[3]s %[3]s)", as: "<USER_GROUP>"}
+`, sc.vcrProvider, sc.vcrUpstream, regexp.QuoteMeta(me.Username)), 0o600)
 }
 
 // stageVCRBinary copies the installed cs-vcr into scratch and returns the copy,

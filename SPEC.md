@@ -1065,6 +1065,10 @@ and the profile's `env:` block sets it:
 | opencode | `OPENCODE_BASE_URL` |
 | codex | `OPENAI_BASE_URL` |
 
+That URL ends in `/c/<provider>/<cassette>`: the cs-vcr provider entry this scenario's traffic goes
+to, then the cassette it belongs to. The entry is named for the endpoint it serves, so a ChatGPT
+subscription names `chatgpt` where an OpenAI key names `openai`, and a replay reads neither.
+
 Claude reads its own directly. The other two do not, and each wrapper ships from
 [the sandbox repository](https://github.com/codesweep-ai/sandbox), whose manual documents the
 behaviour.

@@ -68,12 +68,16 @@ type scenario struct {
 	baseURLEnv string
 	// urlSuffix is what this client appends to the base URL it is given.
 	urlSuffix string
-	// vcrProvider and vcrUpstream say where the real provider lives, for the
-	// recording half. They differ per scenario in a way the client's own
+	// vcrProvider is the cs-vcr entry this scenario's base URL names, and the
+	// prefix carries it: /c/<provider>/<cassette>. It is a key the deployment
+	// chooses, so it may name the endpoint rather than the wire protocol.
+	//
+	// vcrUpstream is where that entry points, which is the recording half's
+	// business alone. The two differ per scenario in a way the client's own
 	// surface does not reveal: codex on a subscription talks to the ChatGPT
 	// backend rather than the API, and the same client with a key talks to the
 	// API. Replay reads neither — a cassette is served without ever resolving
-	// where it came from.
+	// where it came from, and the provider segment goes unread.
 	vcrProvider, vcrUpstream string
 }
 
@@ -110,7 +114,7 @@ func scenarios() []scenario {
 			auth:  "a ChatGPT subscription on this host",
 			model: "gpt-5.6-sol", effort: "medium", inherit: "codex",
 			baseURLEnv:  "OPENAI_BASE_URL",
-			vcrProvider: "openai", vcrUpstream: "https://chatgpt.com/backend-api/codex",
+			vcrProvider: "chatgpt", vcrUpstream: "https://chatgpt.com/backend-api/codex",
 		},
 		{
 			name: "codex-api-key", cli: "codex",
@@ -131,14 +135,15 @@ func scenarios() []scenario {
 			// derives the provider from the pinned model and writes that
 			// config inline from OPENCODE_BASE_URL.
 			//
-			// Fireworks speaks the OpenAI wire protocol, which is why the
-			// provider here is openai while the upstream is not.
+			// Fireworks speaks the OpenAI wire protocol, and the entry is named
+			// for the endpoint it serves rather than for that protocol: the
+			// prefix names the entry, so nothing has to recognize either.
 			name: "opencode-fireworks", cli: "opencode",
 			auth:  "a Fireworks API key",
 			model: "fireworks-ai/accounts/fireworks/models/kimi-k3", effort: "high",
 			keyEnv:     "FIREWORKS_API_KEY",
 			baseURLEnv: "OPENCODE_BASE_URL", urlSuffix: "/v1",
-			vcrProvider: "openai", vcrUpstream: "https://api.fireworks.ai/inference",
+			vcrProvider: "fireworks", vcrUpstream: "https://api.fireworks.ai/inference",
 		},
 	}
 }
@@ -830,7 +835,8 @@ func memberBlock(sc scenario, repo, baseURL, cassette string) string {
 		"GIT_COMMITTER_EMAIL=test@example.invalid",
 	}
 	if baseURL != "" && sc.baseURLEnv != "" && cassette != "" {
-		env = append(env, fmt.Sprintf("%s=%s/c/%s%s", sc.baseURLEnv, baseURL, cassette, sc.urlSuffix))
+		env = append(env, fmt.Sprintf("%s=%s/c/%s/%s%s",
+			sc.baseURLEnv, baseURL, sc.vcrProvider, cassette, sc.urlSuffix))
 		// And the traffic a base URL does not govern. Claude Code checks its
 		// OAuth session against api.anthropic.com and Codex reaches chatgpt.com,
 		// whatever they were pointed at, and what those answer changes the
