@@ -239,7 +239,7 @@ the values stay in your environment and in the members that were granted them.
 
 ```bash
 cd campaign && git pull
-make check          # the gate: it must pass before you install
+make ci             # the gate: it must pass before you install
 make install
 cs-campaign version # must match the working tree's HEAD
 ```

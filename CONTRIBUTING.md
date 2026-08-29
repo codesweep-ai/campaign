@@ -263,7 +263,7 @@ Point your tool at [`AGENTS.md`](AGENTS.md), which routes it to the documents th
 conventions, and check three things before you open the pull request:
 
 - You understand every line, and can answer a question about it without going back to the tool.
-- You ran `make check` and it passed.
+- You ran `make ci` and it passed.
 - You cut what the tool added to fill space. A model pads a commit body to the shape it was shown,
   and comments that restate the code around them. Both read as noise to a maintainer, and both are
   yours to remove.
