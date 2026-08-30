@@ -218,10 +218,12 @@ tools:
 
 ## What `cs-sandbox build` is asked for when this host has no image yet. The
 ## default builds the image a real campaign uses, which is the one `create`
-## looks for when CS_SANDBOX_IMAGE is unset. CI overrides it with
-## `--slim --with-agents`, because the shipped image is 9.3 GB and a hosted
-## runner does not have the disk — and CI sets CS_SANDBOX_IMAGE to match, since
-## each variant has a package of its own.
+## looks for when CS_SANDBOX_IMAGE is unset. CI overrides it with `--slim`,
+## because the shipped image is 9.3 GB and a hosted runner does not have the
+## disk — and CI sets CS_SANDBOX_IMAGE to match, since each variant has a
+## package of its own. The slim image carries the agent CLIs, which every
+## scenario here needs; it used to take `--with-agents` to get them, and there
+## is no longer a variant without.
 SANDBOX_BUILD_FLAGS ?= --engine firecracker
 
 ## setup-smoke: the host state a tier that boots machines needs, at the pinned versions

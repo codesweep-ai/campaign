@@ -227,13 +227,20 @@ jobs:
       # space left on device". The slim image is the same Containerfile with the
       # developer toolchains dropped.
       #
-      # --with-agents is what this repository needs beyond the plain slim image
-      # cs-sandbox's own CI uses: every scenario here drives claude, codex or
-      # opencode INSIDE the member, and the readback runs `command -v <cli>`
-      # before anything else, so a member without them fails before the first
-      # dispatch. The mission itself asks only for git and python3, both of which
-      # the slim base already carries.
-      SANDBOX_BUILD_FLAGS: --engine firecracker --slim --with-agents
+      # The slim image carries claude, codex and opencode outright, so --slim is
+      # the whole request. It used to take `--slim --with-agents`: cs-sandbox
+      # published an agent-free slim variant as well, and this repository always
+      # wanted the other one, because every scenario here drives an agent INSIDE
+      # the member and the readback runs `command -v <cli>` before anything else.
+      # That variant is gone — one slim image now, agents included — so asking
+      # for it is both unnecessary and an unknown flag. The mission itself asks
+      # only for git and python3, both of which the slim base already carries.
+      #
+      # The build is mostly a PULL now: cs-sandbox builds the image in three
+      # tiers and only the last is made here, on top of published ones. What that
+      # costs this job is bandwidth rather than the minutes of `podman build` it
+      # used to spend.
+      SANDBOX_BUILD_FLAGS: --engine firecracker --slim
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -303,8 +310,7 @@ jobs:
           echo "sandbox=$ver" >> "$GITHUB_OUTPUT"
           # The image this job builds, boots and saves, asked of the binary that
           # names it rather than written out here. cs-sandbox gives each variant
-          # its own package, and `--slim --with-agents` is the only one that can
-          # run an agent, so a reference composed by hand here would drift the
+          # its own package, so a reference composed by hand here would drift the
           # moment sandbox renamed anything and fail at `command -v claude`.
           #
           # Exported, because it is load-bearing twice: `build` tags it, and the
@@ -313,8 +319,14 @@ jobs:
           # builds. It is the published reference rather than a local tag, so
           # the build can pull it where that package is reachable from here; it
           # falls back to building, which is what the old local tag always did.
-          image=$(bin/tools/cs-sandbox version --images | awk '$1=="image-slim-agents"{print $2}')
-          test -n "$image" || { echo "cannot read the cs-sandbox slim-agents image name" >&2; exit 1; }
+          #
+          # image-slim, not image-slim-agents: that label named the agent-free
+          # variant's counterpart and both are now one image. The name still
+          # exists on ghcr as a TIER cs-sandbox builds on — `version --images`
+          # lists it as tier-slim-agents — and that one has no /sandbox and no
+          # entrypoint, so it cannot boot. Asking for the wrong one fails late.
+          image=$(bin/tools/cs-sandbox version --images | awk '$1=="image-slim"{print $2}')
+          test -n "$image" || { echo "cannot read the cs-sandbox slim image name" >&2; exit 1; }
           echo "CS_SANDBOX_IMAGE=$image" >> "$GITHUB_ENV"
 
       # Packed, not cached in place. The base rootfs is a 32 GiB file that is
