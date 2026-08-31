@@ -15,6 +15,7 @@ BIN        := bin/cs-campaign
 PKG        := ./cmd/cs-campaign
 VIEWERBIN  := bin/cs-dispatch-viewer
 VIEWERPKG  := ./dispatch-viewer/cmd/cs-dispatch-viewer
+GUESTBIN   := internal/cli/assets/cs-campaign-member.bin
 PREFIX     ?= $(HOME)/.local
 VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS    := -s -w
@@ -23,6 +24,44 @@ VIEWERLDFLAGS := -s -w
 # fresh clone before its first commit has nothing tracked, and an empty list
 # makes `gofmt -l` read stdin and hang rather than check anything.
 GO_FILES   := $(shell git ls-files '*.go' 2>/dev/null | grep . || find . -name '*.go' -not -path './bin/*' -not -path './dist/*')
+
+# What $(BIN) and $(VIEWERBIN) are made of. They are real targets rather than a
+# phony one, so make skips the build when both binaries are already newer than
+# every input — which is what stops `make install` from repeating the
+# `make build` that just ran.
+#
+# `find` rather than $(GO_FILES): a source file that is new and not yet added to
+# the index is still an input. $(GIT_DIR)/HEAD is one because the version is the
+# VCS stamp Go embeds, so a commit changes the binaries even when no source did.
+# The embedded files are listed because //go:embed makes them compile-time
+# inputs — all but $(GUESTBIN), which is not an input at all: it is compiled
+# from ./cmd/cs-campaign-member, and the build restores the committed
+# placeholder over it afterwards, which would leave it permanently newer than
+# what it produced.
+GIT_DIR    := $(shell git rev-parse --git-dir 2>/dev/null)
+EMBED_DEPS := MANUAL.md dispatch-viewer/internal/cli/shell/viewer.html \
+              $(filter-out $(GUESTBIN),$(wildcard internal/cli/assets/*))
+# //go:embed inputs deliberately left out of $(EMBED_DEPS): the build compiles
+# $(GUESTBIN) and then restores the committed placeholder over it, which would
+# leave it permanently newer than the binaries it went into. `make embed-check`
+# allows exactly this list and nothing else.
+EMBED_EXEMPT := $(GUESTBIN)
+BUILD_DEPS := $(shell find . \( -name bin -o -name dist -o -name node_modules -o -name .git \) -prune -o -name '*.go' -print) \
+              go.mod go.sum .goreleaser.yaml Makefile $(EMBED_DEPS) $(wildcard $(GIT_DIR)/HEAD)
+
+# Which target last wrote the binaries. Timestamps cannot tell a cs-campaign
+# carrying the real guest binary from one carrying the placeholder, and
+# `build-go` writes the same path, so without this a `make build` after it would
+# find a file newer than every source and keep the placeholder build. `make ci`
+# ends in `build-go`, which made `make ci && make install` a way to install a
+# binary that is refused the moment it tries to create a member.
+#
+# The signal is its timestamp: $(FLAVOUR) is newer than $(BIN) exactly when
+# $(BIN) is not the embedded build. So build-go writes it AFTER the binaries,
+# and every target that embeds the guest writes it BEFORE. It is named as a
+# prerequisite rather than pulled in with $(wildcard), which would fix the list
+# at parse time and miss a flavour written later in the same invocation.
+FLAVOUR    := bin/.flavour
 
 # Coverage is not a separate mode: every test target below writes Go binary
 # coverage data into its own tier directory under $(COVERDIR), and `make
@@ -37,7 +76,7 @@ COVERDIR   ?= .coverage
 COVER_ABS  := $(abspath $(COVERDIR))
 COVERFLAGS  = -covermode=atomic -coverpkg=$(shell go list ./... | paste -sd, -)
 
-.PHONY: help guestbin build build-go build-go-embedded install uninstall test tools setup-smoke test-smoke \
+.PHONY: help tidy-check embed-check guestbin build build-go build-go-embedded install uninstall test tools setup-smoke test-smoke \
         test-integration fixtures fixtures-strict coverage coverage-check coverage-baseline \
         covmap covmap-scripts vet fmt fmt-check lint deadcode actionlint prose refs oss \
         fixtures-check surface ledger check ci snapshot \
@@ -51,8 +90,6 @@ help:
 	@grep -E '^## [a-z][a-z0-9-]*: ' $(MAKEFILE_LIST) | sed -E 's/^## ([^:]+): (.*)/  \1|\2/' | column -t -s '|'
 	@echo ""
 	@echo "  PREFIX=$(PREFIX) (install location; override with make install PREFIX=/usr/local)"
-
-GUESTBIN := internal/cli/assets/cs-campaign-member.bin
 
 ## guestbin: compile the guest binary for embedding (linux/amd64, static)
 ##
@@ -69,25 +106,60 @@ guestbin:
 ##
 ## Twice, because --output takes one path and this repo declares two build ids.
 ## --clean on both: goreleaser refuses a dist directory it did not empty itself,
-## and by then --output has already copied the first binary out of it. The
-## second skips the before hooks the first just ran — one of them is the guest
-## compile, and running it twice is a minute of nothing.
-build:
+## and by then --output has already copied the first binary out of it.
+##
+## A phony alias for the two binaries, so the work sits on file targets and make
+## can skip it. `make build install`, and an `install` after a build, then copy
+## what is already there instead of building the same pair a second time.
+##
+## --skip=before on both, because .goreleaser.yaml's before hooks are
+## `go mod tidy`, `go vet ./...` and `go test ./...` — release gates that
+## `make check` runs in its own right, and that made every build pay for the
+## whole suite and rewrite go.mod as a side effect. `make snapshot` and
+## `make release` still run them. The fourth hook, `make guestbin`, is not a
+## gate but a compile the binary cannot do without, so the recipe runs it.
+##
+## The three steps are chained with && and the recipe exits on their status:
+## restoring the placeholder is a cleanup that has to happen either way, and
+## `|| true` on the last command in a `;` chain would report success no matter
+## what failed above it. A build that could not fail would ship a placeholder
+## guest binary, which is the one thing this repo cannot let past.
+build: $(BIN) $(VIEWERBIN)
+
+$(BIN): $(BUILD_DEPS) $(FLAVOUR)
 	@mkdir -p $(dir $(BIN))
+	@echo embedded > $(FLAVOUR) # before the build, so the binaries end up newer
 	@if command -v $(GORELEASER) >/dev/null 2>&1; then \
-		VERSION='$(VERSION)' $(GORELEASER) build --single-target --snapshot --clean --id cs-campaign --output $(BIN); \
+		$(MAKE) --no-print-directory guestbin && \
+		VERSION='$(VERSION)' $(GORELEASER) build --single-target --snapshot --clean --skip=before --id cs-campaign --output $(BIN) && \
 		VERSION='$(VERSION)' $(GORELEASER) build --single-target --snapshot --clean --skip=before --id cs-dispatch-viewer --output $(VIEWERBIN); \
+		status=$$?; \
 		git checkout -q -- $(GUESTBIN) 2>/dev/null || true; \
+		exit $$status; \
 	else \
 		echo "goreleaser not found; using go build (run 'make build-go-embedded' explicitly to force)"; \
 		$(MAKE) build-go-embedded; \
 	fi
+
+# $(VIEWERBIN) comes out of the same recipe. A grouped target ($(BIN)
+# $(VIEWERBIN) &:) would say so in one line, but grouped targets need GNU make
+# 4.3, and older make reads the `&` as a third target and runs the whole
+# two-goreleaser recipe once per binary. The guard covers the one thing the
+# dependency cannot: this file deleted on its own, with $(BIN) still current.
+$(VIEWERBIN): $(BIN)
+	@test -f $@ || { rm -f $(BIN); $(MAKE) --no-print-directory $(BIN); }
+
+# Only ever runs when the record is missing: a tree built before it existed, or
+# one where bin/ was emptied by hand rather than by `make clean`.
+$(FLAVOUR):
+	@mkdir -p $(dir $@) && echo embedded > $@
 
 ## build-go-embedded: the same two binaries, guest binary embedded, without
 ## goreleaser. The fallback `build` takes when goreleaser is not installed —
 ## not `build-go`, which would embed the placeholder and be refused by a member.
 build-go-embedded: guestbin
 	@mkdir -p $(dir $(BIN))
+	@echo embedded > $(FLAVOUR) # the same pair `build` makes; it is what `build` falls back to
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) $(PKG)
 	@git checkout -q -- $(GUESTBIN) 2>/dev/null || true # restore the committed placeholder; the real bytes are in $(BIN)
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(VIEWERLDFLAGS)' -o $(VIEWERBIN) $(VIEWERPKG)
@@ -100,6 +172,7 @@ build-go:
 	@mkdir -p $(dir $(BIN))
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) $(PKG)
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(VIEWERLDFLAGS)' -o $(VIEWERBIN) $(VIEWERPKG)
+	@echo placeholder-guest > $(FLAVOUR) # after the build, so it is newer than $(BIN); see $(FLAVOUR) above
 
 ## versions: what this build is made of — this repo's binary, every pinned tool,
 ## the Go toolchain, and whether a workspace is overriding the go.mod pins. The
@@ -445,6 +518,52 @@ fmt-check:
 		exit 1; \
 	fi
 
+## tidy-check: go.mod and go.sum are what `go mod tidy` would write
+##
+## The build no longer runs `go mod tidy`. It used to, as a goreleaser before
+## hook, so every `make build` rewrote the module files as a side effect and
+## nothing ever reported the drift. This gate replaces it and is the stronger of
+## the two: it says what moved instead of quietly absorbing it, and it puts the
+## originals back before failing, so a red gate leaves the tree as it found it.
+## GOWORK=off, so a workspace serving local checkouts cannot make an untidy
+## go.mod look tidy.
+tidy-check:
+	@t="$$(mktemp -d)"; cp go.mod go.sum "$$t/"; \
+	GOWORK=off go mod tidy || { cp "$$t/go.mod" go.mod; cp "$$t/go.sum" go.sum; rm -rf "$$t"; exit 1; }; \
+	if cmp -s go.mod "$$t/go.mod" && cmp -s go.sum "$$t/go.sum"; then \
+		rm -rf "$$t"; echo "tidy: go.mod and go.sum are what \`go mod tidy\` writes"; \
+	else \
+		echo "go.mod/go.sum are not tidy; \`go mod tidy\` would apply:" >&2; \
+		diff -u "$$t/go.mod" go.mod >&2; diff -u "$$t/go.sum" go.sum >&2; \
+		cp "$$t/go.mod" go.mod; cp "$$t/go.sum" go.sum; rm -rf "$$t"; \
+		exit 1; \
+	fi
+
+## embed-check: every //go:embed input is a prerequisite of the binary
+##
+## $(EMBED_DEPS) is written by hand, and an embed added without a line there
+## leaves make holding a binary it calls current while the bytes inside it have
+## moved -- the one kind of staleness no other gate can see. `go list` resolves
+## the patterns itself, so this compares against what the toolchain actually
+## embeds rather than re-reading the directives and reimplementing their globs.
+embed-check:
+	@deps="$$(mktemp)"; embeds="$$(mktemp)"; raw="$$(mktemp)"; \
+	printf '%s\n' $(patsubst ./%,%,$(BUILD_DEPS)) $(EMBED_EXEMPT) | LC_ALL=C sort -u >"$$deps"; \
+	if ! go list -f '{{range .EmbedFiles}}{{$$.Dir}}/{{.}}{{"\n"}}{{end}}' ./... >"$$raw"; then \
+		rm -f "$$deps" "$$embeds" "$$raw"; \
+		echo "embed-check: go list failed, so the embed set is unknown" >&2; exit 1; \
+	fi; \
+	grep -v '/node_modules/' "$$raw" | sed "s|^$$PWD/||" | grep . | LC_ALL=C sort -u >"$$embeds"; \
+	missing="$$(LC_ALL=C comm -23 "$$embeds" "$$deps")"; n="$$(wc -l <"$$embeds")"; \
+	rm -f "$$deps" "$$embeds" "$$raw"; \
+	if [ -n "$$missing" ]; then \
+		echo "//go:embed reads these, and no prerequisite of $(BIN) covers them:" >&2; \
+		printf '  %s\n' $$missing >&2; \
+		echo "add each to EMBED_DEPS, or a change to one will not rebuild the binary" >&2; \
+		exit 1; \
+	fi; \
+	echo "embed: all $$n //go:embed inputs are prerequisites of $(notdir $(BIN))"
+
 # Built rather than run with `go tool`, because -modfile is refused in workspace
 # mode. The build is the only step that reads go.golangci.mod, so only the build
 # turns the workspace off; the linter then runs with it back on, against the
@@ -519,7 +638,7 @@ fixtures-check:
 	@scripts/fixtures-check.sh
 
 ## check: the full local gate — fmt, vet, the linters, and the unit tier
-check: fmt-check vet lint deadcode test coverage-check fixtures-check prose refs oss surface
+check: fmt-check tidy-check embed-check vet lint deadcode test coverage-check fixtures-check prose refs oss surface
 
 # say prints a heading above each gate, so a long run reads as a list rather
 # than as a wall. Bold where a terminal is reading it and plain where a pipe
