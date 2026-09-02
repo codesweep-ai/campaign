@@ -83,7 +83,7 @@ COVERDIR   ?= .coverage
 COVER_ABS  := $(abspath $(COVERDIR))
 COVERFLAGS  = -covermode=atomic -coverpkg=$(shell go list ./... | paste -sd, -)
 
-.PHONY: help tidy-check embed-check guestbin build build-go build-go-embedded viewer-build install uninstall test tools setup-smoke test-smoke \
+.PHONY: help tidy-check embed-check guestbin build build-go build-go-embedded viewer-build viewer-check install uninstall test tools setup-smoke test-smoke \
         test-integration fixtures record-fixtures record-fixtures-strict coverage coverage-check coverage-baseline \
         covmap covmap-scripts vet fmt fmt-check lint deadcode actionlint prose refs oss \
         fixtures-check conventions surface ledger check ci snapshot \
@@ -205,6 +205,23 @@ $(VIEWERPAGE): $(VIEWER_SRC)
 		$(MAKE) viewer-build; \
 	else \
 		echo "viewer: SKIP (npm not on PATH; using the committed $(VIEWERPAGE))"; \
+	fi
+
+## viewer-check: the committed page is what dispatch-viewer/app builds
+##
+## The viewer rule skips when npm is absent, so a clone with Go alone still
+## builds, and nothing else here runs Node. That skip is what could carry a
+## stale page into a commit. This rebuilds and asserts the rebuild changed
+## nothing, so a stale page fails already rebuilt: what is left is to commit it.
+viewer-check:
+	@command -v $(NPM) >/dev/null 2>&1 || { echo "viewer-check: npm is required to rebuild the page" >&2; exit 1; }
+	@$(MAKE) --no-print-directory viewer-build
+	@if git diff --quiet -- $(VIEWERPAGE); then \
+		echo "viewer: $(VIEWERPAGE) is what dispatch-viewer/app builds"; \
+	else \
+		echo "$(VIEWERPAGE) was stale. It has been rebuilt from dispatch-viewer/app;" >&2; \
+		echo "commit it alongside the change that moved it." >&2; \
+		exit 1; \
 	fi
 
 ## viewer-build: the viewer rebuild itself, for when npm is known present
@@ -724,6 +741,8 @@ ci:
 	@$(MAKE) --no-print-directory check
 	$(call say,actionlint)
 	@$(MAKE) --no-print-directory actionlint
+	$(call say,the viewer page)
+	@$(MAKE) --no-print-directory viewer-check
 	$(call say,build)
 	@$(MAKE) --no-print-directory build-go
 	$(call say,release manifest)

@@ -190,6 +190,24 @@ jobs:
           cache: true
       - run: make ledger
 
+  # The committed viewer page is what dispatch-viewer/app builds.
+  #
+  # `make viewer` skips when npm is absent, so a clone with Go alone still
+  # builds, and no other job here runs Node at all. Nothing would notice a page
+  # that stopped matching its sources. This job rebuilds it and compares.
+  viewer:
+    name: viewer page is current
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.13" # dispatch-viewer/app says >=22.13; the floor is what CI proves
+          cache: npm
+          cache-dependency-path: dispatch-viewer/app/package-lock.json
+      - run: make viewer-check
+
   # The whole dispatch protocol on real machines, with the model's answers
   # replayed. This is the job that proves the harness rather than its parts: two
   # microVMs boot, the readback runs, the mission opens, the orchestrator drives
@@ -254,7 +272,7 @@ jobs:
       # only that.
       #
       # The glob is <scenario>/<member>/index.jsonl, which is the shape
-      # `make fixtures` writes and the shape hasCassette globs for in
+      # `make record-fixtures` writes and the shape hasCassette globs for in
       # internal/cli/smoke_test.go. One level shallower matches nothing, and a
       # guard that matches nothing skips every step below and still reports a
       # green job in twenty seconds.
@@ -266,7 +284,7 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "no cassette committed; record one with \`make fixtures\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "no cassette committed; record one with \`make record-fixtures\`" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       # /dev/kvm is present on these runners but root:kvm, and the runner user
