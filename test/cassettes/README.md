@@ -59,3 +59,15 @@ smoke tier at all — which is the point, since `make check` runs it and most
 machines never boot a member. `make test-smoke` asserts the same thing per
 scenario before it provisions. Either way the answer names the scenario and the
 command that re-records it.
+
+## Agent version compatibility
+
+`recorded.json` beside each scenario names the agent CLI that recorded it, and
+that CLI's version. An agent carries its own system prompt and tool list, so a
+new build sends different requests and the cassette misses on all of them.
+
+That version reaches this repository through a published sandbox image rather
+than a pin of its own, so it moves without any commit here. `make test-smoke`
+compares the claim with the image it is about to boot, and skips a scenario
+whose agent has moved. The skip names both versions and the command that
+re-records it. Scenarios whose agent did not move still replay.

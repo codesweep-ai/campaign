@@ -404,31 +404,35 @@ func scenarioByName(t *testing.T, name string) scenario {
 // file's own: "in-progress", written when recording starts and replaced when
 // the campaign is shown to have met its mission. Anything still saying
 // in-progress is a recording that died partway.
+//
+// CLIVersion is which build of that agent recorded it, and it answers a
+// different question: not whether the recording finished, but whether it can
+// still be replayed at all. An agent CLI carries its own system prompt and tool
+// list, so a bump rewrites every request the fleet sends and the cassette
+// misses on all of them at once — a failure that reads as a wall of prompt
+// diffs rather than as the one version that moved, and that costs a tier of
+// booted machines to reach.
 type recordingClaim struct {
-	Scenario string `json:"scenario"`
-	CLI      string `json:"cli"`
-	Outcome  string `json:"outcome"`
-	At       string `json:"at"`
+	Scenario   string `json:"scenario"`
+	CLI        string `json:"cli"`
+	CLIVersion string `json:"cli_version"`
+	Outcome    string `json:"outcome"`
+	At         string `json:"at"`
 }
-
-// recordingClaimName is the file, at the scenario root rather than inside a
-// member directory — `cs-vcr cassette verify` is addressed to member
-// directories and hasCassette globs for their index files, so neither sees it.
-const recordingClaimName = "recorded.json"
 
 func claimRecording(t *testing.T, store string, sc scenario) {
 	t.Helper()
 	writeRecordingClaim(t, store, recordingClaim{
-		Scenario: sc.name, CLI: sc.cli, Outcome: "in-progress",
-		At: time.Now().UTC().Format(time.RFC3339),
+		Scenario: sc.name, CLI: sc.cli, CLIVersion: agentCLIVersions()[sc.cli],
+		Outcome: "in-progress", At: time.Now().UTC().Format(time.RFC3339),
 	})
 }
 
 func settleRecording(t *testing.T, store string, sc scenario, outcome string) {
 	t.Helper()
 	writeRecordingClaim(t, store, recordingClaim{
-		Scenario: sc.name, CLI: sc.cli, Outcome: outcome,
-		At: time.Now().UTC().Format(time.RFC3339),
+		Scenario: sc.name, CLI: sc.cli, CLIVersion: agentCLIVersions()[sc.cli],
+		Outcome: outcome, At: time.Now().UTC().Format(time.RFC3339),
 	})
 }
 

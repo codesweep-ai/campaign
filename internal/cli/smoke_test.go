@@ -48,6 +48,7 @@ func TestSmokeReplay(t *testing.T) {
 		recorded++
 		t.Run(sc.name, func(t *testing.T) {
 			store := cassetteStore(t, sc)
+			assertCassetteAgent(t, sc, store)
 			assertCassetteRuleset(t, sc, store)
 			assertRecordingFinished(t, sc, store)
 			run := runLiveCampaign(t, sc, runOptions{
@@ -171,7 +172,7 @@ func assertCassetteRuleset(t *testing.T, sc scenario, store string) {
 // alone — refusing those would fail on fixtures that replay perfectly well.
 func assertRecordingFinished(t *testing.T, sc scenario, store string) {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(store, "recorded.json"))
+	raw, err := os.ReadFile(filepath.Join(store, recordingClaimName))
 	if err != nil {
 		return // recorded before completeness was tracked
 	}
@@ -179,13 +180,56 @@ func assertRecordingFinished(t *testing.T, sc scenario, store string) {
 		Outcome string `json:"outcome"`
 	}
 	if err := json.Unmarshal(raw, &claim); err != nil {
-		t.Fatalf("unreadable recorded.json for %s: %v", sc.name, err)
+		t.Fatalf("unreadable %s for %s: %v", recordingClaimName, sc.name, err)
 	}
 	if claim.Outcome == "campaign-met" {
 		return
 	}
-	t.Fatalf("this cassette came out of a recording that ended %q, and the replay below asserts campaign-met\nre-record it with `make fixtures FIXTURE_TESTS='TestLiveRecordsACassette/%s'`",
+	t.Fatalf("this cassette came out of a recording that ended %q, and the replay below asserts campaign-met\nre-record it with `make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/%s'`",
 		claim.Outcome, sc.name)
+}
+
+// assertCassetteAgent skips a scenario whose cassette was recorded against a
+// different build of its agent CLI.
+//
+// The ruleset gate above asks whether cs-vcr still keys requests the way the
+// recording did. This asks the other half: whether the fleet still SENDS what
+// the recording captured. An agent CLI carries its own system prompt and tool
+// list, so a bump rewrites every request and the cassette misses on all of them
+// — and it misses only after every machine has booted, which is where the
+// minutes are.
+//
+// A skip rather than a failure, because the fixture is STALE, not broken. The
+// gesture that fixes it costs a real campaign per scenario and cannot be made
+// by the run that wants it; an agent bump reaching this repository through a
+// published sandbox image is a normal event, and failing for its duration would
+// make the tier red while everything proceeds to plan. What must not happen is
+// failing silently, so the skip names both versions and the command that ends it.
+//
+// A version the claim does not carry, or one this host cannot report, skips the
+// comparison rather than guessing: a cassette from before the claim existed
+// replays perfectly well, and refusing it would fail on a working fixture.
+func assertCassetteAgent(t *testing.T, sc scenario, store string) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(store, recordingClaimName))
+	if err != nil {
+		return // recorded before the version was tracked
+	}
+	var claim struct {
+		CLI        string `json:"cli"`
+		CLIVersion string `json:"cli_version"`
+	}
+	if err := json.Unmarshal(raw, &claim); err != nil {
+		t.Fatalf("unreadable %s for %s: %v", recordingClaimName, sc.name, err)
+	}
+	was, now := claim.CLIVersion, agentCLIVersions()[sc.cli]
+	if was == "" || now == "" || was == now {
+		return
+	}
+	t.Skipf("this cassette was recorded against %s %s and the image carries %s, "+
+		"so every request in it would miss\n"+
+		"re-record it with `make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/%s'`",
+		sc.cli, was, now, sc.name)
 }
 
 // hasCassette reports whether this scenario has been recorded. A scenario with

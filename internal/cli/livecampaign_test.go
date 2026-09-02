@@ -21,7 +21,9 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -185,6 +187,69 @@ func cassetteStore(t *testing.T, sc scenario) string {
 	}
 	return abs
 }
+
+// recordingClaimName is the file, at the scenario root rather than inside a
+// member directory — `cs-vcr cassette verify` is addressed to member
+// directories and hasCassette globs for their index files, so neither sees it.
+//
+// Shared by the tier that writes it and the tier that reads it, which are
+// behind different build tags and would otherwise each spell it out.
+const recordingClaimName = "recorded.json"
+
+// agentCLIVersions asks the sandbox image which version of each agent CLI it
+// carries, once per process.
+//
+// The IMAGE rather than any pin, and the difference is the point: an agent CLI
+// is pinned in the sandbox repository and reaches this one only when a new
+// image is published and adopted, so a checkout routinely names versions its
+// image does not hold. What a cassette was recorded against is what booted.
+//
+// Best effort. A host with no podman, or one whose image is not built, gets
+// nothing back and the gate that reads this stands down — every tier reaching
+// for it already needs that image for something larger and owns the message
+// when it is missing, so a second report here would only be noise.
+var agentCLIVersions = sync.OnceValue(func() map[string]string {
+	out := map[string]string{}
+	img := os.Getenv("CS_SANDBOX_IMAGE")
+	if img == "" {
+		// The same resolution setup-smoke makes, for the same reason: the name
+		// carries the version of the cs-sandbox that built it, so only that
+		// binary can say what this host would boot.
+		b, err := exec.Command("cs-sandbox", "version", "--images").Output()
+		if err != nil {
+			return out
+		}
+		for line := range strings.SplitSeq(string(b), "\n") {
+			if f := strings.Fields(line); len(f) == 2 && f[0] == "image" {
+				img = f[1]
+				break
+			}
+		}
+	}
+	if img == "" {
+		return out
+	}
+	const probe = `for a in claude codex opencode; do ` +
+		`v=$("$a" --version 2>/dev/null | head -1); printf '%s %s\n' "$a" "$v"; done`
+	// --pull=never: the resolved name is what this cs-sandbox WOULD boot, which
+	// is not always a published tag, and a probe that reaches the registry to
+	// find that out would put a network round trip in front of every replay.
+	b, err := exec.Command("podman", "run", "--rm", "--pull=never",
+		"--entrypoint", "sh", img, "-c", probe).Output()
+	if err != nil {
+		return out
+	}
+	// The first dotted triple on the line. The three say it differently —
+	// `2.1.258 (Claude Code)`, `codex-cli 0.152.1`, a bare `1.18.22` — and the
+	// number is the shape they agree on.
+	semver := regexp.MustCompile(`[0-9]+\.[0-9]+\.[0-9]+`)
+	for line := range strings.SplitSeq(strings.TrimSpace(string(b)), "\n") {
+		if name, rest, ok := strings.Cut(strings.TrimSpace(line), " "); ok {
+			out[name] = semver.FindString(rest)
+		}
+	}
+	return out
+})
 
 // campaignRun is what one run of the driver produced, for a tier to assert on.
 type campaignRun struct {
