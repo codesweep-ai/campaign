@@ -168,7 +168,7 @@ $(FLAVOUR):
 ## build-go-embedded: the same two binaries, guest binary embedded, without
 ## goreleaser. The fallback `build` takes when goreleaser is not installed —
 ## not `build-go`, which would embed the placeholder and be refused by a member.
-build-go-embedded: guestbin
+build-go-embedded: guestbin $(VIEWERPAGE)
 	@mkdir -p $(dir $(BIN))
 	@echo embedded > $(FLAVOUR) # the same pair `build` makes; it is what `build` falls back to
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) $(PKG)
@@ -179,7 +179,13 @@ build-go-embedded: guestbin
 ##
 ## What CI builds. It creates no campaign, and skipping the guest compile
 ## leaves the working tree clean.
-build-go:
+##
+## $(VIEWERPAGE) is a prerequisite because //go:embed reads it at compile time.
+## Without it, `go build` runs straight away and bakes in whatever page is on
+## disk, so an edit under dispatch-viewer/app reaches the binary only if
+## something else happened to rebuild the page first. The rule still skips
+## where npm is absent, so a clone with Go alone builds from the committed page.
+build-go: $(VIEWERPAGE)
 	@mkdir -p $(dir $(BIN))
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) $(PKG)
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(VIEWERLDFLAGS)' -o $(VIEWERBIN) $(VIEWERPKG)
