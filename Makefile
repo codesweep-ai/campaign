@@ -86,7 +86,7 @@ COVERFLAGS  = -covermode=atomic -coverpkg=$(shell go list ./... | paste -sd, -)
 .PHONY: help tidy-check embed-check guestbin build build-go build-go-embedded viewer-build install uninstall test tools setup-smoke test-smoke \
         test-integration fixtures record-fixtures record-fixtures-strict coverage coverage-check coverage-baseline \
         covmap covmap-scripts vet fmt fmt-check lint deadcode actionlint prose refs oss \
-        fixtures-check surface ledger check ci snapshot \
+        fixtures-check conventions surface ledger check ci snapshot \
         release release-check clean
 
 .DEFAULT_GOAL := help
@@ -685,8 +685,15 @@ ledger:
 fixtures-check:
 	@scripts/fixtures-check.sh
 
+## conventions: the house rules a @codesweep-ai/ui consumer must keep — the pin
+## agrees across tarball, specifiers, lockfiles and the install, and a target
+## that re-records committed files is named record-*. The script is vendored
+## byte-identical into ledger, tracer and campaign; keep the copies identical.
+conventions:
+	@go run scripts/consumer-conventions.go
+
 ## check: the full local gate — fmt, vet, the linters, and the unit tier
-check: fmt-check tidy-check embed-check vet lint deadcode test coverage-check fixtures-check prose refs oss surface
+check: fmt-check tidy-check embed-check vet lint deadcode test coverage-check fixtures-check conventions prose refs oss surface
 
 # say prints a heading above each gate, so a long run reads as a list rather
 # than as a wall. Bold where a terminal is reading it and plain where a pipe
