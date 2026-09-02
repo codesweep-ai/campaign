@@ -4,7 +4,7 @@
 #
 # Five scenarios, each a real campaign: two microVMs, a fabric, a dispatch ladder
 # and real model turns. This checks what they need before any of that starts, and
-# `make fixtures-strict` fails on a scenario it cannot sign in for rather than
+# `make record-fixtures-strict` fails on a scenario it cannot sign in for rather than
 # skipping it. Recording four of five and reporting green is the outcome worth
 # refusing.
 #
@@ -126,7 +126,7 @@ fi
 
 echo
 if (( missing )); then
-  fail "Something above is missing. fixtures-strict fails on it rather than
+  fail "Something above is missing. record-fixtures-strict fails on it rather than
 skipping, so fix it before a campaign starts."
 fi
 
@@ -145,7 +145,7 @@ read -r -p "Type 'record' to continue: " answer
 [[ $answer == record ]] || fail "Nothing recorded."
 
 echo
-make fixtures-strict
+make record-fixtures-strict
 
 cat <<'AFTER'
 

@@ -989,7 +989,7 @@ Each tier answers a question the one below it cannot, and each costs more than t
 | unit | `make test` | Everything in the default build, against faked sandboxes and a scripted world. | Free, and what `make check` runs. |
 | smoke | `make test-smoke` | The whole protocol on real machines, with every model call served from the committed cassette. | Minutes and no money. What CI runs on every push. |
 | integration | `make test-integration` | The same campaign against real providers, once per backend. | Real money, and about half an hour. |
-| fixtures | `make fixtures` | One recorded campaign, which is what the smoke tier replays. | Real money, run when a recording goes stale. |
+| fixtures | `make record-fixtures` | One recorded campaign, which is what the smoke tier replays. | Real money, run when a recording goes stale. |
 
 A build tag adds files to a package rather than hiding the rest, so every tier above unit also
 passes `-run` to select its own tests. Without it `make test-smoke` would re-run the unit tier
@@ -1025,8 +1025,8 @@ a fabricated one.
 is replayed rather than re-derived, so this tier proves the harness carried a campaign to a verdict.
 It does not verify the work that campaign delivered.
 
-`make fixtures` records what this host can sign in for and skips the rest, saying which credential
-was missing. `make fixtures-strict` fails on that skip instead, which is what a host holding all
+`make record-fixtures` records what this host can sign in for and skips the rest, saying which credential
+was missing. `make record-fixtures-strict` fails on that skip instead, which is what a host holding all
 five wants. `scripts/record-fixtures.sh` checks the environment first and runs the strict form.
 
 Recording asks each scenario's agent for a single word, on this host and against the real provider,
@@ -1092,7 +1092,7 @@ granted no `OPENAI_API_KEY`, and a key present wins.
 #### Recording a cassette
 
 ```bash
-make fixtures      # records test/cassettes/ through a cs-vcr in record mode
+make record-fixtures  # records test/cassettes/ through a cs-vcr in record mode
 make test-smoke    # replays it
 ```
 

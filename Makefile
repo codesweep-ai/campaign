@@ -39,7 +39,14 @@ GO_FILES   := $(shell git ls-files '*.go' 2>/dev/null | grep . || find . -name '
 # placeholder over it afterwards, which would leave it permanently newer than
 # what it produced.
 GIT_DIR    := $(shell git rev-parse --git-dir 2>/dev/null)
-EMBED_DEPS := MANUAL.md dispatch-viewer/internal/cli/shell/viewer.html \
+# The dispatch viewer is a Vite/React app built into one self-contained file,
+# and that file is the only viewer artifact //go:embed reads.
+VIEWERPAGE := dispatch-viewer/internal/cli/shell/viewer.html
+VIEWER_SRC := $(shell find dispatch-viewer/app/src dispatch-viewer/app/public \
+                    -name node_modules -prune -o -type f -print 2>/dev/null) \
+              $(wildcard dispatch-viewer/app/index.html dispatch-viewer/app/*.json \
+                         dispatch-viewer/app/*.ts dispatch-viewer/app/*.js)
+EMBED_DEPS := MANUAL.md $(VIEWERPAGE) \
               $(filter-out $(GUESTBIN),$(wildcard internal/cli/assets/*))
 # //go:embed inputs deliberately left out of $(EMBED_DEPS): the build compiles
 # $(GUESTBIN) and then restores the committed placeholder over it, which would
@@ -76,8 +83,8 @@ COVERDIR   ?= .coverage
 COVER_ABS  := $(abspath $(COVERDIR))
 COVERFLAGS  = -covermode=atomic -coverpkg=$(shell go list ./... | paste -sd, -)
 
-.PHONY: help tidy-check embed-check guestbin build build-go build-go-embedded install uninstall test tools setup-smoke test-smoke \
-        test-integration fixtures fixtures-strict coverage coverage-check coverage-baseline \
+.PHONY: help tidy-check embed-check guestbin build build-go build-go-embedded viewer-build install uninstall test tools setup-smoke test-smoke \
+        test-integration fixtures record-fixtures record-fixtures-strict coverage coverage-check coverage-baseline \
         covmap covmap-scripts vet fmt fmt-check lint deadcode actionlint prose refs oss \
         fixtures-check surface ledger check ci snapshot \
         release release-check clean
@@ -111,6 +118,10 @@ guestbin:
 ## A phony alias for the two binaries, so the work sits on file targets and make
 ## can skip it. `make build install`, and an `install` after a build, then copy
 ## what is already there instead of building the same pair a second time.
+##
+## The embedded viewer page is a prerequisite through $(EMBED_DEPS) and has a
+## rule of its own, so a change under dispatch-viewer/app rebuilds the page and
+## then the binaries that embed it, in that order, without being asked by name.
 ##
 ## --skip=before on both, because .goreleaser.yaml's before hooks are
 ## `go mod tidy`, `go vet ./...` and `go test ./...` — release gates that
@@ -173,6 +184,43 @@ build-go:
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) $(PKG)
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(VIEWERLDFLAGS)' -o $(VIEWERBIN) $(VIEWERPKG)
 	@echo placeholder-guest > $(FLAVOUR) # after the build, so it is newer than $(BIN); see $(FLAVOUR) above
+
+NPM ?= npm
+
+## viewer: rebuild the embedded dispatch-viewer page from dispatch-viewer/app
+##
+## The page is a Vite/React app built to one self-contained file at
+## $(VIEWERPAGE), which cli.go embeds as before. The built file is committed,
+## so a clone with Go alone builds a working binary: without npm this target
+## prints SKIP and the committed page stands. Rebuilding needs Node 22.13 or
+## newer, the floor @codesweep-ai/ui sets.
+##
+## A phony alias for $(VIEWERPAGE), so a tree whose page is current does no npm
+## work at all. $(VIEWERPAGE) is in $(EMBED_DEPS), so `make build` reaches it
+## without being asked.
+viewer: $(VIEWERPAGE)
+
+$(VIEWERPAGE): $(VIEWER_SRC)
+	@if command -v $(NPM) >/dev/null 2>&1; then \
+		$(MAKE) viewer-build; \
+	else \
+		echo "viewer: SKIP (npm not on PATH; using the committed $(VIEWERPAGE))"; \
+	fi
+
+## viewer-build: the viewer rebuild itself, for when npm is known present
+viewer-build:
+	cd dispatch-viewer/app && $(NPM) ci && $(NPM) run build
+
+## fixtures: the dispatch viewer's behavioural oracle (needs a browser)
+##
+## Not part of `make check`: it drives a headless Chrome over pages rendered
+## from synthetic archives and needs one on the host (DISPATCH_FIXTURES_BROWSER,
+## CHROME_BIN or PUPPETEER_EXECUTABLE_PATH), plus `npm ci` in dispatch-viewer/app.
+## dispatch-viewer/fixtures/README.md has the checks and the flags;
+## FIXTURE_ARGS passes them through: make fixtures FIXTURE_ARGS=--strict
+FIXTURE_ARGS ?=
+fixtures:
+	cd dispatch-viewer/app && $(NPM) run fixtures -- $(FIXTURE_ARGS)
 
 ## versions: what this build is made of — this repo's binary, every pinned tool,
 ## the Go toolchain, and whether a workspace is overriding the go.mod pins. The
@@ -423,7 +471,7 @@ DOTENV = set -a; [ -f .env ] && . ./.env; set +a;
 ##
 ## -run selects the live members for the same reason test-smoke does. The
 ## recording test is not among them: it overwrites the committed cassette, so
-## it is `make fixtures` and nothing else.
+## it is `make record-fixtures` and nothing else.
 INTEGRATION_TESTS ?= TestLiveMatrix|TestLiveHeterogeneousFleet
 
 test-integration: setup-smoke
@@ -432,7 +480,7 @@ test-integration: setup-smoke
 	  -count=1 -p 1 -v -timeout 5400s -run '$(INTEGRATION_TESTS)' ./internal/cli \
 	  -args -test.gocoverdir=$(COVER_ABS)/integration
 
-## fixtures: LIVE — record the cassettes test-smoke replays
+## record-fixtures: LIVE — record the cassettes test-smoke replays
 ##
 ## Runs each scenario against its real provider with a cs-vcr in record mode,
 ## and writes test/cassettes/<scenario>/. Costs a real campaign per scenario and
@@ -440,22 +488,22 @@ test-integration: setup-smoke
 ## result with the code: CI replays what this records.
 ##
 ## Re-record one at a time when an agent version moves:
-##   make fixtures FIXTURE_TESTS='TestLiveRecordsACassette/codex-api-key'
+##   make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/codex-api-key'
 ##
 ## Re-record when an agent version moves, when the profile the driver renders
 ## changes, or when a replay starts missing. A cassette is bound to the profile
 ## that recorded it, because the campaign ID is that profile's digest.
 FIXTURE_TESTS ?= TestLiveRecordsACassette
 
-fixtures: setup-smoke
+record-fixtures: setup-smoke
 	$(DOTENV) $(WITH_TOOLS) CS_CAMPAIGN_LIVE=1 CS_CAMPAIGN_RECORD=1 go test -tags integration -count=1 -p 1 -v -timeout 7200s \
 	  ./internal/cli -run '$(FIXTURE_TESTS)'
 
-## fixtures-strict: the same recording, with a skip treated as a failure. For a
+## record-fixtures-strict: the same recording, with a skip treated as a failure. For a
 ## host that holds every credential and means to re-record all five: a missing
-## one skips under `fixtures`, and a run that recorded nothing reports the same
+## one skips under `record-fixtures`, and a run that recorded nothing reports the same
 ## green as one that recorded everything. scripts/record-fixtures.sh runs this.
-fixtures-strict: setup-smoke
+record-fixtures-strict: setup-smoke
 	$(DOTENV) $(WITH_TOOLS) CS_CAMPAIGN_LIVE=1 CS_CAMPAIGN_RECORD=1 CS_CAMPAIGN_STRICT=1 \
 	  go test -tags integration -count=1 -p 1 -v -timeout 7200s ./internal/cli -run '$(FIXTURE_TESTS)'
 

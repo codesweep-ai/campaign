@@ -1,0 +1,32 @@
+{
+  "name": "cs-dispatch-viewer-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "build": "tsc --noEmit && vite build && cp dist/index.html ../internal/cli/shell/viewer.html",
+    "typecheck": "tsc --noEmit",
+    "fixtures": "node ../fixtures/run.mjs"
+  },
+  "dependencies": {
+    "@codesweep-ai/ui": "0.2.1-dev.20260901200135.3160175",
+    "highlight.js": "^11.11.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^6.0.2",
+    "pixelmatch": "^7.2.0",
+    "pngjs": "^7.0.0",
+    "puppeteer": "^25.8.0",
+    "typescript": "^5.6.3",
+    "vite": "^8.0.14",
+    "vite-plugin-singlefile": "^2.3.0"
+  }
+}

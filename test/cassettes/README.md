@@ -1,7 +1,7 @@
 # Cassettes
 
 `make test-smoke` replays what is here: one directory per scenario, each holding
-one cassette per campaign member, recorded by `make fixtures` through a cs-vcr on
+one cassette per campaign member, recorded by `make record-fixtures` through a cs-vcr on
 the campaign's own fabric.
 
 One directory per scenario in `scenarios()`, two cassettes in each — ten in all,
@@ -34,7 +34,7 @@ invalidates the recording, so re-record rather than hand-editing a cassette.
 Re-record one scenario at a time — each costs a real campaign:
 
 ```bash
-make fixtures FIXTURE_TESTS='TestLiveRecordsACassette/codex-api-key'
+make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/codex-api-key'
 ```
 
 ## Ruleset compatibility

@@ -14,6 +14,11 @@
 # goreleaser release artifacts
 /dist/
 
+# The dispatch viewer app's toolchain output. The built page itself is
+# committed at dispatch-viewer/internal/cli/shell/viewer.html.
+/dispatch-viewer/app/node_modules/
+/dispatch-viewer/app/dist/
+
 # Local credentials and env config
 /.env
 *.key
@@ -49,3 +54,4 @@
 # it would override the go.mod pins for anyone who cloned this.
 go.work
 go.work.sum
+

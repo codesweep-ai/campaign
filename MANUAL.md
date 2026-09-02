@@ -473,16 +473,20 @@ It reads the archive and nothing else:
   `INCOMPLETE-*` markers.
 
 **Timeline.** Each node gets one lane, with the orchestrator first. Squares are channel artifacts: the facts any
-observer can verify from the files alone.
+observer can verify from the files alone. Every mark's colour is a design token from one palette
+map (`dispatch-viewer/app/src/model.ts`):
 
-| Square | Meaning |
-|---|---|
-| gray | dispatch open |
-| amber | continue |
-| fuchsia | restart re-anchor |
-| green | reply, phase `done` |
-| red | reply, phase `blocked` or `needs-input` |
-| blue, glowing | the mission verdict; orange when the campaign was not met |
+| Mark | Token | Meaning |
+|---|---|---|
+| square | `--color-neutral` | dispatch open |
+| square | `--color-warning` | continue |
+| square | `--color-cat-8-mid` | restart re-anchor |
+| square | `--color-success` | reply, phase `done` |
+| square | `--color-error` | reply, phase `blocked` or `needs-input` |
+| square, haloed | `--color-link` with a `--color-accent-bg` halo | the mission verdict; `--color-severe` with a `--color-severe-bg` halo when the campaign was not met |
+| hollow circle | `--color-accent` | accept (log claim) |
+| circle | `--color-cat-1` | plan (log claim) |
+| circle | `--color-cat-4` | assessment (log claim) |
 
 A connector runs from a dispatch's open square to its reply, showing the span it was open. Columns
 are event-ordered so dense exchanges stay readable, and the ruler underneath shows the same events
@@ -490,12 +494,15 @@ at true wall-clock spacing.
 
 **show orchestrator log.** Off by default, so the bare timeline is the dispatch and reply protocol
 as the channels prove it. Checking the box overlays the orchestrator's claims as circles on the
-`log` sub-lane, and reveals the verbatim log panel. Acceptance is a log claim, so it appears only
-with the log shown.
+`log` sub-lane, and reveals the verbatim log panel. Everything on the `log` sub-lane comes from the
+orchestrator's `log.jsonl`: claims, not channel traffic. Acceptance is a log claim, so it appears
+only with the log shown.
 
 **Selection.** Click any mark to inspect it. Reply notes render as markdown, evidence blocks as
 JSON, and the `raw` toggle shows the artifact byte for byte as it sits in the archive. Selecting an
-accept circle outlines the reply it judged, and the reverse. Arrow keys step through events.
+accept circle outlines the reply it judged, and the reverse. Arrow keys step through events (with
+the timeline focused or anywhere on the page), Home and End jump to the first and last event, and
+Escape clears the selection.
 
 **Issues.** Findings from the integrity checks, most severe first. Clicking one selects its evidence
 on the timeline, and hovering shows the finding code's definition. Where the archive
@@ -504,8 +511,9 @@ under-determines what happened, the finding states the choice the renderer made 
 An archive made before `cs-campaign` preserved channel modification times cannot honestly be drawn
 as a timeline. Such a page shows the findings and says to regenerate the run.
 
-The theme button cycles system, light and dark, and remembers the mode. `?theme=light` or
-`?theme=dark` on the URL overrides for that load without being saved.
+The theme button cycles system, light and dark, and remembers the mode. `?theme=light`,
+`?theme=dark` or `?theme=system` on the URL overrides for that load without being saved; `system`
+follows the OS scheme.
 
 ### Findings reference
 

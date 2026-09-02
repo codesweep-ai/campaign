@@ -1,0 +1,125 @@
+/* dispatch-viewer — styled exclusively through @codesweep-ai/ui tokens.
+   core.css (tokens + reset + base + utilities) plus the sheets for the
+   components this page actually renders (CP-09: no monolithic components.css). */
+@import "@codesweep-ai/ui/styles/core.css";
+@import "@codesweep-ai/ui/styles/components/app-shell.css";
+@import "@codesweep-ai/ui/styles/components/card.css";
+@import "@codesweep-ai/ui/styles/components/code-block.css";
+@import "@codesweep-ai/ui/styles/syntax.css";
+@import "@codesweep-ai/ui/styles/components/chart-tooltip.css";
+@import "@codesweep-ai/ui/styles/components/event-lanes.css";
+@import "@codesweep-ai/ui/styles/components/legend.css";
+@import "@codesweep-ai/ui/styles/components/pulse-badge.css";
+@import "@codesweep-ai/ui/styles/components/segmented-control.css";
+@import "@codesweep-ai/ui/styles/components/status-badge.css";
+@import "@codesweep-ai/ui/styles/components/table.css";
+@import "@codesweep-ai/ui/styles/components/theme-toggle.css";
+@import "@codesweep-ai/ui/styles/markdown-content.css";
+
+/* AppShell owns the page scroll model (its direct <main> scrolls); nothing
+   here sets html/body overflow. */
+
+.pagehead { padding: var(--space-4) var(--space-4) 0; }
+.pagehead h1 {
+  margin: 0; font-size: var(--font-size-lg); font-weight: var(--font-weight-bold);
+  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+}
+.pagehead .pname { font-weight: var(--font-weight-semibold); }
+.pagehead .pmeta { color: var(--muted); font-size: var(--font-size-xs); margin-top: var(--space-1); }
+
+.layout {
+  display: grid; grid-template-columns: minmax(0, 1fr) 520px;
+  gap: var(--space-4); padding: var(--space-4); align-items: start;
+}
+@media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+.col { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+
+/* Card headers: Card's `header` slot is one inline span, so the row layout
+   (title left, controls right) is the app's. */
+.chead-row { display: flex; align-items: center; gap: var(--space-3); width: 100%; }
+.chead-row .spacer { flex: 1; }
+.section-title {
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); color: var(--muted);
+  text-transform: uppercase; letter-spacing: var(--letter-spacing-wide);
+}
+#issue-count { font-size: var(--font-size-xs); font-weight: var(--font-weight-regular); color: var(--muted); }
+
+.toggle { display: inline-flex; align-items: center; gap: var(--space-1);
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-regular); color: var(--muted);
+  cursor: pointer; user-select: none; }
+
+/* Timeline: EventLanes owns the strip; these are the app's lane-label
+   treatments and the true-time ruler content in its slot. The lane label is
+   reached through the documented data-event-lane-label hook plus the app's
+   own className — never a cs-component-* class. */
+[data-event-lane-label].orch { color: var(--color-accent); font-weight: var(--font-weight-semibold); }
+[data-event-lane-label].loglane { color: var(--muted); font-style: italic; }
+
+.ruler { position: relative; height: 100%; }
+.ruler .tick { position: absolute; top: var(--space-0-5); width: var(--space-0-5); height: var(--space-2); background: var(--muted); opacity: .6; }
+.ruler .lab {
+  position: absolute; top: var(--space-3); font-size: var(--font-size-chart-axis); color: var(--muted);
+  font-family: var(--font-family-mono); white-space: nowrap;
+}
+
+.legend { padding: var(--space-2) 0 0; border-top: 1px solid var(--border); }
+.legend .lrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  padding: var(--space-1) 0; }
+.legend .lsrc { flex: 0 0 150px; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
+  color: var(--muted); text-transform: uppercase; letter-spacing: var(--letter-spacing-wide); }
+/* The log-plane legend row never moves — it de-emphasises when the log is
+   hidden. The base did that with `opacity: .35` on the whole row; that is not
+   available any more. Row 2's gate is zero serious axe violations, and dimming
+   text to 35 % costs four color-contrast failures per theme — measured, the
+   12px/600 "orchestrator log" label falls 7.56 -> 1.76 (light) and
+   7.18 -> 1.95 (dark) against a 4.5:1 floor, and no text colour survives 35 %
+   opacity on this background (pure black reaches 2.6). So the colour drains
+   from the swatches, which are aria-hidden and carry no contrast requirement,
+   and the item labels step back from --fg to --muted, which holds 7.56:1 and
+   7.18:1. Selectors are the component's documented data-legend-swatch /
+   data-legend-label hooks, not its structure or its hashed class names. */
+body.blind .legend .lrow.log [data-legend-swatch] { opacity: .35; }
+body.blind .legend .lrow.log [data-legend-label] { color: var(--muted); }
+
+/* Issues */
+#issues .code { font-family: var(--font-family-mono); font-size: var(--font-size-xs);
+  color: var(--muted); }
+/* Finding messages can carry verbatim file bodies — long unbroken tokens.
+   Without a break-anywhere rule the wrap column's min-content balloons the
+   table past its card at narrow widths; this keeps the table inside the card. */
+#issues .finding { overflow-wrap: anywhere; }
+.none { color: var(--muted); font-size: var(--font-size-xs); padding: var(--space-3) var(--space-4); }
+
+/* Inspector / log */
+.kv { display: grid; grid-template-columns: 110px 1fr; gap: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs); margin-bottom: var(--space-3); }
+.kv dt { color: var(--muted); text-transform: uppercase; letter-spacing: var(--letter-spacing-wide); }
+.kv dd { margin: 0; font-family: var(--font-family-mono); overflow-wrap: anywhere; }
+.doc {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  font-size: var(--font-size-code); line-height: var(--line-height-code);
+}
+.doc pre { margin: 0; font-family: var(--font-family-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.doc.md { font-family: var(--font-family-sans); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
+.doc.md h1, .doc.md h2, .doc.md h3, .doc.md h4 { margin: var(--space-3) 0 var(--space-1); font-size: var(--font-size-sm); }
+.doc.md h1 { font-size: var(--font-size-md); }
+.doc.md p, .doc.md ul, .doc.md ol { margin: var(--space-2) 0; }
+.doc.md li { margin: var(--space-1) 0; }
+.doc.md code { font-family: var(--font-family-mono); font-size: var(--font-size-code);
+  background: var(--color-bg-subtle); border-radius: var(--radius-xs); padding: 0 3px; }
+.doc.md pre code { background: transparent; padding: 0; }
+.doc.md pre { background: var(--color-bg-subtle); padding: var(--space-2); border-radius: var(--radius-sm); }
+.doc.md a { color: var(--color-link); }
+/* The log is a Table now, so row chrome (padding, hover, focus ring, selected
+   background) comes from the design system, as it already did for Issues.
+   These rules style only the cell contents. */
+#log-list .kind { color: var(--fg); font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-mono); }
+#log-list .logtime { font-family: var(--font-family-mono); color: var(--muted);
+  white-space: nowrap; }
+#log-list .snip { color: var(--muted); }
+body.blind #log-list { display: none; }
+#log-hidden { display: none; }
+body.blind #log-hidden { display: block; }
+.scroll-y { max-height: 40vh; overflow-y: auto; scrollbar-gutter: stable; }

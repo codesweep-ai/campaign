@@ -61,6 +61,13 @@ commit whatever it regenerates under `covmap/`.
 changing branches, rebasing or pulling, use `go test -count=1 ./...`. A cached green after moving
 eleven commits is not evidence.
 
+**The dispatch viewer needs Node only to change it.** The page is a React app in
+`dispatch-viewer/app/`, built on `@codesweep-ai/ui` and committed as the single file
+`dispatch-viewer/internal/cli/shell/viewer.html` that the binary embeds. Every Go gate above runs
+in any clone, and the binary builds with Go alone. Rebuilding the page with `make viewer` needs
+Node 22.13 or newer and npm, the floor `@codesweep-ai/ui` sets. Without them the target prints
+SKIP and the committed page stands.
+
 This repository keeps a **ledger** of open issues in `ledger/`. Read
 [`ledger/AGENTS.md`](ledger/AGENTS.md) before you start work, and follow it as you go. A commit
 that touches `ledger/` needs `cs-ledger render && cs-ledger check` to pass first, and

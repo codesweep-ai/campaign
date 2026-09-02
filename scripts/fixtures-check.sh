@@ -50,7 +50,7 @@ for scenario in "${scenarios[@]}"; do
 
   if ! output=$(go tool cs-vcr cassette verify --config "$config" "${members[@]}" 2>&1); then
     echo "$output" >&2
-    echo "  re-record with: make fixtures FIXTURE_TESTS='TestLiveRecordsACassette/$name'" >&2
+    echo "  re-record with: make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/$name'" >&2
     status=1
   fi
 
@@ -77,7 +77,7 @@ for scenario in "${scenarios[@]}"; do
       # The claim was never settled: the run started and did not finish.
       echo "$name: the recording that produced this never finished" >&2
       echo "  its entries are valid and its campaign never reached a verdict" >&2
-      echo "  re-record with: make fixtures FIXTURE_TESTS='TestLiveRecordsACassette/$name'" >&2
+      echo "  re-record with: make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/$name'" >&2
       status=1
       ;;
     *)
@@ -85,7 +85,7 @@ for scenario in "${scenarios[@]}"; do
       # of these commits a fixture whose replay is required to fail.
       echo "$name: recorded a campaign that was not met (outcome: ${outcome:-unreadable})" >&2
       echo "  the smoke tier asserts campaign-met, so this cassette can only replay red" >&2
-      echo "  re-record with: make fixtures FIXTURE_TESTS='TestLiveRecordsACassette/$name'" >&2
+      echo "  re-record with: make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/$name'" >&2
       status=1
       ;;
   esac

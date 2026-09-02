@@ -1,0 +1,1130 @@
+[
+  {
+    "id": "CF-01",
+    "title": "lanes: count, labels in order (orchestrator first), kind, events per lane",
+    "status": "keep",
+    "value": {
+      "healthy": [
+        {
+          "label": "orchestrator",
+          "kind": "orchestrator",
+          "events": 4
+        },
+        {
+          "label": "log",
+          "kind": "log",
+          "events": 6
+        },
+        {
+          "label": "dev",
+          "kind": "member",
+          "events": 9
+        }
+      ],
+      "clobbered": [],
+      "name-mismatch": [
+        {
+          "label": "orchestrator",
+          "kind": "orchestrator",
+          "events": 4
+        },
+        {
+          "label": "log",
+          "kind": "log",
+          "events": 6
+        },
+        {
+          "label": "dev",
+          "kind": "member",
+          "events": 11
+        }
+      ],
+      "create-phase": [
+        {
+          "label": "orchestrator",
+          "kind": "orchestrator",
+          "events": 1
+        },
+        {
+          "label": "dev",
+          "kind": "member",
+          "events": 4
+        }
+      ]
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-02",
+    "title": "marks: total squares, event kinds present, connectors",
+    "status": "keep",
+    "value": {
+      "healthy": {
+        "squares": 19,
+        "kinds": [
+          "accept",
+          "continue",
+          "open",
+          "plan",
+          "reply-done",
+          "verdict-ok"
+        ],
+        "connectors": 5
+      },
+      "clobbered": {
+        "squares": 0,
+        "kinds": [],
+        "connectors": 0
+      },
+      "name-mismatch": {
+        "squares": 21,
+        "kinds": [
+          "accept",
+          "continue",
+          "open",
+          "plan",
+          "reply-done",
+          "verdict-ok"
+        ],
+        "connectors": 5
+      },
+      "create-phase": {
+        "squares": 5,
+        "kinds": [
+          "open",
+          "reply-done"
+        ],
+        "connectors": 3
+      }
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-03",
+    "title": "page head: campaign name, verdict text, meta; banner; timeline hidden",
+    "status": "keep",
+    "value": {
+      "healthy": {
+        "head": {
+          "name": "fix1",
+          "verdict": "campaign-met",
+          "meta": "2026-08-18 07:00:00Z · 40m00s"
+        },
+        "banner": "",
+        "timelineHidden": false
+      },
+      "clobbered": {
+        "head": {
+          "name": "fix1",
+          "verdict": "campaign-met",
+          "meta": "2026-08-18 07:00:00Z · 40m00s"
+        },
+        "banner": "No timeline. all 9 message files fall within 0s — collection time, not event time; this archive predates the mtime-preserving extractor, regenerate the run with the current cs-campaign",
+        "timelineHidden": true
+      },
+      "name-mismatch": {
+        "head": {
+          "name": "fix1",
+          "verdict": "campaign-met",
+          "meta": "2026-08-18 07:00:00Z · 40m00s"
+        },
+        "banner": "",
+        "timelineHidden": false
+      },
+      "create-phase": {
+        "head": {
+          "name": "cf1",
+          "verdict": "no verdict",
+          "meta": "2026-08-18 09:00:00Z"
+        },
+        "banner": "",
+        "timelineHidden": false
+      }
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-04",
+    "title": "issues: count text and code:severity rows in order",
+    "status": "keep",
+    "value": {
+      "healthy": {
+        "count": "10 found",
+        "rows": [
+          "accept-unknown:error",
+          "no-reply:severe",
+          "accept-before-reply:warning",
+          "continues-exceed-policy:warning",
+          "accept-before-reply:warning",
+          "accept-ambiguous:info",
+          "accept-of-readback:info",
+          "accepted-twice:info",
+          "accept-of-own-channel:info",
+          "ambiguous-order:info"
+        ]
+      },
+      "clobbered": {
+        "count": "10 found",
+        "rows": [
+          "accept-unknown:error",
+          "mtimes-clobbered:error",
+          "no-reply:severe",
+          "accept-before-reply:warning",
+          "continues-exceed-policy:warning",
+          "accept-before-reply:warning",
+          "accept-ambiguous:info",
+          "accept-of-readback:info",
+          "accepted-twice:info",
+          "accept-of-own-channel:info"
+        ]
+      },
+      "name-mismatch": {
+        "count": "14 found",
+        "rows": [
+          "reply-name-mismatch:error",
+          "accept-unknown:error",
+          "reply-without-dispatch:error",
+          "reply-not-accepted:severe",
+          "accept-before-reply:warning",
+          "continues-exceed-policy:warning",
+          "reply-not-accepted:warning",
+          "accept-before-reply:warning",
+          "accept-ambiguous:info",
+          "accept-of-readback:info",
+          "accepted-twice:info",
+          "accept-of-own-channel:info",
+          "ambiguous-order:info",
+          "ambiguous-order:info"
+        ]
+      },
+      "create-phase": {
+        "count": "3 found",
+        "rows": [
+          "log-missing:severe",
+          "no-reply:severe",
+          "no-verdict:severe"
+        ]
+      }
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-05",
+    "title": "legend rows and the section headers",
+    "status": "keep",
+    "value": {
+      "healthy": {
+        "legend": [
+          "channels dispatch open continue restart reply done reply blocked/needs-input verdict",
+          "orchestrator log accept (log) plan assessment"
+        ],
+        "sections": [
+          "Timeline",
+          "Issues",
+          "Orchestrator log",
+          "Inspector"
+        ]
+      },
+      "clobbered": {
+        "legend": [
+          "channels dispatch open continue restart reply done reply blocked/needs-input verdict",
+          "orchestrator log accept (log) plan assessment"
+        ],
+        "sections": [
+          "Timeline",
+          "Issues",
+          "Orchestrator log",
+          "Inspector"
+        ]
+      },
+      "name-mismatch": {
+        "legend": [
+          "channels dispatch open continue restart reply done reply blocked/needs-input verdict",
+          "orchestrator log accept (log) plan assessment"
+        ],
+        "sections": [
+          "Timeline",
+          "Issues",
+          "Orchestrator log",
+          "Inspector"
+        ]
+      },
+      "create-phase": {
+        "legend": [
+          "channels dispatch open continue restart reply done reply blocked/needs-input verdict",
+          "orchestrator log accept (log) plan assessment"
+        ],
+        "sections": [
+          "Timeline",
+          "Issues",
+          "Orchestrator log",
+          "Inspector"
+        ]
+      }
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-06",
+    "title": "structure identical in the dark theme (CF-01..05 measured under ?theme=dark)",
+    "status": "keep",
+    "value": {
+      "healthy": true,
+      "clobbered": true,
+      "name-mismatch": true,
+      "create-phase": true
+    },
+    "note": "structure is theme-independent; the value is `true` per archive, else the first differing field"
+  },
+  {
+    "id": "CF-10",
+    "title": "click square i → inspector shows its node/event/at rows, doc panels, accept↔reply link",
+    "status": "keep",
+    "value": {
+      "healthy": [
+        "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=2026-08-18 07:01:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+        "1|sel=1|node=dev|event=open · dev/d001|at=2026-08-18 07:01:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+        "2|sel=2|node=orchestrator|event=open · orchestrator/m1|at=2026-08-18 07:02:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=md|link=null",
+        "3|sel=3|node=orchestrator|event=accept · d001|at=2026-08-18 07:02:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=-|link=4",
+        "4|sel=4|node=orchestrator|event=reply · orchestrator/d001 · done|at=2026-08-18 07:03:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+        "5|sel=5|node=dev|event=reply · dev/d001 · done|at=2026-08-18 07:04:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+        "6|sel=6|node=orchestrator|event=plan|at=2026-08-18 07:05:00Z|docs=md|link=null",
+        "7|sel=7|node=dev|event=open · dev/d002|at=2026-08-18 07:10:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=null",
+        "8|sel=8|node=dev|event=continue · dev/d002|at=2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=null",
+        "9|sel=9|node=dev|event=reply · dev/d002 · done|at=2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=10",
+        "10|sel=10|node=orchestrator|event=accept · dev/d002|at=2026-08-18 07:30:00Z|docs=-|link=9",
+        "11|sel=11|node=orchestrator|event=accept · d999|at=2026-08-18 07:31:00Z|docs=-|link=null",
+        "12|sel=12|node=orchestrator|event=accept · dev/d002|at=2026-08-18 07:32:00Z|docs=-|link=9",
+        "13|sel=13|node=dev|event=open · dev/d003|at=2026-08-18 07:35:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "14|sel=14|node=dev|event=continue · dev/d003|at=2026-08-18 07:36:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "15|sel=15|node=dev|event=continue · dev/d003|at=2026-08-18 07:37:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "16|sel=16|node=dev|event=continue · dev/d003|at=2026-08-18 07:38:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "17|sel=17|node=orchestrator|event=verdict · orchestrator/m1 · campaign-met|at=2026-08-18 07:40:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=md|link=18",
+        "18|sel=18|node=orchestrator|event=accept · orchestrator/m1|at=2026-08-18 07:41:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=-|link=17"
+      ],
+      "clobbered": "no-timeline",
+      "name-mismatch": [
+        "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=2026-08-18 07:01:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+        "1|sel=1|node=dev|event=open · dev/d001|at=2026-08-18 07:01:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+        "2|sel=2|node=orchestrator|event=open · orchestrator/m1|at=2026-08-18 07:02:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=md|link=null",
+        "3|sel=3|node=orchestrator|event=accept · d001|at=2026-08-18 07:02:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=-|link=4",
+        "4|sel=4|node=orchestrator|event=reply · orchestrator/d001 · done|at=2026-08-18 07:03:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+        "5|sel=5|node=dev|event=reply · dev/d001 · done|at=2026-08-18 07:04:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+        "6|sel=6|node=orchestrator|event=plan|at=2026-08-18 07:05:00Z|docs=md|link=null",
+        "7|sel=7|node=dev|event=open · dev/d002|at=2026-08-18 07:10:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=null",
+        "8|sel=8|node=dev|event=continue · dev/d002|at=2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=null",
+        "9|sel=9|node=dev|event=reply · dev/d002 · done|at=2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=10",
+        "10|sel=10|node=orchestrator|event=accept · dev/d002|at=2026-08-18 07:30:00Z|docs=-|link=9",
+        "11|sel=11|node=orchestrator|event=accept · d999|at=2026-08-18 07:31:00Z|docs=-|link=null",
+        "12|sel=12|node=orchestrator|event=accept · dev/d002|at=2026-08-18 07:32:00Z|docs=-|link=9",
+        "13|sel=13|node=dev|event=open · dev/d003|at=2026-08-18 07:35:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "14|sel=14|node=dev|event=continue · dev/d003|at=2026-08-18 07:36:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "15|sel=15|node=dev|event=continue · dev/d003|at=2026-08-18 07:37:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "16|sel=16|node=dev|event=continue · dev/d003|at=2026-08-18 07:38:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "17|sel=17|node=dev|event=reply · dev/d003 · done|at=2026-08-18 07:38:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "18|sel=18|node=dev|event=reply · dev/d005 · done|at=2026-08-18 07:39:00Z|docs=md|link=null",
+        "19|sel=19|node=orchestrator|event=verdict · orchestrator/m1 · campaign-met|at=2026-08-18 07:40:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=md|link=20",
+        "20|sel=20|node=orchestrator|event=accept · orchestrator/m1|at=2026-08-18 07:41:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=-|link=19"
+      ],
+      "create-phase": [
+        "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=2026-08-18 09:01:00Z|docs=md|link=null",
+        "1|sel=1|node=dev|event=open · dev/d001|at=2026-08-18 09:01:00Z|open for=2m00s|docs=md|link=null",
+        "2|sel=2|node=dev|event=reply · dev/d001 · done|at=2026-08-18 09:03:00Z|open for=2m00s|docs=md|link=null",
+        "3|sel=3|node=dev|event=open · dev/d002|at=2026-08-18 09:10:00Z|open for=2m00s|docs=md|link=null",
+        "4|sel=4|node=dev|event=reply · dev/d002 · done|at=2026-08-18 09:12:00Z|open for=2m00s|docs=md|link=null"
+      ]
+    },
+    "note": "one line per event: index|selected index|kv rows|doc panel kinds|linked square; measured with the log shown"
+  },
+  {
+    "id": "CF-11",
+    "title": "ArrowRight ×10 from a fresh page, log shown: selection index sequence",
+    "status": "keep",
+    "value": {
+      "healthy": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "clobbered": "no-timeline",
+      "name-mismatch": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "create-phase": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ]
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-12",
+    "title": "ArrowRight walk with the log hidden: landings on hidden squares",
+    "status": "must-change",
+    "target": "hiddenLandings is empty — stepping never selects a square the timeline does not show",
+    "value": {
+      "healthy": {
+        "steps": 13,
+        "hiddenLandings": []
+      },
+      "clobbered": "no-timeline",
+      "name-mismatch": {
+        "steps": 15,
+        "hiddenLandings": []
+      },
+      "create-phase": {
+        "steps": 5,
+        "hiddenLandings": []
+      }
+    },
+    "note": "baseline: the arrow handler steps through every event, including log-lane events the timeline hides (CP-08)"
+  },
+  {
+    "id": "CF-13",
+    "title": "ArrowLeft ×10 from the last square, log shown: selection index sequence",
+    "status": "keep",
+    "value": {
+      "healthy": [
+        17,
+        16,
+        15,
+        14,
+        13,
+        12,
+        11,
+        10,
+        9,
+        8
+      ],
+      "clobbered": "no-timeline",
+      "name-mismatch": [
+        19,
+        18,
+        17,
+        16,
+        15,
+        14,
+        13,
+        12,
+        11,
+        10
+      ],
+      "create-phase": [
+        3,
+        2,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-14",
+    "title": "click issue row k → the timeline selection jumps to its evidence event",
+    "status": "keep",
+    "value": {
+      "healthy": [
+        "0:accept-unknown->null",
+        "1:no-reply->13",
+        "2:accept-before-reply->5",
+        "3:continues-exceed-policy->13",
+        "4:accept-before-reply->4",
+        "5:accept-ambiguous->4",
+        "6:accept-of-readback->4",
+        "7:accepted-twice->9",
+        "8:accept-of-own-channel->17",
+        "9:ambiguous-order->null"
+      ],
+      "clobbered": "no-timeline",
+      "name-mismatch": [
+        "0:reply-name-mismatch->17",
+        "1:accept-unknown->null",
+        "2:reply-without-dispatch->18",
+        "3:reply-not-accepted->18",
+        "4:accept-before-reply->5",
+        "5:continues-exceed-policy->17",
+        "6:reply-not-accepted->17",
+        "7:accept-before-reply->4",
+        "8:accept-ambiguous->4",
+        "9:accept-of-readback->4",
+        "10:accepted-twice->9",
+        "11:accept-of-own-channel->19",
+        "12:ambiguous-order->null",
+        "13:ambiguous-order->null"
+      ],
+      "create-phase": [
+        "0:log-missing->null",
+        "1:no-reply->0",
+        "2:no-verdict->null"
+      ]
+    },
+    "note": "null: the row has no evidence event to jump to (no dispatch)"
+  },
+  {
+    "id": "CF-15",
+    "title": "show-orchestrator-log toggle: log list/notice visibility, log row count, squares revealed",
+    "status": "keep",
+    "value": {
+      "healthy": {
+        "off": {
+          "logHidden": true,
+          "checked": false,
+          "logListVisible": false,
+          "noticeVisible": true,
+          "logRows": 6,
+          "visibleSquares": 13
+        },
+        "on": {
+          "logHidden": false,
+          "checked": true,
+          "logListVisible": true,
+          "noticeVisible": false,
+          "logRows": 6,
+          "visibleSquares": 19
+        },
+        "offAgain": {
+          "logHidden": true,
+          "checked": false,
+          "logListVisible": false,
+          "noticeVisible": true,
+          "logRows": 6,
+          "visibleSquares": 13
+        },
+        "revealedByLog": [
+          3,
+          6,
+          10,
+          11,
+          12,
+          18
+        ]
+      },
+      "clobbered": "no-timeline",
+      "name-mismatch": {
+        "off": {
+          "logHidden": true,
+          "checked": false,
+          "logListVisible": false,
+          "noticeVisible": true,
+          "logRows": 6,
+          "visibleSquares": 15
+        },
+        "on": {
+          "logHidden": false,
+          "checked": true,
+          "logListVisible": true,
+          "noticeVisible": false,
+          "logRows": 6,
+          "visibleSquares": 21
+        },
+        "offAgain": {
+          "logHidden": true,
+          "checked": false,
+          "logListVisible": false,
+          "noticeVisible": true,
+          "logRows": 6,
+          "visibleSquares": 15
+        },
+        "revealedByLog": [
+          3,
+          6,
+          10,
+          11,
+          12,
+          20
+        ]
+      },
+      "create-phase": {
+        "off": {
+          "logHidden": true,
+          "checked": false,
+          "logListVisible": false,
+          "noticeVisible": true,
+          "logRows": 0,
+          "visibleSquares": 5
+        },
+        "on": {
+          "logHidden": false,
+          "checked": true,
+          "logListVisible": true,
+          "noticeVisible": false,
+          "logRows": 0,
+          "visibleSquares": 5
+        },
+        "offAgain": {
+          "logHidden": true,
+          "checked": false,
+          "logListVisible": false,
+          "noticeVisible": true,
+          "logRows": 0,
+          "visibleSquares": 5
+        },
+        "revealedByLog": []
+      }
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-16",
+    "title": "rendered/raw segment: hidden until a selection; raw shows the artifact, rendered the doc panels",
+    "status": "keep",
+    "value": {
+      "healthy": {
+        "segmentVisibleBeforeSelection": false,
+        "event": 4,
+        "rendered": {
+          "segmentVisible": true,
+          "buttons": [
+            "rendered",
+            "raw"
+          ],
+          "active": "rendered",
+          "panels": [
+            "md"
+          ]
+        },
+        "raw": {
+          "segmentVisible": true,
+          "buttons": [
+            "rendered",
+            "raw"
+          ],
+          "active": "raw",
+          "panels": [
+            "raw"
+          ]
+        },
+        "renderedAgain": {
+          "segmentVisible": true,
+          "buttons": [
+            "rendered",
+            "raw"
+          ],
+          "active": "rendered",
+          "panels": [
+            "md"
+          ]
+        }
+      },
+      "clobbered": "no-timeline",
+      "name-mismatch": {
+        "segmentVisibleBeforeSelection": false,
+        "event": 4,
+        "rendered": {
+          "segmentVisible": true,
+          "buttons": [
+            "rendered",
+            "raw"
+          ],
+          "active": "rendered",
+          "panels": [
+            "md"
+          ]
+        },
+        "raw": {
+          "segmentVisible": true,
+          "buttons": [
+            "rendered",
+            "raw"
+          ],
+          "active": "raw",
+          "panels": [
+            "raw"
+          ]
+        },
+        "renderedAgain": {
+          "segmentVisible": true,
+          "buttons": [
+            "rendered",
+            "raw"
+          ],
+          "active": "rendered",
+          "panels": [
+            "md"
+          ]
+        }
+      },
+      "create-phase": {
+        "segmentVisibleBeforeSelection": false,
+        "event": 2,
+        "rendered": {
+          "segmentVisible": true,
+          "buttons": [
+            "rendered",
+            "raw"
+          ],
+          "active": "rendered",
+          "panels": [
+            "md"
+          ]
+        },
+        "raw": {
+          "segmentVisible": true,
+          "buttons": [
+            "rendered",
+            "raw"
+          ],
+          "active": "raw",
+          "panels": [
+            "raw"
+          ]
+        },
+        "renderedAgain": {
+          "segmentVisible": true,
+          "buttons": [
+            "rendered",
+            "raw"
+          ],
+          "active": "rendered",
+          "panels": [
+            "md"
+          ]
+        }
+      }
+    },
+    "note": "the first reply square; rendered = md/json panels, raw = the artifact verbatim"
+  },
+  {
+    "id": "CF-17",
+    "title": "theme toggle cycles and persists (localStorage dispatch-viewer-theme), OS light, empty storage",
+    "status": "keep",
+    "value": {
+      "initial": {
+        "attr": "light",
+        "stored": null
+      },
+      "click1": {
+        "attr": "light",
+        "stored": "light"
+      },
+      "reloadAfterClick1": {
+        "attr": "light",
+        "stored": "light"
+      },
+      "click2": {
+        "attr": "dark",
+        "stored": "dark"
+      },
+      "click3": {
+        "attr": "light",
+        "stored": "system"
+      }
+    },
+    "note": "the toggle cycles system → light → dark → system; the stored value is the mode, the attribute the resolved theme"
+  },
+  {
+    "id": "CF-18",
+    "title": "?theme= honoured on load and not persisted; stored mode beats the OS scheme",
+    "status": "keep",
+    "value": {
+      "?theme=dark|stored:none|os:light": {
+        "attr": "dark",
+        "stored": null
+      },
+      "?theme=light|stored:dark|os:light": {
+        "attr": "light",
+        "stored": "dark"
+      },
+      "?theme=system|stored:dark|os:light": {
+        "attr": "light",
+        "stored": "dark"
+      },
+      "no-param|stored:light|os:dark": {
+        "attr": "light",
+        "stored": "light"
+      },
+      "no-param|stored:none|os:dark": {
+        "attr": "dark",
+        "stored": null
+      }
+    },
+    "note": "`?theme=system` with a stored dark mode resolves to the OS scheme after mount (CP-03); the final state is what is recorded"
+  },
+  {
+    "id": "CF-19",
+    "title": "corrupt payload: one error surface, app does not mount, no page errors",
+    "status": "must-change",
+    "target": "surfaces === 1 (banner or toast, not both); pageErrors empty",
+    "value": {
+      "mounted": false,
+      "banners": 1,
+      "toasts": 0,
+      "surfaces": 1,
+      "message": "This page holds no readable run data (schema mismatch or corrupt payload).",
+      "pageErrors": []
+    },
+    "note": "baseline shows the same message as a banner and as a toast (CP-07)"
+  },
+  {
+    "id": "CF-20",
+    "title": "axe-core violations by rule, per theme × state (load, log shown + event 5 selected)",
+    "status": "must-change",
+    "target": "no serious or critical violations in any theme/state",
+    "value": {
+      "healthy": {
+        "light/load": {},
+        "dark/load": {},
+        "light/log+selected": {},
+        "dark/log+selected": {}
+      },
+      "clobbered": {
+        "light/load": {},
+        "dark/load": {}
+      },
+      "name-mismatch": {
+        "light/load": {},
+        "dark/load": {},
+        "light/log+selected": {},
+        "dark/log+selected": {}
+      },
+      "create-phase": {
+        "light/load": {},
+        "dark/load": {},
+        "light/log+selected": {},
+        "dark/log+selected": {}
+      }
+    },
+    "note": "rule ids and impacts are axe-core's; node counts are per rule. CP-04/CP-08/CP-19 name the causes"
+  },
+  {
+    "id": "CF-30",
+    "title": "first 20 Tab stops from a fresh page",
+    "status": "must-change",
+    "target": "a timeline square and an issue row are reached within the first 20 stops",
+    "value": {
+      "healthy": [
+        "a[Header](?)",
+        "a[Header](?)",
+        "button[ThemeToggle]",
+        "input#showlog[Card]",
+        "div[EventLanes]:square 0",
+        "button[Card]",
+        "tr[Table]:issue-row",
+        "button[Card]",
+        "body",
+        "a[Header](?)",
+        "a[Header](?)",
+        "button[ThemeToggle]",
+        "input#showlog[Card]",
+        "div[EventLanes]:square 0",
+        "button[Card]",
+        "tr[Table]:issue-row",
+        "button[Card]",
+        "body",
+        "a[Header](?)",
+        "a[Header](?)"
+      ],
+      "name-mismatch": [
+        "a[Header](?)",
+        "a[Header](?)",
+        "button[ThemeToggle]",
+        "input#showlog[Card]",
+        "div[EventLanes]:square 0",
+        "button[Card]",
+        "tr[Table]:issue-row",
+        "button[Card]",
+        "body",
+        "a[Header](?)",
+        "a[Header](?)",
+        "button[ThemeToggle]",
+        "input#showlog[Card]",
+        "div[EventLanes]:square 0",
+        "button[Card]",
+        "tr[Table]:issue-row",
+        "button[Card]",
+        "body",
+        "a[Header](?)",
+        "a[Header](?)"
+      ],
+      "create-phase": [
+        "a[Header](?)",
+        "a[Header](?)",
+        "button[ThemeToggle]",
+        "input#showlog[Card]",
+        "div[EventLanes]:square 0",
+        "button[Card]",
+        "tr[Table]:issue-row",
+        "button[Card]",
+        "body",
+        "a[Header](?)",
+        "a[Header](?)",
+        "button[ThemeToggle]",
+        "input#showlog[Card]",
+        "div[EventLanes]:square 0",
+        "button[Card]",
+        "tr[Table]:issue-row",
+        "button[Card]",
+        "body",
+        "a[Header](?)",
+        "a[Header](?)"
+      ]
+    },
+    "note": "stops are tag#id[data-component]; scroll containers appear because Chromium focuses them"
+  },
+  {
+    "id": "CF-31",
+    "title": "squares focusable (tabIndex ≥ 0)",
+    "status": "must-change",
+    "target": "the timeline exposes exactly one Tab stop, and every visible event is reachable from it by keyboard (Home, then ArrowRight to the end)",
+    "value": {
+      "healthy": {
+        "tabStops": 1,
+        "total": 19,
+        "steps": 19,
+        "missing": []
+      },
+      "name-mismatch": {
+        "tabStops": 1,
+        "total": 21,
+        "steps": 21,
+        "missing": []
+      },
+      "create-phase": {
+        "tabStops": 1,
+        "total": 5,
+        "steps": 5,
+        "missing": []
+      }
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-32",
+    "title": "issue rows under the roving tab stop: one row in the Tab order, arrows/Home/End reach every row",
+    "status": "must-change",
+    "target": "exactly one issue-row Tab stop; ArrowDown/ArrowUp walk it through every row; Home/End jump to the first/last",
+    "value": {
+      "healthy": {
+        "total": 10,
+        "tabStops": 1,
+        "reached": 10,
+        "home": "0",
+        "end": "9"
+      },
+      "name-mismatch": {
+        "total": 14,
+        "tabStops": 1,
+        "reached": 14,
+        "home": "0",
+        "end": "13"
+      },
+      "create-phase": {
+        "total": 3,
+        "tabStops": 1,
+        "reached": 3,
+        "home": "0",
+        "end": "2"
+      }
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-33",
+    "title": "Escape clears the selection",
+    "status": "must-change",
+    "target": "afterEscape === null",
+    "value": {
+      "healthy": {
+        "start": 5,
+        "afterEscape": null
+      },
+      "name-mismatch": {
+        "start": 5,
+        "afterEscape": null
+      },
+      "create-phase": {
+        "start": 4,
+        "afterEscape": null
+      }
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-34",
+    "title": "Home/End select the first/last event",
+    "status": "must-change",
+    "target": "afterHome === 0, afterEnd === last",
+    "value": {
+      "healthy": {
+        "start": 5,
+        "last": 18,
+        "afterHome": 0,
+        "afterEnd": 18
+      },
+      "name-mismatch": {
+        "start": 5,
+        "last": 20,
+        "afterHome": 0,
+        "afterEnd": 20
+      },
+      "create-phase": {
+        "start": 4,
+        "last": 4,
+        "afterHome": 0,
+        "afterEnd": 4
+      }
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-35",
+    "title": "clicking a square moves keyboard focus to it",
+    "status": "must-change",
+    "target": "after selecting an event, aria-activedescendant names that event's option and that option carries aria-selected=\"true\"",
+    "value": {
+      "healthy": {
+        "activeDescendantFollows": true
+      },
+      "name-mismatch": {
+        "activeDescendantFollows": true
+      },
+      "create-phase": {
+        "activeDescendantFollows": true
+      }
+    },
+    "note": ""
+  },
+  {
+    "id": "CF-40",
+    "title": "viewer.html (the shell) bytes and gzip bytes",
+    "status": "keep",
+    "budget": {
+      "bytes": 500000
+    },
+    "value": {
+      "bytes": 289709,
+      "gzip": 86934
+    },
+    "note": "budget 300,000 bytes for the shell; gzip is zlib's default level"
+  },
+  {
+    "id": "CF-41",
+    "title": "rendered page bytes, gzip, payload; shell share within budget",
+    "status": "keep",
+    "budget": {
+      "shellBytes": 500000
+    },
+    "value": {
+      "healthy": {
+        "bytes": 298444,
+        "gzip": 89144,
+        "payloadBytes": 8750,
+        "shellBytes": 289709
+      },
+      "clobbered": {
+        "bytes": 298435,
+        "gzip": 89151,
+        "payloadBytes": 8741,
+        "shellBytes": 289709
+      },
+      "name-mismatch": {
+        "bytes": 300059,
+        "gzip": 89385,
+        "payloadBytes": 10365,
+        "shellBytes": 289709
+      },
+      "create-phase": {
+        "bytes": 293790,
+        "gzip": 88383,
+        "payloadBytes": 4096,
+        "shellBytes": 289709
+      }
+    },
+    "note": "shellBytes = bytes − the run-data block + the marker; budgeted like CF-40. Payload size is the archive's, not the viewer's"
+  },
+  {
+    "id": "CF-60",
+    "title": "the issues table stays inside its card at a 600 px viewport (wide-finding archive)",
+    "status": "keep",
+    "value": {
+      "contained": true,
+      "pageErrors": 0
+    },
+    "note": "containment, not a width: rows stay within the card, the card within the page, and no horizontal scroll is needed. The wide-finding archive's Finding message is one long unbroken token, which is what the four shared archives cannot produce"
+  },
+  {
+    "id": "CF-61",
+    "title": "rendered markdown drops javascript:/data: links (empty href), keeps an ordinary link, and renders tables",
+    "status": "keep",
+    "value": {
+      "panel": true,
+      "unsafeLinks": 0,
+      "droppedLinks": 2,
+      "safeLinks": 1,
+      "tables": 1,
+      "literalPipes": 0,
+      "pageErrors": 0
+    },
+    "note": "the link allowlist lives in the viewer and applies to whichever parser entry is plugged in; anything off it becomes an empty href. The tables/pipes counts guard against a silent fallback to paragraphised pipes"
+  },
+  {
+    "id": "CF-50",
+    "title": "no external requests on file://, no page errors, no console errors (all probe pages)",
+    "status": "keep",
+    "value": {
+      "healthy": {
+        "requests": [],
+        "pageErrors": [],
+        "consoleErrors": []
+      },
+      "clobbered": {
+        "requests": [],
+        "pageErrors": [],
+        "consoleErrors": []
+      },
+      "name-mismatch": {
+        "requests": [],
+        "pageErrors": [],
+        "consoleErrors": []
+      },
+      "create-phase": {
+        "requests": [],
+        "pageErrors": [],
+        "consoleErrors": []
+      }
+    },
+    "note": "aggregated over every page the suite opened for the archive"
+  },
+  {
+    "id": "CF-51",
+    "title": "<script> elements in the rendered page (boot, run-data, module)",
+    "status": "keep",
+    "value": {
+      "healthy": 3,
+      "clobbered": 3,
+      "name-mismatch": 3,
+      "create-phase": 3
+    },
+    "note": ""
+  }
+]
