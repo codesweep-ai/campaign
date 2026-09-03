@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CefbUJcAgwydkPFxwJMgb","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":655,"cache_read_input_tokens":51755,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":655},"output_tokens":3,"service_tier":"standard","inference_geo":"not_available"}} }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}              }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"ErIFCqgBCBEYAipAnYlZaiL1IdfWFEnaaO6vENJzSFZYIWveFZTGX5KvHdvkkR9/Zj/X1xuYATPTbNqOz3mpdccmQTAju6tiTcuDyDIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEA/+lMrVBg+/x2kI1XYXPGiIAQGoAYmL49QGsAECEgzUazHrZMVs5fxG3IsaDBSYg0SYj2eMRRygFiIwb8NOFfZ44jBovT6ltSjLzizAYOTB/Am9jdw3qKCCT36CsGZBHQKT2vJoFoXx5WlBKrYDzMJUyr/o07U8RKtDVF2LK/dXjSrSp0EIIIlxHy5IPVbLskafXYY7IOsoyiZuI1qU5mwlaY9aHtaNgrnxkvSEn8/Bn+5XXjOE5/M20h/j1JU7/i580SRRi8X8hnsjJ+yb/+gIc57t1geGzXzoDdCucSIERgysLTKv7ySysP1dw8P5I5JMqSbfhrkfm1MZeEXuHsNVpHb2TUpddCg3SQucqh9R0MrV4G5zIYuCsnbYjIYbRcFfEvkDoWsqmgAkVxc/6veUlPKtisQUkb4ORN108qyHPA/PXBXm4RDX7jrHr+zEGdyfyKauLOel1XHaNOQzRhpIEIRUbDW4LkgH8Sb/qoFPcPgvCMuhLXMPYumukj2a8QQNI/QtxJwgi01ERtelBTzQnG9UGUmMSD0MsFKQ0R52PC5OUWnPeQihrd0dSShIv0/UFKy6aooDkffAc3xFcAG7SDdRCaasgXUN9QnO0schpekOki/JN7RqUgOfVrT2PY17i4DTYGhiYOLZA91t7dmggJIJsUhtD4xiybSxawJMGjqJWxklFyGTvZavODx4n68AtEbelnjYiufICwNAqyFfAh0mGAE="} }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01DgF4wfe9xsPzTp7W8ieBrd","name":"Write","input":{},"caller":{"type":"direct"}}       }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/tmp/mission_reply.md\", \"content\": \"# Campaign summary: greet, tested\\n\\nDispatched d002 to dev with the exact mission requirements. Dev delivered\\n`src/greet.py` (greet(name) -\u003e \\\"Hello, \u003cname\u003e!\\\") and `tests/test_greet.py`\\n(covers a normal name and the empty string) in one pass, committed to its own\\nbranch (cs-sandbox/<DEV:1>.<GROUP:1>, commit 1236384).\\n\\nI independently verified rather than trusting the report: fetched dev's\\nbranch, checked out the exact commit into an isolated worktree, and ran\\n`python3 -m unittest discover -s tests` myself — 2 tests, exit code 0.\\nAccepted d002.\\n\\nAll three stated criteria (greet.py behavior, test coverage of both cases,\\nclean unittest discovery run) are satisfied. Durable report written to\\n~/.local/share/cs-campaign/output/mission-report.md.\\n\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1   }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":655,"cache_read_input_tokens":51755,"output_tokens":510,"output_tokens_details":{"thinking_tokens":131}},"context_management":{"applied_edits":[]}          }
+
+event: message_stop
+data: {"type":"message_stop"  }
+

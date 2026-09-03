@@ -1,33 +1,21 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeUdkVokamu47BRJB6m7p","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":42,"cache_creation_input_tokens":263,"cache_read_input_tokens":52648,"cache_creation":{"ephemeral_5m_input_tokens":263,"ephemeral_1h_input_tokens":0},"output_tokens":3,"service_tier":"standard","inference_geo":"global"}}         }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011Cefbg5QkZ8Kkec1RMXtwB","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":193,"cache_read_input_tokens":47204,"cache_creation":{"ephemeral_5m_input_tokens":193,"ephemeral_1h_input_tokens":0},"output_tokens":17,"service_tier":"standard","inference_geo":"global"}}        }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}       }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01Fza51avhtq5NiAodYoVteQ","name":"Bash","input":{},"caller":{"type":"direct"}}             }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EqsFCqgBCBEYAipAb90mf61Q4sx0lHQ6qGPrOHSxdu6rs1IZeYEbfnZzRLZbxT1plibl3ycNzZ7vYMAbyqIZ0wT9ogfJda7QCu/pPjIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyELi2hCSIRFIiNxKaE1AvBF6IAQGoAaLHxNQGsAECEgwgvBf7md28AeUoVIgaDP++vZzsdkP5JTyT9CIwnu8qG7BcPv7XAm5Wsh7cigwa17TRjm6hTNHVaO8DbI3Cr9f37POCtBTRMGvm2d05Kq8Dp4/9Q4ITGk3hmYX2+IvAjyMHHhgfbPgf1VjBP0cX1/Zn0/lPWT1/02D762dtsohYQjtiLALcmlyQHGI+EarUoE9sZTJ7VGWKnQKPPfMe2jC/QrLxBu4xt/v11YHCB/i4uCNm9ZHQCamEe7jmjmLJCCidX+u88JMzkI/ZsrrPf+t9DvyNkAhamztTAD2eKKPB5Ls77mcjaDcVTFIevcla0UWbP/8XTiGY72w+k18Dz5X0cOp6WSdM8yH6WYXnRX4prl9GZVcNDOn2mRxPMbHIa5AsiPzfAQ4DRB1BkYRUVzHJL0xIpRYJ78Ybp2VHcgZjxvsefegZVcHcxBwlz1+7vtMiWhuXhVIrkjXjTQxxI6uFQA5NofKfUDx/2dfGgHMyMc7exu4VZ9vfzkwdF2o42RWOQ4kOb7ZdE7qp3/o5pTsEJtqlw+hHeS5SL2BCmd9hvrVOOBkx+p5Mg5oWP+h3fVHLPf4So3Sk7wnzpXGIzINIH/7AE0A6PhPjpjeXl4bNmER6T0vAikl+TGv362litNDBsR70KUXMT2uJrkZPoij/xQe6IpNTrtO0nQMATt0YAQ=="} }
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member read dev\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0     }
-
-event: content_block_start
-data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01HnNboYMezBxWSvWR7C7Ygp","name":"Bash","input":{},"caller":{"type":"direct"}}         }
-
-event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 rm -rf /tmp/verify-dev \u0026\u0026 git worktree add --detach /tmp/verify-dev refs/remotes/campaign/dev/subject 2\u003e\u00261\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
-
-event: content_block_stop
-data: {"type":"content_block_stop","index":1   }
+data: {"type":"content_block_stop","index":0       }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":42,"cache_creation_input_tokens":263,"cache_read_input_tokens":52648,"output_tokens":254,"output_tokens_details":{"thinking_tokens":144}},"context_management":{"applied_edits":[]}        }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":193,"cache_read_input_tokens":47204,"output_tokens":57,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}     }
 
 event: message_stop
-data: {"type":"message_stop"               }
+data: {"type":"message_stop"      }
 

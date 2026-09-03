@@ -1,33 +1,21 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeUdkJz8JymzCVpbHT1tP","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":42,"cache_creation_input_tokens":190,"cache_read_input_tokens":52458,"cache_creation":{"ephemeral_5m_input_tokens":190,"ephemeral_1h_input_tokens":0},"output_tokens":4,"service_tier":"standard","inference_geo":"global"}}    }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CefbdfJ7oEYcufuJGgeTt","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":122,"cache_read_input_tokens":47082,"cache_creation":{"ephemeral_5m_input_tokens":122,"ephemeral_1h_input_tokens":0},"output_tokens":16,"service_tier":"standard","inference_geo":"global"}}          }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}          }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01PvVZ7ZARCzYxNxc71zqE81","name":"Bash","input":{},"caller":{"type":"direct"}}         }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"Ep4DCqgBCBEYAipAGcRB+lmwfeeTVsEH/Hz0IyLKs1OXs0PEk8DJN4yb2sexS7Uq/FzJJDki+BEXr9TqfP9kgsFh4/F6GbWo7rJlojIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyELi2hCSIRFIiNxKaE1AvBF6IAQGoAZ7HxNQGsAECEgzPCvTUkLgPY6Eogg8aDAa/7cID1S3vS5WI7SIwKMc+eYhNfiyz7knPPhUseeKie1JGcnjPGlwnVQIINqZ7vrpQxXtvuhjgjM444VWsKqIBW8zcX4M7Pd9kaKzT5cKXV9UOySrw1quqtkcyHQXKvBwo+gumuwxKDgT5v/FeRr+ZsjMOg0FQcCU1khGCAv+esiM+Y6cqm4Ev4otl1bqmoDs7YxfdsU5pKuNlNcPRHhqUbh1W6xNlaNdaG8Fx4D+xVirhaadM9u3OrAM/Z+eZEsC1nNIKRF/NTZYYtpsWUdZm4WB3v74Ee39Qj1O8KUj/KVlVGAE="}          }
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member wait\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0   }
-
-event: content_block_start
-data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01R61utJQoUwUGx7NA8bh9gy","name":"Bash","input":{},"caller":{"type":"direct"}}        }
-
-event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git log --oneline -5 refs/remotes/campaign/dev/subject \u0026\u0026 echo --- \u0026\u0026 git status\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
-
-event: content_block_stop
-data: {"type":"content_block_stop","index":1         }
+data: {"type":"content_block_stop","index":0           }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":42,"cache_creation_input_tokens":190,"cache_read_input_tokens":52458,"output_tokens":141,"output_tokens_details":{"thinking_tokens":53}},"context_management":{"applied_edits":[]}           }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":122,"cache_read_input_tokens":47082,"output_tokens":56,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}             }
 
 event: message_stop
-data: {"type":"message_stop"     }
+data: {"type":"message_stop"          }
 

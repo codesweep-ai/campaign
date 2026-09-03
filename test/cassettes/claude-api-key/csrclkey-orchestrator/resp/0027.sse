@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CefbiroZ71X8zMyBz435z","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":189,"cache_read_input_tokens":51470,"cache_creation":{"ephemeral_5m_input_tokens":189,"ephemeral_1h_input_tokens":0},"output_tokens":2,"service_tier":"standard","inference_geo":"global"}}        }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}          }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Camp"}          }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"aign concluded with outcome **campaign-met**. Summary:\n\n- Dispatched the full mission to `dev` in one pass (d002).\n- `dev` delivered `src/greet.py` (`greet(name"}       }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":")` → `\"Hello, <name>!\"`) and `tests/test_greet.py` (normal-name + empty-string cases), committed to its branch.\n- I didn't trust the report: fetched `dev`'s branch,"}        }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" inspected the diff, checked it out in a scratch worktree, and ran `python3 -m unittest discover -s tests` myself — got `OK`, exit 0.\n- Accepted the work, wrote a durable report"}               }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" to `~/.local/share/cs-campaign/output/report.md`, and replied to the mission with `--outcome campaign-met`."}           }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0     }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":189,"cache_read_input_tokens":51470,"output_tokens":255,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}     }
+
+event: message_stop
+data: {"type":"message_stop"   }
+

@@ -1,21 +1,30 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeUdgCHw5z3YobjfqC9kY","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":42,"cache_creation_input_tokens":229,"cache_read_input_tokens":49381,"cache_creation":{"ephemeral_5m_input_tokens":229,"ephemeral_1h_input_tokens":0},"output_tokens":16,"service_tier":"standard","inference_geo":"global"}}              }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CefbbiLd6p4bhpWGLY2g8","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":136,"cache_read_input_tokens":44761,"cache_creation":{"ephemeral_5m_input_tokens":136,"ephemeral_1h_input_tokens":0},"output_tokens":2,"service_tier":"standard","inference_geo":"global"}}             }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01RzCBw8jL1rcrVzXRXXKYGc","name":"Read","input":{},"caller":{"type":"direct"}}       }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}          }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"file_path\": \"/home/<USER:1>/.local/share/cs-campaign/input/m1.md\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"D"}            }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ispatch d001 is closed. I confirmed all 4 briefing inputs are present, read them, and replied with the readback JSON confirming my role, branch, and underst"}   }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"anding of the mission (get `dev` to deliver a tested `greet.py`, verify by fetching its branch rather than trusting its report, then"}          }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" reply to the mission dispatch with an honest outcome)."}      }
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0  }
+data: {"type":"content_block_stop","index":0        }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":42,"cache_creation_input_tokens":229,"cache_read_input_tokens":49381,"output_tokens":75,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}               }
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":136,"cache_read_input_tokens":44761,"output_tokens":119,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}    }
 
 event: message_stop
-data: {"type":"message_stop"   }
+data: {"type":"message_stop"        }
 

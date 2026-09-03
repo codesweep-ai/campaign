@@ -1,33 +1,21 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CeUdT2bQxAb486XXa56tK","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":42,"cache_creation_input_tokens":128,"cache_read_input_tokens":51368,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":128},"output_tokens":5,"service_tier":"standard","inference_geo":"not_available"}}     }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CefbPYSUdMeo4ZW4xLzEd","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":495,"cache_read_input_tokens":47906,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":495},"output_tokens":20,"service_tier":"standard","inference_geo":"not_available"}}  }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}     }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01TuTWUnYEVWfDGXq8raMrV1","name":"Bash","input":{},"caller":{"type":"direct"}}}
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"ErACCqgBCBEYAipApdCyHIL/G7c0wnU1kR0nH5iC0RqlJO8AgSYQHeJbz8262AYAAHTqMyD1GQvmqiUjFxmfrKNMyVjrc9ffDadNujIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyELN0BVIdu6p/nuujMYGI02eIAQGoAbTFxNQGsAECEgwETysM1S9begH9CtMaDL+1quoQS+SdmmMghCIw62N+PpThAoZlnRTBhQQ67krjO2/pN8cRYaa5JAbQyU/eWFtzOG0bTFyXBFuUx4GeKjXcsa0+PQHWvudHEMEhtWsZ9J+UFhA/6JvJZiuzOcXk4H8kdkjX/jfsiR+gbsDXlYuvWPCxhBgB"}  }
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member send dev --file /tmp/dispatch_dev_1.md\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0  }
-
-event: content_block_start
-data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_017gjD58KspBEc4VCtUEMayV","name":"Write","input":{},"caller":{"type":"direct"}}           }
-
-event: content_block_delta
-data: {"delta":{"partial_json":"{\"file_path\": \"/tmp/plan_note_1.md\", \"content\": \"Plan: single dispatch to dev (dev/d002) covering the full mission — src/greet.py,\\ntests/test_greet.py (normal name + empty string), and a passing\\n`python3 -m unittest discover -s tests`. This is a small, well-specified mission\\nper orchestrator.md, so no further decomposition planned. Next step: wait for\\ndev's reply, then judge by fetching dev's branch and re-running the test\\ncommand myself before accepting.\\n\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
-
-event: content_block_stop
-data: {"type":"content_block_stop","index":1  }
+data: {"type":"content_block_stop","index":0              }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":42,"cache_creation_input_tokens":128,"cache_read_input_tokens":51368,"output_tokens":243,"output_tokens_details":{"thinking_tokens":15}},"context_management":{"applied_edits":[]} }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":495,"cache_read_input_tokens":47906,"output_tokens":75,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}     }
 
 event: message_stop
-data: {"type":"message_stop"       }
+data: {"type":"message_stop"  }
 
