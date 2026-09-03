@@ -1,21 +1,33 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011Cefbbasf7E5mXtmY9Qsak","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":127,"cache_read_input_tokens":44634,"cache_creation":{"ephemeral_5m_input_tokens":127,"ephemeral_1h_input_tokens":0},"output_tokens":17,"service_tier":"standard","inference_geo":"global"}}           }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011Ceg3exeTZhkDqnFZFx5tT","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":376,"cache_read_input_tokens":44576,"cache_creation":{"ephemeral_5m_input_tokens":376,"ephemeral_1h_input_tokens":0},"output_tokens":2,"service_tier":"standard","inference_geo":"global"}}}
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_017neCPRjWxGfx9dXnXVRhE2","name":"Bash","input":{},"caller":{"type":"direct"}} }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}             }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member reply --file /tmp/readback.json\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Val"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"id JSON on one line. Now replying to close dispatch d001."}             }
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0   }
+data: {"type":"content_block_stop","index":0             }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01TBB7Mj4o9fSg4TzGaguqJS","name":"Bash","input":{},"caller":{"type":"direct"}}             }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member reply --file /tmp/readback.json\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1       }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":127,"cache_read_input_tokens":44634,"output_tokens":67,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}              }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":376,"cache_read_input_tokens":44576,"output_tokens":91,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}          }
 
 event: message_stop
-data: {"type":"message_stop"}
+data: {"type":"message_stop"         }
 

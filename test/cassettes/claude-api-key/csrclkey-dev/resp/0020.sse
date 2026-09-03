@@ -1,20 +1,20 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011Cefbf1SrVPjKG7AX1eeGv","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":256,"cache_read_input_tokens":44365,"cache_creation":{"ephemeral_5m_input_tokens":256,"ephemeral_1h_input_tokens":0},"output_tokens":20,"service_tier":"standard","inference_geo":"global"}}   }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011Ceg3jJaNuNJLsrmanSuLf","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":183,"cache_read_input_tokens":45083,"cache_creation":{"ephemeral_5m_input_tokens":183,"ephemeral_1h_input_tokens":0},"output_tokens":9,"service_tier":"standard","inference_geo":"global"}}          }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01Pq5sjjqDo274HADU9KocPm","name":"Write","input":{},"caller":{"type":"direct"}}       }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}       }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"file_path\": \"/home/<USER:1>/.local/share/cs-campaign/output/d002-summary.md\", \"content\": \"# Dispatch d002: greet, tested\\n\\n## What I implemented\\n\\n- `src/greet.py`: `greet(name)` returns `\\\"Hello, {}!\\\".format(name)`.\\n- `tests/test_greet.py`: `unittest.TestCase` with two tests:\\n  - `test_normal_name`: `greet(\\\"World\\\") == \\\"Hello, World!\\\"`\\n  - `test_empty_string`: `greet(\\\"\\\") == \\\"Hello, !\\\"`\\n  - The test file inserts `src/` onto `sys.path` so `discover` (run from repo\\n    root) can import `greet` without a package/`__init__.py` setup.\\n\\n## Test command and result\\n\\nCommand: `python3 -m unittest discover -s tests` (run from `~/subject`)\\n\\nOutput:\\n```\\n..\\n----------------------------------------------------------------------\\nRan 2 tests in 0.000s\\n\\nOK\\n```\\n\\nExit code: `0` (pass).\\n\\n## Commit\\n\\nCommitted to branch `cs-sandbox/<DEV:1>.<GROUP:1>`, commit\\n`57f62c0`: \\\"Add greet function with unittest coverage\\\" — 2 files changed\\n(`src/greet.py`, `tests/test_greet.py`), 21 insertions.\\n\\nNo blockers.\\n\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"delta":{"text":"Dispatch d002 is complete and closed. Summary:\n\n- Implemented `greet(name)` in `src/greet.py` and unittest coverage in `tests/test_greet.py` (normal name + empty string), touching only those two files.\n- `python3 -m unittest discover -s tests` from repo root: `Ran 2 tests in 0.000s — OK`, exit code 0.\n- Committed as `533b244` on branch `cs-sandbox/<DEV:1>.<GROUP:1>` (on top of base `2e8ce27`).\n- Wrote the summary to `~/.local/share/cs-campaign/output/d002-summary.md` and replied to close the dispatch.","type":"text_delta"},"index":0,"type":"content_block_delta"}
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0      }
+data: {"type":"content_block_stop","index":0}
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":256,"cache_read_input_tokens":44365,"output_tokens":498,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}  }
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":183,"cache_read_input_tokens":45083,"output_tokens":231,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}   }
 
 event: message_stop
 data: {"type":"message_stop"}

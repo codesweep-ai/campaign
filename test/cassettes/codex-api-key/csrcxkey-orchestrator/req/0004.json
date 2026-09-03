@@ -338,7 +338,7 @@
     {
       "content": [
         {
-          "text": "I’ll load the campaign manifest and all declared inputs first, then follow dispatch d001 and submit the required summary through the campaign tool.",
+          "text": "I’ll load the campaign manifest and all declared inputs first, then execute `d001` and submit the required summary through the campaign CLI.",
           "type": "output_text"
         }
       ],
@@ -347,40 +347,40 @@
       "type": "message"
     },
     {
-      "call_id": "call_emcrb9WUXExbBYN14PWaJ6Ya",
+      "call_id": "call_Vt7broMQJGI0bwsF7zY20Yot",
       "input": "const r = await tools.exec_command({cmd:\"sed -n '1,240p' /home/<USER:1>/.config/cs-campaign/member.json\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output);\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_emcrb9WUXExbBYN14PWaJ6Ya",
+      "call_id": "call_Vt7broMQJGI0bwsF7zY20Yot",
       "output": [
         {
           "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "{\n  \"campaign\": \"csrcxkey\",\n  \"member\": \"orchestrator\",\n  \"role\": \"orchestrator\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"108821e96c16f9d6de433099bfb8672ccc22b2c1\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"orchestrator.md\",\n    \"mission.md\",\n    \"roles/dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-09-03T02:16:32.162845042Z\"\n}\n",
+          "text": "{\n  \"campaign\": \"csrcxkey\",\n  \"member\": \"orchestrator\",\n  \"role\": \"orchestrator\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"e179414a4caf2a1d80f1d3730a5c8d0e2a7add4d\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"orchestrator.md\",\n    \"mission.md\",\n    \"roles/dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-09-03T07:45:23.786496034Z\"\n}\n",
           "type": "input_text"
         }
       ],
       "type": "custom_tool_call_output"
     },
     {
-      "encrypted_content": "gAAAAABqmMqShsCDeZORmYBmMPqRo_nKftEGZpffxBddIeGBuih1IfujwoJMl5ZRcZaOR4PCcwSR9OID28qT50ce5XcYrLGfSSk3PcEa-qi_3pEkwAIvOEMp_r8vAk716Ao-n0SbRbx_AGdSEP-Gi1eNl_C-WwgwAQ3rT6gcxmiG9dkbtZYFo8ysY75LergPH5zpZcUAcUL-EzRRHiU6YkVGi1OlYnW6dTE9nYaDlCwPZnARmCiGGEk_NZbj7wFjrg3xYbEU0yydEsPP9HgifPG9EUjM-bPkGhy7g4AcqGrXq0okcY4TRep3CL7an1nRHLORDkqk4WI0kZrpN2j6tDr2ySLy_3VE1CEBOhDxv12ue02Pemk-QJYTafThWoI0Xy8xFp9ruZC6UANtuQDFs76K4wzXq_6jgdPo6D7hm0TgsvHefmQVxXOowS_kB2qi_7uXWwbSRaiJnRDNezvdg2sNCHfDyiqOOZuOYvXD2X8C6BjjdVVRUwb5ODRm7HoJPDJ0ogPIr2NdGfaoYtINNk_5ECj8W86exb9-zmcZz-AEbNEMKAmQTW7mbs5XkjztCSGIOJeaU9wa7g-tl_daIsTBVU8sPtoPcV3fAQizTbnDcx6NoYMrvh4slNXntCZb07OLtydD-NGK5xSZNY0-qYj-nfvP-Dhy9ndShErIg31o35Soe6a3NKJgs_ooDmkADgQ-w8N9XszXkpolXhiiI2CVydgT0D0Tx1KdDxFkGTm3cth97N1zwtFUg54NfgoL2p24tZBM7k7iplFCvYFD0QTl9Lh68LGN5B-ilKkSe5yoBao1uIuQnHWVZavS6X4kctCdsx0IBNMxBSz1Ek3Cv7KHdAKpzrjOfb3LXv1Zp1Pcl4fHgc_ecPSaX-9sO_tRGdG6oYY0angEx1-535Jr7AmMSqyCkDjAsCIoD0Bq06nJpocQNgRtVafK9HGLUXM_DyUMJ3SsR9omAOjN4UhOpu_sCYDLoAlDJrGX1Jk13LIzQxfDCzx5GWGs3nzGFtINQjX7-XtiVa1H8BAbHtc0mWHuhmGdLa45_qdeNFtiTtvRaU7D6oaCs7h_9TrOtVa_y2lf2OaZv78ySPA5hEtTlZnJTx9Ho1wMyl4TcjZvd3x7FU0j6M3vjJuVnelARuiWgYj_ZJw3khWnD2CJo50axhxT83UItwnfCeNFKbMa57FzctmBqD6t_2K6O5c-LsMl5f0JxwFxr7EG",
+      "encrypted_content": "gAAAAABqmReijije1EAFBMpIfngorUlPw0adiISicTCJCvsa2NrredsxSi_ufq8pfTHN8K6RP4jOJqlHhIqCfJ1-b74_sT7H6oKsmnd4-lijoxvlY_GnPFuFbUyhqBuOzjdqrAFR_qZ-zug8cRZcEa3_mz7KbAtFFPYwThYQxDLUBshCCw_4EgBnRC1R28FBe6fcek9W-SI3nbggWuLiF3WLT0CtCDEXBViP5JtCO3ADGhuXOQAA8mHTNrvBpssl3Z9GDhZekbfH7Ge6INarHvwyysK79NKC8d_ac6_aQlCrvh_O0B_3wH3kwao-B5CjTAtyPQbVnU-BlHzvGVsDvxLEnjOz-jrEzrFGJvOvmYEnMBJeUu6Q7V_vK2c2Zkt4xZDUhBBGSfspJaLPZfk0OJFcRtBtr76zYTv3Re5Q8FKotXG6l5OkQ-SHAvxyG3QeRixn5fH_ZbxTbVSRWNL9mgcJXhn_PJpnL-kAQ1J4TmF0FKqNtoSfatAJiI0u9jV0TTUQoRTdB3PlI5d4MwAo2Hmyb8Jc2enZX5hXnDYHQFKcaw5D5gf97SN8GFwOGrfVdbaUi1H9jAtnlSwbvo9vU1xfBx3NeG-P-Yu9ACaw-zY9UxvSi8pal-42-vbhlHAvCu63E-OE_Nvep8swEFaw-Ltm1oZ-P3G2Lv8a7csqiQU0ITt9MibviGFSHg5ETsFIj08QaxFO86bD2FgUt-oOZOj9DkS8RGFLaU43XKS71hCrGpNacsqYfyzHmLJ3cCAhIX-Gc7o-ZBIe71IbKgvacVvAxB33cLKztOKqi31vQb38uzqpfj_J-syHUGHYSD1ynfiYvMSfUBX_abv8gzcz-vC42pUm3NGPZPn98phZrE-KpFcLgGCYswD8EZz0XxeLG-ifvltFjXHhGFuZej2j-E02L17015e0MqPgRmQdEx_6kEV-v4gZbZtfjBB7I13yeR4AdowsWy8m-w6ZfMJq5dAnmv3Lmp8YSNa_5XDf0UIlWWqcJKTyIUqt-lAmbBwziOQUX629FRNiP7OtJqlMK91P032bEEZD-hNTvyJ1JqUcHSm8Rkir-X19XFbo-WdJqucF56Rb9Zxm7gbczOfCkiiJJxmdsgSLdDWD6pN2jAbdedOmBvgRFoXJhT6toooYMBs20cvYXaEpe__aeCBFCc0btvT_lTVz8JCOR_fdERK0RV22NlqSZXi-LEUG5Of8PA3-tRjPvnNu",
       "summary": [],
       "type": "reasoning"
     },
     {
-      "call_id": "call_f1JRphsWT2N2IxzjCiqXVXSM",
-      "input": "const paths=[\n\"/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/orchestrator.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/mission.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/roles/dev.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/d001.md\"\n];\nconst results=await Promise.all(paths.map(path=>tools.exec_command({cmd:`sed -n '1,260p' '${path}'`,workdir:\"/home/<USER:1>\",yield_time_ms:10000,max_output_tokens:30000})));\nfor(let i=0;i<results.length;i++){text(`===== ${paths[i]} =====\\n${results[i].output}`)}\n",
+      "call_id": "call_25C0PTUEXjZwTILsvzJ9mY74",
+      "input": "const files = [\n\"/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/orchestrator.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/mission.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/roles/dev.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/d001.md\"\n];\nconst rs = await Promise.all(files.map(f => tools.exec_command({cmd:`sed -n '1,260p' '${f}'`,workdir:\"/home/<USER:1>\",yield_time_ms:10000,max_output_tokens:30000})));\nfor (let i=0;i<rs.length;i++){ text(`===== ${files[i]} =====\\n${rs[i].output}`); }\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_f1JRphsWT2N2IxzjCiqXVXSM",
+      "call_id": "call_25C0PTUEXjZwTILsvzJ9mY74",
       "output": [
         {
           "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
