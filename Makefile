@@ -360,15 +360,46 @@ tools:
 	@CGO_ENABLED=0 GOBIN=$(TOOLSDIR) go install github.com/codesweep-ai/vcr/cmd/cs-vcr
 	@out="$$($(WITH_TOOLS) $(SANDBOX) install-agent-tools $(TOOLSDIR))" && printf '%s\n' "$$out" | head -1
 
-## What `cs-sandbox build` is asked for when this host has no image yet. The
-## default builds the image a real campaign uses, which is the one `create`
-## looks for when CS_SANDBOX_IMAGE is unset. CI overrides it with `--slim`,
-## because the shipped image is 9.3 GB and a hosted runner does not have the
-## disk — and CI sets CS_SANDBOX_IMAGE to match, since each variant has a
-## package of its own. The slim image carries the agent CLIs, which every
-## scenario here needs; it used to take `--with-agents` to get them, and there
-## is no longer a variant without.
-SANDBOX_BUILD_FLAGS ?= --engine firecracker
+## SMOKE_IMAGE / SBX_IMAGE: the two image variants, and which tier boots which.
+##
+## Every tier that touches a cassette boots SMOKE_IMAGE — the recording half and
+## the replay half alike — and that agreement is the whole reason it has a name
+## here. A cassette records live commands as much as model turns: on replay the
+## tool CALLS come back from the cassette and the member then runs them for real,
+## so a turn that succeeded against a binary one variant carries and the other
+## drops does something quietly different on the other side. That has been
+## measured, and expensively. Recorded on the shipped image, a codex turn
+## guarded the reply that closed its dispatch behind `python -m json.tool`; the
+## slim image has no bare `python`, so on CI the guard skipped the reply, the
+## agent reported success, and the campaign spent its whole readback bound
+## waiting for it. Record where you replay, or a fixture is only good on the
+## host that made it.
+##
+## Slim on both sides rather than shipped, because CI cannot afford the shipped
+## one — it is 9.3 GB and a hosted runner has no disk for it. So slim is what CI
+## replays, and slim is therefore what everything here records. It carries the
+## three agent CLIs, which every scenario needs.
+##
+## Asked of the binary rather than written down, because each variant is named
+## after the cs-sandbox version that built it and only that binary knows its own.
+## Recursive (=), so a target that never reads one never runs the command.
+SMOKE_IMAGE = $$($(SANDBOX) version --images | awk '$$1=="image-slim"{print $$2}')
+
+## The shipped image, which the live matrix boots because that tier IS the
+## product. No cassette is involved there, so nothing binds it to the CI variant.
+SBX_IMAGE = $$($(SANDBOX) version --images | awk '$$1=="image"{print $$2}')
+
+## SETUP_IMAGE: the one setup-smoke builds. The slim image, like everything that
+## replays or records — the live matrix overrides it, and it is the only caller
+## that does, so the override sits on that target rather than being a flag
+## anybody has to remember.
+SETUP_IMAGE ?= $(SMOKE_IMAGE)
+
+## What `cs-sandbox build` is asked for when this host lacks the image above.
+## `--slim` because SETUP_IMAGE names the slim variant, and building one while
+## the run boots the other is how a target builds an image nobody asked for and
+## still leaves the run without one.
+SANDBOX_BUILD_FLAGS ?= --engine firecracker --slim
 
 ## setup-smoke: the host state a tier that boots machines needs, at the pinned versions
 ##
@@ -377,18 +408,32 @@ SANDBOX_BUILD_FLAGS ?= --engine firecracker
 ## command. The live tiers below take the same setup and the same prerequisite;
 ## the name is the tier that always needs it, not the only one that does.
 ##
-## Cheap when the host is already set up, which is what makes that safe: podman
-## is asked whether the image a run would boot is there, and only its absence
-## runs the build. That guard is not decoration — `cs-sandbox build` asks the
-## registry for the image before it considers building one, so running it
-## unconditionally would put a network round trip in front of every smoke run
-## and a full image build in front of every offline one.
+## Cheap when the host is already set up, which is what makes that safe: the two
+## questions below are local, and only a no runs the build. That guard is not
+## decoration — `cs-sandbox build` asks the registry for the image before it
+## considers building one, so running it unconditionally would put a network
+## round trip in front of every smoke run and a full image build in front of
+## every offline one.
 ##
-## The question goes to podman rather than to `cs-sandbox doctor`, which is the
-## obvious place to put it and the wrong one: doctor reports an unbuilt image as
-## a warning and still exits 0, so a probe reading its exit code would call every
-## fresh machine ready and build nothing — which is the one case this target
-## exists for. Measured, on a host with the image renamed away.
+## Two questions, because the image is not the only artifact. podman is asked
+## whether the image exists, and the doctor whether this host can boot it: the
+## base rootfs every microVM is copied from is made FROM that image and kept
+## beside it, one slot per image variant, and only `cs-sandbox build` makes it.
+## A host can hold the image and be unable to boot a single member.
+##
+## That is not hypothetical — it is why the doctor is asked at all. This target
+## used to ask podman alone, on the reasoning that the doctor called an unbuilt
+## host ready and exited 0, so its exit code could not steer a build. True when
+## it was written, and it stopped being true: the doctor now reports a missing
+## base rootfs as an issue (SBX-034), which is exactly the state a run cannot
+## survive and a build repairs. Asked the old way, a checkout that had pulled the
+## slim image but never built its rootfs was called ready, and five real
+## campaigns each took a group, a network and a gateway port before dying on
+## their first member.
+##
+## CS_SANDBOX_IMAGE is passed to the doctor rather than left to its default. The
+## artifact it reports on is per image, so a doctor asked about the shipped image
+## answers for a rootfs this tier never boots — the same mistake one level up.
 ##
 ## The image asked about is the one `create` will boot: CS_SANDBOX_IMAGE where it
 ## is set, and the reference cs-sandbox names for itself otherwise. Both carry
@@ -408,14 +453,16 @@ setup-smoke: tools
 	@if ! command -v podman >/dev/null 2>&1 || [ ! -w /dev/kvm ]; then \
 		echo "setup-smoke: this host boots no microVMs (needs podman and a writable /dev/kvm) — test-smoke will skip"; \
 	else \
-		image=$${CS_SANDBOX_IMAGE:-$$($(SANDBOX) version --images | awk '$$1=="image"{print $$2}')}; \
-		if podman image exists "$$image"; then \
-			echo "setup-smoke: $$image is built"; \
+		image=$${CS_SANDBOX_IMAGE:-$(SETUP_IMAGE)}; \
+		if podman image exists "$$image" && \
+		   CS_SANDBOX_IMAGE="$$image" $(WITH_TOOLS) $(SANDBOX) doctor --engine firecracker >/dev/null 2>&1; then \
+			echo "setup-smoke: $$image is built, and this host is ready to boot it"; \
 		else \
 			$(WITH_TOOLS) $(SANDBOX) build $(SANDBOX_BUILD_FLAGS); \
 		fi; \
 	fi
-	@$(WITH_TOOLS) $(SANDBOX) doctor --engine firecracker || \
+	@image=$${CS_SANDBOX_IMAGE:-$(SETUP_IMAGE)}; \
+	CS_SANDBOX_IMAGE="$$image" $(WITH_TOOLS) $(SANDBOX) doctor --engine firecracker || \
 		echo "setup-smoke: cs-sandbox doctor says this host is not ready; test-smoke will skip what it cannot run"
 	@$(WITH_TOOLS) go run ./cmd/cs-campaign doctor || \
 		echo "setup-smoke: cs-campaign doctor says the surface is not the one this tree names"
@@ -470,7 +517,7 @@ CS_CAMPAIGN_WAIT_SECONDS ?= 4
 
 test-smoke: setup-smoke
 	@scripts/coverage.sh reset smoke
-	$(WITH_TOOLS) \
+	$(WITH_TOOLS) CS_SANDBOX_IMAGE=$${CS_SANDBOX_IMAGE:-$(SMOKE_IMAGE)} \
 	  CS_CAMPAIGN_POLL_SECONDS=$(CS_CAMPAIGN_POLL_SECONDS) \
 	  CS_CAMPAIGN_WAIT_SECONDS=$(CS_CAMPAIGN_WAIT_SECONDS) \
 	  CS_COVERDIR=$(COVER_ABS)/smoke go test -tags smoke $(COVERFLAGS) \
@@ -497,9 +544,17 @@ DOTENV = set -a; [ -f .env ] && . ./.env; set +a;
 ## it is `make record-fixtures` and nothing else.
 INTEGRATION_TESTS ?= TestLiveMatrix|TestLiveHeterogeneousFleet
 
+# The one tier that boots the shipped image: it drives real providers with no
+# cassette anywhere, so it is the product rather than a replay of one. The
+# target-specific values reach setup-smoke too — GNU make gives a target's
+# variables to its prerequisites — so the image this builds is the image this
+# boots, which is the property the whole block above exists to keep.
+test-integration: SETUP_IMAGE := $(SBX_IMAGE)
+test-integration: SANDBOX_BUILD_FLAGS := --engine firecracker
 test-integration: setup-smoke
 	@scripts/coverage.sh reset integration
-	$(DOTENV) $(WITH_TOOLS) CS_CAMPAIGN_LIVE=1 CS_COVERDIR=$(COVER_ABS)/integration go test -tags integration $(COVERFLAGS) \
+	$(DOTENV) $(WITH_TOOLS) CS_SANDBOX_IMAGE=$${CS_SANDBOX_IMAGE:-$(SBX_IMAGE)} \
+	  CS_CAMPAIGN_LIVE=1 CS_COVERDIR=$(COVER_ABS)/integration go test -tags integration $(COVERFLAGS) \
 	  -count=1 -p 1 -v -timeout 5400s -run '$(INTEGRATION_TESTS)' ./internal/cli \
 	  -args -test.gocoverdir=$(COVER_ABS)/integration
 
@@ -519,7 +574,8 @@ test-integration: setup-smoke
 FIXTURE_TESTS ?= TestLiveRecordsACassette
 
 record-fixtures: setup-smoke
-	$(DOTENV) $(WITH_TOOLS) CS_CAMPAIGN_LIVE=1 CS_CAMPAIGN_RECORD=1 go test -tags integration -count=1 -p 1 -v -timeout 7200s \
+	$(DOTENV) $(WITH_TOOLS) CS_SANDBOX_IMAGE=$${CS_SANDBOX_IMAGE:-$(SMOKE_IMAGE)} \
+	  CS_CAMPAIGN_LIVE=1 CS_CAMPAIGN_RECORD=1 go test -tags integration -count=1 -p 1 -v -timeout 7200s \
 	  ./internal/cli -run '$(FIXTURE_TESTS)'
 
 ## record-fixtures-strict: the same recording, with a skip treated as a failure. For a
@@ -527,7 +583,8 @@ record-fixtures: setup-smoke
 ## one skips under `record-fixtures`, and a run that recorded nothing reports the same
 ## green as one that recorded everything. scripts/record-fixtures.sh runs this.
 record-fixtures-strict: setup-smoke
-	$(DOTENV) $(WITH_TOOLS) CS_CAMPAIGN_LIVE=1 CS_CAMPAIGN_RECORD=1 CS_CAMPAIGN_STRICT=1 \
+	$(DOTENV) $(WITH_TOOLS) CS_SANDBOX_IMAGE=$${CS_SANDBOX_IMAGE:-$(SMOKE_IMAGE)} \
+	  CS_CAMPAIGN_LIVE=1 CS_CAMPAIGN_RECORD=1 CS_CAMPAIGN_STRICT=1 \
 	  go test -tags integration -count=1 -p 1 -v -timeout 7200s ./internal/cli -run '$(FIXTURE_TESTS)'
 
 ## coverage: merge every tier present under $(COVERDIR) and print the report

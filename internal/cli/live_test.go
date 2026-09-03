@@ -412,19 +412,30 @@ func scenarioByName(t *testing.T, name string) scenario {
 // misses on all of them at once — a failure that reads as a wall of prompt
 // diffs rather than as the one version that moved, and that costs a tier of
 // booted machines to reach.
+//
+// ImageVariant is which of the two sandbox images booted, and it answers a
+// third question again: not whether the recording finished, nor whether the
+// fleet still sends what it captured, but whether the guest still HAS what the
+// recorded commands ran. Replay serves the model's tool calls from the
+// cassette and then executes them for real, so a turn that shelled out to a
+// binary the slim image drops replays as a member that quietly does less than
+// it did — and, in the one measured case, skipped the reply the whole campaign
+// was waiting on.
 type recordingClaim struct {
-	Scenario   string `json:"scenario"`
-	CLI        string `json:"cli"`
-	CLIVersion string `json:"cli_version"`
-	Outcome    string `json:"outcome"`
-	At         string `json:"at"`
+	Scenario     string `json:"scenario"`
+	CLI          string `json:"cli"`
+	CLIVersion   string `json:"cli_version"`
+	ImageVariant string `json:"image_variant"`
+	Outcome      string `json:"outcome"`
+	At           string `json:"at"`
 }
 
 func claimRecording(t *testing.T, store string, sc scenario) {
 	t.Helper()
 	writeRecordingClaim(t, store, recordingClaim{
 		Scenario: sc.name, CLI: sc.cli, CLIVersion: agentCLIVersions()[sc.cli],
-		Outcome: "in-progress", At: time.Now().UTC().Format(time.RFC3339),
+		ImageVariant: imageVariant(sandboxImage()),
+		Outcome:      "in-progress", At: time.Now().UTC().Format(time.RFC3339),
 	})
 }
 
@@ -432,7 +443,8 @@ func settleRecording(t *testing.T, store string, sc scenario, outcome string) {
 	t.Helper()
 	writeRecordingClaim(t, store, recordingClaim{
 		Scenario: sc.name, CLI: sc.cli, CLIVersion: agentCLIVersions()[sc.cli],
-		Outcome: outcome, At: time.Now().UTC().Format(time.RFC3339),
+		ImageVariant: imageVariant(sandboxImage()),
+		Outcome:      outcome, At: time.Now().UTC().Format(time.RFC3339),
 	})
 }
 

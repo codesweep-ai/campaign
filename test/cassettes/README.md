@@ -71,3 +71,29 @@ than a pin of its own, so it moves without any commit here. `make test-smoke`
 compares the claim with the image it is about to boot, and skips a scenario
 whose agent has moved. The skip names both versions and the command that
 re-records it. Scenarios whose agent did not move still replay.
+
+## Image compatibility
+
+Every cassette here is recorded on the **slim** sandbox image, which is the one
+`make test-smoke` and CI replay it on. `recorded.json` names the variant, and a
+replay booting the other one fails before it provisions anything.
+
+That agreement is load-bearing, and it is not obvious. A replay is only half
+served from the cassette: the model's tool calls come back recorded, and the
+member then runs them against a real filesystem. So a recorded turn that shelled
+out to a binary one variant carries and the other drops does something different
+on replay, with no cassette miss to show for it.
+
+It has happened once, and cost twenty-five minutes of CI to read. A codex turn
+validated its readback with `python -m json.tool` and guarded the reply that
+closed the dispatch behind that command's exit code. The shipped image answers
+`python` from the `/opt/py-tools` venv; the slim image, which is the shipped one
+with the developer toolchains dropped, had no `python` at all. The command took
+127, the guard skipped the reply, the agent announced success, and the campaign
+spent its whole fifteen-minute readback bound waiting for a reply nobody had
+sent — then failed naming a dispatch that was never open.
+
+So the slim image is what records and what replays, and `make record-fixtures`
+picks it without being asked. `make test-integration` is the exception and the
+only one: it drives real providers with no cassette anywhere, so it boots the
+shipped image, which is the product.

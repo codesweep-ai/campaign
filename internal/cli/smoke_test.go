@@ -49,6 +49,7 @@ func TestSmokeReplay(t *testing.T) {
 		t.Run(sc.name, func(t *testing.T) {
 			store := cassetteStore(t, sc)
 			assertCassetteAgent(t, sc, store)
+			assertCassetteImage(t, sc, store)
 			assertCassetteRuleset(t, sc, store)
 			assertRecordingFinished(t, sc, store)
 			run := runLiveCampaign(t, sc, runOptions{
@@ -230,6 +231,58 @@ func assertCassetteAgent(t *testing.T, sc scenario, store string) {
 		"so every request in it would miss\n"+
 		"re-record it with `make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/%s'`",
 		sc.cli, was, now, sc.name)
+}
+
+// assertCassetteImage fails a replay that boots a different sandbox image than
+// the recording booted.
+//
+// The two gates above ask whether cs-vcr still keys requests the way the
+// recording did, and whether the fleet still SENDS what it captured. This asks
+// the third thing: whether the guest still HAS what the recording RAN.
+//
+// A replay is only half served from the cassette. The model's tool calls come
+// back recorded, and then the member executes them against a real filesystem —
+// so a recorded turn that shelled out to a binary present in one image and
+// absent from the other does something different here than it did there, with
+// no miss to show for it. Measured: a codex turn validated its readback with
+// `python -m json.tool` and guarded the reply that closed the dispatch behind
+// that command's exit code. The shipped image answers `python` from its
+// /opt/py-tools venv; the slim image, which is the shipped one with the
+// developer toolchains dropped, does not. On CI the command took 127, the
+// guard skipped the reply, the agent announced success, and the campaign spent
+// its whole fifteen-minute readback bound waiting for a reply nobody had sent.
+// Twenty-five minutes to reach a message about a dispatch that was never open.
+//
+// A failure rather than a skip, and that is the difference from the agent gate
+// above. A moved agent CLI leaves a fixture that is STALE, and the gesture that
+// fixes it costs a real campaign. A mismatched image leaves a fixture that is
+// perfectly good and a RUN that is booting the wrong thing, which the runner
+// fixes for nothing by booting the other one. Failing says so at once instead
+// of somewhere unrecognisable twenty minutes later.
+//
+// A variant the claim does not carry, or one this host cannot resolve, stands
+// down rather than guessing — a cassette from before this was tracked replays
+// as well as it ever did.
+func assertCassetteImage(t *testing.T, sc scenario, store string) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(store, recordingClaimName))
+	if err != nil {
+		return // recorded before the image was tracked
+	}
+	var claim struct {
+		ImageVariant string `json:"image_variant"`
+	}
+	if err := json.Unmarshal(raw, &claim); err != nil {
+		t.Fatalf("unreadable %s for %s: %v", recordingClaimName, sc.name, err)
+	}
+	was, now := claim.ImageVariant, imageVariant(sandboxImage())
+	if was == "" || now == "" || was == now {
+		return
+	}
+	t.Fatalf("this cassette was recorded on the %s sandbox image and this run boots the %s one (%s), "+
+		"so its recorded commands would not find what they ran against\n"+
+		"boot the image it was recorded on: CS_SANDBOX_IMAGE names it, and `make test-smoke` picks the slim one by default",
+		was, now, sandboxImage())
 }
 
 // hasCassette reports whether this scenario has been recorded. A scenario with

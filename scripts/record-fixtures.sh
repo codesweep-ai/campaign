@@ -48,12 +48,21 @@ set +a
 # the profile the wrappers keep and not the agent's own directory.
 login_home=${CS_SANDBOX_AGENT_HOME:-$HOME}
 
+# The image these five campaigns will boot. The slim one, because that is what
+# `make test-smoke` and CI replay on, and a cassette is bound to the image that
+# recorded it: replay serves the model's tool calls from the cassette and then
+# runs them for real, so a turn that used a binary the other variant drops
+# replays as a member doing quietly less than it did. Reported rather than
+# assumed — the Makefile picks it, and this is where an operator sees which.
+image=${CS_SANDBOX_IMAGE:-$(cs-sandbox version --images 2>/dev/null | awk '$1=="image-slim"{print $2}')}
+
 echo "Recording from:"
 echo "  repo             $repo"
 echo "  branch           $(git rev-parse --abbrev-ref HEAD)"
 echo "  logins under     $login_home"
 echo "  cs-sandbox       $(cs-sandbox version 2>/dev/null | awk 'NR==1{print $2}' || echo MISSING)"
 echo "  built against    $(awk '/codesweep-ai\/sandbox / {print $2; exit}' go.mod 2>/dev/null || echo '?')"
+echo "  image            ${image:-MISSING} (slim — what test-smoke replays on)"
 echo
 
 missing=0
@@ -102,6 +111,33 @@ for c in cs-sandbox cs-vcr; do
   if command -v "$c" >/dev/null; then ok "$c"; else bad "$c is not on PATH"; missing=1; fi
 done
 if [[ -w /dev/kvm ]]; then ok "/dev/kvm is writable"; else bad "/dev/kvm is not writable — the members are microVMs"; missing=1; fi
+# The doctor rather than a `podman image exists`, because the image is not the
+# only artifact these campaigns need. Every member is copied from a base rootfs
+# built FROM that image and kept beside it, one per image variant, and a host can
+# hold the image and be unable to boot a single member. That is not a guess: it
+# is how a recording run died on all five scenarios, each after taking a group, a
+# network and a gateway port.
+#
+# The image is named rather than asked for with `--slim`, and the two are the
+# same request: $image above already resolved the slim reference the recording
+# will boot. Naming it also works against the cs-sandbox this checkout PINS,
+# which `--slim` does not — that flag is newer than the pin, and a preflight
+# built on it reports "cannot boot" on every run, for the flag rather than for
+# the host, and swallows the findings it exists to show.
+#
+# Not a failure. `make record-fixtures` runs setup-smoke, which builds whatever
+# is missing before the first campaign starts, so this reports rather than
+# refuses — and reports before the confirmation prompt, so a long build is
+# expected rather than puzzling.
+if [[ -z $image ]]; then
+  bad "cannot resolve the slim image name — is cs-sandbox on PATH?"; missing=1
+elif CS_SANDBOX_IMAGE="$image" cs-sandbox doctor --engine firecracker >/dev/null 2>&1; then
+  ok "this host is ready to boot $image"
+else
+  ok "this host cannot boot $image yet — setup-smoke will build what is missing:"
+  CS_SANDBOX_IMAGE="$image" cs-sandbox doctor --engine firecracker 2>&1 |
+    sed -e 's/\x1b\[[0-9;]*m//g' -n -e 's/^  NO  /        /p'
+fi
 
 # A deviating surface stops `create` on the first member, after the proxy is up
 # and the group exists. Asking here costs nothing and names it before the wait.

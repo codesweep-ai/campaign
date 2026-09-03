@@ -196,6 +196,59 @@ func cassetteStore(t *testing.T, sc scenario) string {
 // behind different build tags and would otherwise each spell it out.
 const recordingClaimName = "recorded.json"
 
+// sandboxImage is the image reference this run boots, resolved once.
+//
+// CS_SANDBOX_IMAGE where the caller named one — every Makefile target that
+// reaches this code does — and the slim variant otherwise, because every tier
+// that touches a cassette boots that one. The name is asked of the binary
+// rather than written down: each variant carries the version of the cs-sandbox
+// that built it, so only that binary can say what this host would boot.
+//
+// Best effort. A host with no cs-sandbox on PATH gets "", and every gate
+// reading this stands down rather than guessing.
+var sandboxImage = sync.OnceValue(func() string {
+	if img := os.Getenv("CS_SANDBOX_IMAGE"); img != "" {
+		return img
+	}
+	b, err := exec.Command("cs-sandbox", "version", "--images").Output()
+	if err != nil {
+		return ""
+	}
+	for line := range strings.SplitSeq(string(b), "\n") {
+		if f := strings.Fields(line); len(f) == 2 && f[0] == "image-slim" {
+			return f[1]
+		}
+	}
+	return ""
+})
+
+// imageVariant reduces an image reference to the one thing a cassette has to
+// agree with: "slim" or "shipped".
+//
+// Not the reference itself, which carries the cs-sandbox version that built it
+// and so moves on every bump — a gate on the whole name would fire on every one
+// and say nothing the agent-version gate does not already say better. What a
+// cassette is bound to is which BINARIES its recorded commands found, and that
+// is the variant: the slim image is the shipped one with the developer
+// toolchains dropped, so the two disagree about a set of names, and a recorded
+// turn that used one of them replays only where it was made.
+func imageVariant(ref string) string {
+	if ref == "" {
+		return ""
+	}
+	name := ref
+	if i := strings.LastIndex(name, "/"); i >= 0 {
+		name = name[i+1:]
+	}
+	if i := strings.IndexAny(name, ":@"); i >= 0 {
+		name = name[:i]
+	}
+	if strings.Contains(name, "slim") {
+		return "slim"
+	}
+	return "shipped"
+}
+
 // agentCLIVersions asks the sandbox image which version of each agent CLI it
 // carries, once per process.
 //
@@ -210,22 +263,7 @@ const recordingClaimName = "recorded.json"
 // when it is missing, so a second report here would only be noise.
 var agentCLIVersions = sync.OnceValue(func() map[string]string {
 	out := map[string]string{}
-	img := os.Getenv("CS_SANDBOX_IMAGE")
-	if img == "" {
-		// The same resolution setup-smoke makes, for the same reason: the name
-		// carries the version of the cs-sandbox that built it, so only that
-		// binary can say what this host would boot.
-		b, err := exec.Command("cs-sandbox", "version", "--images").Output()
-		if err != nil {
-			return out
-		}
-		for line := range strings.SplitSeq(string(b), "\n") {
-			if f := strings.Fields(line); len(f) == 2 && f[0] == "image" {
-				img = f[1]
-				break
-			}
-		}
-	}
+	img := sandboxImage()
 	if img == "" {
 		return out
 	}
