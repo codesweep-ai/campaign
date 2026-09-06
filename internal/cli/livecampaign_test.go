@@ -22,6 +22,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -216,7 +217,7 @@ func TestScenarioProfilesSpellTheirCredential(t *testing.T) {
 			}
 			// A lent member is aimed at the loopback door the lender dials; an
 			// inheriting one at the fabric alias it dials itself.
-			if sc.lends() != strings.Contains(body, vcrLoanBaseURL) {
+			if sc.lends() != strings.Contains(body, vcrLoopback) {
 				t.Errorf("base URL does not match the chain this scenario runs:\n%s", body)
 			}
 			// And a lent one leaves the API version to the lender, which adds
@@ -454,7 +455,107 @@ func runLiveCampaign(t *testing.T, sc scenario, opts runOptions) campaignRun {
 // with it.
 func fabricatedCredentials(t *testing.T, token string) {
 	t.Helper()
-	home := t.TempDir()
+	home := credentialTree(t, token)
+	t.Setenv("CS_SANDBOX_AGENT_HOME", home)
+	requireOurLender(t, home)
+}
+
+// credentialTree builds the fabricated tree ONCE for the whole process, and
+// every scenario is pointed at that same one.
+//
+// Per-scenario would be the obvious thing and is wrong. The lender is a daemon:
+// the first `cs-sandbox create` that needs one starts it, it inherits that
+// create's environment, and every later create reuses the running process. A
+// tree per scenario therefore goes stale the moment the second scenario starts
+// — the lender is still reading the first one, which t.TempDir has by then
+// deleted — and the loans it cannot read fail with no request reaching the
+// recorder at all. Measured: two scenarios dead at `requests 0` while the
+// lender logged "no anthropic key to lend".
+var (
+	credentialTreeOnce sync.Once
+	credentialTreeDir  string
+	credentialTreeErr  error
+)
+
+func credentialTree(t *testing.T, token string) string {
+	t.Helper()
+	credentialTreeOnce.Do(func() {
+		credentialTreeDir, credentialTreeErr = os.MkdirTemp("", "cs-campaign-replay-creds-")
+		if credentialTreeErr == nil {
+			credentialTreeErr = writeFabricatedCredentials(credentialTreeDir, token)
+		}
+	})
+	if credentialTreeErr != nil {
+		t.Fatalf("build the fabricated credential tree: %v", credentialTreeErr)
+	}
+	return credentialTreeDir
+}
+
+// requireOurLender refuses to run against a lender this run did not get to
+// configure.
+//
+// A lender already up was started by something else — another campaign, an
+// earlier tier — and it reads credentials from whatever home THAT process had.
+// Its loans then resolve against the developer's real profile rather than the
+// fabrication here, which fails outright for a key slot (there is no
+// ~/.cs-keys) and, worse, quietly succeeds for a login slot by lending the real
+// one. Neither is a replay. Refused by name rather than diagnosed later from a
+// member that never answered.
+func requireOurLender(t *testing.T, home string) {
+	t.Helper()
+	pid := runningLenderPID()
+	if pid == 0 {
+		return // none up: the first create starts one with the environment set above
+	}
+	if lenderAgentHome(pid) == home {
+		return
+	}
+	t.Fatalf("a cs-sandbox lender (pid %d) is already running and does not read this run's "+
+		"credentials from %s.\nIt was started by something else that is still borrowing — "+
+		"another campaign, or an earlier tier. Stop that first: its loans resolve against a "+
+		"different profile, so this tier would neither replay nor stay credential-free.", pid, home)
+}
+
+// runningLenderPID reads the pid cs-sandbox records for its lender, and returns
+// 0 when there is none or it is gone.
+func runningLenderPID() int {
+	raw, err := os.ReadFile(filepath.Join(sandboxInstancesDir(), "lender"))
+	if err != nil {
+		return 0
+	}
+	for line := range strings.SplitSeq(string(raw), "\n") {
+		v, ok := strings.CutPrefix(strings.TrimSpace(line), "pid=")
+		if !ok {
+			continue
+		}
+		pid, err := strconv.Atoi(v)
+		if err != nil || pid <= 0 {
+			return 0
+		}
+		if syscall.Kill(pid, 0) != nil {
+			return 0 // recorded but gone
+		}
+		return pid
+	}
+	return 0
+}
+
+// lenderAgentHome reads the credential home a running lender was started with,
+// which is the only way to know what its loans will resolve against.
+func lenderAgentHome(pid int) string {
+	raw, err := os.ReadFile(fmt.Sprintf("/proc/%d/environ", pid))
+	if err != nil {
+		return ""
+	}
+	for entry := range strings.SplitSeq(string(raw), "\x00") {
+		if v, ok := strings.CutPrefix(entry, "CS_SANDBOX_AGENT_HOME="); ok {
+			return v
+		}
+	}
+	return "" // started without one: it reads the developer's real home
+}
+
+func writeFabricatedCredentials(home, token string) error {
 	far := time.Now().Add(365 * 24 * time.Hour).UnixMilli()
 
 	// Two fields are load-bearing, for two different readers.
@@ -479,9 +580,12 @@ func fabricatedCredentials(t *testing.T, token string) {
 		"rateLimitTier":         "default_max_20x",
 	}})
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
-	writeSecretT(t, filepath.Join(home, ".cs-claude", ".credentials.json"), claude)
+	err = writeSecret(filepath.Join(home, ".cs-claude", ".credentials.json"), claude)
+	if err != nil {
+		return err
+	}
 
 	// Codex reads its tokens as JWTs, so these have to parse: three base64url
 	// parts carrying the account claims it looks for. Nothing this run reaches
@@ -496,9 +600,12 @@ func fabricatedCredentials(t *testing.T, token string) {
 		"last_refresh": time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
 	})
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
-	writeSecretT(t, filepath.Join(home, ".cs-codex", "auth.json"), codex)
+	err = writeSecret(filepath.Join(home, ".cs-codex", "auth.json"), codex)
+	if err != nil {
+		return err
+	}
 
 	// And the provider keys, in the one-key-per-file shape cs-sandbox lends
 	// from: the whole file is the key, and the lender asks only that it not be
@@ -506,10 +613,11 @@ func fabricatedCredentials(t *testing.T, token string) {
 	// tree costs nothing, and a scenario that grew a second grant would
 	// otherwise fail as an authentication error rather than as a missing file.
 	for _, provider := range model.APIKeyProviders {
-		writeSecretT(t, filepath.Join(home, ".cs-keys", provider), []byte(token))
+		if err := writeSecret(filepath.Join(home, ".cs-keys", provider), []byte(token)); err != nil {
+			return err
+		}
 	}
-
-	t.Setenv("CS_SANDBOX_AGENT_HOME", home)
+	return nil
 }
 
 // fakeJWT is a structurally valid token that authenticates nothing.
@@ -531,15 +639,12 @@ func fakeJWT(token string) string {
 		enc(claims) + "." + base64.RawURLEncoding.EncodeToString([]byte(token))
 }
 
-// writeSecretT writes a credential the way the agent expects to find one.
-func writeSecretT(t *testing.T, path string, data []byte) {
-	t.Helper()
+// writeSecret writes a credential the way the agent expects to find one.
+func writeSecret(path string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		t.Fatal(err)
+		return err
 	}
-	if err := os.WriteFile(path, data, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	return os.WriteFile(path, data, 0o600)
 }
 
 // newLiveApp builds the app under test with its own state directory, and
@@ -650,17 +755,10 @@ func reclaimGroupForce(ctx context.Context, s sandboxCLI, group string) error {
 func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiveRoot, scratch string, opts runOptions) campaignRun {
 	t.Helper()
 
-	// The proxy joins a network create has not made yet, so it is launched
-	// alongside create rather than before it: startVCR waits for the fabric,
-	// and the window between the network appearing and the first model turn —
-	// the d001 readback, inside create — is tens of seconds. `plan` resolves
-	// the group without allocating anything, which is how the launcher knows
-	// which network to wait for.
-	type launch struct {
-		proxy *vcrProxy
-		err   error
-	}
-	var launched chan launch
+	// The recorder is a process on this host, so it is up before create rather
+	// than racing it: a lent member's first model call goes through the lender,
+	// which dials the recorder, and that can happen inside create.
+	var proxy *vcrProxy
 	if opts.proxyMode != "" {
 		planned, _, err := a.planCampaign(createOpts{profile: profilePath}, name, true)
 		if err != nil {
@@ -685,11 +783,14 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 		// warm session records the continuation prompt, and then nothing can
 		// replay it cold.
 		forgetHostSessions(t, planned)
-		launched = make(chan launch, 1)
-		go func() {
-			proxy, err := startVCR(t, sc, planned.Group, opts.proxyMode, opts.proxyStore, scratch)
-			launched <- launch{proxy, err}
-		}()
+		started, err := startVCR(t, sc, planned.Group, opts.proxyMode, opts.proxyStore, scratch)
+		switch {
+		case errors.Is(err, errVCRUnavailable):
+			t.Skipf("%v", err)
+		case err != nil:
+			t.Fatalf("cs-vcr: %v", err)
+		}
+		proxy = started
 	}
 
 	create := a.createCmd(false)
@@ -700,17 +801,7 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 	create.SetArgs([]string{name, "--profile", profilePath})
 	createErr := create.Execute()
 
-	run := campaignRun{name: name, createOut: out.String()}
-	if launched != nil {
-		l := <-launched
-		switch {
-		case errors.Is(l.err, errVCRUnavailable):
-			t.Skipf("%v", l.err)
-		case l.err != nil:
-			t.Fatalf("cs-vcr: %v", l.err)
-		}
-		run.proxy = l.proxy
-	}
+	run := campaignRun{name: name, createOut: out.String(), proxy: proxy}
 	if createErr != nil {
 		// create is where the readback lives, so a failure here is usually a
 		// member that never answered — and the member is about to be torn
@@ -1073,19 +1164,19 @@ func memberBlock(sc scenario, repo, baseURL, cassette string) string {
 		// NO_PROXY carries the proxy's own host, so the model calls above go
 		// straight to the base URL rather than through the tunnel.
 		//
-		// Only where the GUEST dials the recorder. A lent member cannot use
-		// this tunnel and does not need it: it holds no credential for a side
-		// call, so cs-sandbox refuses those inside the sandbox before they
-		// leave (--block-side-calls, on by default). Pointing a lent member at
-		// a proxy here would record a chain no real campaign runs.
+		// Only where the GUEST dials the recorder, which is cs-sandbox's own
+		// rule for this (its agent matrix sets exactly these). A lent member
+		// needs none of it: its base URL is read at create and becomes the
+		// loan's upstream, and cs-sandbox points the member's proxy variables
+		// at the lender itself, which refuses the side calls. Setting them here
+		// would aim a lent member at a proxy no real campaign gives it.
 		if !sc.lends() {
-			env = append(env,
-				"HTTP_PROXY="+baseURL,
-				"HTTPS_PROXY="+baseURL,
-				"ALL_PROXY="+baseURL,
-				"NO_PROXY="+vcrHost+",127.0.0.1,localhost",
-				"no_proxy="+vcrHost+",127.0.0.1,localhost",
-			)
+			for _, k := range []string{"HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"} {
+				env = append(env, k+"="+baseURL)
+			}
+			for _, k := range []string{"NO_PROXY", "no_proxy"} {
+				env = append(env, k+"="+vcrHost+",127.0.0.1,localhost")
+			}
 		}
 	}
 	b.WriteString("    env:\n")
