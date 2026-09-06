@@ -107,6 +107,12 @@ var errVCRUnavailable = errors.New("cs-vcr cannot run on this host")
 // startVCR launches the recorder in record or replay mode, with store as the
 // cassette directory, and returns once it answers.
 func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string) (*vcrProxy, error) {
+	// Before anything is booted: a foreign listener on this port reads as a
+	// healthy recorder to waitForVCR below, and the tier then blames the
+	// members fifteen minutes later. See requirePortFree.
+	if err := requirePortFree(vcrListen, vcrPort); err != nil {
+		return nil, err
+	}
 	bin, err := exec.LookPath("cs-vcr")
 	if err != nil {
 		return nil, fmt.Errorf("%w: cs-vcr is not on PATH (go install github.com/codesweep-ai/vcr/cmd/cs-vcr@latest)", errVCRUnavailable)
