@@ -1,12 +1,33 @@
-data: {"id":"chatcmpl-6798db06362c4be0b32f43ee23d488db","object":"chat.completion.chunk","created":1788671408,"model":"accounts/fireworks/models/kimi-k3","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null,"raw_output":null}],"usage":null}
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CenrYdzs75LWzMjxZ64Wi","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":562,"cache_read_input_tokens":46621,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":562},"output_tokens":8,"service_tier":"standard","inference_geo":"not_available"}}        }
 
-data: {"choices":[{"delta":{"reasoning_content":"Plan: dispatch the mission to dev, wait, judge, accept or rework, then reply.\n\nFirst, record a plan note, then send the dispatch to dev."},"finish_reason":null,"index":0,"raw_output":null}],"created":1788671408,"id":"chatcmpl-6798db06362c4be0b32f43ee23d488db","model":"accounts/fireworks/models/kimi-k3","object":"chat.completion.chunk","usage":null}
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}          }
 
-data: {"choices":[{"delta":{"tool_calls":[{"function":{"arguments":"{\"todos\": [{\"content\": \"Record plan note for mission\", \"status\": \"in_progress\", \"priority\": \"high\"}, {\"content\": \"Send dispatch to dev with full mission spec\", \"status\": \"pending\", \"priority\": \"high\"}, {\"content\": \"Wait for dev's reply\", \"status\": \"pending\", \"priority\": \"high\"}, {\"content\": \"Judge reply: fetch dev branch, run tests\", \"status\": \"pending\", \"priority\": \"high\"}, {\"content\": \"Accept or send rework\", \"status\": \"pending\", \"priority\": \"high\"}, {\"content\": \"Reply to m1 with outcome\", \"status\": \"pending\", \"priority\": \"high\"}]}","name":"todowrite"},"id":"todowrite_10","index":0,"type":"function"}]},"finish_reason":null,"index":0,"raw_output":null}],"created":1788671408,"id":"chatcmpl-6798db06362c4be0b32f43ee23d488db","model":"accounts/fireworks/models/kimi-k3","object":"chat.completion.chunk","usage":null}
+event: ping
+data: {"type": "ping"}
 
-data: {"id":"chatcmpl-6798db06362c4be0b32f43ee23d488db","object":"chat.completion.chunk","created":1788671408,"model":"accounts/fireworks/models/kimi-k3","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls","raw_output":null}],"usage":null}
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
 
-data: {"id":"chatcmpl-6798db06362c4be0b32f43ee23d488db","object":"chat.completion.chunk","created":1788671408,"model":"accounts/fireworks/models/kimi-k3","choices":[],"usage":{"prompt_tokens":11711,"total_tokens":11900,"completion_tokens":189,"prompt_tokens_details":{"cached_tokens":11122},"completion_tokens_details":{"reasoning_tokens":33},"output_tokens_details":{"reasoning_tokens":33}}}
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EqcECqgBCBEYAipANA6/ZIxe6Wbf0OKnVjvZU49R2Mz3wR9FQB2fMK72WHK7Pjl5uMBidMcEZXDK/FNEafComnpPAXjapXnRqTvh3zIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEK4Uux/XuH5rhjlwR7iJlOeIAQGoAban99QGsAECEgxk9+1S4RzV1hZTbOsaDBY7dL3D+BExKj+ifyIwuJQd/mcHYqEZVJ6Lk1Pu+XfBEpn7QPUGPn6Hv5/0a9gtQrPQhiFLYUIZqNRtCL+WKqsCQT/f6Oy3fvU6t+999utuLGNQLPKmOVc8eZ5uIbAzsul3FZVRkVlm73i0SgNIdD33ieJDcslnJUX+fqVdZ3ZxORszzSUrqYew168do0hizkQN/PrJcZOkL3lcvCo8ZqIs4rdpkjZQ+WR6aV8h60sXC/EeR9VQuwy9dbmqWsOkbby3+IR39Wz2KLD3073+LDqZ1KoyWLT+MEMOJhXfe2aMyifZua/mKo9X3g+8qhbX/ij0jWHimo/ItxcqTsa33tmCKo7r2F9h0IkuUyLBfgitGcNAPDd28eqyiJTjlWZIqGFNlkYab3Ui+rMCeoUoh0S0YMww4qWlRflmw8DAvqJ5aWV9WVKO0v7UOkdy3l15lD+DXDAKXsALWdKxTKJNK19X0UNW0G+vIOrzCtMYAQ=="}       }
 
-data: [DONE]
+event: content_block_stop
+data: {"type":"content_block_stop","index":0         }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_018mfSj7atyEC8JV496uXZVN","name":"Bash","input":{},"caller":{"type":"direct"}} }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member accept dev 2\u003e\u00261\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1            }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":562,"cache_read_input_tokens":46621,"output_tokens":166,"output_tokens_details":{"thinking_tokens":102}},"context_management":{"applied_edits":[]}          }
+
+event: message_stop
+data: {"type":"message_stop"       }
 

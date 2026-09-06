@@ -1,10 +1,33 @@
-data: {"id":"chatcmpl-3fdf18a049ab47d3a9dd77c157a550bd","object":"chat.completion.chunk","created":1788671484,"model":"accounts/fireworks/models/kimi-k3","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null,"raw_output":null}],"usage":null}
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CenreFXvyrEvG2xNjCHh5","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":325,"cache_read_input_tokens":49306,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":325},"output_tokens":4,"service_tier":"standard","inference_geo":"not_available"}}  }
 
-data: {"choices":[{"delta":{"tool_calls":[{"function":{"arguments":"{\"command\": \"cs-campaign-member read dev\"}","name":"bash"},"id":"bash_17","index":0,"type":"function"}]},"finish_reason":null,"index":0,"raw_output":null}],"created":1788671484,"id":"chatcmpl-3fdf18a049ab47d3a9dd77c157a550bd","model":"accounts/fireworks/models/kimi-k3","object":"chat.completion.chunk","usage":null}
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}        }
 
-data: {"id":"chatcmpl-3fdf18a049ab47d3a9dd77c157a550bd","object":"chat.completion.chunk","created":1788671484,"model":"accounts/fireworks/models/kimi-k3","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls","raw_output":null}],"usage":null}
+event: ping
+data: {"type": "ping"}
 
-data: {"id":"chatcmpl-3fdf18a049ab47d3a9dd77c157a550bd","object":"chat.completion.chunk","created":1788671484,"model":"accounts/fireworks/models/kimi-k3","choices":[],"usage":{"prompt_tokens":13574,"total_tokens":13627,"completion_tokens":53,"prompt_tokens_details":{"cached_tokens":13412},"completion_tokens_details":{"reasoning_tokens":0},"output_tokens_details":{"reasoning_tokens":0}}}
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
 
-data: [DONE]
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EogECqgBCBEYAipAsn01+1VhBeAWIYw4gNDqR2VarvTC2iCrPzXA+TFcX0b0AiS4Ma+QoPG69SZajDf8bW8j42i4mZEGP1XJwxhl+jIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEK4Uux/XuH5rhjlwR7iJlOeIAQGoAYKo99QGsAECEgyiJrlWRVMeUddBsdUaDBaW59hywpXkEQ8zICIwbSmLG8gt0fNUMOpOXwRoRcdBivBd6vb4N7omLsi8W3YJWO/PF4X8jqlXtlKcOQPRKowCSobhhyE8nVEopEVFIRFV6NnjJE1o4pAPzbcXpbMb0TyRsPsMSpZoqmbFb/2FUI3PHHsl1kRj3BO5pGgkMSTFArScVpcMfiZhNIKED8xEaAXPLhwNJzMuMsUGE6vxrt2s0oN6HGZn/EB1z+iwIDYiA1Wlok8CibbLsTzRXZTbMKYztxTyzONjUgEt82TVA0VG2+9jkTutefyql5KmQPre9A+LstjQ6AE9w6FGT12nQlbuV5MyLXiCpbzvw7Xx4r2bzuki9E1b84lPzXyrM7z8B7aTt3qUelrq6pizw0QdUwPuj//mqlnG8Y5eUlbrOfKsoaIQCgV9Sju+9Pib5xKj08dCYaWgyGz9S2sswRgB"}   }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0       }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01WeT7Co8Yug2iDzJLsM47CP","name":"Bash","input":{},"caller":{"type":"direct"}}             }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git log --oneline -5 \u0026\u0026 echo \\\"---branches---\\\" \u0026\u0026 git branch -a \u0026\u0026 echo \\\"---remotes---\\\" \u0026\u0026 git remote -v\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1            }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":325,"cache_read_input_tokens":49306,"output_tokens":175,"output_tokens_details":{"thinking_tokens":80}},"context_management":{"applied_edits":[]}    }
+
+event: message_stop
+data: {"type":"message_stop" }
 

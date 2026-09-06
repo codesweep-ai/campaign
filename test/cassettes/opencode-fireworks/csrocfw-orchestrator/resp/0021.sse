@@ -1,10 +1,69 @@
-data: {"id":"chatcmpl-c67e4dc5e1fd4034bc12e18bcff482e8","object":"chat.completion.chunk","created":1788671495,"model":"accounts/fireworks/models/kimi-k3","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null,"raw_output":null}],"usage":null}
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011Cenrf3LUf4yrFE2uqka2L","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":419,"cache_read_input_tokens":50779,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":419},"output_tokens":1,"service_tier":"standard","inference_geo":"not_available"}}     }
 
-data: {"choices":[{"delta":{"tool_calls":[{"function":{"arguments":"{\"command\": \"git -C ~/subject show refs/remotes/campaign/dev/subject:src/greet.py; echo ---; git -C ~/subject show refs/remotes/campaign/dev/subject:tests/test_greet.py\"}","name":"bash"},"id":"bash_21","index":0,"type":"function"}]},"finish_reason":null,"index":0,"raw_output":null}],"created":1788671495,"id":"chatcmpl-c67e4dc5e1fd4034bc12e18bcff482e8","model":"accounts/fireworks/models/kimi-k3","object":"chat.completion.chunk","usage":null}
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}        }
 
-data: {"id":"chatcmpl-c67e4dc5e1fd4034bc12e18bcff482e8","object":"chat.completion.chunk","created":1788671495,"model":"accounts/fireworks/models/kimi-k3","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls","raw_output":null}],"usage":null}
+event: ping
+data: {"type": "ping"}
 
-data: {"id":"chatcmpl-c67e4dc5e1fd4034bc12e18bcff482e8","object":"chat.completion.chunk","created":1788671495,"model":"accounts/fireworks/models/kimi-k3","choices":[],"usage":{"prompt_tokens":14568,"total_tokens":14658,"completion_tokens":90,"prompt_tokens_details":{"cached_tokens":14323},"completion_tokens_details":{"reasoning_tokens":0},"output_tokens_details":{"reasoning_tokens":0}}}
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"All"}           }
 
-data: [DONE]
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" three cri"}              }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"teria verified independ"}        }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ently — `greet."} }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"py` retur"}         }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ns the"} }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" correct string, t"}              }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ests cover both c"}          }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ases, and the disc"}          }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"over"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" command ex"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"its 0. Clea"}      }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ning up the worktree and acc"}               }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"epting."}           }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0    }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01Bhr5Jatpct9CRSx3BqfsUZ","name":"Bash","input":{},"caller":{"type":"direct"}}  }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git worktree remove /tmp/verify_dev --force 2\u003e\u00261\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1         }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":419,"cache_read_input_tokens":50779,"output_tokens":134,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}           }
+
+event: message_stop
+data: {"type":"message_stop"   }
 

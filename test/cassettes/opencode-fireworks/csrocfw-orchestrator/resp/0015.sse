@@ -1,10 +1,42 @@
-data: {"id":"chatcmpl-527bb982ce674154b726df69975519ac","object":"chat.completion.chunk","created":1788671431,"model":"accounts/fireworks/models/kimi-k3","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null,"raw_output":null}],"usage":null}
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CenrdwHZmuPRLpMvxFXRe","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":839,"cache_read_input_tokens":48235,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":839},"output_tokens":4,"service_tier":"standard","inference_geo":"not_available"}}      }
 
-data: {"choices":[{"delta":{"tool_calls":[{"function":{"arguments":"{\"todos\": [{\"content\": \"Record plan note for mission\", \"status\": \"completed\", \"priority\": \"high\"}, {\"content\": \"Send dispatch to dev with full mission spec\", \"status\": \"completed\", \"priority\": \"high\"}, {\"content\": \"Wait for dev's reply\", \"status\": \"in_progress\", \"priority\": \"high\"}, {\"content\": \"Judge reply: fetch dev branch, run tests\", \"status\": \"pending\", \"priority\": \"high\"}, {\"content\": \"Accept or send rework\", \"status\": \"pending\", \"priority\": \"high\"}, {\"content\": \"Reply to m1 with outcome\", \"status\": \"pending\", \"priority\": \"high\"}]}","name":"todowrite"},"id":"todowrite_15","index":0,"type":"function"}]},"finish_reason":null,"index":0,"raw_output":null}],"created":1788671431,"id":"chatcmpl-527bb982ce674154b726df69975519ac","model":"accounts/fireworks/models/kimi-k3","object":"chat.completion.chunk","usage":null}
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""} }
 
-data: {"id":"chatcmpl-527bb982ce674154b726df69975519ac","object":"chat.completion.chunk","created":1788671431,"model":"accounts/fireworks/models/kimi-k3","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls","raw_output":null}],"usage":null}
+event: ping
+data: {"type": "ping"}
 
-data: {"id":"chatcmpl-527bb982ce674154b726df69975519ac","object":"chat.completion.chunk","created":1788671431,"model":"accounts/fireworks/models/kimi-k3","choices":[],"usage":{"prompt_tokens":13042,"total_tokens":13198,"completion_tokens":156,"prompt_tokens_details":{"cached_tokens":12944},"completion_tokens_details":{"reasoning_tokens":0},"output_tokens_details":{"reasoning_tokens":0}}}
+event: content_block_delta
+data: {"delta":{"estimated_tokens":null,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
 
-data: [DONE]
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EpEDCqgBCBEYAipA4QygAd3wk/OpweSKEQ7ZPxkec6XaXiN0luI9E33qNBKJPyQQIK9Q0yNHh8ULfYP2djxJUg6i2GIsHF2vcdFtvzIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEK4Uux/XuH5rhjlwR7iJlOeIAQGoAf+n99QGsAECEgytPLE4xm/trOdaXKcaDPQ0PAOZuBl78M195CIw1FKQz21YHHJf123h+Do19zr/kK4mjZ3T0sPuwAhb3n5bHUdNJMuweAyA+XVitRLcKpUBhGTpI+hMfJv6yYjdjf2EcTTyOQd6fh6f0gfhYE3UvxsJsn1YlxxLX44+gMMFehTjnv4kxiNqoBNxUq/KkPif73+dDZMMLgfSUy2FoQb2CEhbI/pq4O0F8akAE6QlSlluzMfw6Hi7JUQzu21svCe7Rorq5SOiD5LXBdQoZPFHuptpEyYVLjRwKVbdhgEAA7umHi6z0g4YAQ=="}        }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0     }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}               }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Now I need to verify by fetching the branch and running the tests myself rather than trusting the report. I notice the repo shows `dirty: true`."}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1     }
+
+event: content_block_start
+data: {"type":"content_block_start","index":2,"content_block":{"type":"tool_use","id":"toolu_015ZMLRvY4U6nkKgbLt3YzcP","name":"Bash","input":{},"caller":{"type":"direct"}}      }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member fetch dev 2\u003e\u00261\"}","type":"input_json_delta"},"index":2,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":2     }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":839,"cache_read_input_tokens":48235,"output_tokens":158,"output_tokens_details":{"thinking_tokens":47}},"context_management":{"applied_edits":[]}  }
+
+event: message_stop
+data: {"type":"message_stop"  }
 
