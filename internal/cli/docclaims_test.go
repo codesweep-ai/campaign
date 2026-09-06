@@ -86,3 +86,34 @@ func TestCorruptStateIsNotSilentlyOmittedFromLs(t *testing.T) {
 		t.Fatalf("ls output must list good campaigns and warn about corrupt ones:\n%s", out.String())
 	}
 }
+
+// MANUAL.md, "What the product already tells every member", promises that
+// `cs-campaign orientation` prints the text the member will be given, and its
+// Files table names ORIENTATION.md as the file that carries it. The promise is
+// worth only as much as the path it names, so this holds the document against
+// the constant the create path actually writes to.
+//
+// The claim it protects is the reason the command exists: a brief author who
+// reads a description instead of the text is still guessing.
+func TestManualNamesTheOrientationFileTheProductWrites(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	manual, err := os.ReadFile(filepath.Join(root, "MANUAL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(manual)
+	if !strings.Contains(body, "~/"+guestOrientationFile) {
+		t.Errorf("MANUAL.md does not name %q, the path create writes the orientation to", "~/"+guestOrientationFile)
+	}
+	for _, want := range []string{
+		"cs-campaign orientation acme --profile acme/profile.yaml --member backend",
+		"Do not restate",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("MANUAL.md no longer carries %q, which the authoring guidance depends on", want)
+		}
+	}
+}

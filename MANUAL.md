@@ -14,6 +14,7 @@ host programs, `cs-campaign` and `cs-dispatch-viewer`, print this manual with th
 
 ```sh
 cs-campaign init <campaign> [--dir DIR] [--orchestrator CLI] [--agent NAME=CLI]...
+cs-campaign orientation <campaign> --profile PROFILE [--member NAME]
 cs-campaign validate [PROFILE] [--profile PROFILE]
 cs-campaign plan <campaign> --profile PROFILE [--set PATH=VALUE]...
 cs-campaign create <campaign> --profile PROFILE [--accept-upstream-change] [--dry-run]
@@ -64,9 +65,10 @@ line quoted here.
 
 1. **Decide the acceptance gates first.** Everything else hangs off the definition of done.
 2. **Write the product documents** in the target repository, campaign-free.
-3. **Brief the team.** Write one brief per member in `roles/`, beside the profile. `create` seeds
-   each member its own brief, and the orchestrator the mission and every agent's brief. Nothing is
-   copied into the product repository.
+3. **Brief the team.** Read what the product already tells every member with `cs-campaign
+   orientation`, then write one brief per member in `roles/`, beside the profile, covering what
+   that text does not. `create` seeds each member its own brief, and the orchestrator the mission
+   and every agent's brief. Nothing is copied into the product repository.
 4. **Create and dispatch.** One mission prompt, then hands off. All judgement lives in the
    orchestrator; the host observes, archives and verifies.
 5. **Archive before destroy,** and re-run the gates yourself from a fresh clone. That independent
@@ -84,6 +86,25 @@ acme/
 ```
 
 All three are found by position beside `profile.yaml`.
+
+### What the product already tells every member
+
+A member's standing context has two halves, and they are written by different
+people. `create` seeds every member `ORIENTATION.md`, which states its identity, its clone and
+branch, the files it was given, and its obligations. An agent is told there that it has no route to
+the orchestrator or to any peer; the orchestrator is told the control verbs and the outcome
+vocabulary. Your brief is the other half: what this member owns in this campaign.
+
+Read the first half before you write the second:
+
+```sh
+cs-campaign orientation acme --profile acme/profile.yaml --member backend
+```
+
+That prints the text the member will be given, so a brief never has to guess at it. Do not restate
+it and do not contradict it. A brief may say an agent can ask the orchestrator a question, or name
+a verb the member's role refuses. Either one reaches that member as a second instruction that
+disagrees with the first. Nothing before `create` catches it.
 
 Give the orchestrator every repository it must judge. `fetch` pulls a teammate's branch into the
 orchestrator's own clone, so an orchestrator without the repository can read replies and cannot
@@ -110,11 +131,45 @@ wrote acme/roles/backend.md
 wrote acme/roles/orchestrator.md
 wrote acme/roles/qa.md
 
+Add credentials to acme/profile.yaml, then read what every member is
+already told, so that no brief restates or contradicts it:
+
+  cs-campaign orientation acme --profile acme/profile.yaml
+
 Fill in the blanks, then:
   cs-campaign validate acme/profile.yaml
 ```
 
 `init` refuses to overwrite an existing file and names what is in the way.
+
+### orientation
+
+```sh
+cs-campaign orientation <campaign> --profile PROFILE [--member NAME]
+```
+
+Prints the standing context each member will be given, and changes nothing. With `--member`, one
+member's; otherwise every member's, separated by a header naming the member and its role.
+
+Run it before writing briefs, so no brief restates or contradicts what the member is already told.
+The rendered text goes to standard output and the guidance to standard error, so a redirect
+captures the orientation alone.
+
+```console
+$ cs-campaign orientation acme --profile acme/profile.yaml --member backend
+# Campaign member orientation
+
+You are `backend`, running as the **agent** of campaign `acme`.
+…
+```
+
+Unlike `validate`, it does not require the briefs to exist. A member whose `roles/<member>.md` is
+unwritten is answered for anyway, and the missing files are named on standard error. That is the
+ordinary case: reading the orientation is what you do before writing a brief. `init` also refuses
+to scaffold a stub for a member added to a profile later.
+
+The branch it prints is predicted. `cs-sandbox` spells the real one, which `create` reads back
+before it writes the file, so that line alone may differ from what the member receives.
 
 ### validate
 
@@ -734,6 +789,7 @@ Everything else a campaign declares lives in the profile alone.
 | `<archive>/fleet-verdict.json` | `archive` | The audit's findings. |
 | `<archive>/upstream-fingerprint.json` | `archive` | The host surface the campaign ended on. |
 | `<archive>/member-harness.json` | `archive` | Each member's tool surface, measured again at archive time. |
+| `~/.local/share/cs-campaign/input/ORIENTATION.md` | host, in each member | The standing context the product gives every member. `cs-campaign orientation` prints it before create. |
 | `~/.config/cs-campaign/member.json` | host, in each member | What that member was given. |
 | `~/.config/cs-campaign/manifest.json` | host, in the orchestrator | The roster its `wait` loop runs on. |
 | `~/.local/share/cs-campaign/input/` | the member's driver | Dispatch messages. |
@@ -880,8 +936,8 @@ and, once the mission has been answered, one read of that reply. A failing membe
 `blindProbes` times, one second apart, so budget about `blindProbes` seconds for a member whose
 machine is gone.
 
-`validate`, `plan`, `ls`, `audit`, `transcript`, `manual` and `doctor` with no argument change
-nothing. `init` writes files and refuses to overwrite. `create`, `send`, `restart`, `fetch`,
+`validate`, `plan`, `orientation`, `ls`, `audit`, `transcript`, `manual` and `doctor` with no
+argument change nothing. `init` writes files and refuses to overwrite. `create`, `send`, `restart`, `fetch`,
 `archive` and `destroy` change state. So do two commands that read: `doctor <campaign>`
 records each member's refreshed harness verdict, and `observe` mirrors the orchestrator's log beside
 the campaign record.

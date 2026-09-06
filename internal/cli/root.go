@@ -53,7 +53,7 @@ func (a *app) root() *cobra.Command {
 	root.PersistentFlags().BoolVar(&a.json, "json", false, "print machine-readable JSON")
 	root.AddCommand(
 		// Planning and lifecycle.
-		a.initCmd(), a.createCmd(false), a.createCmd(true), a.validateCmd(), a.destroyCmd(),
+		a.initCmd(), a.orientationCmd(), a.createCmd(false), a.createCmd(true), a.validateCmd(), a.destroyCmd(),
 		// The protocol: one send verb, one observation surface, one operator
 		// recovery instrument. Node state is computed, never stored.
 		a.observeCmd(), a.sendCmd(), a.restartCmd(),

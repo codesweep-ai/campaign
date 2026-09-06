@@ -22,7 +22,7 @@ var memberFacingBehaviors = map[string]string{
 // exemptCommands are infrastructure/introspection surfaces with no
 // per-adapter behavior row of their own.
 var exemptCommands = map[string]bool{
-	"init": true, "create": true, "plan": true, "validate": true, "destroy": true,
+	"init": true, "orientation": true, "create": true, "plan": true, "validate": true, "destroy": true,
 	"ls": true, "ssh": true, "fetch": true, "observe": true, "audit": true,
 	"doctor": true, "version": true, "manual": true,
 	"completion": true, "help": true,

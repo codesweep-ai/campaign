@@ -164,7 +164,16 @@ func scaffoldCampaign(out io.Writer, dir, name string, profile model.Profile) er
 		}
 		fmt.Fprintf(out, "wrote %s\n", path)
 	}
-	fmt.Fprintf(out, "\nFill in the blanks, then:\n  cs-campaign validate %s\n", filepath.Join(dir, "profile.yaml"))
+	// The orientation line comes BEFORE the blanks, because reading it is what
+	// makes the blanks fillable: a brief is the half of a member's context that
+	// the product does not write, and an author who cannot see the other half
+	// invents it. See orientationCmd.
+	profilePath := filepath.Join(dir, "profile.yaml")
+	fmt.Fprintf(out, "\nAdd credentials to %s, then read what every member is\n"+
+		"already told, so that no brief restates or contradicts it:\n\n"+
+		"  cs-campaign orientation %s --profile %s\n\n"+
+		"Fill in the blanks, then:\n  cs-campaign validate %s\n",
+		profilePath, name, profilePath, profilePath)
 	return nil
 }
 

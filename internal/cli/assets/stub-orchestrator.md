@@ -1,19 +1,17 @@
 # Role: orchestrator — {{.Campaign}}
 
-<!-- This brief is POLICY: how this team is run. What the campaign must achieve
-     is in mission.md; what each teammate owns is in that teammate's brief, and
-     you have been given all of them. -->
+<!-- This brief is POLICY: how this team is run. The mission states what must be
+     achieved; each teammate's brief states what that teammate owns.
 
-You are accountable for delivering the mission with the team you were given. You
-cannot add, remove or re-scope a member.
+     Read what the orchestrator is ALREADY told, and do not restate or
+     contradict it:
+       cs-campaign orientation {{.Campaign}} --profile <profile> --member orchestrator -->
 
 ## How to run it
 
 <!-- Fill these in. They are the decisions only you can make for this campaign. -->
 
 - Delegate implementation; do not write it yourself first.
-- Verify what comes back: fetch the teammate's branch and check the work rather
-  than trusting its report.
 - Rework rounds before you stop trying: {N}
 - When a teammate fails {N} times: {reassign / take it on / abandon that piece}
 

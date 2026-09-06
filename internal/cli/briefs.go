@@ -39,6 +39,12 @@ type campaignInputs struct {
 	Roles    map[string]seededFile // member name -> that member's brief
 	RootDir  string                // directory the profile lives in
 	Declared bool                  // false for flag-path creates, which have no profile
+	// Planned marks a set resolved for INSPECTION rather than for seeding. A
+	// file that does not exist yet is then carried by name alone, because the
+	// name is fixed by the convention above and a member's input list is
+	// therefore knowable before anybody has written a brief. Only `orientation`
+	// sets it, and seedCommand refuses to seed from it.
+	Planned bool
 }
 
 type seededFile struct {
@@ -57,6 +63,51 @@ func newSeededFile(path string) (seededFile, error) {
 	return seededFile{Name: filepath.Base(path), Path: path, Content: string(b), Digest: hex.EncodeToString(sum[:])}, nil
 }
 
+// missingInput is one file the convention requires that is not on disk. Desc
+// says what the file is for, so the error can name a role rather than a path.
+type missingInput struct {
+	Rel    string // path relative to the profile, as the operator would type it
+	Desc   string // what it holds, for the error listing
+	Member string // the member it briefs; empty for the mission
+}
+
+// resolveCampaignInputs reads the mission and every member's brief relative to
+// the profile, reporting what is absent rather than deciding what that means.
+// Its two callers differ on exactly that: creation refuses an unbriefed fleet,
+// and inspection does not.
+func resolveCampaignInputs(profilePath string, p model.Profile) (campaignInputs, []missingInput, error) {
+	if profilePath == "" {
+		return campaignInputs{Roles: map[string]seededFile{}}, nil, nil
+	}
+	root := filepath.Dir(profilePath)
+	in := campaignInputs{Roles: map[string]seededFile{}, RootDir: root, Declared: true}
+
+	var missing []missingInput
+	if f, err := newSeededFile(filepath.Join(root, missionFileName)); err == nil {
+		in.Mission = f
+	} else {
+		missing = append(missing, missingInput{Rel: missionFileName, Desc: "the campaign's goal"})
+	}
+
+	for _, name := range append([]string{"orchestrator"}, sortedNames(p.Agents)...) {
+		role := "agent " + name
+		if name == "orchestrator" {
+			role = "the orchestrator"
+		}
+		rel := filepath.Join(rolesDirName, name+".md")
+		f, err := newSeededFile(filepath.Join(root, rel))
+		if err != nil {
+			missing = append(missing, missingInput{Rel: rel, Desc: role, Member: name})
+			continue
+		}
+		if reservedInputNames[f.Name] {
+			return in, missing, fmt.Errorf("brief %s uses a reserved name; the product owns that file inside a member", filepath.Join(root, rel))
+		}
+		in.Roles[name] = f
+	}
+	return in, missing, nil
+}
+
 // loadCampaignInputs resolves the mission and every member's brief relative to
 // the profile. It reads and hashes but allocates nothing, so validate and plan
 // can call it and fail before a VM exists.
@@ -65,45 +116,49 @@ func newSeededFile(path string) (seededFile, error) {
 // rather than a briefed campaign, so they resolve to no inputs rather than an
 // error. A campaign that carries a mission is one that declared a profile.
 func loadCampaignInputs(profilePath string, p model.Profile) (campaignInputs, error) {
-	if profilePath == "" {
-		return campaignInputs{Roles: map[string]seededFile{}}, nil
+	in, missing, err := resolveCampaignInputs(profilePath, p)
+	if err != nil {
+		return in, err
 	}
-	root := filepath.Dir(profilePath)
-	in := campaignInputs{Roles: map[string]seededFile{}, RootDir: root, Declared: true}
-
-	var missing []string
-	mission := filepath.Join(root, missionFileName)
-	if f, err := newSeededFile(mission); err == nil {
-		in.Mission = f
-	} else {
-		missing = append(missing, fmt.Sprintf("  %-28s the campaign's goal", missionFileName))
-	}
-
-	for _, name := range append([]string{"orchestrator"}, sortedNames(p.Agents)...) {
-		role := "agent " + name
-		if name == "orchestrator" {
-			role = "the orchestrator"
-		}
-		path := filepath.Join(root, rolesDirName, name+".md")
-		f, err := newSeededFile(path)
-		if err != nil {
-			missing = append(missing, fmt.Sprintf("  %-28s %s", filepath.Join(rolesDirName, name+".md"), role))
-			continue
-		}
-		if reservedInputNames[f.Name] {
-			return in, fmt.Errorf("brief %s uses a reserved name; the product owns that file inside a member", path)
-		}
-		in.Roles[name] = f
-	}
-
 	if len(missing) > 0 {
+		lines := make([]string, 0, len(missing))
+		for _, m := range missing {
+			lines = append(lines, fmt.Sprintf("  %-28s %s", m.Rel, m.Desc))
+		}
 		return in, fmt.Errorf("campaign inputs are missing beside %s:\n%s\n\n"+
 			"Every declared member needs a written purpose, and the campaign needs a mission —\n"+
 			"they are seeded into each member at create and are what the fleet is verified against.\n"+
 			"Create the files above, or run `cs-campaign init` to scaffold them",
-			profilePath, strings.Join(missing, "\n"))
+			profilePath, strings.Join(lines, "\n"))
 	}
 	return in, nil
+}
+
+// plannedCampaignInputs resolves the same files for INSPECTION, carrying a file
+// that does not exist yet by its name alone. It returns the relative paths that
+// are still absent, so a caller can say which parts of the answer describe a
+// file nobody has written.
+//
+// This is what lets `orientation` answer for a member whose brief is still to
+// be authored — the ordinary case, since reading the orientation is what an
+// author does BEFORE writing one, and `init` refuses to scaffold a stub for a
+// member added to a profile later.
+func plannedCampaignInputs(profilePath string, p model.Profile) (campaignInputs, []string, error) {
+	in, missing, err := resolveCampaignInputs(profilePath, p)
+	if err != nil {
+		return in, nil, err
+	}
+	in.Planned = true
+	absent := make([]string, 0, len(missing))
+	for _, m := range missing {
+		if m.Member == "" {
+			in.Mission = seededFile{Name: missionFileName}
+		} else {
+			in.Roles[m.Member] = seededFile{Name: m.Member + ".md"}
+		}
+		absent = append(absent, m.Rel)
+	}
+	return in, absent, nil
 }
 
 // seedCommand builds the shell that materialises one member's seeded inputs.
@@ -112,7 +167,7 @@ func loadCampaignInputs(profilePath string, p model.Profile) (campaignInputs, er
 // owns. The alternative is an operator hand-copying a team table into the
 // orchestrator's own brief, which drifts the moment one file is edited.
 func (in campaignInputs) seedCommand(member model.Member) string {
-	if !in.Declared {
+	if !in.Declared || in.Planned {
 		return ""
 	}
 	var parts []string
@@ -152,7 +207,9 @@ func (in campaignInputs) seededNames(member model.Member) []string {
 		names = append(names, own.Name)
 	}
 	if member.Role == "orchestrator" {
-		if in.Mission.Content != "" {
+		// A planned set carries a file that is not on disk by name alone, so
+		// presence is the test there; seeding still requires the bytes.
+		if in.Mission.Name != "" && (in.Planned || in.Mission.Content != "") {
 			names = append(names, in.Mission.Name)
 		}
 		for _, n := range sortedRoleNames(in.Roles) {
