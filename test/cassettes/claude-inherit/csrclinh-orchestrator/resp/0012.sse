@@ -1,0 +1,36 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CemauPn5BNV7s286Xvzbb","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":145,"cache_read_input_tokens":47803,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":145},"output_tokens":3,"service_tier":"standard","inference_geo":"not_available"}}         }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""} }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Now d"}   }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ispatching the actual work to"}           }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" dev."}        }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0      }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01EZW4hyEyxWpQmzWbc7MiPM","name":"Write","input":{},"caller":{"type":"direct"}}               }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/tmp/dispatch_dev_1.md\", \"content\": \"# Dispatch: implement greet(name), tested\\n\\nIn the `subject` repository, on your own branch, do exactly this:\\n\\n1. Create `src/greet.py` containing a function `greet(name)` that returns the\\n   string `\\\"Hello, \u003cname\u003e!\\\"` (i.e. `f\\\"Hello, {name}!\\\"`) — no extra output, no\\n   trailing/leading whitespace differences from that exact format.\\n\\n2. Create `tests/test_greet.py` with unit tests (using the `unittest` module)\\n   that cover:\\n   - a normal name, e.g. `greet(\\\"Alice\\\")` returns `\\\"Hello, Alice!\\\"`\\n   - the empty string, e.g. `greet(\\\"\\\")` returns `\\\"Hello, !\\\"`\\n\\n3. Make sure `tests/test_greet.py` can import `greet` from `src/greet.py`\\n   (e.g. via a `sys.path` adjustment in the test file, or whatever mechanism\\n   is idiomatic for this repo's existing layout — check if there's already a\\n   package structure/conftest/etc. to follow).\\n\\n4. Run `python3 -m unittest discover -s tests` yourself from the repo root\\n   and confirm it exits 0. Paste the actual command output in your reply.\\n\\n5. Commit `src/greet.py` and `tests/test_greet.py` (and any supporting files,\\n   e.g. `__init__.py` if needed) to your own branch.\\n\\n6. Reply with what you did, the exact test command you ran and its output,\\n   and confirm honestly whether it passed. Do not claim success unless you\\n   actually ran the command and saw exit code 0.\\n\\nDo not touch any other files in the repository.\\n\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":145,"cache_read_input_tokens":47803,"output_tokens":622,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}   }
+
+event: message_stop
+data: {"type":"message_stop"         }
+

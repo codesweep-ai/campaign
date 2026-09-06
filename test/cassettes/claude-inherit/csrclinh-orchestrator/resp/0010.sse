@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CemateKQQkN6TK1THZedn","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":776,"cache_read_input_tokens":46310,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":776},"output_tokens":4,"service_tier":"standard","inference_geo":"not_available"}}            }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""} }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EtgECqgBCBEYAipA5xzNkh0tdqriMlUBntQrw6fkVsm9agCRJbZzSEYYeO/mTu36wgXkmHBXm9/UbXAmHUVS0RRltxZfTltiuE2fWDIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEB9yiWrymlmN8g6E3URqmGGIAQGoAdbi89QGsAECEgyyf/yb/oVyL46DheAaDFe0AIzw+UJTClRPTCIwS9b+M6kP6XhAXvCOOoavZm4NIfbiQPz2gSDzV+ZI4IuQcazQViysJsg9Q5vhPg5fKtwCTije0RxK5JXuy0LDPPbDNB+TxLQ5kRyGMU6JL8wc5JupNnU3e1v4DhZsLTUds+SAL33FU4Rf/OdAzalzTvVGmmhLv0hzUxljmoGV+wNF3QNonNcEqdS2sZ1qmh2tVOzzIa2I2rcnRJ6OU1Us/W7HB+c1kFkzi8xbYoVKiI6Nm51jprWc1C7InD2RUE0YqOEqHK6OyRLTbPKYkIRJK+qsKks99WD7VdiZWKoBX5j+FQNiZsTWHKpihje+nsmzfzaIMxTnqX9ZLqSEHXfZEp6GqcAv/IldKuIaRU0QRzWxJ5wwAYs8XpOg8i6O6TGvOwT9Den/yfU8+56kExSKZDoGu7y75vNPs5oCXCLDgkr2/r9cj3iA6ZuRduAawX825fHeK6dNrd4wJrMJmXJyZ02UZkoOCkE48L9sS3RlIFLGvNGcdxwJlDJPG5VP3SUr6gPcwKFMfMOOV2a2ZKjCGAE="}   }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0      }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01K9emqnvteuUphLjEovjbHW","name":"Write","input":{},"caller":{"type":"direct"}}          }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/tmp/plan.md\", \"content\": \"Plan for mission \\\"greet, tested\\\":\\n\\n1. Send dev a dispatch (d1) asking it to implement src/greet.py with\\n   greet(name) -\u003e \\\"Hello, \u003cname\u003e!\\\" and tests/test_greet.py covering a normal\\n   name and the empty string, verify with `python3 -m unittest discover -s tests`\\n   exiting 0, commit to its own branch, and reply honestly.\\n2. Wait for dev's reply.\\n3. Judge: fetch dev's branch, inspect src/greet.py and tests/test_greet.py,\\n   run `python3 -m unittest discover -s tests` myself against the fetched\\n   tree to confirm exit code 0 and that both required cases are actually\\n   exercised (not just present but trivial/no-op).\\n4. If all three criteria hold (file+function, tests+both cases, suite exits\\n   0), accept dev's work and reply to mission m1 with --outcome campaign-met.\\n5. If something is missing or wrong, send dev a rework dispatch naming\\n   precisely what is unmet, and repeat from step 2.\\n6. This is a small mission — if it stalls (dev dead/wedged beyond wait's\\n   auto-recovery, or repeated rework not converging), wrap up honestly with\\n   campaign-converged/exhausted/blocked as appropriate rather than looping\\n   indefinitely.\\n\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1       }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":776,"cache_read_input_tokens":46310,"output_tokens":639,"output_tokens_details":{"thinking_tokens":124}},"context_management":{"applied_edits":[]}  }
+
+event: message_stop
+data: {"type":"message_stop"       }
+

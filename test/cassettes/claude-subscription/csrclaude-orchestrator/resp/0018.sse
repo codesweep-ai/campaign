@@ -1,33 +1,33 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011Ceg3Vaf862FteeCUeUob3","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":174,"cache_read_input_tokens":50214,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":174},"output_tokens":3,"service_tier":"standard","inference_geo":"not_available"}}}
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CemZ2kicitEaF5yTkAnD9","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":190,"cache_read_input_tokens":49323,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":190},"output_tokens":1,"service_tier":"standard","inference_geo":"not_available"}}               }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}            }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}              }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"estimated_tokens":100,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"All"}           }
 
 event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EvECCqgBCBEYAipATZlPTRkwsFmm5axh5xamQ5S1uAJ458r7YUSW22oXAd97i4p9hRdyEKoM0l6w3ZlaLsk12Cdn8NsSj9v9rCxwyzIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEI70b4LPk0I45WTNhRG4brmIAQGoAYSr5NQGsAECEgwB/pTEgV21rdQ3lQUaDNzU5lM/Rm8HGJPsrSIwYxTcmIuINXKOu4P9F9nMdLDtHyhoSTCGeaN/L3mCV6YebTjGGt4mWmiyIcxbrqcaKnbu6LObF72vS+XIV3tgH6mCs5pvW82mb0FTesino6mYcnM5Iipoe+mOngSxp/c3rDYiMRmWZcNyVF9zxA//1gry4Rgd8ZQua8b4MN1ZnqKsaXvMAJ236gHXvzkk2IjLLL3KWfkys9+1NXKDJ+c/UNOPdEEju2NXGAE="}        }
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" three mission criteria are independently verified. Cleaning up the worktree and accepting."}}
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0 }
+data: {"type":"content_block_stop","index":0}
 
 event: content_block_start
-data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_0189D6awVuU1b6BsNCY44ucq","name":"Bash","input":{},"caller":{"type":"direct"}}    }
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01Q86DaZirPmYttq3LMhh81K","name":"Bash","input":{},"caller":{"type":"direct"}}        }
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git status \u0026\u0026 git log --oneline -5 \u0026\u0026 echo --- \u0026\u0026 git show refs/remotes/campaign/dev/subject --stat\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+data: {"delta":{"partial_json":"{\"command\": \"git -C ~/subject worktree remove /tmp/verify_subject --force 2\u003e\u00261\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
 
 event: content_block_stop
 data: {"type":"content_block_stop","index":1            }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":174,"cache_read_input_tokens":50214,"output_tokens":135,"output_tokens_details":{"thinking_tokens":41}},"context_management":{"applied_edits":[]} }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":190,"cache_read_input_tokens":49323,"output_tokens":105,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]} }
 
 event: message_stop
-data: {"type":"message_stop"    }
+data: {"type":"message_stop" }
 
