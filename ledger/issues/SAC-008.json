@@ -15,7 +15,12 @@
   },
   "resolution": null,
   "details": "`make ci` fails intermittently for reasons unrelated to the change being tested. Its smoke tier boots real machines, so it inherits the race recorded in SAC-007.\n\nThe tier is the last gate `make ci` runs. A red result therefore arrives after every cheap check has passed, and the natural reading is that the change broke something. It usually has not.\n\nReproducing the failure is the trap. The race is decided by how fast a guest boots, which depends on host load and on the storage the working tree sits on. Comparing two commits across that difference measures the storage rather than the commits.\n\nThese numbers come from diagnosing SAC-007. Four of six runs on an ext4 tree failed at least one scenario. Three consecutive runs on a tmpfs tree failed none, and a later run on a second tmpfs tree failed two. Storage therefore shifts the odds without deciding the outcome, which is what makes a two-commit comparison so easy to misread.\n\nFixing SAC-007 removes most of this. What remains is worth a sentence in CONTRIBUTING. A red smoke tier is first a reason to run the tier again on the same tree. Suspecting the diff comes after that.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-06",
+      "text": "One session produced three separate environmental causes for a red tier, each hiding the next. An unrelated server held the recorder's port. A rootless network namespace 24 days old had stopped mapping the host, so no guest could reach the lender. A recorder orphaned by a killed run squatted the port an hour later. None was a defect in the code under test. SAC-007 and SAC-009 remove two of them, and the third argues the case here."
+    }
+  ],
   "links": [
     "SAC-007"
   ]

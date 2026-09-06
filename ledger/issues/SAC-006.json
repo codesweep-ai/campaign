@@ -3,17 +3,19 @@
   "title": "Role briefs are authored blind to the orientation, so they invent the protocol",
   "type": "defect",
   "severity": "high",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "user report (host): \"the role briefs include some made up info about this and cause campaigns to fail\"",
   "opened": "2026-09-06",
-  "resolved": null,
+  "resolved": "2026-09-06",
   "stint": "2026-09-06 orientation visibility session",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "530fcb1"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "go test ./internal/cli/ -count=1 passes, including five new tests. TestOrientationPrintsTheTextTheMemberWillReceive compares the command's output byte for byte against what buildOrientation renders on the create path, so the command cannot drift into describing the orientation instead of printing it. TestUnbriefedFleetIsStillRefusedByValidate holds R29: creation still refuses a fleet whose briefs are unwritten, while inspection tolerates it. TestManualNamesTheOrientationFileTheProductWrites holds MANUAL.md against guestOrientationFile. make ci exit 0 on this branch, all six smoke scenarios passing."
   },
-  "resolution": null,
+  "resolution": "`cs-campaign orientation` prints the text each member will be given, rendered through the same buildOrientation the create path uses. It answers for a member whose brief is unwritten, which is the ordinary case, because reading it is what an author does before writing one. Four places now send the author to it: init's closing output, the stub comments, MANUAL's authoring section, and the command's own note on standard error. The stubs and the example campaign no longer restate the orientation, so what an operator copies models the split R35 requires.",
   "details": "A campaign's role briefs are written by someone who cannot read the orientation, the standing context every member is given. The two are halves of one contract. SPEC.md R34 and R35 split them. The orientation states what is true of every campaign. The operator's brief states what is specific to this one, and the two must not restate each other.\n\nNothing shows the brief author the orientation. The string `ORIENTATION.md` appears in no shipped document. MANUAL.md's Files table lists `member.json`, `manifest.json` and both channels, and omits it. SPEC.md names the orientation three times, in a glossary row, a `member.json` field and a package map, and never says what it contains. No command renders it. Reading it means holding this Go source, or running `ssh` into a member after `create`, which is after the briefs are written and the microVMs are billing.\n\nAn author who cannot read one half of a contract guesses at the other. Those guesses land in the brief as fact, and the member then holds two instruction sources in one directory with no rule for which one wins. The code allows four such contradictions. A brief can tell an agent to ask the orchestrator a question, which the orientation says is impossible. It can point a teammate at `mission.md`, which `seedCommand` gives to the orchestrator alone. It can name a `cs-campaign-member` verb the member's role refuses. It can invent a fifth `--outcome` value.\n\nThe shipped examples teach the pattern rather than the split. `testdata/example-campaign/roles/worker.md` is three sentences, and all three restate the orientation. `internal/cli/assets/stub-agent.md`, which `init` writes into every scaffolded campaign, pre-fills the bullet \"Your change is committed on your own branch\" and comments that the line is not optional. Those two files are what an operator copies, so the default authoring path leads into the defect.\n\nNothing catches the contradiction before the spend. `loadCampaignInputs` hashes the brief's bytes and never reads them. `validate` prints a digest and a count. The readback is structural by design, per R50, so a member restates a wrong brief faithfully and `create` reports that it read its briefing. The campaign fails later, on live machines, doing something its brief made impossible.\n\nTo see the gap: `grep -rl ORIENTATION.md *.md` in this repository returns nothing, and `cs-campaign init acme --orchestrator codex --agent backend=claude` emits briefs that never mention the file.",
   "notes": [],
   "links": []
