@@ -1,0 +1,20 @@
+{
+  "id": "SAC-009",
+  "title": "A foreign listener on the recorder's port reads as a healthy recorder",
+  "type": "defect",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "session agent, after make ci failed on a branch and the same failure reproduced on a pristine origin/main",
+  "opened": "2026-09-06",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The replay tier proceeds against any process listening on the recorder's port, then blames the members when nothing works.\n\n`startVCR` launches `cs-vcr` on `0.0.0.0:8080`, and `waitForVCR` waits for it by dialling `127.0.0.1:8080`. That dial succeeds as soon as anything answers. An unrelated server on the same port therefore reads as a healthy recorder. cs-vcr has already failed to bind, and its error reaches only the proxy log under `.tmp/live-proxy/`.\n\nEvery member then sends its model calls to the stranger. Nothing usable comes back, so no turn ever starts. `cs-claude-turn` reports a stalled turn with the interface idle, three times, then restarts the session. Each scenario burns the fifteen minute readback bound. The tier finally reports that the members did not reply.\n\nMeasured on a host running an unrelated development server on port 8080. One scenario took 931 seconds to fail and named the members. The proxy log held the whole answer in one line: `listen tcp 0.0.0.0:8080: bind: address already in use`.\n\nThe port cannot move. It travels in the profile, the campaign ID is the sha256 of that profile, and every name in every committed cassette derives from it. The collision has to be reported rather than avoided.\n\nThe recorder moved onto the host in 110ea18, which is what made a collision possible. It previously ran in a container on the campaign's own fabric, where the port was private to the group.",
+  "notes": [],
+  "links": []
+}
