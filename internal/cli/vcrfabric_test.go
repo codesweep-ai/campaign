@@ -19,12 +19,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -67,8 +69,16 @@ type vcrProxy struct {
 	// could not serve. Outside the test's t.TempDir, so it outlives the run
 	// that needs explaining.
 	diag string
-	once sync.Once
-	log  string
+	// done carries the process's exit, so waitForVCR can tell "not up yet"
+	// from "gone" without racing Wait. cmd.ProcessState is nil until Wait
+	// returns, so testing it is a check that never fires.
+	done chan error
+	// reaper outlives this process just long enough to stop the recorder, and
+	// stdin is the pipe whose closing tells it to.
+	reaper *exec.Cmd
+	stdin  io.WriteCloser
+	once   sync.Once
+	log    string
 }
 
 // syncBuffer collects the recorder's output so it can be read while it runs.
@@ -124,11 +134,26 @@ func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string) (
 		// have matched.
 		args = append(args, "--dump-misses", diag)
 	}
+	// Refuse a port somebody else is on, rather than run against them.
+	//
+	// The recorder binds a fixed port, so a leftover from a run that was killed
+	// before its teardown still holds it. Started anyway, this one exits on
+	// "address already in use" while the campaign talks to the stranger — which
+	// is exactly what happened once, and read as a member that went quiet
+	// fifteen minutes later.
+	if conn, err := net.DialTimeout("tcp", vcrLoopback, time.Second); err == nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("%w: something is already listening on %s. A recorder left by a run "+
+			"that was killed before teardown holds it; stop it with:  pkill -f 'cs-vcr %s'", errVCRUnavailable, vcrLoopback, mode)
+	}
 	p := &vcrProxy{cmd: exec.Command(bin, args...), out: &syncBuffer{}, mode: mode, store: store, diag: diag}
 	p.cmd.Stdout, p.cmd.Stderr = p.out, p.out
 	if err := p.cmd.Start(); err != nil {
 		return nil, fmt.Errorf("start cs-vcr %s: %w", mode, err)
 	}
+	p.done = make(chan error, 1)
+	go func() { p.done <- p.cmd.Wait() }()
+	p.startReaper()
 	t.Cleanup(func() { p.stop() })
 	if err := waitForVCR(p); err != nil {
 		return nil, err
@@ -142,8 +167,11 @@ func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string) (
 func waitForVCR(p *vcrProxy) error {
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
-		if p.cmd.ProcessState != nil {
-			return fmt.Errorf("cs-vcr %s exited before it served:\n%s", p.mode, tail(p.out.String(), 20))
+		select {
+		case err := <-p.done:
+			p.done <- err // leave it for logs()
+			return fmt.Errorf("cs-vcr %s exited before it served (%v):\n%s", p.mode, err, tail(p.out.String(), 20))
+		default:
 		}
 		conn, err := net.DialTimeout("tcp", vcrLoopback, time.Second)
 		if err == nil {
@@ -154,6 +182,33 @@ func waitForVCR(p *vcrProxy) error {
 	}
 	return fmt.Errorf("cs-vcr %s never answered on %s. Port %s in use?\n%s",
 		p.mode, vcrLoopback, vcrPort, tail(p.out.String(), 20))
+}
+
+// startReaper leaves a process holding one end of a pipe this test holds the
+// other end of, whose only job is to stop the recorder when that pipe closes.
+//
+// Which is what the kernel does to it whenever this process dies, however it
+// dies: exiting, signalled, panicking on the test timeout, or killed outright.
+// t.Cleanup covers a pass or a fail; it does not cover the last two, and a
+// recorder left by one of those holds a fixed port — so the NEXT run starts a
+// recorder that cannot bind, and talks to the leftover instead. That is not
+// hypothetical: it cost a fifteen-minute readback ceiling and a diagnosis.
+//
+// The container this replaced had exactly this, and dropping it with the
+// container is what let the failure back in.
+//
+// Best effort: a reaper that will not start is not worth failing a run over,
+// and the guard in startVCR names the leftover if it ever happens.
+func (p *vcrProxy) startReaper() {
+	cmd := exec.Command("sh", "-c", `cat >/dev/null; kill "$1" 2>/dev/null`, "sh", strconv.Itoa(p.cmd.Process.Pid))
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return
+	}
+	if err := cmd.Start(); err != nil {
+		return
+	}
+	p.reaper, p.stdin = cmd, stdin
 }
 
 // logs stops the recorder gracefully and returns everything it printed.
@@ -167,14 +222,16 @@ func (p *vcrProxy) logs() string {
 	p.once.Do(func() {
 		if p.cmd.Process != nil {
 			_ = p.cmd.Process.Signal(os.Interrupt)
-			done := make(chan struct{})
-			go func() { _ = p.cmd.Wait(); close(done) }()
 			select {
-			case <-done:
+			case <-p.done:
 			case <-time.After(10 * time.Second):
 				_ = p.cmd.Process.Kill()
-				<-done
+				<-p.done
 			}
+		}
+		if p.reaper != nil {
+			_ = p.stdin.Close()
+			_ = p.reaper.Wait()
 		}
 		p.log = p.out.String()
 	})
@@ -271,20 +328,34 @@ lookahead: 8
 # because the client's own surface does not reveal it: codex on a subscription
 # talks to the ChatGPT backend, and the same client with a key talks to the API.
 #
-# One entry, named the way this scenario's base URL names it. The prefix carries
-# that name, so nothing has to be inferred from the request.
+# One entry per provider this scenario's members are aimed at, named the way
+# their base URLs name it. The prefix carries that name, so nothing has to be
+# inferred from the request. A mixed fleet reaches two, one per adapter.
 providers:
-  %s:
-    base_url: %s
-normalize:
+%snormalize:
   capture:
     - {pattern: "cs[a-z0-9]+-[0-9a-f]{16}", as: "<CAMPAIGN_ID>"}
     - {pattern: "orchestrator-[0-9a-f]{8}", as: "<ORCHESTRATOR>"}
     - {pattern: "dev-[0-9a-f]{8}", as: "<DEV>"}
     - {pattern: "cs[a-z0-9]+-[0-9a-f]{8}", as: "<GROUP>"}
-    - {pattern: "(?:/home/|-home-)(%[3]s)", as: "<USER>"}
-    - {pattern: "(%[3]s %[3]s)", as: "<USER_GROUP>"}
-`, sc.vcrProvider, sc.vcrUpstream, regexp.QuoteMeta(me.Username)), 0o600)
+    - {pattern: "(?:/home/|-home-)(%[2]s)", as: "<USER>"}
+    - {pattern: "(%[2]s %[2]s)", as: "<USER_GROUP>"}
+`, providerBlock(sc), regexp.QuoteMeta(me.Username)), 0o600)
+}
+
+// providerBlock renders one YAML entry per distinct provider the scenario's
+// members are aimed at, in seat order so the rendering is stable.
+func providerBlock(sc scenario) string {
+	var b strings.Builder
+	seen := map[string]bool{}
+	for _, st := range sc.seats() {
+		if st.vcrProvider == "" || seen[st.vcrProvider] {
+			continue
+		}
+		seen[st.vcrProvider] = true
+		fmt.Fprintf(&b, "  %s:\n    base_url: %s\n", st.vcrProvider, st.vcrUpstream)
+	}
+	return b.String()
 }
 
 func tail(s string, n int) string {

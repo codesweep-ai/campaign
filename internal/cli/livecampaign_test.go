@@ -22,6 +22,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -58,6 +59,11 @@ type scenario struct {
 	// and keyProvider the provider whose host-held key it spends. Exactly one
 	// is set: a member is granted one credential.
 	login, keyProvider string
+	// orch describes the orchestrator when it differs from the agent, and is
+	// nil for the homogeneous fleets that are the rest of this matrix.
+	orch *seat
+	// agentMemoryMiB overrides the campaign default for the agent alone.
+	agentMemoryMiB int
 	// verb is how that credential reaches the members. Empty is the product
 	// default, which means the profile spells no verb at all and the grant is
 	// lent — the state most of this matrix is in, deliberately, because the
@@ -155,12 +161,27 @@ func scenarios() []scenario {
 			//
 			// Fireworks speaks the OpenAI wire protocol, and the entry is named
 			// for the endpoint rather than for the protocol.
+			// The one mixed fleet in the matrix, and it is a memory budget
+			// rather than a preference. OpenCode is the heaviest adapter here:
+			// it needs 2 GiB to get a turn started, and two of it does not fit
+			// a hosted runner alongside the campaign's own processes. So it
+			// runs where it is being tested — as the agent — under a Claude
+			// orchestrator that fits in the campaign default.
+			//
+			// The cost is real and deliberate: this scenario no longer answers
+			// "does opencode drive a campaign as the orchestrator". That half
+			// is what the mixed-fleet test covers (SPEC.md R82).
 			name: "opencode-fireworks", cli: "opencode",
 			auth:  "a Fireworks API key in ~/.cs-keys/fireworks",
 			model: "fireworks-ai/accounts/fireworks/models/kimi-k3", effort: "high",
-			keyProvider: "fireworks",
+			keyProvider: "fireworks", agentMemoryMiB: 2048,
 			baseURLEnv:  "OPENCODE_BASE_URL",
 			vcrProvider: "fireworks", vcrUpstream: "https://api.fireworks.ai/inference",
+			orch: &seat{
+				cli: "claude", model: "claude-sonnet-5", login: "claude",
+				baseURLEnv:  "ANTHROPIC_BASE_URL",
+				vcrProvider: "anthropic", vcrUpstream: "https://api.anthropic.com",
+			},
 		},
 		{
 			// The one scenario that puts a credential inside its members, so
@@ -180,6 +201,97 @@ func scenarios() []scenario {
 // lends reports whether this scenario's members hold a loan token rather than
 // the credential itself, which is what decides where cs-vcr has to sit.
 func (s scenario) lends() bool { return s.verb != model.CredentialInherit }
+
+// seat is one member's half of a scenario: the adapter it runs, the credential
+// it spends, and the recorder entry its traffic is addressed to.
+//
+// A homogeneous scenario has one, taken by both members. Only a fleet whose two
+// seats differ needs the distinction, and exactly one does: opencode is the
+// heaviest adapter and two of it will not fit a hosted runner, so it runs as
+// the agent under a lighter orchestrator.
+type seat struct {
+	cli, model, effort       string
+	login, keyProvider       string
+	baseURLEnv, urlSuffix    string
+	vcrProvider, vcrUpstream string
+	// memoryMiB overrides the campaign default for this member alone, for an
+	// adapter that does not fit in it. Zero takes the default.
+	memoryMiB int
+}
+
+// agentSeat is what the scenario's own fields describe, which is the agent.
+func (s scenario) agentSeat() seat {
+	return seat{
+		cli: s.cli, model: s.model, effort: s.effort,
+		login: s.login, keyProvider: s.keyProvider,
+		baseURLEnv: s.baseURLEnv, urlSuffix: s.urlSuffix,
+		vcrProvider: s.vcrProvider, vcrUpstream: s.vcrUpstream,
+		memoryMiB: s.agentMemoryMiB,
+	}
+}
+
+// orchSeat is the orchestrator's, which mirrors the agent's unless the scenario
+// names its own.
+func (s scenario) orchSeat() seat {
+	if s.orch != nil {
+		return *s.orch
+	}
+	return s.agentSeat()
+}
+
+// seats is both, orchestrator first. A homogeneous scenario yields the same one
+// twice, which every caller here is happy to see.
+func (s scenario) seats() []seat { return []seat{s.orchSeat(), s.agentSeat()} }
+
+// clis is the distinct adapters this scenario runs, for the checks that are
+// per-adapter rather than per-member.
+func (s scenario) clis() []string {
+	out := []string{s.orchSeat().cli}
+	if agent := s.agentSeat().cli; agent != out[0] {
+		out = append(out, agent)
+	}
+	return out
+}
+
+// TestWorkflowRunsEveryScenario holds CI's matrix against this file's.
+//
+// The tier is one job per scenario, so the workflow names them one by one and
+// a scenario added here would otherwise just stop being run there — silently,
+// because a leg that does not exist reports nothing at all. Cheap to check and
+// impossible to notice by eye.
+func TestWorkflowRunsEveryScenario(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Skip("repo root not found")
+	}
+	body, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Skipf("no workflow to check: %v", err)
+	}
+	var inMatrix bool
+	var listed []string
+	for line := range strings.SplitSeq(string(body), "\n") {
+		trimmed := strings.TrimSpace(line)
+		switch {
+		case trimmed == "scenario:":
+			inMatrix = true
+		case inMatrix && strings.HasPrefix(trimmed, "- "):
+			listed = append(listed, strings.TrimSpace(strings.TrimPrefix(trimmed, "- ")))
+		case inMatrix && trimmed != "" && !strings.HasPrefix(trimmed, "#"):
+			inMatrix = false
+		}
+	}
+	var want []string
+	for _, sc := range scenarios() {
+		want = append(want, sc.name)
+	}
+	slices.Sort(listed)
+	slices.Sort(want)
+	if !slices.Equal(listed, want) {
+		t.Fatalf("the smoke matrix in .github/workflows/ci.yml runs %v, but scenarios() defines %v.\n"+
+			"A scenario missing from the workflow is never replayed in CI, and its leg does not exist to say so.", listed, want)
+	}
+}
 
 // TestScenarioProfilesSpellTheirCredential checks the matrix without booting
 // anything: every scenario's generated profile is one `create` would accept,
@@ -510,10 +622,33 @@ func requireOurLender(t *testing.T, home string) {
 	if lenderAgentHome(pid) == home {
 		return
 	}
+	// The remedy depends on whether anything is still borrowing. A lender with
+	// live sandboxes behind it belongs to a running campaign and must not be
+	// touched; one with none is debris from a run that was killed before its
+	// teardown — which is what a `go test` timeout does — and is safe to stop.
+	boxes := runningSandboxes()
+	if boxes == 0 {
+		t.Fatalf("a cs-sandbox lender (pid %d) is left over from an earlier run and reads its "+
+			"credentials from somewhere else, not %s.\nNothing is borrowing from it — no sandbox "+
+			"is running — so it is debris from a run that was killed before teardown. Stop it "+
+			"with:  kill %d", pid, home, pid)
+	}
 	t.Fatalf("a cs-sandbox lender (pid %d) is already running and does not read this run's "+
-		"credentials from %s.\nIt was started by something else that is still borrowing — "+
-		"another campaign, or an earlier tier. Stop that first: its loans resolve against a "+
-		"different profile, so this tier would neither replay nor stay credential-free.", pid, home)
+		"credentials from %s.\n%d sandbox(es) are still borrowing from it, so it belongs to "+
+		"something live — another campaign, or an earlier tier. Finish or destroy that first "+
+		"rather than stopping the lender: its loans resolve against a different profile, so "+
+		"this tier would neither replay nor stay credential-free.", pid, home, boxes)
+}
+
+// runningSandboxes counts what is on this host, which is how a leftover lender
+// is told from a live one. Best effort: a count that cannot be taken reads as
+// "something is there", which is the cautious direction.
+func runningSandboxes() int {
+	out, err := exec.Command(newSandbox().Bin, "ls", "-q").Output()
+	if err != nil {
+		return 1
+	}
+	return len(strings.Fields(string(out)))
 }
 
 // runningLenderPID reads the pid cs-sandbox records for its lender, and returns
@@ -999,7 +1134,56 @@ func keepEvidence(t *testing.T, a *app, campaign *model.Campaign, why string) {
 		t.Logf("evidence: archive: %v", err)
 	}
 	keepDriverLogs(t, a, campaign, dir)
+	keepAgentPanes(t, a, campaign, dir)
+	keepLenderLog(t, dir)
 	t.Logf("evidence kept in %s (%s)", dir, why)
+}
+
+// keepAgentPanes captures each member's agent TUI exactly as it stands.
+//
+// The driver reports a stalled turn as "JSONL unchanged for 180s, TUI state
+// 'ready'" and tells a human to `tmux attach`. On a developer's machine that
+// works; on a runner the member is gone before anyone can, and the one thing
+// that would say WHAT the agent is sitting on is the screen itself. A state
+// name is a classification of that screen, and every stall this tier has cost a
+// day to has come down to not having the screen behind it.
+//
+// Best effort throughout: a member with no session has no pane, which is not a
+// failure worth reporting over the one being investigated.
+func keepAgentPanes(t *testing.T, a *app, campaign *model.Campaign, dir string) {
+	t.Helper()
+	for _, member := range campaign.Members {
+		// Every pane of every session: the driver names one session per turn,
+		// and which one stalled is exactly what is not known yet.
+		const capture = `for s in $(tmux list-sessions -F '#{session_name}' 2>/dev/null); do ` +
+			`printf '\n===== %s =====\n' "$s"; tmux capture-pane -p -t "$s" 2>&1; done`
+		out, err := a.sandbox.memberOutput(context.Background(), member, capture)
+		if err != nil || len(out) == 0 {
+			continue
+		}
+		path := filepath.Join(dir, "pane-"+member.Name+".txt")
+		if err := os.WriteFile(path, out, 0o600); err != nil {
+			t.Logf("evidence: %s: %v", path, err)
+		}
+	}
+}
+
+// keepLenderLog saves the host lender's log beside the rest.
+//
+// It is the only account of the hop between a member and the recorder, and it
+// is the file that named the last cause outright: loans failing with "no
+// anthropic key to lend" while every other log showed a member simply going
+// quiet. It lives under cs-sandbox's instances root rather than in this
+// repository, so a runner throws it away with the machine.
+func keepLenderLog(t *testing.T, dir string) {
+	t.Helper()
+	body, err := os.ReadFile(filepath.Join(sandboxInstancesDir(), "lender.log"))
+	if err != nil || len(body) == 0 {
+		return
+	}
+	if err := os.WriteFile(filepath.Join(dir, "lender.log"), body, 0o600); err != nil {
+		t.Logf("evidence: lender.log: %v", err)
+	}
 }
 
 // keepDriverLogs saves each member's host-side agent-driver log beside the archive.
@@ -1090,24 +1274,30 @@ defaults:
   deadline: 1h
   resources:
     cpus: 2
-    memoryMiB: 2048
+    memoryMiB: 1024
   policy:
     pollSeconds: 15
 orchestrator:
 %sagents:
   dev:
 %s`,
-		memberBlock(sc, repo, baseURL, name+"-orchestrator"),
-		indent(memberBlock(sc, repo, baseURL, name+"-dev")))
+		memberBlock(sc, sc.orchSeat(), repo, baseURL, name+"-orchestrator"),
+		indent(memberBlock(sc, sc.agentSeat(), repo, baseURL, name+"-dev")))
 }
 
 // memberBlock renders one member's profile block. cassette names the cassette
 // this member records into, and is empty when there is no proxy.
-func memberBlock(sc scenario, repo, baseURL, cassette string) string {
+func memberBlock(sc scenario, st seat, repo, baseURL, cassette string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "    cli: %s\n    model: %s\n", sc.cli, sc.model)
-	if sc.effort != "" {
-		fmt.Fprintf(&b, "    effort: %s\n", sc.effort)
+	fmt.Fprintf(&b, "    cli: %s\n    model: %s\n", st.cli, st.model)
+	if st.effort != "" {
+		fmt.Fprintf(&b, "    effort: %s\n", st.effort)
+	}
+	// A member the campaign default does not fit. Declared per member rather
+	// than raising the default for everyone: the default is what the other
+	// five scenarios run in, and it is sized for a hosted runner.
+	if st.memoryMiB != 0 {
+		fmt.Fprintf(&b, "    resources:\n      memoryMiB: %d\n", st.memoryMiB)
 	}
 	fmt.Fprintf(&b, "    repos:\n      - path: %s\n", repo)
 	b.WriteString("    auth:\n")
@@ -1115,14 +1305,14 @@ func memberBlock(sc scenario, repo, baseURL, cassette string) string {
 	// scenario spells no verb at all: it takes the campaign's, which is the
 	// product default and the thing worth recording.
 	switch {
-	case sc.keyProvider != "" && sc.lends():
-		fmt.Fprintf(&b, "      apiKey: [%s]\n", sc.keyProvider)
-	case sc.keyProvider != "":
-		fmt.Fprintf(&b, "      inheritApiKey: [%s]\n", sc.keyProvider)
+	case st.keyProvider != "" && sc.lends():
+		fmt.Fprintf(&b, "      apiKey: [%s]\n", st.keyProvider)
+	case st.keyProvider != "":
+		fmt.Fprintf(&b, "      inheritApiKey: [%s]\n", st.keyProvider)
 	case sc.lends():
-		fmt.Fprintf(&b, "      agentLogin: [%s]\n", sc.login)
+		fmt.Fprintf(&b, "      agentLogin: [%s]\n", st.login)
 	default:
-		fmt.Fprintf(&b, "      inheritAgentLogin: [%s]\n", sc.login)
+		fmt.Fprintf(&b, "      inheritAgentLogin: [%s]\n", st.login)
 	}
 	// A fixed authorship for every commit a member makes. Without it the guest
 	// takes the operator's git identity, and their real name and address end up
@@ -1145,9 +1335,9 @@ func memberBlock(sc scenario, repo, baseURL, cassette string) string {
 		"GIT_COMMITTER_NAME=campaign test",
 		"GIT_COMMITTER_EMAIL=test@example.invalid",
 	}
-	if baseURL != "" && sc.baseURLEnv != "" && cassette != "" {
+	if baseURL != "" && st.baseURLEnv != "" && cassette != "" {
 		env = append(env, fmt.Sprintf("%s=%s/c/%s/%s%s",
-			sc.baseURLEnv, baseURL, sc.vcrProvider, cassette, sc.urlSuffix))
+			st.baseURLEnv, baseURL, st.vcrProvider, cassette, st.urlSuffix))
 		// And the traffic a base URL does not govern. Claude Code checks its
 		// OAuth session against api.anthropic.com and Codex reaches chatgpt.com,
 		// whatever they were pointed at, and what those answer changes the

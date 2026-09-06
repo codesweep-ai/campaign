@@ -44,7 +44,9 @@ func TestLiveMatrix(t *testing.T) {
 				t.Fatalf("this mission is small and mechanical, so %s should meet it; got %s: %s",
 					sc.name, run.verdict.Outcome, run.verdict.Note)
 			}
-			proveCampaignBehaviours(t, sc.cli, covmap.TierLive)
+			for _, cli := range sc.clis() {
+				proveCampaignBehaviours(t, cli, covmap.TierLive)
+			}
 		})
 	}
 }
@@ -227,21 +229,25 @@ func hostCredentialMissing(sc scenario) string {
 	if d := os.Getenv("CS_SANDBOX_AGENT_HOME"); d != "" {
 		home = d
 	}
-	var rel string
-	switch {
-	case sc.keyProvider != "":
-		rel = filepath.Join(".cs-keys", sc.keyProvider)
-	case sc.login != "":
-		var ok bool
-		if rel, ok = hostCredential[sc.login]; !ok {
-			return fmt.Sprintf("scenario signs in as %q, which is not a family cs-sandbox carries", sc.login)
+	// Every seat: a mixed fleet signs its two members in separately, and one
+	// missing credential is a campaign that spends its whole ceiling failing.
+	for _, st := range sc.seats() {
+		var rel string
+		switch {
+		case st.keyProvider != "":
+			rel = filepath.Join(".cs-keys", st.keyProvider)
+		case st.login != "":
+			var ok bool
+			if rel, ok = hostCredential[st.login]; !ok {
+				return fmt.Sprintf("scenario signs in as %q, which is not a family cs-sandbox carries", st.login)
+			}
+		default:
+			return "scenario names no credential at all"
 		}
-	default:
-		return "scenario names no credential at all"
-	}
-	if _, err := os.Stat(filepath.Join(home, rel)); err != nil {
-		// sc.auth already names the credential, so this does not repeat it.
-		return fmt.Sprintf("needs %s: no ~/%s", sc.auth, rel)
+		if _, err := os.Stat(filepath.Join(home, rel)); err != nil {
+			// sc.auth already names the credential, so this does not repeat it.
+			return fmt.Sprintf("needs %s: no ~/%s", sc.auth, rel)
+		}
 	}
 	return ""
 }
@@ -283,23 +289,32 @@ func skipUnlessStrict(t *testing.T, format string, args ...any) {
 // agent reading its profile directory and finding a login there.
 func preflight(t *testing.T, sc scenario) {
 	t.Helper()
-	bin, err := exec.LookPath(sc.cli)
+	// Every seat, because a mixed fleet signs its members in separately and
+	// either one being unable to reach its provider costs the whole campaign.
+	for _, st := range sc.seats() {
+		preflightSeat(t, sc, st)
+	}
+}
+
+func preflightSeat(t *testing.T, sc scenario, st seat) {
+	t.Helper()
+	bin, err := exec.LookPath(st.cli)
 	if err != nil {
-		t.Fatalf("%s: %s is not on this host's PATH, and the preflight runs it here: %v", sc.name, sc.cli, err)
+		t.Fatalf("%s: %s is not on this host's PATH, and the preflight runs it here: %v", sc.name, st.cli, err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
 	var cmd *exec.Cmd
-	switch sc.cli {
+	switch st.cli {
 	case "claude":
-		cmd = exec.CommandContext(ctx, bin, "-p", probePrompt, "--model", sc.model)
+		cmd = exec.CommandContext(ctx, bin, "-p", probePrompt, "--model", st.model)
 	case "codex":
 		cmd = exec.CommandContext(ctx, bin, "exec", "--skip-git-repo-check", probePrompt)
 	case "opencode":
-		cmd = exec.CommandContext(ctx, bin, "run", "--model", sc.model, probePrompt)
+		cmd = exec.CommandContext(ctx, bin, "run", "--model", st.model, probePrompt)
 	default:
-		t.Fatalf("%s: no preflight for %s", sc.name, sc.cli)
+		t.Fatalf("%s: no preflight for %s", sc.name, st.cli)
 	}
 	// The profile directories cs-sandbox reads a login from, so this asks after
 	// the same login the members are about to be given.
@@ -311,7 +326,7 @@ func preflight(t *testing.T, sc scenario) {
 	out, err := cmd.CombinedOutput()
 	if err != nil || !probeAnswered.Match(out) {
 		t.Fatalf("%s: %s could not reach its provider with %s, so nothing was recorded and the committed cassette is untouched.\n%v\n%s",
-			sc.name, sc.cli, sc.auth, err, tailBytes(out, 15))
+			sc.name, st.cli, sc.auth, err, tailBytes(out, 15))
 	}
 }
 
@@ -385,7 +400,8 @@ defaults:
 orchestrator:
 %sagents:
   dev:
-%s`, memberBlock(orchestrator, repo, "", ""), indent(memberBlock(agent, repo, "", "")))
+%s`, memberBlock(orchestrator, orchestrator.agentSeat(), repo, "", ""),
+		indent(memberBlock(agent, agent.agentSeat(), repo, "", "")))
 }
 
 // scenarioByName looks one scenario up, failing loudly rather than returning a

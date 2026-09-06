@@ -225,9 +225,31 @@ jobs:
   # does. Pinning also makes the cache key below a property of this repository
   # rather than of another repository's branch tip.
   smoke:
-    name: smoke (ubuntu-latest)
+    name: smoke (${{ matrix.scenario }})
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Per LEG, not for the tier. One scenario is minutes; a scenario that stalls
+    # spends the readback ceiling and then stops, and the legs beside it are
+    # unaffected because each has its own runner and its own budget. Six of
+    # these run at once, so the tier costs its slowest leg rather than the sum
+    # of all of them — and every leg reports, where one job serially left four
+    # scenarios unrun behind the first failure.
+    timeout-minutes: 25
+    strategy:
+      # Every leg reports. Stopping the others on the first failure is what
+      # made the single job hard to read: the interesting question is which
+      # scenarios fail, and that is only answerable when they all run.
+      fail-fast: false
+      matrix:
+        # Held against internal/cli/livecampaign_test.go's scenarios() by
+        # TestWorkflowRunsEveryScenario, so a scenario added there cannot
+        # quietly stop being run here.
+        scenario:
+          - claude-subscription
+          - claude-api-key
+          - codex-subscription
+          - codex-api-key
+          - opencode-fireworks
+          - claude-inherit
     env:
       # CS_SANDBOX_IMAGE is NOT set here. cs-sandbox names each image variant
       # after the version that built it, so the reference is derived rather than
@@ -280,11 +302,11 @@ jobs:
         id: cassette
         run: |
           set -euo pipefail
-          if compgen -G 'test/cassettes/*/*/index.jsonl' >/dev/null; then
+          if compgen -G "test/cassettes/${{ matrix.scenario }}/*/index.jsonl" >/dev/null; then
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "no cassette committed; record one with \`make record-fixtures\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "no cassette for ${{ matrix.scenario }}; record one with \`./scripts/record-fixtures.sh ${{ matrix.scenario }}\`" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       # /dev/kvm is present on these runners but root:kvm, and the runner user
@@ -299,6 +321,12 @@ jobs:
             fakeroot e2fsprogs dnsmasq-base passt socat uidmap iproute2 curl podman
           sudo chmod 0666 /dev/kvm
           test -w /dev/kvm || { echo "/dev/kvm still not writable" >&2; exit 1; }
+          # What this leg actually has, recorded rather than assumed. Each
+          # member asks for 2 vCPUs and 2 GiB and there are two of them, so
+          # whether the host oversubscribes is the first question any stalled
+          # turn raises — and the comments here have outlived at least one
+          # change to what a hosted runner is.
+          printf 'runner: %s cpu(s), %s\n' "$(nproc)" "$(free -h | awk '/^Mem:/{print $2" RAM"}')"
 
       # `make tools` is the same target a contributor runs: it installs
       # cs-sandbox and cs-vcr at the go.mod pins into bin/tools, static for
@@ -418,7 +446,18 @@ jobs:
       # actually tested. The step below is what makes a relapse legible.
       - name: smoke
         if: steps.cassette.outputs.present == 'true'
-        run: make test-smoke
+        run: make test-smoke SMOKE_TESTS='TestSmokeReplay/${{ matrix.scenario }}'
+
+      # A leg whose cassette is missing skips every step above and would report
+      # green, which is the "recorded none and looked like recorded all" failure
+      # this tier exists to avoid. Named here rather than inside the test: a Go
+      # -run that matches nothing is not an error, so nothing in the test can
+      # tell the difference.
+      - name: a leg with no cassette is not a pass
+        if: steps.cassette.outputs.present != 'true'
+        run: |
+          echo "no cassette for ${{ matrix.scenario }} — it was not replayed" >&2
+          exit 1
 
       # Why a member went quiet, for the failure modes this tier cannot explain
       # from its own output. A turn is dispatched with `-b`, so the agent
@@ -432,7 +471,7 @@ jobs:
         if: failure() && steps.cassette.outputs.present == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: smoke-evidence
+          name: smoke-evidence-${{ matrix.scenario }}
           path: |
             .tmp/live-evidence/
             .tmp/live-proxy/
@@ -444,7 +483,7 @@ jobs:
         if: steps.cassette.outputs.present == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-smoke
+          name: coverage-smoke-${{ matrix.scenario }}
           path: .coverage/
           if-no-files-found: error
           include-hidden-files: true

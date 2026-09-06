@@ -66,7 +66,9 @@ func TestSmokeReplay(t *testing.T) {
 					run.verdict.Outcome, run.verdict.Note)
 			}
 			assertSpentNothing(t, run.proxy)
-			proveCampaignBehaviours(t, sc.cli, covmap.TierSmoke)
+			for _, cli := range sc.clis() {
+				proveCampaignBehaviours(t, cli, covmap.TierSmoke)
+			}
 		})
 	}
 	if recorded == 0 {
