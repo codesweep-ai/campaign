@@ -208,6 +208,10 @@ network, its own SSH keys and its own gateway. A second campaign gets its own gr
 cannot see or reach each other. Inside a group, agents can call each other's application ports but
 cannot log in to each other: they do not have each other's keys.
 
+**No member holds the credential that pays for it.** A member's model login or API key is lent: the
+credential stays on the host, and the member gets a token worth nothing anywhere else. Destroying
+the member ends the loan. A profile can ask for the copy instead, per member or per campaign.
+
 **Every member has to say back what it was asked to do.** Sending a briefing and having it read are
 not the same thing, and from outside the machine they look identical. So `create` asks each member
 to describe its own job in its own words, shows you the answers, and refuses to start the campaign

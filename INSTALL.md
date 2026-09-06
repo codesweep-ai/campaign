@@ -107,9 +107,20 @@ That places the agent tools on your `PATH`: for each family, `cs-<cli>`, `cs-<cl
 `cs-<cli>-remote-status` and `cs-<cli>-turn`. A missing one fails at create with
 `required agent tool <name> not found on PATH`.
 
-You also need the coding agents themselves, and a way for each to authenticate. A member either
-inherits a host login for its family, or is granted an API key by environment-variable name. Sign in
-on the host for the families whose logins you plan to inherit.
+You also need the coding agents themselves, and a way for each to authenticate. A member signs in
+with a host login for its family, with a provider key this host holds, or with an API key named by
+environment variable. Sign in on the host for every family a profile names, and put each key a
+profile names in `~/.cs-keys/<provider>`, holding the key and nothing else:
+
+```bash
+mkdir -p ~/.cs-keys && chmod 700 ~/.cs-keys
+printf %s "$OPENAI_API_KEY" > ~/.cs-keys/openai
+chmod 600 ~/.cs-keys/openai
+```
+
+A login and a provider key are **lent** to a member. `cs-sandbox` runs a lender on this host, the
+member gets a token worth nothing anywhere else, and your own credential never leaves the host. That
+is the default, and [`MANUAL.md`](MANUAL.md) says how a profile asks for the copy instead.
 
 ## 4. Install the cs-sandbox this build names
 
@@ -232,8 +243,9 @@ source <(cs-campaign completion bash)
 owns. The upstream surface is named by the `go.mod` inside the binary, so it needs no file and no
 path of its own.
 
-No credential is stored in any of these. A profile names environment variables and login families;
-the values stay in your environment and in the members that were granted them.
+No credential is stored in any of these. A profile names environment variables, providers and login
+families; the values stay in your environment, in `~/.cs-keys`, in the logins `cs-sandbox` reads,
+and in the members that were granted them.
 
 ## Upgrading
 

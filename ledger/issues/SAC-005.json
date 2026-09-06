@@ -1,0 +1,33 @@
+{
+  "id": "SAC-005",
+  "title": "Every member carried a copy of the operator's model credential",
+  "type": "improvement",
+  "severity": "med",
+  "status": "in-progress",
+  "foundBy": "user report (host): \"change from using shared credentials to lent credentials for agents\"",
+  "opened": "2026-09-05",
+  "resolved": null,
+  "stint": "2026-09-05 credential lending session",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "A profile's `auth.inheritAgentLogin` was the only way to give a member the operator's agent login, and it copied the credential in. `create` passed `--inherit-agent-login <family>` to cs-sandbox, so `~/.cs-claude/.credentials.json` or `~/.cs-codex/auth.json` landed inside a microVM running an agent with no approval prompt. `auth.apiKeyFromEnv` did the same for a key, through `--env`.\n\nReproduce it on any campaign whose profile names a login. Create it, then read the file inside a member with `cs-sandbox exec <member> cat .cs-claude/.credentials.json`.\n\nIt matters because the value outlives the campaign wherever the agent copied it, cannot be withdrawn without rotating it, and is readable by everything the member runs. cs-sandbox has since grown credential lending, which hands a sandbox a token worth nothing off the host and leaves the credential where it is.",
+  "notes": [
+    {
+      "date": "2026-09-05",
+      "text": "The profile now names a grant, and the spelling says how it arrives. `agentLogin` and `apiKey` take the campaign's verb, which is `defaults.credentials` and defaults to lend. `lendAgentLogin`, `inheritAgentLogin`, `lendApiKey` and `inheritApiKey` are cs-sandbox's own flag names and state the verb for one member. `--credentials lend|inherit` sets the campaign's verb for a single run. A member speaks one verb, and validate refuses a member that spells two."
+    },
+    {
+      "date": "2026-09-05",
+      "text": "Verified short of the resolving commit, which does not exist yet. `go test ./... -count=1`: every package passes. `make check`: clean, prose and drift gates included. `make test-smoke`: all five scenarios pass, 224 requests replayed, 0 misses, 0 upstream calls. The two recorded scenarios keep `inheritAgentLogin` and still copy a login in, so the lent path has unit coverage but no recorded coverage."
+    },
+    {
+      "date": "2026-09-05",
+      "text": "The recorded tiers move onto the default they now describe. Five of the six backend scenarios spell no verb and so are lent, and a sixth spells inheritAgentLogin so the copied path stays recorded rather than only unit-tested. A loan moves the client. The member holds a token, and the lender on this host dials cs-vcr, so a lent scenario's recorder is published on loopback rather than joining the campaign network. The committed cassettes were recorded on the copied chain and no longer replay, so the smoke tier is not evidence again until the fixtures are re-recorded."
+    }
+  ],
+  "links": []
+}

@@ -225,6 +225,13 @@ func selectedAPIKey(member model.Member) string {
 	return ""
 }
 
+// prepareAuth finishes what an environment key cannot do on its own: two
+// adapters read their credential from a file rather than the environment, so
+// the guest writes one from the variable it was given.
+//
+// Only apiKeyFromEnv needs it. A lent or copied grant is placed by cs-sandbox
+// in the shape that adapter's own sign-in would have written, which is the
+// whole point of a loan: the agent runs the code path it takes when signed in.
 func (s sandboxCLI) prepareAuth(ctx context.Context, member model.Member) error {
 	key := selectedAPIKey(member)
 	if key == "" {
@@ -655,12 +662,44 @@ func createArgs(campaign *model.Campaign, member model.Member) []string {
 	for _, e := range member.Profile.Env {
 		args = append(args, "--env", e)
 	}
+	return append(args, authArgs(member)...)
+}
+
+// authArgs grants the member its one model credential.
+//
+// A lent grant hands the sandbox a loan token and leaves the credential on the
+// host, so nothing inside can read, refresh or revoke it, and destroying the
+// member ends the loan. Copying it in is the declared alternative, and the
+// campaign says which through the resolved mode rather than through a flag
+// name a profile spells.
+//
+// The ladder is first-available, not additive: an environment key, else a
+// host-held key, else a login. Passing a key beside a login would leave the
+// agent spending the key while the profile named a subscription.
+//
+// The verb is read off the member rather than off the spelling it was written
+// in: a plain grant takes the campaign's, and both arrive here resolved.
+func authArgs(member model.Member) []string {
 	if key := selectedAPIKey(member); key != "" {
-		args = append(args, "--env", key)
-	} else {
-		for _, login := range member.Profile.Auth.InheritAgentLogin {
-			args = append(args, "--inherit-agent-login", login)
-		}
+		return []string{"--env", key}
+	}
+	auth := member.Profile.Auth
+	keyFlag, loginFlag := "--lend-api-key", "--lend-agent-login"
+	if auth.Credentials == model.CredentialInherit {
+		keyFlag, loginFlag = "--inherit-api-key", "--inherit-agent-login"
+	}
+	if providers := auth.APIKeys(); len(providers) > 0 {
+		return repeatFlag(keyFlag, providers)
+	}
+	return repeatFlag(loginFlag, auth.AgentLogins())
+}
+
+// repeatFlag pairs one flag with each of its values, the form cs-sandbox takes
+// for a repeatable one.
+func repeatFlag(flag string, values []string) []string {
+	var args []string
+	for _, v := range values {
+		args = append(args, flag, v)
 	}
 	return args
 }

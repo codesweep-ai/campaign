@@ -40,6 +40,29 @@ const vcrImage = "gcr.io/distroless/static-debian12:nonroot"
 // fixed, so this string is the same in every campaign.
 const vcrBaseURL = "http://vcr:8080"
 
+// vcrHostPort is where a LENT scenario's recorder listens on this host, and
+// vcrLoanBaseURL is what such a scenario is aimed at.
+//
+// A loan moves the client. The guest holds a token worth nothing and is handed
+// the lender's address; it is the lender, a process on this host, that dials
+// the recorder. So this one is published on loopback and joins no campaign
+// network — cs-sandbox's own recording setup puts it exactly here, and says of
+// it that it never has to be reachable from a guest.
+//
+// Fixed rather than allocated. The base URL travels in the profile, the
+// campaign ID is the sha256 of the resolved profile, and a port that moved
+// between recording and replay would move every name derived from it.
+const vcrHostPort = 18080
+const vcrLoanBaseURL = "http://127.0.0.1:18080"
+
+// vcrURL is where this scenario's members reach their model traffic.
+func vcrURL(sc scenario) string {
+	if sc.lends() {
+		return vcrLoanBaseURL
+	}
+	return vcrBaseURL
+}
+
 // vcrHost is the alias on its own, for the NO_PROXY that keeps a member's model
 // calls off the tunnel and pointed straight at the base URL above.
 const vcrHost = "vcr"
@@ -85,8 +108,14 @@ func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string) (
 	name := "cs-vcr-" + group
 	_ = exec.Command("podman", "rm", "-f", name).Run()
 
-	if err := waitForFabric(network); err != nil {
-		return nil, err
+	// Only a guest-dialled recorder has to be on the guest's network, and only
+	// that one has to wait for it to exist. A lent scenario's recorder is
+	// reached from this host and never from a member, which is what
+	// cs-sandbox's own recording setup says of it.
+	if !sc.lends() {
+		if err := waitForFabric(network); err != nil {
+			return nil, err
+		}
 	}
 
 	config, err := writeVCRConfig(sc, configDir)
@@ -94,9 +123,23 @@ func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string) (
 		return nil, err
 	}
 	p := &vcrProxy{name: name, group: group, store: store}
-	args := []string{
-		"run", "-d", "--name", name,
-		"--network", network + ":alias=vcr",
+	args := []string{"run", "-d", "--name", name}
+	// Where this scenario's recorder has to be reachable, and nowhere else.
+	//
+	// A lent one is dialled by the lender, a process on this host, so a
+	// published loopback port is the whole requirement. Bound to 127.0.0.1
+	// rather than to every interface: nothing else has any business reaching a
+	// cassette store on a developer's machine.
+	//
+	// A guest-dialled one is the other way round: it joins the campaign's
+	// network under the alias the members are aimed at, and needs no port on
+	// this host at all.
+	if sc.lends() {
+		args = append(args, "-p", fmt.Sprintf("127.0.0.1:%d:8080", vcrHostPort))
+	} else {
+		args = append(args, "--network", network+":alias=vcr")
+	}
+	args = append(args, []string{
 		// keep-id plus this uid runs the proxy as the invoking user, so a
 		// cassette written into the bind-mounted store is owned by them on the
 		// host. Without it the files land under a subuid and reading them back
@@ -109,7 +152,7 @@ func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string) (
 		"-e", "CS_VCR_CASSETTES=/cassettes",
 		"-e", "VCR_LISTEN=0.0.0.0:8080",
 		"-e", "VCR_ADMIN=127.0.0.1:8081",
-	}
+	}...)
 	// Not under configDir: that is the test's t.TempDir, and a diagnostic that
 	// goes away with the test answers nothing. This sits beside the live tier's
 	// kept evidence.

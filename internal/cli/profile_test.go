@@ -216,14 +216,14 @@ func TestCreateArgsPreserveIsolation(t *testing.T) {
 	c := &model.Campaign{Engine: "firecracker", Group: "campaign-grp", Network: groupNetwork("campaign-grp")}
 	m := model.Member{Sandbox: "box", Solo: true, Profile: model.MemberProfile{
 		Resources: model.Resources{CPUS: 2, MemoryMiB: 2048},
-		Auth:      model.Auth{InheritAgentLogin: []string{"codex"}},
+		Auth:      model.Auth{AgentLogin: []string{"codex"}, Credentials: model.CredentialLend},
 		Repos:     []model.Repo{{Path: "/src/app", ResolvedCommit: "abc123", Name: "app"}},
 		Snapshots: []model.Snapshot{{Path: "/src/specs", Name: "specs"}},
 	}}
 	got := createArgs(c, m)
 	// The positional name is bare and the group is passed separately: create is
 	// the one command that takes a name plus --group rather than a ref.
-	want := []string{"create", "box", "--engine", "firecracker", "--type", "agent", "--group", "campaign-grp", "--yolo", "--solo", "--cpus", "2", "--mem", "2048", "--repo", "/src/app@abc123:app", "--snapshot", "/src/specs:specs", "--inherit-agent-login", "codex"}
+	want := []string{"create", "box", "--engine", "firecracker", "--type", "agent", "--group", "campaign-grp", "--yolo", "--solo", "--cpus", "2", "--mem", "2048", "--repo", "/src/app@abc123:app", "--snapshot", "/src/specs:specs", "--lend-agent-login", "codex"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("got %#v\nwant %#v", got, want)
 	}
@@ -233,7 +233,7 @@ func TestAPIKeyTakesPrecedenceWithoutExposingValue(t *testing.T) {
 	covmap.ProveOnPass(t, "auth-provisioning", "codex", "", covmap.TierUnit)
 	t.Setenv("TEST_OPENAI_API_KEY", "do-not-put-this-in-argv")
 	c := &model.Campaign{Engine: "firecracker", Group: "campaign-grp", Network: groupNetwork("campaign-grp")}
-	m := model.Member{Sandbox: "box", Profile: model.MemberProfile{Auth: model.Auth{APIKeyFromEnv: []string{"TEST_OPENAI_API_KEY"}, InheritAgentLogin: []string{"codex"}}}}
+	m := model.Member{Sandbox: "box", Profile: model.MemberProfile{Auth: model.Auth{APIKeyFromEnv: []string{"TEST_OPENAI_API_KEY"}, AgentLogin: []string{"codex"}}}}
 	got := createArgs(c, m)
 	if slices.Contains(got, "do-not-put-this-in-argv") || !slices.Contains(got, "TEST_OPENAI_API_KEY") {
 		t.Fatalf("unsafe or missing env reference: %#v", got)
@@ -241,6 +241,196 @@ func TestAPIKeyTakesPrecedenceWithoutExposingValue(t *testing.T) {
 	if slices.Contains(got, "codex") {
 		t.Fatalf("login inheritance should be fallback only: %#v", got)
 	}
+}
+
+// The default grant is a loan, and a profile that wants the copy spells it the
+// way cs-sandbox does. Which flag cs-sandbox is given is the whole difference
+// between a member that can read the operator's credential and one that cannot,
+// so it is asserted on the argument vector rather than on a resolved verb.
+func TestTheSpellingChoosesTheFlagAndSilenceLends(t *testing.T) {
+	covmap.ProveOnPass(t, "auth-provisioning", "claude", "", covmap.TierUnit)
+	covmap.ProveOnPass(t, "auth-provisioning", "codex", "", covmap.TierUnit)
+	for _, tc := range []struct {
+		name string
+		auth model.Auth
+		want []string
+	}{
+		{"plain grant, no campaign verb", model.Auth{AgentLogin: []string{"claude"}}, []string{"--lend-agent-login", "claude"}},
+		{"fused lend", model.Auth{LendAgentLogin: []string{"claude"}}, []string{"--lend-agent-login", "claude"}},
+		{"fused inherit", model.Auth{InheritAgentLogin: []string{"claude"}}, []string{"--inherit-agent-login", "claude"}},
+		{"fused inherit, key grant", model.Auth{InheritAPIKey: []string{"anthropic"}}, []string{"--inherit-api-key", "anthropic"}},
+		{"plain key grant", model.Auth{APIKey: []string{"anthropic"}}, []string{"--lend-api-key", "anthropic"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Through applyDefaults, because the verb a spelling states is
+			// resolved there and createArgs reads only the resolved one.
+			p := &model.Profile{
+				Orchestrator: model.MemberProfile{CLI: "claude", Auth: tc.auth},
+				Agents:       map[string]model.MemberProfile{"a": {CLI: "claude"}},
+			}
+			applyDefaults(p)
+			c := &model.Campaign{Engine: "firecracker", Group: "grp", Network: groupNetwork("grp")}
+			got := createArgs(c, model.Member{Sandbox: "box", CLI: "claude", Profile: p.Orchestrator})
+			if !containsSeq(got, tc.want) {
+				t.Fatalf("want %v in %#v", tc.want, got)
+			}
+		})
+	}
+}
+
+// A campaign verb reaches the members that spelled none, and a member that
+// spelled one keeps it. Resolved into the member at create, so the campaign
+// record says what each seat actually ran on.
+func TestTheCampaignVerbReachesThePlainSpellingsOnly(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	p := &model.Profile{
+		Defaults:     model.Defaults{Credentials: model.CredentialInherit},
+		Orchestrator: model.MemberProfile{CLI: "claude", Auth: model.Auth{AgentLogin: []string{"claude"}}},
+		Agents: map[string]model.MemberProfile{
+			"own": {CLI: "claude", Auth: model.Auth{LendAgentLogin: []string{"claude"}}},
+		},
+	}
+	applyDefaults(p)
+	if got := p.Orchestrator.Auth.Credentials; got != model.CredentialInherit {
+		t.Fatalf("a plain grant must take the campaign's verb: %q", got)
+	}
+	if got := p.Agents["own"].Auth.Credentials; got != model.CredentialLend {
+		t.Fatalf("a fused spelling must keep its own verb: %q", got)
+	}
+	// And with nothing spelled anywhere, the verb is the loan.
+	bare := &model.Profile{Orchestrator: model.MemberProfile{CLI: "claude"}, Agents: map[string]model.MemberProfile{"a": {CLI: "claude"}}}
+	applyDefaults(bare)
+	if got := bare.Agents["a"].Auth.Credentials; got != model.CredentialLend {
+		t.Fatalf("the compiled-in verb must be %q, got %q", model.CredentialLend, got)
+	}
+}
+
+// One credential per member, never a blend. An agent that finds a key in its
+// environment spends the key, so a member granted both would run on a
+// credential its profile did not name — the reason apiKeyFromEnv has always
+// displaced a login, and the reason a provider key displaces one too.
+func TestAKeyGrantDisplacesALoginGrant(t *testing.T) {
+	covmap.ProveOnPass(t, "auth-provisioning", "codex", "", covmap.TierUnit)
+	c := &model.Campaign{Engine: "firecracker", Group: "grp", Network: groupNetwork("grp")}
+	m := model.Member{Sandbox: "box", CLI: "codex", Profile: model.MemberProfile{
+		Auth: model.Auth{APIKey: []string{"openai"}, AgentLogin: []string{"codex"}, Credentials: model.CredentialLend},
+	}}
+	got := createArgs(c, m)
+	if !containsSeq(got, []string{"--lend-api-key", "openai"}) {
+		t.Fatalf("the key grant must be passed: %#v", got)
+	}
+	if slices.Contains(got, "--lend-agent-login") {
+		t.Fatalf("a login must not travel beside a key: %#v", got)
+	}
+}
+
+// A member is granted its credential one way, so two verbs on one member is a
+// declaration create could not carry out. The profile is where that fails,
+// because by create there is nothing left to ask.
+func TestAMemberSpeaksOneVerb(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	for name, auth := range map[string]model.Auth{
+		"lend and inherit together":  {LendAgentLogin: []string{"claude"}, InheritAPIKey: []string{"anthropic"}},
+		"same grant, both verbs":     {LendAgentLogin: []string{"claude"}, InheritAgentLogin: []string{"claude"}},
+		"plain beside a fused lend":  {AgentLogin: []string{"claude"}, LendAPIKey: []string{"anthropic"}},
+		"plain beside fused inherit": {APIKey: []string{"anthropic"}, InheritAgentLogin: []string{"claude"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := model.Profile{APIVersion: model.APIVersion, Kind: "CampaignProfile",
+				Orchestrator: model.MemberProfile{CLI: "claude"},
+				Agents:       map[string]model.MemberProfile{"w": {CLI: "claude", Auth: auth}}}
+			if err := validateProfile(p); err == nil {
+				t.Fatalf("accepted two verbs on one member: %+v", auth)
+			}
+		})
+	}
+	// apiKeyFromEnv carries no verb, so it sits beside any spelling.
+	ok := model.Profile{APIVersion: model.APIVersion, Kind: "CampaignProfile",
+		Orchestrator: model.MemberProfile{CLI: "claude"},
+		Agents: map[string]model.MemberProfile{"w": {CLI: "codex", Auth: model.Auth{
+			APIKeyFromEnv: []string{"OPENAI_API_KEY"}, InheritAgentLogin: []string{"codex"}}}}}
+	if err := validateProfile(ok); err != nil {
+		t.Fatalf("apiKeyFromEnv takes no verb and must not conflict: %v", err)
+	}
+}
+
+// The verb is overridable at create, so one run can copy a credential in
+// without editing the profile file. The override joins the RESOLVED profile,
+// which is what the campaign ID is derived from, so such a run is its own
+// campaign rather than a second instantiation of the declared one.
+func TestCreateOverridesTheCampaignVerb(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	p := model.Profile{APIVersion: model.APIVersion, Kind: "CampaignProfile",
+		Orchestrator: model.MemberProfile{CLI: "claude", Auth: model.Auth{AgentLogin: []string{"claude"}}},
+		Agents:       map[string]model.MemberProfile{"w": {CLI: "claude", Auth: model.Auth{AgentLogin: []string{"claude"}}}}}
+	if err := applySets(&p, []string{"defaults.credentials=inherit"}); err != nil {
+		t.Fatal(err)
+	}
+	if p.Defaults.Credentials != model.CredentialInherit {
+		t.Fatalf("override not applied: %+v", p.Defaults)
+	}
+	if err := applySets(&p, []string{"defaults.credentials=borrow"}); err == nil {
+		t.Fatal("an unsupported verb must be refused rather than passed to cs-sandbox")
+	}
+	// --credentials is that same override, and naming it twice is refused
+	// rather than resolved by argument order.
+	opts := createOpts{credentials: "inherit"}
+	sets, err := opts.credentialSet()
+	if err != nil || !slices.Contains(sets, "defaults.credentials=inherit") {
+		t.Fatalf("--credentials must become the override: %v %v", sets, err)
+	}
+	opts.sets = []string{"defaults.credentials=lend"}
+	if _, err := opts.credentialSet(); err == nil {
+		t.Fatal("--credentials beside --set of the same path must be refused")
+	}
+}
+
+// Fail closed on a grant cs-sandbox could not honour, and name the way out.
+// OpenCode has no login to lend, so a fleet that asks for one under the
+// campaign's default verb must hear it at validate rather than at create.
+func TestValidateRefusesAGrantThatCannotBeHonoured(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	base := func(auth model.Auth, defaults model.Defaults) model.Profile {
+		return model.Profile{APIVersion: model.APIVersion, Kind: "CampaignProfile", Defaults: defaults,
+			Orchestrator: model.MemberProfile{CLI: "claude"},
+			Agents:       map[string]model.MemberProfile{"w": {CLI: "opencode", Auth: auth}}}
+	}
+	for name, auth := range map[string]model.Auth{
+		"opencode has no login to lend": {AgentLogin: []string{"opencode"}},
+		"and cannot be lent explicitly": {LendAgentLogin: []string{"opencode"}},
+		"unknown login family":          {AgentLogin: []string{"gemini"}},
+		"unknown key provider":          {APIKey: []string{"fireflies"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := validateProfile(base(auth, model.Defaults{})); err == nil {
+				t.Fatalf("accepted %+v", auth)
+			}
+		})
+	}
+	if err := validateProfile(base(model.Auth{AgentLogin: []string{"claude"}}, model.Defaults{Credentials: "borrow"})); err == nil {
+		t.Fatal("an invalid campaign verb must be refused")
+	}
+	// The same OpenCode login is fine copied in, which is the remedy the
+	// refusal names — spelled on the member, or set for the campaign.
+	spelled := base(model.Auth{InheritAgentLogin: []string{"opencode"}}, model.Defaults{})
+	if err := validateProfile(spelled); err != nil {
+		t.Fatalf("inheritAgentLogin must validate for opencode: %v", err)
+	}
+	campaignWide := base(model.Auth{AgentLogin: []string{"opencode"}}, model.Defaults{Credentials: model.CredentialInherit})
+	if err := validateProfile(campaignWide); err != nil {
+		t.Fatalf("defaults.credentials must reach the member's validation: %v", err)
+	}
+}
+
+// containsSeq reports whether want appears in got as consecutive elements: a
+// flag and its value, rather than the two anywhere in the vector.
+func containsSeq(got, want []string) bool {
+	for i := 0; i+len(want) <= len(got); i++ {
+		if slices.Equal(got[i:i+len(want)], want) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestUnknownProfileFieldRejected(t *testing.T) {
@@ -495,13 +685,13 @@ func TestDeclaredEnvReachesTheSandboxAlongsideAuth(t *testing.T) {
 	c := &model.Campaign{Engine: "firecracker", Group: "grp", Network: groupNetwork("grp")}
 	m := model.Member{Sandbox: "box", Profile: model.MemberProfile{
 		Env:  []string{"ANTHROPIC_BASE_URL=http://10.89.9.1:8080"},
-		Auth: model.Auth{InheritAgentLogin: []string{"claude"}},
+		Auth: model.Auth{AgentLogin: []string{"claude"}},
 	}}
 	got := createArgs(c, m)
 	if !slices.Contains(got, "ANTHROPIC_BASE_URL=http://10.89.9.1:8080") {
 		t.Fatalf("declared env missing: %#v", got)
 	}
-	if !slices.Contains(got, "--inherit-agent-login") {
+	if !slices.Contains(got, "--lend-agent-login") {
 		t.Fatalf("env must not displace the auth grant: %#v", got)
 	}
 }

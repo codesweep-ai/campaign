@@ -560,6 +560,7 @@ Severity reflects the kind of problem.
 | `--agent NAME=CLI` | `create`, `plan`, `init` | Quick team definition, repeatable. |
 | `--agent-cli CLI`, `--agents N` | `create`, `plan`, `init` | Homogeneous shorthand: N agents on one CLI. |
 | `--repo PATH` | `create`, `plan`, `init` | A repository cloned into every member. |
+| `--credentials VERB` | `create`, `plan` | The campaign's credential verb, `lend` or `inherit`. |
 | `--set PATH=VALUE` | `create`, `plan` | Override one supported profile path, repeatable. |
 | `--dry-run` | `create`, `plan` | Resolve only; create nothing. |
 | `--accept-upstream-change` | `create`, `plan` | Proceed despite an upstream deviation, recording it on the campaign. |
@@ -586,6 +587,7 @@ kind: CampaignProfile
 defaults:
   engine: firecracker
   deadline: 6h
+  credentials: lend
   resources: {cpus: 2, memoryMiB: 2048}
   policy:
     continueAttempts: 2
@@ -601,7 +603,7 @@ agents:
     effort: high
     repos: [{path: /srv/product, ref: main}]
     snapshots: [{path: /srv/reference, name: reference}]
-    auth: {inheritAgentLogin: [claude]}
+    auth: {agentLogin: [claude]}
     policy: {stallSeconds: 240}
 ```
 
@@ -611,10 +613,54 @@ For `opencode`, `effort` requires `model` beside it, because it attaches reasoni
 named model, not to the session. `repos[].ref` picks the branch or tag cloned into the member, and
 `snapshots` gives it a frozen tree it can read.
 
-Values are never written into a profile. `apiKeyFromEnv` names host environment variables, and the
-first one actually set is used. `inheritAgentLogin` names CLI families whose existing host login the
-member inherits; those expire in hours, so check yours immediately before `create`. A member that
-gets a key from `apiKeyFromEnv` inherits no login: the key wins, and the two are not combined.
+### Credentials
+
+Values are never written into a profile. A member names what it is granted, and `cs-sandbox` reads
+the credential itself.
+
+| Grant | Names | Read from |
+|---|---|---|
+| `agentLogin` | CLI families: `claude`, `codex`, `opencode` | that family's host login |
+| `apiKey` | providers: `anthropic`, `openai`, `fireworks` | `~/.cs-keys/<provider>` on the host |
+| `apiKeyFromEnv` | host environment variables | the environment `create` runs in |
+
+A grant is **lent**. The member is handed a loan token worth nothing off this host, the credential
+stays where it is, and destroying the member ends the loan. Nothing inside a member can read,
+refresh or revoke the credential that pays for it. `apiKeyFromEnv` is the exception and is always
+copied in, because the lender reads a file this host keeps rather than an environment.
+
+How a grant arrives is its spelling. The plain name takes the campaign's verb, and the two fused
+names are `cs-sandbox`'s own flags:
+
+```yaml
+defaults:
+  credentials: lend                 # the campaign's verb: lend or inherit
+agents:
+  backend:
+    auth:
+      agentLogin: [claude]          # the campaign's verb, whatever it is
+  legacy:
+    auth:
+      inheritAgentLogin: [claude]   # --inherit-agent-login claude
+      inheritApiKey: [fireworks]    # --inherit-api-key fireworks
+```
+
+`lendAgentLogin` and `lendApiKey` spell the other verb, for a member that lends where its campaign
+copies. `--credentials lend|inherit` sets the campaign's verb for one run.
+
+**A member speaks one verb.** Mixing a `lend` spelling with an `inherit` one, or a plain grant with
+a fused one, declares two modes for a seat that has one. `validate` refuses it. `apiKeyFromEnv`
+carries no verb and sits beside any spelling, and the resolved verb is recorded on every member.
+
+OpenCode has no login to lend, so an OpenCode login is spelled `inheritAgentLogin` or belongs to a
+campaign whose verb is `inherit`. `validate` says so rather than letting `create` find out.
+
+A member is granted one credential, never a blend: the first `apiKeyFromEnv` variable that is set,
+else the key grant, else the login grant. A key displaces a login because an agent that finds a key
+in its environment spends the key, whatever it was signed in as.
+
+A host login expires when nothing uses it. A lent one is read fresh on every call, so signing in
+again on the host is all a stale one needs.
 
 ### The policy numbers
 
@@ -656,6 +702,25 @@ argument could beat would bound nothing.
 stops nothing by itself. The orchestrator's judgement enforces the deadline, and the machine uses
 the value only as the `elapsedSeconds` default.
 
+### Overriding at create
+
+The profile is the configuration. `--set PATH=VALUE` overrides one resolved path for this run
+without editing the file. The override joins the resolved profile, so it moves the campaign ID
+exactly as an edit would. The recorded `profileDigest` still names the file that was read. The list
+is short and closed, and an unsupported path fails rather than being accepted.
+
+| Path | Values |
+|---|---|
+| `defaults.engine` | `firecracker`, `podman` |
+| `defaults.credentials` | `lend`, `inherit` |
+| `defaults.resources.cpus` | a positive integer |
+| `defaults.resources.memoryMiB` | `128` or more |
+| `orchestrator.cli` | `claude`, `codex`, `opencode` |
+| `agents.<name>.cli` | `claude`, `codex`, `opencode` |
+
+`plan` takes the same overrides, so the resolved campaign can be read before anything is allocated.
+Everything else a campaign declares lives in the profile alone.
+
 ## Files
 
 | Path | Written by | Contents |
@@ -693,7 +758,8 @@ Precedence for the instances directory is `CS_SANDBOX_INSTANCES_DIR`, then `CS_S
 `XDG_DATA_HOME`, then the platform default under the home directory.
 
 Anything named in a member's `auth.apiKeyFromEnv` is read from the host environment at create and
-granted to that member. `env:` entries in a profile reach the member's sandbox; a bare `KEY` inherits
+granted to that member. `auth.agentLogin` and `auth.apiKey` are read by `cs-sandbox` from the host
+instead, and reach a member as a loan token unless an `inherit` spelling asks for the copy. `env:` entries in a profile reach the member's sandbox; a bare `KEY` inherits
 the host's value without the value passing through campaign state.
 
 ## Exit status
@@ -722,10 +788,17 @@ The `cs-sandbox` on your `PATH` is a different build from the one this binary na
 carries the `go install` line that fixes it. If you moved upstream on purpose, bump the `go.mod`
 pin, rebuild and reinstall, or pass `--accept-upstream-change` to record the deviation and proceed.
 
+**`opencode has no login to lend`**
+
+OpenCode signs in with a provider key rather than with a login of its own. Grant that member
+`apiKey` or `apiKeyFromEnv`, or spell the login `inheritAgentLogin` to copy one in.
+
 **`readback FAILED — N member(s) could not confirm their briefing; do not dispatch`**
 
 One or more members did not restate their job. The line names each one. Fix the brief, or re-run
-`create`, which continues the still-open readback dispatch.
+`create`, which continues the still-open readback dispatch. A member that cannot reach its model
+fails here too. Check the credential its profile named: a stale host login and a missing
+`~/.cs-keys` entry both look like silence.
 
 **`campaign <name> FAILED its doctor (N problems)`**
 

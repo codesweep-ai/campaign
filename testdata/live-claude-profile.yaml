@@ -1,6 +1,6 @@
 # Mixed-adapter live smoke used by TestLiveClaudeSmoke (internal/cli/live_claude_test.go).
-# Exactly one Claude member: cloned OAuth credentials rotate and must not be
-# shared by concurrent Claude VMs (IMPL.md OI-009).
+# The Claude member borrows the host login rather than carrying a copy: it
+# holds a loan token, and the credential that rotates stays on the host.
 apiVersion: codesweep.ai/v1alpha1
 kind: CampaignProfile
 defaults:
@@ -16,4 +16,4 @@ agents:
   claude-worker:
     cli: claude
     auth:
-      inheritAgentLogin: [claude]
+      agentLogin: [claude]

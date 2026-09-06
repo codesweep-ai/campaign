@@ -142,7 +142,7 @@ func TestScaffoldedProfileSaysWhereCredentialsGo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"apiKeyFromEnv", "inheritAgentLogin", "REQUIRED"} {
+	for _, want := range []string{"apiKeyFromEnv", "agentLogin", "inheritAgentLogin", "credentials", "REQUIRED"} {
 		if !strings.Contains(string(body), want) {
 			t.Errorf("scaffolded profile never mentions %q", want)
 		}

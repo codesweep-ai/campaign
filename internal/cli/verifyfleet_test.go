@@ -89,7 +89,7 @@ func TestVerifyFleetLivePassesAHealthyFleet(t *testing.T) {
 }
 
 // A shared login is not a fleet-level finding. The audit used to refuse more
-// than one member inheriting the host's Claude login, on the theory that a
+// than one member signing in with the host's Claude login, on the theory that a
 // cloned OAuth credential rotates out from under its copies. Sharing one login
 // across members is no different from sharing one API key across them, and the
 // same is true of codex — so the fleet check is gone, and what remains is
@@ -105,8 +105,8 @@ func TestVerifyFleetLiveAllowsAFleetSharingOneLogin(t *testing.T) {
 	for _, family := range []string{"claude", "codex"} {
 		t.Run(family, func(t *testing.T) {
 			shared := &model.Campaign{Name: "c", Members: []model.Member{
-				inheriting("a", "orchestrator", "box0", family),
-				inheriting("b", "agent", "box1", family),
+				signedInAs("a", "orchestrator", "box0", family),
+				signedInAs("b", "agent", "box1", family),
 			}}
 			if findings := a.verifyFleetLive(t.Context(), shared); len(findings) != 0 {
 				t.Fatalf("two members may share one %s login: %+v", family, findings)
@@ -115,9 +115,9 @@ func TestVerifyFleetLiveAllowsAFleetSharingOneLogin(t *testing.T) {
 	}
 }
 
-func inheriting(name, role, box, family string) model.Member {
+func signedInAs(name, role, box, family string) model.Member {
 	m := model.Member{Name: name, Role: role, CLI: family, Sandbox: box}
-	m.Profile.Auth.InheritAgentLogin = []string{family}
+	m.Profile.Auth.AgentLogin = []string{family}
 	return m
 }
 

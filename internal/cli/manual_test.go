@@ -46,3 +46,20 @@ func TestManualNamesEveryCommand(t *testing.T) {
 			"document them, or the manual is lying by omission to a reader who has only the binary", missing)
 	}
 }
+
+// TestManualNamesEveryOverridePath is the same drift gate for --set. The
+// override list is a closed allowlist an operator cannot discover by reading a
+// profile, so the manual is the only place it exists. Adding a path without
+// documenting it leaves the operator guessing at a switch statement.
+func TestManualNamesEveryOverridePath(t *testing.T) {
+	var missing []string
+	for _, p := range setPaths {
+		if !strings.Contains(campaign.ManualMD, p.path) {
+			missing = append(missing, p.path)
+		}
+	}
+	if len(missing) > 0 {
+		t.Fatalf("MANUAL.md does not name these --set paths: %v\n"+
+			"document them, or an operator learns the allowlist by having a path refused", missing)
+	}
+}

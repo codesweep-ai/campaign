@@ -54,7 +54,7 @@ func validateProfile(p model.Profile) error {
 	if err := validCLI(p.Orchestrator.CLI); err != nil {
 		return fmt.Errorf("orchestrator: %w", err)
 	}
-	if err := validateAuth(p.Orchestrator.Auth); err != nil {
+	if err := validateAuth(p.Orchestrator.Auth, credentials(p.Defaults, p.Orchestrator)); err != nil {
 		return fmt.Errorf("orchestrator: %w", err)
 	}
 	if err := validateModelConfig(p.Orchestrator); err != nil {
@@ -70,7 +70,7 @@ func validateProfile(p model.Profile) error {
 		if err := validCLI(m.CLI); err != nil {
 			return fmt.Errorf("agent %s: %w", name, err)
 		}
-		if err := validateAuth(m.Auth); err != nil {
+		if err := validateAuth(m.Auth, credentials(p.Defaults, m)); err != nil {
 			return fmt.Errorf("agent %s: %w", name, err)
 		}
 		if err := validateModelConfig(m); err != nil {
@@ -82,6 +82,9 @@ func validateProfile(p model.Profile) error {
 	}
 	if len(p.Agents) == 0 {
 		return errors.New("at least one agent is required")
+	}
+	if p.Defaults.Credentials != "" && !model.ValidCredentialVerb(p.Defaults.Credentials) {
+		return fmt.Errorf("defaults.credentials: invalid verb %q (want %s)", p.Defaults.Credentials, strings.Join(model.CredentialVerbs, " or "))
 	}
 	if p.Defaults.Deadline != "" {
 		d, err := time.ParseDuration(p.Defaults.Deadline)
@@ -138,14 +141,70 @@ func validateModelConfig(m model.MemberProfile) error {
 	return nil
 }
 
-func validateAuth(a model.Auth) error {
+// validateAuth refuses a grant cs-sandbox could not honour, with the verb this
+// member resolved to: the same declaration is fine copied and impossible lent.
+//
+// The enums are checked, the pairings are not. Which agent may spend which
+// provider's key is upstream's table and it moves; encoding it here would mean
+// re-deriving a list that only agrees until it changes. What is checked is the
+// one fact the flag itself carries: there is no OpenCode login to lend.
+func validateAuth(a model.Auth, verb string) error {
+	if err := validateSpelling(a); err != nil {
+		return err
+	}
 	for _, key := range a.APIKeyFromEnv {
 		if !envName.MatchString(key) {
 			return fmt.Errorf("invalid API-key environment name %q", key)
 		}
 	}
+	for _, provider := range a.APIKeys() {
+		if !model.ValidAPIKeyProvider(provider) {
+			return fmt.Errorf("unsupported apiKey provider %q (want one of %s)", provider, strings.Join(model.APIKeyProviders, ", "))
+		}
+	}
+	for _, family := range a.AgentLogins() {
+		if !model.ValidAdapterCLI(family) {
+			return fmt.Errorf("unsupported agentLogin family %q (want one of %s)", family, strings.Join(model.AdapterCLIs, ", "))
+		}
+		if verb == model.CredentialLend && !model.LendableAgentLogin(family) {
+			return fmt.Errorf("%s has no login to lend — grant it a key with apiKey or apiKeyFromEnv, or copy one in with inheritAgentLogin", family)
+		}
+	}
 	return nil
 }
+
+// validateSpelling holds the one-verb-per-member rule. A seat has one mode, so
+// a member that spells two of them has said something no create can carry out,
+// and the profile is where that has to fail. The neutral spelling counts,
+// because it means "the campaign's verb", which is not this member's to know.
+func validateSpelling(a model.Auth) error {
+	neutral, lend, inherit := a.Spellings()
+	if lend && inherit {
+		return errors.New("auth mixes lend and inherit spellings; a member is granted its credential one way, so use one verb")
+	}
+	if neutral && (lend || inherit) {
+		spelled := model.CredentialLend
+		if inherit {
+			spelled = model.CredentialInherit
+		}
+		return fmt.Errorf("auth mixes a plain grant with an explicit %s spelling; the plain one takes the campaign's verb, so spell both or neither", spelled)
+	}
+	return nil
+}
+
+// credentials resolves one seat's verb: the one its own spellings state, else
+// the campaign's, else lend. The same ladder validation and create both read,
+// so a profile cannot validate under one verb and be created under another.
+func credentials(defaults model.Defaults, m model.MemberProfile) string {
+	if declared := m.Auth.DeclaredCredentials(); declared != "" {
+		return declared
+	}
+	if defaults.Credentials != "" {
+		return defaults.Credentials
+	}
+	return model.CredentialLend
+}
+
 func validCLI(s string) error {
 	if model.ValidAdapterCLI(s) {
 		return nil
@@ -168,7 +227,14 @@ func applyDefaults(p *model.Profile) {
 	if p.Defaults.Engine == "" {
 		p.Defaults.Engine = "firecracker"
 	}
+	if p.Defaults.Credentials == "" {
+		p.Defaults.Credentials = model.CredentialLend
+	}
 	apply := func(m *model.MemberProfile) {
+		// Resolved into the member rather than read back through the campaign
+		// later: the member record is what says how this seat was granted its
+		// credential, and createArgs has only the member.
+		m.Auth.Credentials = credentials(p.Defaults, *m)
 		if m.Resources.CPUS == 0 {
 			m.Resources.CPUS = p.Defaults.Resources.CPUS
 		}
@@ -347,6 +413,29 @@ func sortedNames(m map[string]model.MemberProfile) []string {
 	sort.Strings(out)
 	return out
 }
+
+// setPaths are the profile paths --set may override, and the values each one
+// takes. Named here rather than only in the switch below, so the error an
+// operator gets can list them and MANUAL.md can be held against them.
+//
+// agents.<name>.cli is a pattern rather than a path, and is handled on its own.
+var setPaths = []struct{ path, values string }{
+	{"defaults.engine", "firecracker, podman"},
+	{"defaults.credentials", "lend, inherit"},
+	{"defaults.resources.cpus", "a positive integer"},
+	{"defaults.resources.memoryMiB", "128 or more"},
+	{"orchestrator.cli", "claude, codex, opencode"},
+	{"agents.<name>.cli", "claude, codex, opencode"},
+}
+
+func supportedSetPaths() []string {
+	out := make([]string, 0, len(setPaths))
+	for _, p := range setPaths {
+		out = append(out, p.path)
+	}
+	return out
+}
+
 func applySets(p *model.Profile, sets []string) error {
 	for _, raw := range sets {
 		parts := strings.SplitN(raw, "=", 2)
@@ -360,6 +449,11 @@ func applySets(p *model.Profile, sets []string) error {
 				return fmt.Errorf("invalid engine %q", value)
 			}
 			p.Defaults.Engine = value
+		case "defaults.credentials":
+			if !model.ValidCredentialVerb(value) {
+				return fmt.Errorf("invalid credentials verb %q", value)
+			}
+			p.Defaults.Credentials = value
 		case "defaults.resources.cpus":
 			n, e := strconv.Atoi(value)
 			if e != nil || n < 1 {
@@ -390,7 +484,7 @@ func applySets(p *model.Profile, sets []string) error {
 				m.CLI = value
 				p.Agents[name] = m
 			} else {
-				return fmt.Errorf("unsupported --set path %q", path)
+				return fmt.Errorf("unsupported --set path %q (supported: %s)", path, strings.Join(supportedSetPaths(), ", "))
 			}
 		}
 	}

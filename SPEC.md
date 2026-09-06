@@ -230,6 +230,20 @@ credential-helper state, cloud credentials, or other ambient host identity.
 **R18.** A model login or API key **MUST** be a separate explicit grant. It permits model usage and
 spending, and **MUST NOT** transitively grant source-hosting or host access.
 
+**R18a.** A granted model credential the host holds **MUST** be lent by default. The member receives
+a token that names the credential without carrying it, and the value stays on the host. Copying a
+value in **MUST** be a declaration, per member or per campaign, and the resolved verb **MUST** be
+recorded on the member. *A member is an LLM with a shell and no approval prompt, running unattended for hours. A
+copied credential is readable by everything it runs, and cannot be withdrawn without rotating it. A
+loan is worthless off the host and ends when the sandbox does. The copy stays available because an
+environment key has no lent form, and because an adapter can have no login to lend.*
+
+**R18b.** A member **MUST** be granted one model credential rather than a combination of them, and
+**MUST** be refused when it declares more than one verb. *An agent that finds a key in its
+environment spends the key whatever it was signed in as, so a member granted both would run on a
+credential its profile did not name. A seat has one mode, so a member declaring two has asked for
+something no create can carry out.*
+
 **R19.** Grants **MUST** be revocable, and **MUST** be excluded from state, transcripts and
 archives.
 
@@ -560,8 +574,8 @@ nothing at all.*
 adapter's store cannot name the answering model, that **MUST** be said rather than papered over
 with the line a verified member gets.
 
-**R96.** Profiles **MUST** contain secret references or login-inheritance requests, never secret
-values.
+**R96.** Profiles **MUST** contain secret references, never secret values. A reference is an
+environment variable name, a provider, or a login family.
 
 **R97.** A credential value **MUST NOT** appear in a plan, a subprocess argument, campaign state,
 or an archive.
@@ -680,6 +694,7 @@ kind: CampaignProfile
 defaults:
   engine: firecracker
   deadline: 6h
+  credentials: lend
   resources: {cpus: 2, memoryMiB: 2048}
   policy: {continueAttempts: 2, restarts: 1, pollSeconds: 30}
 orchestrator:
@@ -691,7 +706,7 @@ agents:
   backend:
     cli: claude
     repos: [{path: /srv/product}]
-    auth: {inheritAgentLogin: [claude]}
+    auth: {agentLogin: [claude]}
     policy: {stallSeconds: 240}
 ```
 
@@ -706,8 +721,10 @@ agents:
 | `model`, `effort` | member | Passed to that member's CLI verbatim. `opencode` requires `model` whenever `effort` is set. |
 | `repos[].path`, `.ref`, `.name` | member | A host repository cloned into the member. |
 | `snapshots[].path`, `.name` | member | A frozen tree the member can read. |
-| `auth.apiKeyFromEnv` | member | Host environment variable names whose values are granted. |
-| `auth.inheritAgentLogin` | member | CLI families whose host login this member inherits. |
+| `credentials` | `defaults` | The verb every member takes unless it spells one: `lend` or `inherit`. Default `lend`. |
+| `auth.apiKeyFromEnv` | member | Host environment variable names whose values are granted. Always copied in. |
+| `auth.apiKey`, `auth.lendApiKey`, `auth.inheritApiKey` | member | Providers whose key the host holds: `anthropic`, `openai`, `fireworks`. |
+| `auth.agentLogin`, `auth.lendAgentLogin`, `auth.inheritAgentLogin` | member | CLI families whose host login this member signs in with. |
 
 ### 5.2 Campaign state
 
@@ -1039,17 +1056,28 @@ committed one used to be.
 `make test-integration` runs the smallest complete campaign once per backend, with the team
 homogeneous so a failure names the backend that broke:
 
-| Scenario | Adapter | Signed in with |
-|---|---|---|
-| `claude-subscription` | claude | a Claude Pro or Max subscription on this host |
-| `claude-api-key` | claude | `ANTHROPIC_API_KEY` |
-| `codex-subscription` | codex | a ChatGPT subscription on this host |
-| `codex-api-key` | codex | `OPENAI_API_KEY` |
-| `opencode-fireworks` | opencode | `FIREWORKS_API_KEY` |
+| Scenario | Adapter | Granted | Verb |
+|---|---|---|---|
+| `claude-subscription` | claude | this host's Claude login | lend |
+| `claude-api-key` | claude | `~/.cs-keys/anthropic` | lend |
+| `codex-subscription` | codex | this host's Codex login | lend |
+| `codex-api-key` | codex | `~/.cs-keys/openai` | lend |
+| `opencode-fireworks` | opencode | `~/.cs-keys/fireworks` | lend |
+| `claude-inherit` | claude | this host's Claude login | inherit |
+
+Five scenarios spell no verb, so they take the campaign's, which is `lend`. That is the default a
+campaign runs on, so it is the one the matrix records. `claude-inherit` spells
+`inheritAgentLogin`, so the path an operator opts into is recorded rather than only unit-tested.
 
 A scenario this host cannot sign in for skips with the credential it wants, which is how a run
 reports what one more login would cover. One further test drives a mixed team, because a helper
 that routes by declared CLI is only exercised when the two members differ.
+
+The verb decides where cs-vcr sits, because it decides who dials it. An inheriting member holds the
+credential and reaches the recorder itself, on the campaign fabric. A lent member holds a loan
+token, and the lender on the host swaps it for the credential and dials the recorder from there.
+The same proxy therefore publishes a loopback port as well. No route runs from this host into the campaign's
+rootless network, which is the whole reason for the second door.
 
 The replay tier runs every scenario, and so does CI. `opencode-fireworks` was once left out: on a
 two-core runner its member never got its turn started. The driver behind that has since been fixed.
@@ -1198,8 +1226,8 @@ is the opposite of what this gate is for.
 
 ## 8. Conformance
 
-An implementation conforms when it satisfies R1 to R124, R4a included, and can demonstrate each
-of the following by test.
+An implementation conforms when it satisfies R1 to R124, R4a, R18a and R18b included, and can
+demonstrate each of the following by test.
 
 **Isolation.** Two concurrent campaigns cannot resolve or connect to one another by name or raw
 address, and neither one's SSH trust material authenticates to the other's members. A solo agent
@@ -1208,8 +1236,9 @@ path to another campaign. A solo agent can reach a deliberately exposed applicat
 own campaign without gaining shell control. No member accesses the host container socket, and no
 member receives ambient source-hosting, host SSH, cloud or credential-helper identity. Every
 member sandbox, the orchestrator's included, is created `yolo`, and no member's tool call is
-stopped by an approval prompt or a deny rule. Destroying one campaign leaves another fully
-operational.
+stopped by an approval prompt or a deny rule. A model credential the host holds reaches a member as
+a loan unless the profile declared the copy, and a member holds one model credential rather than
+several. Destroying one campaign leaves another fully operational.
 
 **Lifecycle.** Destroying a campaign reclaims its group, so no network, key pair, gateway, gateway
 port, tap prefix or fabric directory outlives the campaign that created it. A failed host command

@@ -2,13 +2,13 @@
 # Re-record every cassette the smoke tier replays, from this machine's own
 # credentials.
 #
-# Five scenarios, each a real campaign: two microVMs, a fabric, a dispatch ladder
+# Six scenarios, each a real campaign: two microVMs, a fabric, a dispatch ladder
 # and real model turns. This checks what they need before any of that starts, and
 # `make record-fixtures-strict` fails on a scenario it cannot sign in for rather than
-# skipping it. Recording four of five and reporting green is the outcome worth
+# skipping it. Recording five of six and reporting green is the outcome worth
 # refusing.
 #
-#   ./scripts/record-fixtures.sh          record all five
+#   ./scripts/record-fixtures.sh          record all six
 #   ./scripts/record-fixtures.sh --check  say what would run, record nothing
 #
 # The tests do the rest. Each one asks its agent for a single word against the
@@ -31,7 +31,22 @@ make tools >/dev/null
 export PATH="$repo/bin/tools:$PATH"
 
 check_only=0
-[[ ${1:-} == --check ]] && check_only=1
+[[ ${1:-} == --check ]] && { check_only=1; shift; }
+
+# Named scenarios re-record just those, which is what a run that lost one or two
+# wants: the rest are already committed, and re-recording a cassette that is
+# fine spends money to replace it with a different recording of the same thing.
+#
+#   ./scripts/record-fixtures.sh codex-api-key opencode-fireworks
+#
+# It goes through this script rather than through `make record-fixtures` so the
+# credential tree below is staged either way. Without it the lent scenarios find
+# no key to borrow.
+only=("$@")
+fixture_tests=TestLiveRecordsACassette
+if (( ${#only[@]} )); then
+  fixture_tests="TestLiveRecordsACassette/($(IFS='|'; echo "${only[*]}"))"
+fi
 
 fail() { printf '\n%s\n' "$*" >&2; exit 1; }
 ok()   { printf '  ok    %s\n' "$*"; }
@@ -44,11 +59,39 @@ set -a
 . ./.env
 set +a
 
-# The subscription logins. cs-sandbox inherits each from ~/.cs-<agent>, which is
-# the profile the wrappers keep and not the agent's own directory.
-login_home=${CS_SANDBOX_AGENT_HOME:-$HOME}
+# Where this host keeps its own credentials. cs-sandbox reads a login from
+# <tree>/.cs-<agent> and a provider key from <tree>/.cs-keys/<provider>, and
+# these are the profiles the wrappers keep rather than the agents' own
+# directories.
+source_home=${CS_SANDBOX_AGENT_HOME:-$HOME}
 
-# The image these five campaigns will boot. The slim one, because that is what
+# The recording does not read that tree directly. CS_SANDBOX_AGENT_HOME moves
+# the whole lookup, logins and keys together, so the run gets a scratch tree
+# instead: the logins are symlinked, so no credential is copied anywhere, and
+# the three keys are written from .env for the lender to read. Nothing lands in
+# the developer's home, which now needs no ~/.cs-keys at all.
+#
+# Removed on exit. A SIGKILL is the one case that leaves the keys behind, and
+# they are mode 600 inside a mode 700 directory when it does.
+creds_tree=
+cleanup_creds() { [[ -n $creds_tree ]] && rm -rf -- "$creds_tree"; }
+trap cleanup_creds EXIT
+
+lend_tree() {
+  creds_tree=$(mktemp -d "${TMPDIR:-/tmp}/cs-campaign-record-creds.XXXXXX")
+  chmod 700 "$creds_tree"
+  for agent in claude codex; do
+    [[ -e $source_home/.cs-$agent ]] && ln -s "$source_home/.cs-$agent" "$creds_tree/.cs-$agent"
+  done
+  mkdir -m 700 "$creds_tree/.cs-keys"
+  write_key() { printf %s "${!2}" > "$creds_tree/.cs-keys/$1"; chmod 600 "$creds_tree/.cs-keys/$1"; }
+  write_key anthropic ANTHROPIC_API_KEY
+  write_key openai    OPENAI_API_KEY
+  write_key fireworks FIREWORKS_API_KEY
+  export CS_SANDBOX_AGENT_HOME="$creds_tree"
+}
+
+# The image these six campaigns will boot. The slim one, because that is what
 # `make test-smoke` and CI replay on, and a cassette is bound to the image that
 # recorded it: replay serves the model's tool calls from the cassette and then
 # runs them for real, so a turn that used a binary the other variant drops
@@ -59,7 +102,7 @@ image=${CS_SANDBOX_IMAGE:-$(cs-sandbox version --images 2>/dev/null | awk '$1=="
 echo "Recording from:"
 echo "  repo             $repo"
 echo "  branch           $(git rev-parse --abbrev-ref HEAD)"
-echo "  logins under     $login_home"
+echo "  credentials in   $source_home (read through a scratch tree, never copied)"
 echo "  cs-sandbox       $(cs-sandbox version 2>/dev/null | awk 'NR==1{print $2}' || echo MISSING)"
 echo "  built against    $(awk '/codesweep-ai\/sandbox / {print $2; exit}' go.mod 2>/dev/null || echo '?')"
 echo "  image            ${image:-MISSING} (slim — what test-smoke replays on)"
@@ -67,6 +110,11 @@ echo
 
 missing=0
 
+# Still .env, as they always were. What changed is where they are read: the
+# three key scenarios lend now, and a lender reads a file rather than the
+# caller's environment, so lend_tree writes each one into the scratch tree
+# below. The variables are wanted for the preflight too, which runs each agent
+# on this host against its real provider before it clears a cassette.
 echo "API keys (.env):"
 for v in ANTHROPIC_API_KEY OPENAI_API_KEY FIREWORKS_API_KEY; do
   if [[ -n ${!v:-} ]]; then ok "$v is set"; else bad "$v is not set"; missing=1; fi
@@ -74,7 +122,7 @@ done
 
 echo
 echo "Subscription logins:"
-claude_cred="$login_home/.cs-claude/.credentials.json"
+claude_cred="$source_home/.cs-claude/.credentials.json"
 if [[ -f $claude_cred ]]; then
   # The same five-minute margin the agent applies, checked here where the fix is
   # one `cs-claude` away and no campaign has started.
@@ -90,7 +138,7 @@ else
   bad "no Claude login at $claude_cred"; missing=1
 fi
 
-codex_cred="$login_home/.cs-codex/auth.json"
+codex_cred="$source_home/.cs-codex/auth.json"
 if [[ -f $codex_cred ]]; then
   ok "Codex login at $codex_cred"
 else
@@ -115,7 +163,7 @@ if [[ -w /dev/kvm ]]; then ok "/dev/kvm is writable"; else bad "/dev/kvm is not 
 # only artifact these campaigns need. Every member is copied from a base rootfs
 # built FROM that image and kept beside it, one per image variant, and a host can
 # hold the image and be unable to boot a single member. That is not a guess: it
-# is how a recording run died on all five scenarios, each after taking a group, a
+# is how a recording run died on all six scenarios, each after taking a group, a
 # network and a gateway port.
 #
 # The image is named rather than asked for with `--slim`, and the two are the
@@ -167,13 +215,19 @@ skipping, so fix it before a campaign starts."
 fi
 
 if (( check_only )); then
-  echo "--check: everything the five scenarios need is present. Nothing recorded."
+  echo "--check: everything the six scenarios need is present. Nothing recorded,"
+  echo "and no credential written: the scratch tree is built by a real run."
+  echo "would run: go test -run '$fixture_tests'"
   exit 0
 fi
 
+if (( ${#only[@]} )); then
+  printf '\nThis runs %d real campaign(s) against real providers, and spends real money:\n' "${#only[@]}"
+  printf '  %s\n' "${only[@]}"
+else
+  printf '\nThis runs all six real campaigns against real providers, and spends real money.\n'
+fi
 cat <<'WARN'
-
-This runs five real campaigns against real providers, and spends real money.
 Re-recording REPLACES each cassette; it does not append.
 
 WARN
@@ -181,7 +235,12 @@ read -r -p "Type 'record' to continue: " answer
 [[ $answer == record ]] || fail "Nothing recorded."
 
 echo
-make record-fixtures-strict
+lend_tree
+echo "Credentials for this run: $CS_SANDBOX_AGENT_HOME"
+echo "  .cs-claude, .cs-codex   symlinks to $source_home"
+echo "  .cs-keys/*              written from .env, removed when this exits"
+echo
+make record-fixtures-strict FIXTURE_TESTS="$fixture_tests"
 
 cat <<'AFTER'
 

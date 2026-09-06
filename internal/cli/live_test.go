@@ -146,7 +146,7 @@ func TestLiveRecordsACassette(t *testing.T) {
 			// finish — so the gate can refuse it by name.
 			claimRecording(t, store, sc)
 			run := runLiveCampaign(t, sc, runOptions{
-				baseURL:    vcrBaseURL,
+				baseURL:    vcrURL(sc),
 				ceiling:    30 * time.Minute,
 				proxyMode:  "record",
 				proxyStore: store,
@@ -190,53 +190,70 @@ func requireLiveOptIn(t *testing.T) {
 // agent: see the baseURLEnv field for what codex would need.
 func (s scenario) recordable() bool { return s.baseURLEnv != "" }
 
-// inheritedCredential names the file cs-sandbox copies into a member when a
-// profile asks to inherit that family's host login (the sandbox repository's
-// seed/agentlogin.go owns the list). It is the cs- profile rather than the
-// agent's own directory: ~/.claude can exist on a host that never signed in,
-// and it is not what gets carried.
-var inheritedCredential = map[string]string{
+// hostCredential names the file a family's host login lives in (the sandbox
+// repository's seed/agentlogin.go owns the list). cs-sandbox reads it either
+// way: the lender reads it per call, and --inherit-agent-login copies it in.
+// It is the cs- profile rather than the agent's own directory: ~/.claude can
+// exist on a host that never signed in, and it is not what gets read.
+var hostCredential = map[string]string{
 	"claude":   ".cs-claude/.credentials.json",
 	"codex":    ".cs-codex/auth.json",
 	"opencode": ".cs-opencode/auth.json",
 }
 
-// hostLoginMissing reports why this host cannot run a scenario that inherits a
-// login, or "" when it can. Only the inherited half is judged here. A credential
-// that lives in an environment variable is left to the caller, because the two
-// tiers disagree about it: the smoke tier substitutes fakeKey and needs no real
-// one, and the integration tier needs exactly the real one.
+// hostCredentialMissing reports why this host cannot sign a scenario in, or ""
+// when it can. Both grants read a file: a login under ~/.cs-<agent>, a provider
+// key under ~/.cs-keys. cs-sandbox reads whichever one this scenario names,
+// either per call from the lender or once at create for a copy, so the question
+// is the same for both verbs.
 //
-// A subscription scenario is different in kind, because the agent reads the
-// credential itself and will not run unattended without one. Claude Code puts up
-// its sign-in screen, which cs-claude-turn reads as an authentication failure;
-// Codex validates against its own backend over a hardcoded URL and takes a 401.
-// Neither is reached by cs-vcr, so no cassette helps. Either way the members
-// never reply and the readback spends its whole ceiling finding that out, which
-// reads as a hung run rather than a missing login.
+// A subscription is different in kind from a key, because the agent reads the
+// credential itself and will not run unattended without one. Claude Code puts
+// up its sign-in screen, which cs-claude-turn reads as an authentication
+// failure; Codex validates against its own backend over a hardcoded URL and
+// takes a 401. Neither is reached by cs-vcr, so no cassette helps. Either way
+// the members never reply and the readback spends its whole ceiling finding
+// that out, which reads as a hung run rather than a missing login.
 //
-// Seeding a synthetic credential does not help, and was measured rather than
-// assumed: a well-formed fake is carried into the member and then rejected
-// exactly as an absent one is, because both agents check with their provider
-// instead of trusting the file.
-func hostLoginMissing(sc scenario) string {
-	if sc.inherit == "" {
-		return ""
-	}
-	rel, ok := inheritedCredential[sc.inherit]
-	if !ok {
-		return fmt.Sprintf("scenario inherits %q, which is not a family cs-sandbox carries", sc.inherit)
-	}
+// Seeding a synthetic credential does not help on the recording half, and was
+// measured rather than assumed: a well-formed fake is carried into the member
+// and then rejected exactly as an absent one is, because both agents check with
+// their provider instead of trusting the file.
+func hostCredentialMissing(sc scenario) string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "cannot resolve the home directory to look for a login"
+		return "cannot resolve the home directory to look for a credential"
+	}
+	if d := os.Getenv("CS_SANDBOX_AGENT_HOME"); d != "" {
+		home = d
+	}
+	var rel string
+	switch {
+	case sc.keyProvider != "":
+		rel = filepath.Join(".cs-keys", sc.keyProvider)
+	case sc.login != "":
+		var ok bool
+		if rel, ok = hostCredential[sc.login]; !ok {
+			return fmt.Sprintf("scenario signs in as %q, which is not a family cs-sandbox carries", sc.login)
+		}
+	default:
+		return "scenario names no credential at all"
 	}
 	if _, err := os.Stat(filepath.Join(home, rel)); err != nil {
-		// sc.auth already ends in "on this host", so this does not repeat it.
+		// sc.auth already names the credential, so this does not repeat it.
 		return fmt.Sprintf("needs %s: no ~/%s", sc.auth, rel)
 	}
 	return ""
 }
+
+// probePrompt is what the preflight asks for: one word, so the answer is
+// unambiguous and the turn costs almost nothing.
+const probePrompt = "reply with the single word: ok"
+
+// probeAnswered matches the word on its own, never inside another. Substring
+// matching is not enough for a word this short: "token" contains "ok", so an
+// authentication error would read as the answer it is complaining about.
+var probeAnswered = regexp.MustCompile(`(?i)\bok\b`)
 
 // strictSwitch turns a skipped scenario into a failure. A host that holds every
 // credential and means to re-record the whole matrix wants it: recording none of
@@ -252,15 +269,6 @@ func skipUnlessStrict(t *testing.T, format string, args ...any) {
 	}
 	t.Skipf(format, args...)
 }
-
-// probePrompt is what the preflight asks for: one word, so the answer is
-// unambiguous and the turn costs almost nothing.
-const probePrompt = "reply with the single word: ok"
-
-// probeAnswered matches the word on its own, never inside another. Substring
-// matching is not enough for a word this short: "token" contains "ok", so an
-// authentication error would read as the answer it is complaining about.
-var probeAnswered = regexp.MustCompile(`(?i)\bok\b`)
 
 // preflight runs this scenario's agent on the host, against its real provider,
 // and fails the scenario if it does not answer.
@@ -293,7 +301,7 @@ func preflight(t *testing.T, sc scenario) {
 	default:
 		t.Fatalf("%s: no preflight for %s", sc.name, sc.cli)
 	}
-	// The profile directories cs-sandbox will inherit from, so this asks after
+	// The profile directories cs-sandbox reads a login from, so this asks after
 	// the same login the members are about to be given.
 	cmd.Env = append(os.Environ(),
 		"CLAUDE_CONFIG_DIR="+filepath.Join(agentLoginHome(t), ".cs-claude"),
@@ -332,16 +340,13 @@ func tailBytes(b []byte, n int) string {
 // available reports whether this host holds what the scenario needs, and says
 // what is missing when it does not.
 //
-// The inherited half asks for the credential cs-sandbox would actually carry,
-// rather than the agent's own directory. ~/.claude exists on a host that has
-// only ever run Claude Code once and never signed in, and a run started on that
-// evidence does not fail fast: it spends a whole readback ceiling, and this is
-// the tier that spends real money doing it.
+// It asks for the file cs-sandbox would actually read, rather than for the
+// agent's own directory or an environment variable. ~/.claude exists on a host
+// that has only ever run Claude Code once and never signed in, and a run
+// started on that evidence does not fail fast: it spends a whole readback
+// ceiling, and this is the tier that spends real money doing it.
 func (s scenario) available() (bool, string) {
-	if s.keyEnv != "" && os.Getenv(s.keyEnv) == "" {
-		return false, fmt.Sprintf("needs %s (%s)", s.keyEnv, s.auth)
-	}
-	if why := hostLoginMissing(s); why != "" {
+	if why := hostCredentialMissing(s); why != "" {
 		return false, why
 	}
 	return true, ""

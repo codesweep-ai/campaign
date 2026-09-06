@@ -579,7 +579,7 @@ record-fixtures: setup-smoke
 	  ./internal/cli -run '$(FIXTURE_TESTS)'
 
 ## record-fixtures-strict: the same recording, with a skip treated as a failure. For a
-## host that holds every credential and means to re-record all five: a missing
+## host that holds every credential and means to re-record all six: a missing
 ## one skips under `record-fixtures`, and a run that recorded nothing reports the same
 ## green as one that recorded everything. scripts/record-fixtures.sh runs this.
 record-fixtures-strict: setup-smoke

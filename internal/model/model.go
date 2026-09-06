@@ -35,9 +35,106 @@ type Snapshot struct {
 	Path string `yaml:"path" json:"path"`
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 }
+
+// CredentialLend and CredentialInherit are the two verbs, and they are
+// cs-sandbox's own: lending hands the sandbox a loan token and keeps the
+// credential on the host, and inheriting copies the credential in. Lending is
+// the default, because a member that never holds the value cannot leak,
+// refresh or revoke it, and destroying the sandbox ends the loan.
+const (
+	CredentialLend    = "lend"
+	CredentialInherit = "inherit"
+)
+
+// CredentialVerbs are how a credential reaches a member, in display order.
+var CredentialVerbs = []string{CredentialLend, CredentialInherit}
+
+// APIKeyProviders are the providers whose key this host keeps for cs-sandbox to
+// lend or copy, in display order.
+var APIKeyProviders = []string{"anthropic", "openai", "fireworks"}
+
+// LendableAgentLogin reports whether a CLI family has a login that can be lent.
+// OpenCode has none: it authenticates from a provider key, so a member running
+// it takes apiKey or apiKeyFromEnv instead.
+func LendableAgentLogin(cli string) bool { return cli == "claude" || cli == "codex" }
+
+// ValidCredentialVerb reports whether verb is one of them.
+func ValidCredentialVerb(verb string) bool { return slices.Contains(CredentialVerbs, verb) }
+
+// ValidAPIKeyProvider reports whether provider is a supported key provider.
+func ValidAPIKeyProvider(provider string) bool { return slices.Contains(APIKeyProviders, provider) }
+
+// Auth is a member's model credentials, held by reference.
+//
+// A grant names what the member is given. The SPELLING says how it arrives:
+// the neutral spellings take the campaign's verb, and the fused ones are
+// cs-sandbox's own flag names, stating the verb for this member.
+//
+//	agentLogin: [claude]           the campaign's verb, whatever it is
+//	lendAgentLogin: [claude]       --lend-agent-login claude
+//	inheritAgentLogin: [claude]    --inherit-agent-login claude
+//
+// A member speaks one verb. Mixing a lend spelling with an inherit one, or a
+// neutral spelling with a fused one, declares two modes for a seat that can
+// only have one, and validation refuses it.
+//
+// One credential is granted, never a blend: the first apiKeyFromEnv variable
+// actually set, else the key grant, else the login grant. A key displaces a
+// login because an agent that finds a key in its environment spends that
+// instead of the subscription it was signed into, and the member would then
+// run on a credential its profile did not name.
 type Auth struct {
-	APIKeyFromEnv     []string `yaml:"apiKeyFromEnv,omitempty" json:"apiKeyFromEnv,omitempty"`
+	// APIKeyFromEnv names host environment variables, and the first one
+	// actually set is granted. It takes no verb: the lender reads a file this
+	// host keeps, not the environment of whoever ran create.
+	APIKeyFromEnv []string `yaml:"apiKeyFromEnv,omitempty" json:"apiKeyFromEnv,omitempty"`
+
+	// The key grant, in its three spellings. Values are APIKeyProviders.
+	APIKey        []string `yaml:"apiKey,omitempty" json:"apiKey,omitempty"`
+	LendAPIKey    []string `yaml:"lendApiKey,omitempty" json:"lendApiKey,omitempty"`
+	InheritAPIKey []string `yaml:"inheritApiKey,omitempty" json:"inheritApiKey,omitempty"`
+
+	// The login grant, in its three spellings. Values are AdapterCLIs.
+	AgentLogin        []string `yaml:"agentLogin,omitempty" json:"agentLogin,omitempty"`
+	LendAgentLogin    []string `yaml:"lendAgentLogin,omitempty" json:"lendAgentLogin,omitempty"`
 	InheritAgentLogin []string `yaml:"inheritAgentLogin,omitempty" json:"inheritAgentLogin,omitempty"`
+
+	// Credentials is the verb this seat resolved to, recorded so the member
+	// record says how it was actually granted. Resolved rather than declared:
+	// a member states its verb by spelling a grant, and accepting one here
+	// would be a third way to say the same thing.
+	Credentials string `yaml:"-" json:"credentials,omitempty"`
+}
+
+// APIKeys and AgentLogins are a member's grants, however they were spelled.
+// At most one spelling of each is populated on a validated profile.
+func (a Auth) APIKeys() []string {
+	return slices.Concat(a.APIKey, a.LendAPIKey, a.InheritAPIKey)
+}
+func (a Auth) AgentLogins() []string {
+	return slices.Concat(a.AgentLogin, a.LendAgentLogin, a.InheritAgentLogin)
+}
+
+// DeclaredCredentials is the verb this member's own spellings state, empty
+// where it uses the neutral ones and takes the campaign's. A member declaring
+// both verbs is refused by validation, so lend is reported first here rather
+// than guessed at.
+func (a Auth) DeclaredCredentials() string {
+	switch {
+	case len(a.LendAPIKey) > 0 || len(a.LendAgentLogin) > 0:
+		return CredentialLend
+	case len(a.InheritAPIKey) > 0 || len(a.InheritAgentLogin) > 0:
+		return CredentialInherit
+	}
+	return ""
+}
+
+// Spellings reports which of the three forms this member used, which is what
+// the one-verb-per-member rule is checked against.
+func (a Auth) Spellings() (neutral, lend, inherit bool) {
+	return len(a.APIKey) > 0 || len(a.AgentLogin) > 0,
+		len(a.LendAPIKey) > 0 || len(a.LendAgentLogin) > 0,
+		len(a.InheritAPIKey) > 0 || len(a.InheritAgentLogin) > 0
 }
 
 // Model and Effort are the cost/capability lever, declared rather than injected
@@ -72,6 +169,9 @@ type MemberProfile struct {
 }
 type Defaults struct {
 	Engine string `yaml:"engine,omitempty" json:"engine,omitempty"`
+	// Credentials is the campaign's verb, lend or inherit, for every member
+	// that does not spell one of its own. Unset means lend.
+	Credentials string `yaml:"credentials,omitempty" json:"credentials,omitempty"`
 	// Policy is every number the dispatch machine runs on; unset fields fall
 	// back to compiled-in defaults, and the resolved values are recorded on
 	// the campaign and in every member.json.

@@ -1,7 +1,7 @@
 # Claude-orchestrator + opencode-agent live smoke used by
 # TestLiveClaudeOrchOpencodeAgentSmoke (internal/cli/live_claude_opencode_test.go).
 # Mirrors the ctv5 pairing that a provider outage knocked out: a claude orchestrator
-# (inherited host login — the single Claude member OI-009 allows) drives an opencode
+# (borrowing the host login) drives an opencode
 # agent (Fireworks-hosted Kimi) through the scoped cs-campaign-member helper, both
 # exec-driven and model-driven. __REPO__ is replaced with a disposable host repository
 # at runtime; the orchestrator and opencode agent share it so the fetch flow is asserted
@@ -18,7 +18,7 @@ orchestrator:
   repos:
     - path: __REPO__
   auth:
-    inheritAgentLogin: [claude]
+    agentLogin: [claude]
 agents:
   oc-worker:
     cli: opencode

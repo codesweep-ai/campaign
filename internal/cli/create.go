@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/codesweep-ai/campaign/internal/model"
@@ -238,7 +240,25 @@ type createOpts struct {
 	count                                 int
 	dry                                   bool
 	sets                                  []string
+	credentials                           string
 	acceptUpstream                        bool
+}
+
+// credentialSet folds --credentials into the override list, which is the one
+// place a campaign's verb is applied. Refused rather than merged when --set
+// carries the same path: an operator who wrote both meant one of them, and
+// picking silently is how a campaign runs on a credential nobody chose.
+func (o createOpts) credentialSet() ([]string, error) {
+	if o.credentials == "" {
+		return o.sets, nil
+	}
+	const path = "defaults.credentials"
+	for _, set := range o.sets {
+		if strings.HasPrefix(set, path+"=") {
+			return nil, fmt.Errorf("--credentials and --set %s both set the campaign's verb; use one", path)
+		}
+	}
+	return append(slices.Clone(o.sets), path+"="+o.credentials), nil
 }
 
 func (a *app) createCmd(plan bool) *cobra.Command {
@@ -281,6 +301,7 @@ func (a *app) createCmd(plan bool) *cobra.Command {
 	flags.IntVar(&opts.count, "agents", 0, "number of homogeneous agents")
 	flags.StringVar(&opts.repo, "repo", "", "repository cloned into every member")
 	flags.BoolVar(&opts.dry, "dry-run", false, "resolve only; create nothing")
+	flags.StringVar(&opts.credentials, "credentials", "", "the campaign's credential verb: lend or inherit (default: the profile's, else lend)")
 	flags.StringArrayVar(&opts.sets, "set", nil, "override a supported profile path (path=value, repeatable)")
 	flags.BoolVar(&opts.acceptUpstream, "accept-upstream-change", false, "proceed despite an upstream deviation, recording it on the campaign")
 	return cmd
@@ -297,7 +318,11 @@ func (a *app) planCampaign(opts createOpts, name string, planning bool) (*model.
 	if err != nil {
 		return nil, model.Profile{}, err
 	}
-	if err = applySets(&profile, opts.sets); err != nil {
+	sets, err := opts.credentialSet()
+	if err != nil {
+		return nil, model.Profile{}, err
+	}
+	if err = applySets(&profile, sets); err != nil {
 		return nil, model.Profile{}, err
 	}
 	applyDefaults(&profile)

@@ -53,12 +53,19 @@ type scenario struct {
 	model string
 	// effort is passed through to the adapter, empty where it has none.
 	effort string
-	// keyEnv is the environment variable the credential lives in, empty when
-	// this scenario inherits a host login instead.
-	keyEnv string
-	// inherit is the adapter family whose host login this fleet inherits,
-	// empty when it authenticates with a key.
-	inherit string
+	// login is the adapter family whose host login this fleet signs in with,
+	// and keyProvider the provider whose host-held key it spends. Exactly one
+	// is set: a member is granted one credential.
+	login, keyProvider string
+	// verb is how that credential reaches the members. Empty is the product
+	// default, which means the profile spells no verb at all and the grant is
+	// lent — the state most of this matrix is in, deliberately, because the
+	// default is the thing worth recording. model.CredentialInherit spells the
+	// fused inherit form and puts the credential inside the members.
+	//
+	// It decides the whole shape of the run, because the two paths reach the
+	// provider differently. See vcrPlacement.
+	verb string
 	// baseURLEnv is the base-URL variable this adapter is aimed with, and the
 	// one thing that decides whether a scenario can be recorded. It is the
 	// agent's own name rather than a project-specific one: claude and opencode
@@ -68,7 +75,17 @@ type scenario struct {
 	// A member reaches its proxy through the profile's env block, so nothing
 	// here needs to know which mechanism the wrapper used.
 	baseURLEnv string
-	// urlSuffix is what this client appends to the base URL it is given.
+	// urlSuffix is what this client appends to the base URL it is given, and it
+	// belongs to a scenario the GUEST aims at the recorder.
+	//
+	// A lent scenario must leave it empty. The lender composes the upstream
+	// path as joinPath(origin, ensureVersion(slot.Version, guestPath)), and
+	// every slot but the Codex subscription carries a version of its own — so
+	// an origin that also ends in /v1 produces /v1/v1 and a request no
+	// provider recognises. Measured: codex-api-key recorded 48 requests that
+	// cs-vcr classified as "surface unknown", each one an empty response and a
+	// member that gave up in fifteen seconds. TestScenarioProfilesSpellTheir-
+	// Credential holds the rule so the next one costs nothing.
 	urlSuffix string
 	// vcrProvider is the cs-vcr entry this scenario's base URL names, and the
 	// prefix carries it: /c/<provider>/<cassette>. It is a key the deployment
@@ -92,37 +109,35 @@ func scenarios() []scenario {
 		{
 			name: "claude-subscription", cli: "claude",
 			auth:  "a Claude Pro/Max subscription on this host",
-			model: "claude-sonnet-5", inherit: "claude",
+			model: "claude-sonnet-5", login: "claude",
+			baseURLEnv:  "ANTHROPIC_BASE_URL",
+			vcrProvider: "anthropic", vcrUpstream: "https://api.anthropic.com",
+		},
+		{
+			// The same adapter as the scenario above, signed in the other way.
+			// Claude Code takes an API key in a header where a subscription
+			// takes OAuth, so the two send different requests and only running
+			// both covers the pair.
+			name: "claude-api-key", cli: "claude",
+			auth:  "an Anthropic API key in ~/.cs-keys/anthropic",
+			model: "claude-sonnet-5", keyProvider: "anthropic",
 			baseURLEnv:  "ANTHROPIC_BASE_URL",
 			vcrProvider: "anthropic", vcrUpstream: "https://api.anthropic.com",
 		},
 		{
 			// No /v1: codex's subscription path authenticates as itself rather
 			// than with a header, and its provider takes the bare base URL.
-			// The same adapter as the scenario above, signed in the other way.
-			// Claude Code takes an API key in a header where a subscription takes
-			// OAuth, so the two send different requests and only running both
-			// covers the pair. The key is granted to this member and no other:
-			// every scenario declares the credential it needs, and the product
-			// grants nothing a profile did not ask for.
-			name: "claude-api-key", cli: "claude",
-			auth:  "an Anthropic API key",
-			model: "claude-sonnet-5", keyEnv: "ANTHROPIC_API_KEY",
-			baseURLEnv:  "ANTHROPIC_BASE_URL",
-			vcrProvider: "anthropic", vcrUpstream: "https://api.anthropic.com",
-		},
-		{
 			name: "codex-subscription", cli: "codex",
 			auth:  "a ChatGPT subscription on this host",
-			model: "gpt-5.6-sol", effort: "medium", inherit: "codex",
+			model: "gpt-5.6-sol", effort: "medium", login: "codex",
 			baseURLEnv:  "OPENAI_BASE_URL",
 			vcrProvider: "chatgpt", vcrUpstream: "https://chatgpt.com/backend-api/codex",
 		},
 		{
 			name: "codex-api-key", cli: "codex",
-			auth:  "an OpenAI API key",
-			model: "gpt-5.6-sol", effort: "medium", keyEnv: "OPENAI_API_KEY",
-			baseURLEnv: "OPENAI_BASE_URL", urlSuffix: "/v1",
+			auth:  "an OpenAI API key in ~/.cs-keys/openai",
+			model: "gpt-5.6-sol", effort: "medium", keyProvider: "openai",
+			baseURLEnv:  "OPENAI_BASE_URL",
 			vcrProvider: "openai", vcrUpstream: "https://api.openai.com",
 		},
 		{
@@ -138,15 +153,78 @@ func scenarios() []scenario {
 			// config inline from OPENCODE_BASE_URL.
 			//
 			// Fireworks speaks the OpenAI wire protocol, and the entry is named
-			// for the endpoint it serves rather than for that protocol: the
-			// prefix names the entry, so nothing has to recognize either.
+			// for the endpoint rather than for the protocol.
 			name: "opencode-fireworks", cli: "opencode",
-			auth:  "a Fireworks API key",
+			auth:  "a Fireworks API key in ~/.cs-keys/fireworks",
 			model: "fireworks-ai/accounts/fireworks/models/kimi-k3", effort: "high",
-			keyEnv:     "FIREWORKS_API_KEY",
-			baseURLEnv: "OPENCODE_BASE_URL", urlSuffix: "/v1",
+			keyProvider: "fireworks",
+			baseURLEnv:  "OPENCODE_BASE_URL",
 			vcrProvider: "fireworks", vcrUpstream: "https://api.fireworks.ai/inference",
 		},
+		{
+			// The one scenario that puts a credential inside its members, so
+			// the path an operator opts into is recorded rather than only
+			// unit-tested. Claude because it is the adapter whose login is most
+			// often inherited, and because the fabricated-credential trick the
+			// replay half turns on is best understood on it.
+			name: "claude-inherit", cli: "claude",
+			auth:  "a Claude Pro/Max subscription on this host",
+			model: "claude-sonnet-5", login: "claude", verb: model.CredentialInherit,
+			baseURLEnv:  "ANTHROPIC_BASE_URL",
+			vcrProvider: "anthropic", vcrUpstream: "https://api.anthropic.com",
+		},
+	}
+}
+
+// lends reports whether this scenario's members hold a loan token rather than
+// the credential itself, which is what decides where cs-vcr has to sit.
+func (s scenario) lends() bool { return s.verb != model.CredentialInherit }
+
+// TestScenarioProfilesSpellTheirCredential checks the matrix without booting
+// anything: every scenario's generated profile is one `create` would accept,
+// and it grants the credential the scenario says it does, by the verb it says.
+//
+// Cheap on purpose. The tier below this one costs two microVMs and real model
+// turns per scenario, and a matrix that names a provider cs-sandbox does not
+// lend is a refusal six campaigns into a recording run.
+func TestScenarioProfilesSpellTheirCredential(t *testing.T) {
+	for _, sc := range scenarios() {
+		t.Run(sc.name, func(t *testing.T) {
+			body := scenarioProfile(sc, t.TempDir(), vcrURL(sc), replayName(sc))
+			path := filepath.Join(t.TempDir(), "profile.yaml")
+			writeFileT(t, path, body)
+			profile, _, err := readProfile(path)
+			if err != nil {
+				t.Fatalf("generated profile does not validate: %v\n%s", err, body)
+			}
+			applyDefaults(&profile)
+			for name, m := range map[string]model.MemberProfile{"orchestrator": profile.Orchestrator, "dev": profile.Agents["dev"]} {
+				want := model.CredentialLend
+				if !sc.lends() {
+					want = model.CredentialInherit
+				}
+				if got := m.Auth.Credentials; got != want {
+					t.Errorf("%s resolved to %q, want %q", name, got, want)
+				}
+				grants := append(m.Auth.APIKeys(), m.Auth.AgentLogins()...)
+				if len(grants) != 1 {
+					t.Errorf("%s must hold exactly one grant, got %v", name, grants)
+				}
+				if len(m.Auth.APIKeyFromEnv) != 0 {
+					t.Errorf("%s still grants an environment key: %v", name, m.Auth.APIKeyFromEnv)
+				}
+			}
+			// A lent member is aimed at the loopback door the lender dials; an
+			// inheriting one at the fabric alias it dials itself.
+			if sc.lends() != strings.Contains(body, vcrLoanBaseURL) {
+				t.Errorf("base URL does not match the chain this scenario runs:\n%s", body)
+			}
+			// And a lent one leaves the API version to the lender, which adds
+			// its slot's own. See urlSuffix.
+			if sc.lends() && sc.urlSuffix != "" {
+				t.Errorf("a lent scenario must not set urlSuffix (%q): the lender adds the version, and an origin carrying one too sends /v1/v1", sc.urlSuffix)
+			}
+		})
 	}
 }
 
@@ -171,6 +249,8 @@ func replayName(sc scenario) string {
 		return "csrcxkey"
 	case "opencode-fireworks":
 		return "csrocfw"
+	case "claude-inherit":
+		return "csrclinh"
 	}
 	return "csr" + sc.cli
 }
@@ -323,13 +403,12 @@ type runOptions struct {
 func runLiveCampaign(t *testing.T, sc scenario, opts runOptions) campaignRun {
 	t.Helper()
 	ensureGuestBinary(t)
-	if opts.fakeKey != "" && sc.keyEnv != "" {
-		t.Setenv(sc.keyEnv, opts.fakeKey)
-	}
-	// A scenario that inherits a login has no key to substitute, so the replay
-	// half writes the credential itself.
-	if opts.fakeKey != "" && sc.inherit != "" {
-		fabricatedLogins(t, opts.fakeKey)
+	// The replay half authenticates with credentials that authenticate nothing.
+	// Every scenario needs them now: a lent one because the LENDER reads the
+	// host's credential and swaps it in, and the inheriting one because
+	// cs-sandbox copies that same file into its members.
+	if opts.fakeKey != "" {
+		fabricatedCredentials(t, opts.fakeKey)
 	}
 
 	work := t.TempDir()
@@ -344,30 +423,52 @@ func runLiveCampaign(t *testing.T, sc scenario, opts runOptions) campaignRun {
 	return driveToVerdict(t, a, sc, name, profilePath, filepath.Join(work, "archive"), work, opts)
 }
 
-// fabricatedLogins writes the profile tree a replaying member inherits its
-// login from, and points cs-sandbox at it.
+// fabricatedCredentials writes the credential tree a replay authenticates
+// with, and points cs-sandbox at it.
 //
-// A subscription scenario has no key to substitute. The agent reads a credential
-// FILE and will not run unattended without one: Claude Code puts up its sign-in
-// screen, which cs-claude-turn reports as an authentication failure. So the
-// replay half writes the shape each agent requires, with values that
-// authenticate nothing.
+// A replay must present something. The agents read a credential FILE and will
+// not run unattended without one: Claude Code puts up its sign-in screen, which
+// cs-claude-turn reports as an authentication failure. So the replay half
+// writes the shape each one requires, with values that authenticate nothing.
 //
-// It works because the members reach no provider that could refuse it. cs-vcr
-// serves the model calls from the cassette and refuses the hosts the agents
-// contact on their own, so a fabricated token is never presented to anyone able
-// to say no. Given an open network the same token fails: the OAuth check answers
-// 401 and the agent believes it.
+// Both halves of the matrix read this tree, from opposite ends. A LENT scenario
+// never puts any of it inside a member: the lender runs on this host, reads
+// these files per call, and swaps a loan token for what it finds here before
+// forwarding to cs-vcr. An INHERITING one has cs-sandbox copy the login into
+// the member, which then presents it itself.
 //
-// CS_SANDBOX_AGENT_HOME moves only where a login is READ from. Pointing HOME at
-// this tree would take the instance directory and the caches with it.
-func fabricatedLogins(t *testing.T, token string) {
+// It works because nothing these values reach can refuse them. cs-vcr serves
+// the model calls from the cassette, and a lent member's side calls are refused
+// by cs-sandbox before they leave. Given an open network the same token fails:
+// the OAuth check answers 401 and the agent believes it.
+//
+// The lender also attaches headers the member never sent — the OAuth beta
+// header for Claude, the account id for Codex — so what reaches cs-vcr differs
+// between a recording and its replay by more than the token. That is already
+// true of the committed codex-subscription cassette, whose account id was real
+// when recorded and is zeroes when replayed, and it replays clean: cs-vcr keys
+// on none of it.
+//
+// CS_SANDBOX_AGENT_HOME moves only where a login or a key is READ from.
+// Pointing HOME at this tree would take the instance directory and the caches
+// with it.
+func fabricatedCredentials(t *testing.T, token string) {
 	t.Helper()
 	home := t.TempDir()
 	far := time.Now().Add(365 * 24 * time.Hour).UnixMilli()
 
-	// scopes is load-bearing: Claude Code checks it for the inference scope
-	// before it will send anything, and without it fails as "not logged in".
+	// Two fields are load-bearing, for two different readers.
+	//
+	// scopes, because Claude Code checks it for the inference scope before it
+	// will send anything, and without it fails as "not logged in". That is the
+	// INHERITING scenario, where the agent reads this file itself.
+	//
+	// expiresAt, because the lender refuses a login it can see has expired
+	// (internal/lend/cred.go) and reports it as a stale host login rather than
+	// as an upstream 401. That is every LENT scenario, where the agent never
+	// sees this file and the lender reads it per call. A year out satisfies
+	// both. Nothing on either path checks a signature, which is what lets a
+	// value that authenticates nothing stand in for one that does.
 	claude, err := json.Marshal(map[string]any{"claudeAiOauth": map[string]any{
 		"accessToken":           "sk-ant-oat01-" + token,
 		"refreshToken":          "sk-ant-ort01-" + token,
@@ -398,6 +499,15 @@ func fabricatedLogins(t *testing.T, token string) {
 		t.Fatal(err)
 	}
 	writeSecretT(t, filepath.Join(home, ".cs-codex", "auth.json"), codex)
+
+	// And the provider keys, in the one-key-per-file shape cs-sandbox lends
+	// from: the whole file is the key, and the lender asks only that it not be
+	// empty. Written for every provider rather than only this scenario's: the
+	// tree costs nothing, and a scenario that grew a second grant would
+	// otherwise fail as an authentication error rather than as a missing file.
+	for _, provider := range model.APIKeyProviders {
+		writeSecretT(t, filepath.Join(home, ".cs-keys", provider), []byte(token))
+	}
 
 	t.Setenv("CS_SANDBOX_AGENT_HOME", home)
 }
@@ -910,11 +1020,18 @@ func memberBlock(sc scenario, repo, baseURL, cassette string) string {
 	}
 	fmt.Fprintf(&b, "    repos:\n      - path: %s\n", repo)
 	b.WriteString("    auth:\n")
-	if sc.keyEnv != "" {
-		fmt.Fprintf(&b, "      apiKeyFromEnv: [%s]\n", sc.keyEnv)
-	}
-	if sc.inherit != "" {
-		fmt.Fprintf(&b, "      inheritAgentLogin: [%s]\n", sc.inherit)
+	// The grant, in the spelling this scenario is here to exercise. A lending
+	// scenario spells no verb at all: it takes the campaign's, which is the
+	// product default and the thing worth recording.
+	switch {
+	case sc.keyProvider != "" && sc.lends():
+		fmt.Fprintf(&b, "      apiKey: [%s]\n", sc.keyProvider)
+	case sc.keyProvider != "":
+		fmt.Fprintf(&b, "      inheritApiKey: [%s]\n", sc.keyProvider)
+	case sc.lends():
+		fmt.Fprintf(&b, "      agentLogin: [%s]\n", sc.login)
+	default:
+		fmt.Fprintf(&b, "      inheritAgentLogin: [%s]\n", sc.login)
 	}
 	// A fixed authorship for every commit a member makes. Without it the guest
 	// takes the operator's git identity, and their real name and address end up
@@ -955,13 +1072,21 @@ func memberBlock(sc scenario, repo, baseURL, cassette string) string {
 		//
 		// NO_PROXY carries the proxy's own host, so the model calls above go
 		// straight to the base URL rather than through the tunnel.
-		env = append(env,
-			"HTTP_PROXY="+baseURL,
-			"HTTPS_PROXY="+baseURL,
-			"ALL_PROXY="+baseURL,
-			"NO_PROXY="+vcrHost+",127.0.0.1,localhost",
-			"no_proxy="+vcrHost+",127.0.0.1,localhost",
-		)
+		//
+		// Only where the GUEST dials the recorder. A lent member cannot use
+		// this tunnel and does not need it: it holds no credential for a side
+		// call, so cs-sandbox refuses those inside the sandbox before they
+		// leave (--block-side-calls, on by default). Pointing a lent member at
+		// a proxy here would record a chain no real campaign runs.
+		if !sc.lends() {
+			env = append(env,
+				"HTTP_PROXY="+baseURL,
+				"HTTPS_PROXY="+baseURL,
+				"ALL_PROXY="+baseURL,
+				"NO_PROXY="+vcrHost+",127.0.0.1,localhost",
+				"no_proxy="+vcrHost+",127.0.0.1,localhost",
+			)
+		}
 	}
 	b.WriteString("    env:\n")
 	for _, e := range env {
