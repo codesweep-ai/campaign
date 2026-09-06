@@ -32,6 +32,12 @@ type sandboxCLI struct {
 	// ProbeBound bounds one probe round trip. Zero means defaultProbeBound;
 	// tests set it small.
 	ProbeBound time.Duration
+	// ReadyBound bounds the wait for a freshly created guest to accept its
+	// first command. Zero means defaultReadyBound; tests set it small.
+	ReadyBound time.Duration
+	// ReadyInterval spaces those probes. Zero means readyProbeInterval; tests
+	// set it small.
+	ReadyInterval time.Duration
 }
 
 // defaultWaitDelay is how long a cancelled cs-sandbox call may hold its pipes
@@ -54,6 +60,26 @@ const defaultWaitDelay = 5 * time.Second
 // rather than a member being slow.
 const defaultProbeBound = 20 * time.Second
 
+// defaultReadyBound is how long a member's guest may take to accept its first
+// command, measured from the moment cs-sandbox reports the machine created.
+//
+// `cs-sandbox create` returns when the machine exists and its port forward is
+// up, which is earlier than sshd inside the guest accepting a connection. Every
+// provisioning step after it execs into that guest and none of them retries, so
+// one refused connection failed the whole create with every machine in the
+// fleet already provisioned. The SECOND member is the one that loses that race:
+// it boots beside a machine that is already running and taking the host's CPU
+// and disk, while the orchestrator booted against an idle host.
+//
+// Generous on purpose, and bounded on purpose. A guest that is merely slow
+// costs a few seconds here. A guest that never arrives is a create the operator
+// wants to watch fail rather than watch hang.
+const defaultReadyBound = 2 * time.Minute
+
+// readyProbeInterval spaces the readiness probes. Short, because the point is
+// to lose as little time as possible once the guest is actually up.
+const readyProbeInterval = 2 * time.Second
+
 func (s sandboxCLI) waitDelay() time.Duration {
 	if s.WaitDelay != 0 {
 		return s.WaitDelay
@@ -66,6 +92,20 @@ func (s sandboxCLI) probeBound() time.Duration {
 		return s.ProbeBound
 	}
 	return defaultProbeBound
+}
+
+func (s sandboxCLI) readyBound() time.Duration {
+	if s.ReadyBound != 0 {
+		return s.ReadyBound
+	}
+	return defaultReadyBound
+}
+
+func (s sandboxCLI) readyInterval() time.Duration {
+	if s.ReadyInterval != 0 {
+		return s.ReadyInterval
+	}
+	return readyProbeInterval
 }
 
 func newSandbox() sandboxCLI {
@@ -497,6 +537,48 @@ func (s sandboxCLI) output(ctx context.Context, args ...string) ([]byte, error) 
 // the guest's profile puts on PATH.
 func (s sandboxCLI) memberRun(ctx context.Context, ref, command string) error {
 	return s.run(ctx, "exec", ref, "sh", "-lc", command)
+}
+
+// awaitMemberReady blocks until the guest runs a trivial command, or until the
+// bound elapses. It is the one retry in the provisioning path, and it is a
+// readiness probe rather than a retry of the caller's command: retrying the
+// real steps would re-run work whose failure means something else entirely.
+//
+// The probes are silent. A refused connection during boot is expected rather
+// than newsworthy, and printing each one would bury the create's own output.
+// A wait long enough to notice says so once, so a slow boot does not read as a
+// hang, and the error carries the last failure when the bound runs out.
+func (s sandboxCLI) awaitMemberReady(ctx context.Context, ref string) error {
+	if s.Dry {
+		return nil
+	}
+	deadline := time.Now().Add(s.readyBound())
+	said := false
+	for attempt := 1; ; attempt++ {
+		probe, cancel := context.WithTimeout(ctx, s.probeBound())
+		cmd := exec.CommandContext(probe, s.Bin, "exec", ref, "sh", "-lc", "true")
+		cmd.WaitDelay = s.waitDelay()
+		err := cmd.Run()
+		cancel()
+		if err == nil {
+			return nil
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("%s accepted no command in %s (%d attempts): %w", ref, s.readyBound(), attempt, err)
+		}
+		if !said {
+			said = true
+			fmt.Fprintf(s.stderr(), "waiting for %s to accept commands\n", ref)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(s.readyInterval()):
+		}
+	}
 }
 
 func (s sandboxCLI) refOutput(ctx context.Context, ref, command string) ([]byte, error) {

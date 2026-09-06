@@ -607,6 +607,14 @@ reverts other members.*
 made, and teardown tolerates an already-absent resource, including a group already reclaimed by an
 interrupted destroy.
 
+**R127.** A newly provisioned member **MUST** be reachable before it is configured. Creation
+**MUST** wait, within a bound, for that member to accept a command, and **MUST** fail by name when
+it does not. *The sandbox reports a machine created once it exists and its forward is up, which is
+earlier than its guest accepting a connection. Every configuration step after that execs into the
+guest, so without the wait a member one second from ready fails a create whose machines are all
+provisioned. The second member of a fleet is the one that loses that race, because it boots beside
+a machine already taking the host's CPU and disk.*
+
 **R103.** Identity **MUST** be `(group, name)`. Membership **MUST NOT** be inferred from a name
 prefix, and a lookup **MUST NOT** be keyed on a bare sandbox name. *A listing indexed by name
 collapses same-named members of different campaigns onto one entry, so a member can read another

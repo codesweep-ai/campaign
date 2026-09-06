@@ -217,8 +217,11 @@ cs-campaign create <campaign> --profile PROFILE [--accept-upstream-change] [--dr
 cs-campaign create <campaign> --orchestrator CLI --agent NAME=CLI... --repo PATH
 ```
 
-Provisions each member's microVM, seeds the briefs and the orientation, installs the guest
-binary into every member, arms the family guard in the orchestrator, and runs the campaign doctor.
+Provisions each member's microVM and waits for it to accept a command. Then it seeds the briefs
+and the orientation, installs the guest binary into every member, arms the family guard in the
+orchestrator, and runs the campaign doctor. A machine reports itself created before its guest
+accepts connections, so `create` prints `waiting for <member> to accept commands` when it has to
+wait, and gives up on that member after two minutes.
 Then the protocol starts:
 
 1. **Dispatch `d001`, the readback.** Every member is asked to restate its job and reply. The

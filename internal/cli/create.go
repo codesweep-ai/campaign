@@ -519,6 +519,13 @@ func (a *app) provisionMember(ctx context.Context, campaign *model.Campaign, mem
 			return a.failCreate(campaign, fmt.Errorf("restart existing member %s: %w", member.Name, err))
 		}
 	}
+	// cs-sandbox create returns when the machine exists and its port forward is
+	// up, not when the guest accepts commands. Everything below execs into it,
+	// and none of those steps retries, so without this wait a member that is one
+	// second from ready fails a create whose machines are all provisioned.
+	if err := a.sandbox.awaitMemberReady(ctx, member.Ref); err != nil {
+		return a.failCreate(campaign, fmt.Errorf("member %s never became ready: %w", member.Name, err))
+	}
 	// Reconcile branch and address from what cs-sandbox actually created.
 	// Planning had to predict the branch — nothing existed yet — but from here
 	// on it is read, so the manifest handed to the orchestrator, the campaign
