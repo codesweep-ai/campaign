@@ -1,0 +1,24 @@
+{
+  "id": "SAC-016",
+  "title": "The surface linter never reads PLAYBOOK.md, so its commands go unchecked",
+  "type": "defect",
+  "severity": "med",
+  "status": "closed",
+  "foundBy": "session agent, after SAC-015 raised the question of which documents the surface linter reads",
+  "opened": "2026-09-07",
+  "resolved": "2026-09-07",
+  "stint": "2026-09-07 playbook session",
+  "evidence": {
+    "commits": [
+      "9920407"
+    ],
+    "integrated": [],
+    "verified": "Proved by mutation: a fenced `cs-campaign frobnicate acme` block appended to PLAYBOOK.md is now SURF-101 at PLAYBOOK.md:317, and it was 0 errors before this change. The real document passes all three: surface 0, refs 0, oss 0 errors. make check exit 0."
+  },
+  "resolution": "PLAYBOOK.md is named in both `extraDocs` lists in `.cs-lint.yaml`, so the surface and refs linters read it beside PROTOCOL.md and the oss linter counts it in the document set. Every command line and sample in the playbook is now held against the binary.",
+  "details": "`cs-lint surface` does not read PLAYBOOK.md, so every command line and sample output in it is unchecked.\n\nThe linters read a fixed document set plus `docs.extraDocs` in `.cs-lint.yaml`, which names PROTOCOL.md alone. PLAYBOOK.md landed outside both, so the rules that hold a document's commands and samples against the binary never see it. The prose linter walks the tree instead and does read it, which is why the document passed `make check` on the day it landed.\n\nProved by mutation: appending a fenced `cs-campaign frobnicate acme` block to PLAYBOOK.md leaves `cs-lint surface` at 0 errors, and the same line in MANUAL.md is an error.\n\nThe cost is specific to this document. A playbook is mostly judgement, and the command lines in it are the part a reader copies. Those are exactly what the command rule and the sample-output rule hold true everywhere else.\n\nThe oss linter's `docSet` omits it too, so whatever that check holds about the document map does not cover the new page.",
+  "notes": [],
+  "links": [
+    "SAC-013"
+  ]
+}
