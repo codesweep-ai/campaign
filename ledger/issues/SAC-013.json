@@ -3,11 +3,11 @@
   "title": "No document tells an operator how to set a campaign up well",
   "type": "improvement",
   "severity": "med",
-  "status": "open",
+  "status": "in-progress",
   "foundBy": "user report (host): \"we haven't really told the user of cs-campaign about best practices for how to setup campaigns\"",
   "opened": "2026-09-06",
   "resolved": null,
-  "stint": null,
+  "stint": "2026-09-07 playbook session",
   "evidence": {
     "commits": [],
     "integrated": [],
@@ -19,6 +19,10 @@
     {
       "date": "2026-09-06",
       "text": "The scope may be wider than authoring. Running a campaign asks for judgement too. When to leave a stalled orchestrator alone, what to read in observe's two panes, and when a finding is worth more than a fix. MANUAL's Notes for agents carries several of those as bare rules with no reasoning attached. A document covering both halves would have a name like RUNNING.md rather than AUTHORING.md, and the command would follow it. The name is worth settling before the outline."
+    },
+    {
+      "date": "2026-09-07",
+      "text": "The document and its command are landed in 12ef20f. `cs-campaign playbook` prints PLAYBOOK.md from inside the binary, the way `manual` prints MANUAL.md. The scope is the whole lifecycle, settled with the user: designing a team, writing the mission and the briefs, running and monitoring, harvesting and closing out. The name PLAYBOOK was chosen over RUNNING because AGENTS.md and CONTRIBUTING.md already use running a campaign for driving the harness at all. MANUAL keeps every imperative and gains a pointer, and the reasoning moved across. The text is a first draft read out of SPEC and MANUAL, and it awaits the user's review and the learnings from earlier campaigns."
     }
   ],
   "links": [
