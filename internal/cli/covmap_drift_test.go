@@ -24,7 +24,7 @@ var memberFacingBehaviors = map[string]string{
 var exemptCommands = map[string]bool{
 	"init": true, "orientation": true, "create": true, "plan": true, "validate": true, "destroy": true,
 	"ls": true, "ssh": true, "fetch": true, "observe": true, "audit": true,
-	"doctor": true, "version": true, "manual": true,
+	"doctor": true, "version": true, "manual": true, "playbook": true,
 	"completion": true, "help": true,
 }
 

@@ -46,7 +46,7 @@ VIEWER_SRC := $(shell find dispatch-viewer/app/src dispatch-viewer/app/public \
                     -name node_modules -prune -o -type f -print 2>/dev/null) \
               $(wildcard dispatch-viewer/app/index.html dispatch-viewer/app/*.json \
                          dispatch-viewer/app/*.ts dispatch-viewer/app/*.js)
-EMBED_DEPS := MANUAL.md $(VIEWERPAGE) \
+EMBED_DEPS := MANUAL.md PLAYBOOK.md $(VIEWERPAGE) \
               $(filter-out $(GUESTBIN),$(wildcard internal/cli/assets/*))
 # //go:embed inputs deliberately left out of $(EMBED_DEPS): the build compiles
 # $(GUESTBIN) and then restores the committed placeholder over it, which would

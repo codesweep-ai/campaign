@@ -21,6 +21,13 @@ import _ "embed"
 //go:embed MANUAL.md
 var ManualMD string
 
+// PlaybookMD is the operator's playbook, embedded for the reason the manual is:
+// this CLI is installed far from its checkout and shipped into guest VMs, and
+// judgement is worth least when it is only reachable from a clone.
+//
+//go:embed PLAYBOOK.md
+var PlaybookMD string
+
 // GoMod is this binary's own module manifest, embedded so a built cs-campaign
 // carries the versions it was built against.
 //

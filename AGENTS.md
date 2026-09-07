@@ -12,6 +12,8 @@ harness: start at the manual. **Changing the harness** means editing Go under `i
 - [INSTALL.md](INSTALL.md) · how to get the tools, and the setup they need once.
 - [MANUAL.md](MANUAL.md) · the full surface, for someone using the tools. Its **Notes for agents**
   section is written for you.
+- [PLAYBOOK.md](PLAYBOOK.md) · how to design a team, write a mission and briefs, read a running
+  campaign and harvest one. The manual says what the commands do; this says what to decide.
 - [PROTOCOL.md](PROTOCOL.md) · the dispatch protocol, stated for any implementation of it.
 - [CONTRIBUTING.md](CONTRIBUTING.md) · conventions, and the rituals a diff does not show. Read it
   before your first change.

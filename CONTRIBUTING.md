@@ -216,14 +216,15 @@ code.
 | [README.md](README.md) | The tour: what this is and the shortest path to seeing it work. |
 | [INSTALL.md](INSTALL.md) | How to get the binaries and the setup they need once. |
 | [MANUAL.md](MANUAL.md) | Every command, flag, file, variable, exit code and diagnostic. |
+| [PLAYBOOK.md](PLAYBOOK.md) | The operator judgement: how to design, brief, run and harvest a campaign. |
 | [PROTOCOL.md](PROTOCOL.md) | The dispatch protocol, stated for any implementation of it. |
 | [SPEC.md](SPEC.md) | What the behaviour must be, and what is left open. |
 | [AGENTS.md](AGENTS.md) | The router an agent lands on. It holds no knowledge of its own. |
 | [`ledger/GUIDE.md`](ledger/GUIDE.md) | How to keep the ledger. |
 
 A change to a **MUST** in `SPEC.md` changes the contract, so say so in the pull request. `MANUAL.md`
-is compiled into `cs-campaign` and printed by `cs-campaign manual`, so editing it changes a shipped
-artifact.
+and `PLAYBOOK.md` are compiled into `cs-campaign` and printed by `cs-campaign manual` and
+`cs-campaign playbook`, so editing either changes a shipped artifact.
 
 ## Writing
 

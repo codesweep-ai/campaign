@@ -29,7 +29,7 @@ cs-campaign audit [<campaign>] [--archive DIR]
 cs-campaign destroy <campaign> [--archive] [--archive-output DIR] [--force]
 cs-campaign ls [--json]
 cs-campaign doctor [<campaign>]
-cs-campaign manual | version
+cs-campaign playbook | manual | version
 
 cs-campaign-member <verb> [args]
 cs-dispatch-viewer <run-dir> [-o out.html]
@@ -73,6 +73,9 @@ line quoted here.
    orchestrator; the host observes, archives and verifies.
 5. **Archive before destroy,** and re-run the gates yourself from a fresh clone. That independent
    check is the point of the exercise.
+
+Those are the mechanics. Run `cs-campaign playbook` for the decisions inside them: scoping a
+mission, sizing the team, what a good brief contains, and what to do about a stopped node.
 
 ## Authoring a campaign
 
@@ -469,9 +472,12 @@ against what `cs-sandbox agent-tools` says it ships, manifest fidelity, guest co
 guard actually firing, and each member's declared CLI present in its own machine. `create` ends by
 running it. **If it is not green, do not dispatch.** Fix it or destroy it.
 
-### manual, version
+### playbook, manual, version
 
-`manual` prints this file, which is compiled into the binary. `version` prints the build stamp.
+`playbook` prints [PLAYBOOK.md](PLAYBOOK.md), the operator's guide to designing a team, writing a
+mission and briefs, reading a running campaign and harvesting one. This manual says what each
+command does; the playbook says how to decide what to run. `manual` prints this file, which is
+compiled into the binary. `version` prints the build stamp.
 
 ## Inside a member: cs-campaign-member
 
@@ -949,6 +955,9 @@ the campaign record.
 Readiness is `cs-campaign doctor`, which exits non-zero when the host surface cannot run a campaign,
 and `cs-campaign doctor <campaign>`, which exits non-zero when a live campaign is not the team that
 was declared.
+
+`cs-campaign playbook` carries the reasoning behind the rules below, and the operator judgement this
+manual does not state.
 
 **Never type into a live session.** Keystrokes land in the member's terminal interface. Observe with
 read-only probes: `observe`, transcript growth, `git log` on the member's branch.

@@ -63,7 +63,7 @@ func (a *app) root() *cobra.Command {
 		a.archiveCmd(), a.auditCmd(),
 		// Host and campaign health.
 		a.lsCmd(), a.doctorCmd(),
-		a.versionCmd(), a.manualCmd(),
+		a.versionCmd(), a.manualCmd(), a.playbookCmd(),
 	)
 	return root
 }
