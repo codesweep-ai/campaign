@@ -3,22 +3,26 @@
   "title": "init never mentions the snapshots a member can be given",
   "type": "defect",
   "severity": "low",
-  "status": "wont-fix",
+  "status": "open",
   "foundBy": "user report (host), asking whether init allows for snapshots too, or whether it is an oversight",
   "opened": "2026-09-06",
-  "resolved": "2026-09-06",
+  "resolved": null,
   "stint": null,
   "evidence": {
     "commits": [],
     "integrated": [],
     "verified": null
   },
-  "resolution": "Closed because the gap is not there. Snapshots are documented where a profile is written, so an operator meets them at the moment they would use one. Scaffolding a second mention in init would restate the profile documentation rather than add anything, and init is deliberately minimal. The record was filed on a premise its author had not checked.",
+  "resolution": null,
   "details": "`cs-campaign init` never mentions snapshots, so an operator meets them only by reading the schema.\n\nThe scaffolded profile carries a repository and says where credentials go. It says nothing about the frozen trees a member can be given, and `init` has no flag for one. An operator who would benefit from a reference tree has no reason to learn that the feature exists.\n\nThis is the shape SAC-006 described. A campaign is set up out of what the scaffolding shows, and what the scaffolding omits is invented or forgotten.\n\nA flag may be the wrong answer, because a snapshot is optional and `init` is deliberately minimal. A line in the generated profile, beside the one that says where credentials go, would cost nothing and name the feature where an author is already reading.",
   "notes": [
     {
       "date": "2026-09-06",
       "text": "The premise above is wrong. MANUAL's Configuration section documents snapshots where an operator writes a profile, with a worked example in the profile block and a sentence saying what one is for. SPEC's profile schema table carries the same. The feature is discoverable to anyone reading how to write a profile, which is when it is needed."
+    },
+    {
+      "date": "2026-09-06",
+      "text": "Reopened. The note above answered the wrong question. Whether the manual documents a snapshot is not the same as whether the command surface offers one. The surface is the asymmetric part. --repo appears on init, plan and create, and --snapshot appears on none of them, while cs-sandbox offers the two side by side. AGENTS.md tells an agent to prefer --help over any command line quoted in a document, so a capability absent there is invisible to the reader this product is built for. This is the same omission as SAC-010 and SAC-011, in a fourth place."
     }
   ],
   "links": [
