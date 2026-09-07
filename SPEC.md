@@ -102,14 +102,14 @@ Four surfaces touch the outside world.
 lifecycle, the protocol, member access, evidence and health:
 
 ```sh
-cs-campaign init|validate|plan                        # author and check; allocate nothing
+cs-campaign init|validate|plan|orientation            # author and check; allocate nothing
 cs-campaign create <name> --profile <file>            # provision, brief, verify, dispatch
 cs-campaign observe|send|restart <campaign>           # the protocol surface
 cs-campaign ssh|fetch|transcript <campaign>[/member]  # member access
 cs-campaign archive|audit <campaign>                  # evidence
 cs-campaign ls                                        # every campaign on this host
 cs-campaign destroy <campaign>                        # teardown, and reclaim the group
-cs-campaign doctor|pin|manual|version                 # health and metadata
+cs-campaign doctor|manual|playbook|version            # health and metadata
 ```
 
 [`MANUAL.md`](MANUAL.md) documents every command, flag and diagnostic.
@@ -952,7 +952,7 @@ Files a campaign reads or writes are listed in [`MANUAL.md`](MANUAL.md).
 | `internal/protocol` | The dispatch protocol: channel paths, dispatch identity, the reply and log shapes, the probe, and the node-state computation. |
 | `internal/model` | The profile, campaign and member types, and the adapter list every surface derives from. |
 | `internal/store` | Campaign state on disk: atomic saves, the per-campaign lock, the schema version. |
-| `internal/cli` | Every host command, the sandbox shell-out, briefs, orientation, archive, audit, doctor and pin. |
+| `internal/cli` | Every host command, the sandbox shell-out, briefs, orientation, archive, audit, doctor and the upstream check. |
 | `internal/covmap` | The behaviour map: the rubric, the run records, and the rendered page. |
 | `cmd/cs-campaign` | The host binary. |
 | `cmd/cs-campaign-member` | The guest binary: the member verbs, the dispatcher verbs, and the family guard. |
