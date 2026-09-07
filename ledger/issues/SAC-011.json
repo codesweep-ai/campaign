@@ -1,0 +1,22 @@
+{
+  "id": "SAC-011",
+  "title": "A snapshot that never arrived is reported by nothing",
+  "type": "defect",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "user report (host), asking whether snapshots are checked the way repositories and inputs are",
+  "opened": "2026-09-06",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "A snapshot is never checked. A path that does not exist passes `validate`, reaches `create`, and the member is told it has a tree that is not there.\n\nThese numbers come from this branch. A profile naming `/nonexistent/definitely-not-here` as a snapshot validates with exit 0, and `plan` carries the path through unchanged. Nothing on the host resolves it, and nothing in the guest looks for it afterwards.\n\nThe other two kinds of input are checked. A missing brief is refused by name before anything is allocated. `check-inputs` then stats every seeded file inside the member, so the readback reports one that never arrived and creation fails. A repository is resolved on the host and recorded with its base commit, and the readback compares the branch the member believes it is on.\n\n`cmdCheckInputs` walks `member.Inputs` and nothing else. Snapshots are absent from that walk, so the one instrument a member has for auditing what it was given cannot see half of its trees.\n\nThe fix for SAC-010 sharpened this gap. The orientation now names each snapshot and `member.json` lists them, so the product makes a promise about a directory that nothing verifies. R36 warns about exactly this shape: two delivery paths for one job, and the one lacking the existence check is the one whose failure nobody sees. R49 requires the member to check its own environment against the manifest it was given.",
+  "notes": [],
+  "links": [
+    "SAC-010"
+  ]
+}
