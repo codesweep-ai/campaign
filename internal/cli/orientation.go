@@ -146,15 +146,13 @@ func (a *app) orientationCmd() *cobra.Command {
 			return a.printOrientations(c.OutOrStdout(), c.ErrOrStderr(), campaign, inputs, absent, member)
 		},
 	}
+	// Two flags and no more. The fleet flags create takes would let this render
+	// for a profile-less fleet, which briefs.go calls a harness smoke test
+	// rather than a briefed campaign — and an author reading this always has
+	// the profile, because the briefs it is read against live beside it.
 	flags := cmd.Flags()
 	flags.StringVar(&opts.profile, "profile", "", "campaign profile YAML")
 	flags.StringVar(&member, "member", "", "print one member's orientation instead of every member's")
-	flags.StringVar(&opts.orchestrator, "orchestrator", "", "orchestrator CLI")
-	flags.StringSliceVar(&opts.agents, "agent", nil, "agent name=cli (repeatable)")
-	flags.StringVar(&opts.agentCLI, "agent-cli", "", "CLI for homogeneous agents")
-	flags.IntVar(&opts.count, "agents", 0, "number of homogeneous agents")
-	flags.StringVar(&opts.repo, "repo", "", "repository cloned into every member")
-	flags.StringArrayVar(&opts.sets, "set", nil, "override a supported profile path (path=value, repeatable)")
 	return cmd
 }
 
