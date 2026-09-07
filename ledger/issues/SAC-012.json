@@ -1,0 +1,20 @@
+{
+  "id": "SAC-012",
+  "title": "The manual ends with links its reader cannot follow",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "user report (host): \"the manual needs to be self contained\", on reading the See also section of cs-campaign manual",
+  "opened": "2026-09-06",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The manual ends with five links a reader holding only the binary cannot follow.\n\n`cs-campaign manual` prints MANUAL.md verbatim, and its \"See also\" section is a list of relative markdown links: README.md, INSTALL.md, PROTOCOL.md, SPEC.md and CONTRIBUTING.md. None of those files is beside the binary. The section renders in a terminal as bracketed paths that go nowhere.\n\nThe comment on manualCmd says the manual travels with the executable so that a host with only the binary is not left guessing. A closing list of unreachable documents is the one part of it that does leave the reader guessing.\n\nThree more links sit inline, at the description and at the profile schema. Those name a document as an authority or cite a section of it, so the name is the useful part and the link is decoration.\n\nThe links are also wrong in the published site, where the documents are pages rather than markdown files. They resolve only in a clone, which is the one place a reader does not need them.\n\nRouting is another document's job. AGENTS.md exists to point at the rest and holds no knowledge of its own, and MANUAL.md is the full surface for someone using the tools.",
+  "notes": [],
+  "links": []
+}
