@@ -3,17 +3,19 @@
   "title": "init never mentions the snapshots a member can be given",
   "type": "defect",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "foundBy": "user report (host), asking whether init allows for snapshots too, or whether it is an oversight",
   "opened": "2026-09-06",
-  "resolved": null,
-  "stint": null,
+  "resolved": "2026-09-07",
+  "stint": "2026-09-07 shorthand surface session",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "eefd7cd"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "go test ./internal/cli/ -run TestShorthandOffersBothSharedTrees -count=1: PASS. Proved by mutation: dropping the flag registration and the line that shares a snapshot fails it on seven counts, one for the missing flag and one per seat. End to end, three checks. Every scaffolded member carries the snapshot. A missing path is refused by name at plan, exit 1. A profile beside the flag is refused as a fleet flag. make check exit 0."
   },
-  "resolution": null,
+  "resolution": "The shorthand offers `--snapshot PATH` beside `--repo PATH` on init, plan and create, so `--help` shows both halves of what a member can be given. Both stay singular and fleet-wide: one path each, handed to every seat. Anything richer belongs in a profile, where repos and snapshots already take lists carrying refs and names. MANUAL states the flag in both synopses and in the options table.",
   "details": "`cs-campaign init` never mentions snapshots, so an operator meets them only by reading the schema.\n\nThe scaffolded profile carries a repository and says where credentials go. It says nothing about the frozen trees a member can be given, and `init` has no flag for one. An operator who would benefit from a reference tree has no reason to learn that the feature exists.\n\nThis is the shape SAC-006 described. A campaign is set up out of what the scaffolding shows, and what the scaffolding omits is invented or forgotten.\n\nA flag may be the wrong answer, because a snapshot is optional and `init` is deliberately minimal. A line in the generated profile, beside the one that says where credentials go, would cost nothing and name the feature where an author is already reading.",
   "notes": [
     {
@@ -27,6 +29,10 @@
     {
       "date": "2026-09-06",
       "text": "The arity differs too. cs-sandbox takes --repo and --snapshot as repeatable arrays, and cs-campaign takes a single --repo, documented as one repository cloned into every member. Matching the layer below therefore means making both repeatable, not only adding the missing one. The narrower alternative keeps the shorthand minimal, on the grounds that it serves the profile-less path and anything real declares a profile, where lists of both already work. The choice is a public surface decision."
+    },
+    {
+      "date": "2026-09-07",
+      "text": "The arity is settled at singular. The layer below spells --repo as PATH[@REF][:NAME] and --snapshot as PATH[:NAME], both repeatable and both per-machine. This shorthand is fleet-wide and bare, so matching cs-sandbox would mean adopting its micro-syntax as well as its arity. The two flags now match each other, which is the symmetry an operator reads."
     }
   ],
   "links": [
