@@ -116,7 +116,7 @@ inspect the work.
 
 ```sh
 cs-campaign init <campaign> [--dir DIR] [--orchestrator CLI] [--agent NAME=CLI]... \
-                            [--agent-cli CLI --agents N] [--repo PATH]
+                            [--agent-cli CLI --agents N] [--repo PATH] [--snapshot PATH]
 ```
 
 Scaffolds `profile.yaml`, `mission.md` and one brief per member into `DIR`, which defaults to the
@@ -214,7 +214,7 @@ $ cs-campaign plan acme --profile acme/profile.yaml
 
 ```sh
 cs-campaign create <campaign> --profile PROFILE [--accept-upstream-change] [--dry-run]
-cs-campaign create <campaign> --orchestrator CLI --agent NAME=CLI... --repo PATH
+cs-campaign create <campaign> --orchestrator CLI --agent NAME=CLI... --repo PATH [--snapshot PATH]
 ```
 
 Provisions each member's microVM and waits for it to accept a command. Then it seeds the briefs
@@ -618,6 +618,7 @@ Severity reflects the kind of problem.
 | `--agent NAME=CLI` | `create`, `plan`, `init` | Quick team definition, repeatable. |
 | `--agent-cli CLI`, `--agents N` | `create`, `plan`, `init` | Homogeneous shorthand: N agents on one CLI. |
 | `--repo PATH` | `create`, `plan`, `init` | A repository cloned into every member. |
+| `--snapshot PATH` | `create`, `plan`, `init` | A frozen tree every member can read. |
 | `--credentials VERB` | `create`, `plan` | The campaign's credential verb, `lend` or `inherit`. |
 | `--set PATH=VALUE` | `create`, `plan` | Override one supported profile path, repeatable. |
 | `--dry-run` | `create`, `plan` | Resolve only; create nothing. |

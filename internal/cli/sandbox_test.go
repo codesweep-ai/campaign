@@ -408,7 +408,7 @@ func TestShellCompletionSmoke(t *testing.T) {
 
 func TestCreateRefusesExistingGeneratedGroup(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "create-resume", covmap.TierUnit)
-	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "")
+	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

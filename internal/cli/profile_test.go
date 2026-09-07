@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/spf13/cobra"
 
 	"github.com/codesweep-ai/campaign/internal/covmap"
 
@@ -20,7 +23,7 @@ import (
 // All three sandbox-supported adapters are accepted, in either role.
 func TestProfileAcceptsOpenCode(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
-	if _, err := profileFromFlags("opencode", []string{"worker=opencode"}, "", 0, ""); err != nil {
+	if _, err := profileFromFlags("opencode", []string{"worker=opencode"}, "", 0, "", ""); err != nil {
 		t.Fatalf("opencode members should validate: %v", err)
 	}
 	if err := validCLI("bogus"); err == nil {
@@ -30,7 +33,7 @@ func TestProfileAcceptsOpenCode(t *testing.T) {
 
 func TestProfileFromExplicitAgents(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
-	p, err := profileFromFlags("codex", []string{"frontend=codex", "backend=claude"}, "", 0, "/src")
+	p, err := profileFromFlags("codex", []string{"frontend=codex", "backend=claude"}, "", 0, "/src", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,6 +43,58 @@ func TestProfileFromExplicitAgents(t *testing.T) {
 	if p.Agents["backend"].Repos[0].Path != "/src" {
 		t.Fatal("repo was not applied")
 	}
+}
+
+// The shorthand offers the two shared trees as a pair. A member can be given a
+// writable clone and a frozen copy, and --help is where an operator learns
+// that: AGENTS.md tells an agent to prefer it over any command line a document
+// quotes, so a flag the set omits is a capability the reader cannot see.
+func TestShorthandOffersBothSharedTrees(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	a := new(app)
+	for _, cmd := range []*cobra.Command{a.initCmd(), a.createCmd(false), a.createCmd(true)} {
+		for _, name := range []string{"repo", "snapshot"} {
+			if cmd.Flags().Lookup(name) == nil {
+				t.Errorf("%s does not offer --%s", cmd.Name(), name)
+			}
+		}
+	}
+	// Both reach every seat, named and homogeneous alike, because the fleet-wide
+	// promise is what distinguishes these flags from cs-sandbox's per-machine
+	// pair.
+	for _, p := range []model.Profile{
+		mustProfile(t, []string{"backend=claude", "frontend=codex"}, "", 0),
+		mustProfile(t, nil, "claude", 2),
+	} {
+		members := map[string]model.MemberProfile{"orchestrator": p.Orchestrator}
+		maps.Copy(members, p.Agents)
+		if len(members) != 3 {
+			t.Fatalf("expected an orchestrator and two agents, got %d seats", len(members))
+		}
+		for name, m := range members {
+			if len(m.Repos) != 1 || m.Repos[0].Path != "/srv/product" {
+				t.Errorf("%s repos = %+v", name, m.Repos)
+			}
+			if len(m.Snapshots) != 1 || m.Snapshots[0].Path != "/srv/reference" {
+				t.Errorf("%s snapshots = %+v", name, m.Snapshots)
+			}
+		}
+	}
+	// A profile says all of this properly, so the shorthand must not be half
+	// accepted beside one.
+	_, _, err := new(app).resolveProfile(createOpts{profile: "acme.yaml", snapshot: "/srv/reference"})
+	if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Fatalf("--profile with --snapshot: %v", err)
+	}
+}
+
+func mustProfile(t *testing.T, agents []string, agentCLI string, count int) model.Profile {
+	t.Helper()
+	p, err := profileFromFlags("codex", agents, agentCLI, count, "/srv/product", "/srv/reference")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
 }
 
 func TestProfileAndFlagsResolveEquivalently(t *testing.T) {
@@ -128,7 +183,7 @@ func TestEmptyRepositoryPlanIsNonMutatingAndCreateIsDeterministic(t *testing.T) 
 	covmap.ProveCoreOnPass(t, "plan-determinism", covmap.TierUnit)
 	root := t.TempDir()
 	repo := filepath.Join(root, "new-app")
-	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, repo)
+	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, repo, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +222,7 @@ func TestNonEmptyNonGitRepositoryIsRejected(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repo, "existing.txt"), []byte("do not adopt silently\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, repo)
+	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, repo, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +238,7 @@ func TestUnbornGitRepositoryIsAdoptedOnMain(t *testing.T) {
 	if out, err := exec.Command("git", "init", repo).CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
-	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, repo)
+	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, repo, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +257,7 @@ func TestUnbornGitRepositoryIsAdoptedOnMain(t *testing.T) {
 
 func TestHomogeneousFleet(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
-	p, err := profileFromFlags("codex", nil, "claude", 2, "")
+	p, err := profileFromFlags("codex", nil, "claude", 2, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -478,7 +533,7 @@ func TestResolveRepoRefsPinsOneCommit(t *testing.T) {
 // happens at create so the recorded policy is the resolved number.
 func TestDeadlineDerivesElapsedBound(t *testing.T) {
 	now := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
-	p, _ := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "")
+	p, _ := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "", "")
 
 	// deadline set, elapsedSeconds unset: derive.
 	p.Defaults.Deadline = "90m"
@@ -519,7 +574,7 @@ func TestDeadlineDerivesElapsedBound(t *testing.T) {
 // can already be in the past by the time the resume completes (seen live).
 func TestResumedCreateReanchorsDeadline(t *testing.T) {
 	a := &app{store: store.Store{Dir: t.TempDir()}}
-	p, _ := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "")
+	p, _ := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "", "")
 	p.Defaults.Deadline = "8m"
 
 	firstAttempt := time.Date(2026, 8, 18, 5, 46, 0, 0, time.UTC)
@@ -554,7 +609,7 @@ func TestResumedCreateReanchorsDeadline(t *testing.T) {
 // A malformed or non-positive deadline must be refused at validate, not
 // silently dropped at create.
 func TestValidateProfileRejectsBadDeadline(t *testing.T) {
-	p, _ := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "")
+	p, _ := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "", "")
 	for _, bad := range []string{"2 fortnights", "-30m", "0s"} {
 		p.Defaults.Deadline = bad
 		if err := validateProfile(p); err == nil || !strings.Contains(err.Error(), "deadline") {
@@ -569,7 +624,7 @@ func TestValidateProfileRejectsBadDeadline(t *testing.T) {
 
 func TestPlanIdentityIsDeterministic(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "plan-determinism", covmap.TierUnit)
-	p, _ := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "")
+	p, _ := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "", "")
 	a := buildCampaign("demo", p, "", "", time.Time{})
 	b := buildCampaign("demo", p, "", "", time.Time{})
 	if a.ID != b.ID || a.Network != b.Network || !a.CreatedAt.IsZero() {
@@ -582,7 +637,7 @@ func TestPlanIdentityIsDeterministic(t *testing.T) {
 
 func TestGeneratedMappingRejectsOverlongMemberName(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "create-resume", covmap.TierUnit)
-	p, err := profileFromFlags("codex", []string{"this-agent-name-is-far-too-long=codex"}, "", 0, "")
+	p, err := profileFromFlags("codex", []string{"this-agent-name-is-far-too-long=codex"}, "", 0, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -599,7 +654,7 @@ func TestGeneratedMappingRejectsOverlongMemberName(t *testing.T) {
 // individually legal, so nothing upstream can catch it.
 func TestGeneratedMappingRejectsOverlongSocketPath(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "member-addressing", covmap.TierUnit)
-	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "")
+	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -621,7 +676,7 @@ func TestGeneratedMappingRejectsOverlongSocketPath(t *testing.T) {
 // reserved `orchestrator` member, under the default instances root.
 func TestOrdinaryCampaignFitsTheSocketBudget(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "member-addressing", covmap.TierUnit)
-	p, err := profileFromFlags("codex", []string{"worker-a=codex"}, "", 0, "")
+	p, err := profileFromFlags("codex", []string{"worker-a=codex"}, "", 0, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -639,7 +694,7 @@ func TestOrdinaryCampaignFitsTheSocketBudget(t *testing.T) {
 // (TestCreateAdoptsTheBranchSandboxActuallyMade).
 func TestPlannedBranchLooksLikeTheSandboxDerivation(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "member-addressing", covmap.TierUnit)
-	p, err := profileFromFlags("codex", []string{"backend=codex"}, "", 0, "")
+	p, err := profileFromFlags("codex", []string{"backend=codex"}, "", 0, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -665,7 +720,7 @@ func TestPlannedBranchLooksLikeTheSandboxDerivation(t *testing.T) {
 
 func TestTypedSetOverridesAndRejectsUnknown(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
-	p, _ := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "")
+	p, _ := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "", "")
 	if err := applySets(&p, []string{"defaults.resources.cpus=8", "agents.worker.cli=claude"}); err != nil {
 		t.Fatal(err)
 	}
@@ -723,7 +778,7 @@ func TestDefaultEnvAppliesOnlyWhereAMemberDeclaresNone(t *testing.T) {
 // fail-closed rule a model declaration gets.
 func TestMemberPolicyCarriesStallSecondsAlone(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
-	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "")
+	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

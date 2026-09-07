@@ -235,13 +235,13 @@ func sandboxInstancesDir() string {
 }
 
 type createOpts struct {
-	profile, orchestrator, agentCLI, repo string
-	agents                                []string
-	count                                 int
-	dry                                   bool
-	sets                                  []string
-	credentials                           string
-	acceptUpstream                        bool
+	profile, orchestrator, agentCLI, repo, snapshot string
+	agents                                          []string
+	count                                           int
+	dry                                             bool
+	sets                                            []string
+	credentials                                     string
+	acceptUpstream                                  bool
 }
 
 // credentialSet folds --credentials into the override list, which is the one
@@ -300,6 +300,7 @@ func (a *app) createCmd(plan bool) *cobra.Command {
 	flags.StringVar(&opts.agentCLI, "agent-cli", "", "CLI for homogeneous agents")
 	flags.IntVar(&opts.count, "agents", 0, "number of homogeneous agents")
 	flags.StringVar(&opts.repo, "repo", "", "repository cloned into every member")
+	flags.StringVar(&opts.snapshot, "snapshot", "", "frozen tree every member can read")
 	flags.BoolVar(&opts.dry, "dry-run", false, "resolve only; create nothing")
 	flags.StringVar(&opts.credentials, "credentials", "", "the campaign's credential verb: lend or inherit (default: the profile's, else lend)")
 	flags.StringArrayVar(&opts.sets, "set", nil, "override a supported profile path (path=value, repeatable)")
@@ -591,12 +592,12 @@ func (a *app) failCreate(campaign *model.Campaign, err error) error {
 
 func (a *app) resolveProfile(opts createOpts) (model.Profile, string, error) {
 	if opts.profile != "" {
-		if opts.orchestrator != "" || len(opts.agents) > 0 || opts.agentCLI != "" || opts.count > 0 || opts.repo != "" {
+		if opts.orchestrator != "" || len(opts.agents) > 0 || opts.agentCLI != "" || opts.count > 0 || opts.repo != "" || opts.snapshot != "" {
 			return model.Profile{}, "", errors.New("--profile is mutually exclusive with fleet flags")
 		}
 		return readProfile(expandPath(opts.profile))
 	}
-	profile, err := profileFromFlags(opts.orchestrator, opts.agents, opts.agentCLI, opts.count, opts.repo)
+	profile, err := profileFromFlags(opts.orchestrator, opts.agents, opts.agentCLI, opts.count, opts.repo, opts.snapshot)
 	return profile, "", err
 }
 

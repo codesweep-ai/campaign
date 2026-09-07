@@ -405,12 +405,24 @@ func initializeRepos(p *model.Profile) error {
 	}
 	return nil
 }
-func profileFromFlags(orchestrator string, agents []string, agentCLI string, count int, repo string) (model.Profile, error) {
+
+// profileFromFlags builds the profile the shorthand flags describe. --repo and
+// --snapshot are fleet-wide: one path each, handed to every member, because a
+// campaign that wants a tree per member wants a profile.
+func profileFromFlags(orchestrator string, agents []string, agentCLI string, count int, repo, snapshot string) (model.Profile, error) {
+	// One writer for both trees, so a seat added later cannot be given the
+	// clone and miss the frozen copy.
+	share := func(m *model.MemberProfile) {
+		if repo != "" {
+			m.Repos = []model.Repo{{Path: repo}}
+		}
+		if snapshot != "" {
+			m.Snapshots = []model.Snapshot{{Path: snapshot}}
+		}
+	}
 	p := model.Profile{APIVersion: model.APIVersion, Kind: "CampaignProfile", Defaults: model.Defaults{Engine: "firecracker"}, Agents: map[string]model.MemberProfile{}}
 	p.Orchestrator.CLI = orchestrator
-	if repo != "" {
-		p.Orchestrator.Repos = []model.Repo{{Path: repo}}
-	}
+	share(&p.Orchestrator)
 	if len(agents) > 0 && (agentCLI != "" || count > 0) {
 		return p, errors.New("--agent and --agent-cli/--agents are mutually exclusive")
 	}
@@ -420,9 +432,7 @@ func profileFromFlags(orchestrator string, agents []string, agentCLI string, cou
 			return p, errors.New("--agent must be name=cli")
 		}
 		m := model.MemberProfile{CLI: a[1]}
-		if repo != "" {
-			m.Repos = []model.Repo{{Path: repo}}
-		}
+		share(&m)
 		p.Agents[a[0]] = m
 	}
 	if agentCLI != "" || count > 0 {
@@ -432,9 +442,7 @@ func profileFromFlags(orchestrator string, agents []string, agentCLI string, cou
 		for i := 1; i <= count; i++ {
 			n := fmt.Sprintf("agent-%02d", i)
 			m := model.MemberProfile{CLI: agentCLI}
-			if repo != "" {
-				m.Repos = []model.Repo{{Path: repo}}
-			}
+			share(&m)
 			p.Agents[n] = m
 		}
 	}

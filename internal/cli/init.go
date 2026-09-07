@@ -95,7 +95,7 @@ func (a *app) initCmd() *cobra.Command {
 			name := args[0]
 			// The fleet is parsed by the SAME function create uses, so a
 			// scaffolded profile cannot describe a fleet create would reject.
-			profile, err := profileFromFlags(opts.orchestrator, opts.agents, opts.agentCLI, opts.count, opts.repo)
+			profile, err := profileFromFlags(opts.orchestrator, opts.agents, opts.agentCLI, opts.count, opts.repo, opts.snapshot)
 			if err != nil {
 				return err
 			}
@@ -113,6 +113,7 @@ func (a *app) initCmd() *cobra.Command {
 	flags.StringVar(&opts.agentCLI, "agent-cli", "", "CLI for homogeneous agents")
 	flags.IntVar(&opts.count, "agents", 0, "number of homogeneous agents")
 	flags.StringVar(&opts.repo, "repo", "", "repository cloned into every member")
+	flags.StringVar(&opts.snapshot, "snapshot", "", "frozen tree every member can read")
 	return cmd
 }
 
