@@ -11,10 +11,13 @@
 # The documentation block: the set of documents the checks read, then one
 # section per documentation linter.
 docs:
-  # The set `refs` and `surface` read the claims from. PROTOCOL.md is a
-  # standalone page the document set adds, and both linters read it too.
+  # The set `refs` and `surface` read the claims from. PROTOCOL.md and
+  # PLAYBOOK.md are standalone pages the document set adds, and both linters read
+  # them too. The playbook belongs here because it quotes command lines a reader
+  # copies, which is exactly what the surface checks hold against the binary.
   extraDocs:
     - PROTOCOL.md
+    - PLAYBOOK.md
 
   prose:
     # The domain terms a reader of this project cannot infer. Each must be
@@ -136,10 +139,11 @@ oss:
     - CONTRIBUTING.md
     - AGENTS.md
 
-  # A genuine standalone page, long enough that folding it would bury the
-  # document it landed in. The router must name it too.
+  # Genuine standalone pages, each long enough that folding it would bury the
+  # document it landed in. The router must name them too.
   extraDocs:
     - PROTOCOL.md
+    - PLAYBOOK.md
 
   # github.com is here for `git@github.com:owner/repo.git`, the SSH transport
   # user every clone URL in this family carries. It is a machine identity and
