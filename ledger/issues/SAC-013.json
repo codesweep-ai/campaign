@@ -1,0 +1,22 @@
+{
+  "id": "SAC-013",
+  "title": "No document tells an operator how to set a campaign up well",
+  "type": "improvement",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "user report (host): \"we haven't really told the user of cs-campaign about best practices for how to setup campaigns\"",
+  "opened": "2026-09-06",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "Nothing tells an operator how to set a campaign up well.\n\nThe documents each have a job, and none of them is judgement. README is the tour. INSTALL is setup. MANUAL is every command, flag, file, variable, exit code and diagnostic. PROTOCOL states the protocol, SPEC states what the behaviour must be, and AGENTS routes while holding no knowledge of its own.\n\nMANUAL comes closest, with a five step shape and an authoring section, and both are mechanics: where the files go, what the orientation already says. Neither answers how to scope a mission, how many members to give it, how to phase the work, or what a good brief contains.\n\nSAC-006 is the evidence. Role briefs were failing campaigns because their authors could not see the orientation, and the fix made that text readable. What still has no home is the other half: what to write once you can see it.\n\nA command would carry it the way `manual` carries the manual, so an operator with the binary and no clone can read it. The name `authoring` is free, and AUTHORING.md does not exist.\n\nThis is an editorial decision about a document set whose jobs were assigned deliberately, so the shape belongs to the maintainer rather than to whoever files this.",
+  "notes": [],
+  "links": [
+    "SAC-006"
+  ]
+}

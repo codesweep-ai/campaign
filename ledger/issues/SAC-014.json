@@ -1,0 +1,22 @@
+{
+  "id": "SAC-014",
+  "title": "init never mentions the snapshots a member can be given",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "user report (host), asking whether init allows for snapshots too, or whether it is an oversight",
+  "opened": "2026-09-06",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "`cs-campaign init` never mentions snapshots, so an operator meets them only by reading the schema.\n\nThe scaffolded profile carries a repository and says where credentials go. It says nothing about the frozen trees a member can be given, and `init` has no flag for one. An operator who would benefit from a reference tree has no reason to learn that the feature exists.\n\nThis is the shape SAC-006 described. A campaign is set up out of what the scaffolding shows, and what the scaffolding omits is invented or forgotten.\n\nA flag may be the wrong answer, because a snapshot is optional and `init` is deliberately minimal. A line in the generated profile, beside the one that says where credentials go, would cost nothing and name the feature where an author is already reading.",
+  "notes": [],
+  "links": [
+    "SAC-010"
+  ]
+}
