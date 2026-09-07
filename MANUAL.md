@@ -52,8 +52,8 @@ governs the whole protocol:
 Nothing about a dispatch is stored on the host. What a **node** is doing is computed on demand from
 that node's own machine. The computation reads three things: the messages in its input channel, the
 presence of the reply file, and whether its turn driver is running. Ask `observe` at any time;
-nothing has to be caught as it happens. [`PROTOCOL.md`](PROTOCOL.md) is the authority on the machine, and
-[`SPEC.md`](SPEC.md) is the contract this implementation meets.
+nothing has to be caught as it happens. `PROTOCOL.md` is the authority on the machine, and
+`SPEC.md` is the contract this implementation meets.
 
 Read the output, not the exit code. Commands that collect evidence leave markers where collection
 failed rather than aborting, so a zero exit can still mean an incomplete archive.
@@ -636,7 +636,7 @@ with `--agent-cli`/`--agents`. Membership must not depend on ambiguous flag merg
 
 ## Configuration
 
-A campaign is configured by its profile. The full schema is in [`SPEC.md`](SPEC.md) §5.1; this is
+A campaign is configured by its profile. The full schema is in `SPEC.md` §5.1; this is
 the operator's view.
 
 ```yaml
@@ -1004,11 +1004,3 @@ cs-campaign fetch acme/qa
 git clone --branch cs-sandbox/orchestrator-56aa4ee0.acme-56aa4ee0 . /tmp/verify
 cd /tmp/verify && make check
 ```
-
-## See also
-
-- [README.md](README.md) · what this is, and how to run it.
-- [INSTALL.md](INSTALL.md) · how to get the tools, and the setup they need once.
-- [PROTOCOL.md](PROTOCOL.md) · the dispatch protocol, on its own terms.
-- [SPEC.md](SPEC.md) · what the behaviour must be, and what is left open.
-- [CONTRIBUTING.md](CONTRIBUTING.md) · how to work on the harness.
