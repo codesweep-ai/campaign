@@ -172,3 +172,44 @@ func TestOrientationNamesTheMembersItHasWhenAskedForOneItDoesNot(t *testing.T) {
 		}
 	}
 }
+
+// A snapshot is the other half of what a member holds, and it used to be told
+// only to the orchestrator (SAC-010). The prose and the manifest are rendered
+// from one pass, so this holds both at once: a member that cannot see its
+// reference tree named cannot be expected to read it.
+func TestOrientationNamesSnapshotsBesideRepos(t *testing.T) {
+	campaign := &model.Campaign{Name: "acme", Members: []model.Member{{
+		Name: "backend", Role: "agent", Branch: "cs-sandbox/backend.acme",
+		Profile: model.MemberProfile{
+			CLI:       "claude",
+			Repos:     []model.Repo{{Path: "/srv/product"}},
+			Snapshots: []model.Snapshot{{Path: "/srv/reference"}, {Path: "/srv/spec", Name: "spec"}},
+		},
+	}}}
+
+	text, doc, err := buildOrientation(campaign, campaign.Members[0], campaignInputs{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Named where the clones are named, under the same heading, so a member
+	// reading "what you have" sees everything it has.
+	for _, want := range []string{"~/product", "~/reference", "~/spec"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("orientation does not name %s:\n%s", want, text)
+		}
+	}
+	// And said to be frozen, so it is not mistaken for somewhere to work.
+	if !strings.Contains(text, "frozen copy") {
+		t.Errorf("orientation does not say a snapshot is frozen:\n%s", text)
+	}
+
+	// The machine-readable half must agree: the name is derived once.
+	if len(doc.Snapshots) != 2 || doc.Snapshots[0] != "reference" || doc.Snapshots[1] != "spec" {
+		t.Errorf("member.json snapshots are %v, want [reference spec]", doc.Snapshots)
+	}
+	// A declared name wins over the path's last segment, as it does for a repo.
+	if len(doc.Repos) != 1 || doc.Repos[0].Name != "product" {
+		t.Errorf("repos are %v, want one named product", doc.Repos)
+	}
+}

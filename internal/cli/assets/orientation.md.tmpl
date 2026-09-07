@@ -11,6 +11,10 @@ files listed below.
 - **`~/{{.Name}}`** — your own clone of the repository, on branch `{{.Branch}}`.
   Nobody else commits to that branch.
 {{- end}}
+{{- range .Snapshots}}
+- **`~/{{.}}`** — a frozen copy, shared for you to read. It is not a clone and
+  nothing in it is harvested; your work still belongs on your branch.
+{{- end}}
 {{- if .Inputs}}
 
 Files placed in `~/{{.InputDir}}` for you:

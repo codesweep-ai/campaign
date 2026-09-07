@@ -97,3 +97,13 @@ func repoGuestName(repo model.Repo) string {
 	}
 	return filepath.Base(repo.Path)
 }
+
+// snapshotGuestName is the directory a frozen tree lands in, at $HOME/<name>.
+// The rule is the repository's, because cs-sandbox spells both the same way:
+// the declared name, else the last segment of the host path.
+func snapshotGuestName(snap model.Snapshot) string {
+	if snap.Name != "" {
+		return snap.Name
+	}
+	return filepath.Base(snap.Path)
+}

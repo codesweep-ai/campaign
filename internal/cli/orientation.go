@@ -42,6 +42,7 @@ type orientationData struct {
 	InputDir       string
 	OutputDir      string
 	Repos          []orientationRepo
+	Snapshots      []string
 	Inputs         []string
 	Teammates      []orientationPeer
 }
@@ -78,6 +79,14 @@ func buildOrientation(campaign *model.Campaign, member model.Member, inputs camp
 		name := repoGuestName(repo)
 		data.Repos = append(data.Repos, orientationRepo{Name: name, Branch: member.Branch})
 		doc.Repos = append(doc.Repos, protocol.RepoRef{Name: name, Base: repo.ResolvedCommit})
+	}
+	// A snapshot lands beside the clones, at ~/<name>, and is the other half of
+	// what R31 calls the member's trees. Stated in both places at once for the
+	// same reason the repositories are.
+	for _, snap := range member.Profile.Snapshots {
+		name := snapshotGuestName(snap)
+		data.Snapshots = append(data.Snapshots, name)
+		doc.Snapshots = append(doc.Snapshots, name)
 	}
 	if data.IsOrchestrator {
 		for _, peer := range campaign.Members {

@@ -753,8 +753,9 @@ session name and the member's own profile.
 
 `~/.config/cs-campaign/member.json` sits inside each member. It carries the campaign, the member
 name, the role, the network and the branch. Beside those it carries the repositories with their
-base commits, the list of inputs, the input and output channel paths, the orientation path, the
-resolved policy and the campaign deadline.
+base commits, and the frozen snapshots by the name each landed under. It carries the list of
+inputs, the input and output channel paths, the orientation path, the resolved policy and the
+campaign deadline.
 
 `~/.config/cs-campaign/manifest.json` exists only in the orchestrator. It carries the campaign
 name, the network, and the policy its `wait` loop runs on. One roster row per agent follows, with

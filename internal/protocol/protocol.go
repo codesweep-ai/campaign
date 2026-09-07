@@ -284,17 +284,25 @@ type RepoRef struct {
 // was given. The guest binary reads its identity, role, inputs and policy
 // from here; the readback walks Inputs and reports what is absent.
 type Member struct {
-	Campaign    string    `json:"campaign"`
-	Member      string    `json:"member"`
-	Role        string    `json:"role"`
-	Network     string    `json:"network"`
-	Branch      string    `json:"branch,omitempty"`
-	Repos       []RepoRef `json:"repos,omitempty"`
-	Inputs      []string  `json:"inputs"`
-	InputDir    string    `json:"inputDir"`
-	OutputDir   string    `json:"outputDir"`
-	Orientation string    `json:"orientation"`
-	Policy      Policy    `json:"policy"`
+	Campaign string    `json:"campaign"`
+	Member   string    `json:"member"`
+	Role     string    `json:"role"`
+	Network  string    `json:"network"`
+	Branch   string    `json:"branch,omitempty"`
+	Repos    []RepoRef `json:"repos,omitempty"`
+	// Snapshots are the frozen read-only trees shared into this member, by the
+	// guest name each one landed under. A repository and a snapshot are
+	// siblings upstream and arrive the same way, at ~/<name>; only one of them
+	// used to be stated here, so a member given reference material had no way
+	// to learn it existed. R13 counts a snapshot among what a member can see,
+	// and R31 makes the enumeration of its trees the thing that answers "what
+	// could this member possibly know?".
+	Snapshots   []string `json:"snapshots,omitempty"`
+	Inputs      []string `json:"inputs"`
+	InputDir    string   `json:"inputDir"`
+	OutputDir   string   `json:"outputDir"`
+	Orientation string   `json:"orientation"`
+	Policy      Policy   `json:"policy"`
 	// Deadline is the campaign wall clock as an absolute instant, informative
 	// for the orchestrator's own judgment (campaign-exhausted); the machine
 	// never acts on it.
