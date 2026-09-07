@@ -3,17 +3,19 @@
   "title": "A member is never told about the snapshots it was given",
   "type": "defect",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "foundBy": "user report (host), relaying a reviewing agent: the orientation names a member's repositories but not its snapshots",
   "opened": "2026-09-06",
-  "resolved": null,
-  "stint": null,
+  "resolved": "2026-09-06",
+  "stint": "2026-09-06 orientation visibility session",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "5531fd1"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "go test ./internal/cli/ -run TestOrientationNamesSnapshotsBesideRepos -count=1: PASS. Proved by mutation: dropping the two lines that state a snapshot fails it on three counts, the two names absent from the prose and the empty list in member.json. Rendered against a real profile with `cs-campaign orientation`, which prints the snapshot under the same heading as the clone. make check exit 0."
   },
-  "resolution": null,
+  "resolution": "A member is told about its frozen trees where it is told about its clones. The orientation names each one at its guest path and says it is frozen, so it is not mistaken for somewhere to work, and member.json carries the same names. Both come from one pass over the profile, the way the repositories already did, so the prose and the machine-readable copy cannot disagree. SPEC.md 5.3 now lists snapshots among what the member document carries.",
   "details": "A member is told about its repositories and never about its snapshots, though both are directories placed in its home.\n\n`--repo` and `--snapshot` are siblings in cs-sandbox. Each shares a directory into the guest at `~/<name>`, and cs-campaign derives that name the same way for both. A repository arrives as a writable clone on the member's own branch. A snapshot arrives as a frozen read-only copy.\n\nThe orientation lists the repositories under \"What you have\" and stops. `member.json` carries the repositories with their base commits, and carries no snapshots at all. A member holding a reference tree therefore has no way to learn that it exists, short of listing its home directory.\n\nThe orchestrator is told. Its `manifest.json` gives every agent's roster row that agent's snapshots. The product treats a snapshot as worth knowing for the seat that allocates work, and not for the seat that holds it.\n\nR13 names frozen snapshots among what each member can see. R31 says a member's knowledge must be exactly its trees, its seeded input and its dispatches, and that the enumeration is what makes the question answerable. A snapshot is a tree the member was given, and nothing enumerates it to the member.\n\nThe cost is quiet. An operator who shares a reference tree and expects it to be read must name it in the brief. Naming a path the product could have stated is the guesswork SAC-006 removed everywhere else.",
   "notes": [],
   "links": [
