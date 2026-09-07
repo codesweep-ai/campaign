@@ -10,6 +10,15 @@ Read this before you author one, and again while one is running.
 Nothing here is enforced. Every rule the product does enforce is in the manual, and the two are
 written to agree.
 
+## What goes wrong
+
+Almost every expensive failure is an input defect. A number nobody checked, two lines that cannot
+both hold, a mandate whose consequences were never mapped, an instruction the member cannot carry
+out. The fleet is rarely the problem.
+
+That is why the work before `create` is the cheapest work in a campaign. A first round that needs
+several rounds of rework is telling you to fix the inputs, not to spend the deadline on reruns.
+
 ## Is this work a campaign?
 
 A campaign suits work that splits into parts one team can own for hours or days, where the
@@ -59,6 +68,21 @@ Fewer seats than seams is usually the safer error. An orchestrator can serialize
 onto one agent. It cannot split an agent that owns too much.
 
 Three seats plus an orchestrator is a large campaign. Start smaller than feels right.
+
+### Sizing against the deadline
+
+The critical path is the longest serial chain of work inside one member, not the total. Take that
+member, list its work in order, and ask of each piece whether it is a morning, a day or a week. A
+new parser with a conformance harness is not a morning.
+
+If the chain does not fit the deadline, there are three levers:
+
+- **Cut scope.** Decide now which parts come out, not at hour thirty.
+- **More cut points**, so a member stops waiting on work unrelated to it.
+- **More, smaller dispatches**, each judged before the next opens.
+
+Write down what gets dropped and when, before you start. A decision you have not pre-authorised is
+a decision nobody will make while the clock runs.
 
 ### The orchestrator is a seat too
 
@@ -165,6 +189,44 @@ mission, the other briefs, or anything you decided in your head.
 Never hand two members the same brief with a name changed. A generic briefing is restated faithfully
 by a member that read nothing, so the readback cannot see through it.
 
+### Give it the exit before it needs one
+
+Put this near the top of every brief: if two lines of this brief cannot both hold, stop and reply
+saying so, naming both lines.
+
+Then make stopping the cheap path in writing. Say that an honest stop costs nothing and that a
+workaround costs a rework and a finding. An agent does not argue with its brief, it satisfies it, so
+the incentive has to be written down rather than assumed.
+
+### Map the blast radius before you mandate a change
+
+Before writing "delete X", "rename X" or "replace X", grep the base commit for the symbol and for
+the path. Then either widen what the member may touch or narrow the mandate. The radius is reliably
+wider than it looks:
+
+- Tests that reference it.
+- Spec rules that still require it, so the spec edit is in scope too.
+- Documentation, generated pages and version stamps that a rebuild moves.
+- Files that merely mention the path, such as an install script or a vendored copy.
+- Another consumer reading a different meaning into the same shared symbol.
+
+An unmapped mandate produces a run that stalls on one feature repeatedly, each unblocking uncovering
+the next contradiction.
+
+### Anything crossing two members needs an owner and a route
+
+For every artifact more than one member touches, write one sentence of this shape. One seat is
+the owner. The artifact travels by a named route. Whoever receives it re-runs exactly the command
+the owner named.
+
+Failure modes need owners too. What happens when a member is stuck, when rework runs out, when a
+shared component turns out to be wrong. Answer each in writing, or the orchestrator invents the
+policy with nobody to ask.
+
+Give every fallback a trigger it can actually observe. A clock trigger needs `defaults.deadline`
+set. A trigger on another member's progress needs the orchestrator to hold that repository. A
+fallback whose condition is unobservable is a branch that never runs.
+
 ### The orchestrator's brief is policy
 
 The mission says what must be achieved. Each agent's brief says what that agent owns. The
@@ -177,6 +239,89 @@ orchestrator's brief says how this team is run, and only you can decide it:
 
 It is accountable for what the campaign delivers, so it must verify returned work rather than accept
 a member's report. Say that in terms of this campaign: which tests, run where.
+
+## What each member is given to read
+
+Everything you seed spends attention at the party least able to tell you it was wasted.
+
+The test is simple. Name the member that reads this document, and the sentence it needs from it. If
+you cannot, the document is yours rather than theirs.
+
+**Never give a member the answers to the checks it is about to be judged on.** A traceability table,
+an acceptance matrix or a filled-in evidence record all fail that test. They are your instruments
+for reading the result.
+
+Bulk is not insurance. Anything buried in forty pages is effectively absent, and you spent the
+reader's attention to bury it. If you are attaching material because you fear an unanswerable
+question, sharpen the requirement instead.
+
+Moving bulk is not reducing it. A long reference belongs in a snapshot, with the brief as the map
+and the mount path in it. The member still has to read it either way.
+
+Print the delivery map rather than trusting your memory of it. Two commands show the two halves, and
+they disagree with your intention more often than you would like:
+
+```sh
+cs-campaign orientation acme --profile acme/profile.yaml --member backend   # what that member holds
+cs-campaign plan acme --profile acme/profile.yaml                           # what the host resolved
+```
+
+## Gates, numbers, and the letter of the law
+
+The product never grades output. Whether the work is good is the orchestrator's judgement and then
+yours, so every gate you write is a gate somebody can satisfy without doing the work.
+
+**Verify every number you assert, and gate on none of them.**
+
+Check each number against the exact base commit, with a command, and keep the command beside the
+number. If you cannot produce the command, you do not have the number. `plan` prints each
+repository's resolved base commit, so there is no excuse for checking the wrong tree.
+
+Then keep the number out of the pass condition. Ask the member to measure and report, let the
+orchestrator confirm it, and let the confirmed number bind the check. State counts as properties
+instead: "every tagged block renders highlighted" survives new content, and "at least 28 highlighted
+blocks" invites a member to manufacture blocks.
+
+An unsatisfiable gate is not survivable. A capable agent facing one finds a way to appear to pass
+it, which is not misbehaviour. It is doing what you asked.
+
+These are the shapes that teach a member to work around you:
+
+- **A grep over names.** Evaded by a rename, a runtime-built identifier or a selector assembled from
+  a variable. Ask for the outcome and let the grep corroborate it.
+- **A check satisfiable by spelling.** A grep for an API name passes against a wrapper that
+  implements nothing.
+- **A rule that punishes the honest path.** "Only the text inside this assertion may change" fails a
+  test that legitimately reached the value another way. State the invariant, not the syntax.
+- **A proof list the judge may not use.** If acceptance is an independent check, a twelve-line
+  self-report is pure cost. Ask for the commit, a clean tree, the last line of each gate, and what
+  is not done.
+- **A parity check that mandates a change on one side.** Anchor parity on something both sides
+  already share.
+
+Keep one clause asking whether anything else is wrong, with a stated consequence. A broken rule
+means rework even when every named check passed.
+
+## Have someone else read it
+
+You cannot review your own briefs. Over-specify and a capable agent satisfies the letter.
+Under-specify and a reasonable agent does something reasonable that is not the mission. Contradict
+yourself and it picks a side in silence. The author sees none of this, because they wrote both sides
+of every seam.
+
+Run two passes, and give the reader nothing but the files:
+
+- **The fleet pass** takes the mission, every brief, and each member's rendered orientation,
+  labelled. It finds contradictions between briefs and identifier drift.
+- **The member pass, one per role,** takes that member's brief and its orientation and nothing else.
+  It is the only pass that sees what the member sees.
+
+Include the orientation in both. It decides the command vocabulary and the reply rules, so leaving
+it out means the one document defining the contract is the one nothing checks against.
+
+Expect a round to find what the previous round's edits introduced. Stop when a round turns up only
+cosmetic drift. If the scope widens, go back to the fleet pass, because widening re-opens every
+seam.
 
 ## Before you spend
 
@@ -192,15 +337,36 @@ cs-campaign plan acme --profile acme/profile.yaml    # the resolved campaign, as
 Read the plan. Every generated name, the group, the network, the resolved policy numbers and each
 member's branch are visible there before a microVM bills a second.
 
-Then `create` runs the readback. Every member is asked to restate its own job before the campaign
-is usable, and a member that cannot confirm its briefing fails creation by name.
+Do not commit to a source repository between `plan` and `create`. Both resolve the base commit,
+the resolved profile is what the campaign ID is hashed from, and a commit in between moves the ID,
+the group and every sandbox name. It also invalidates every number you verified against that tree.
 
-**Read the restatements.** The check is structural, so it holds identity, branch, missing inputs and
-obligations, and it does not grade prose. A member can satisfy it with a restatement that omits most
-of its brief, and only you reading the text would notice. This is the last cheap moment to find a
-brief that did not land.
+Then `create` runs the readback. Every member is asked three questions as dispatch `d001`, before
+any work is assigned, and a member that cannot confirm its briefing fails creation by name:
+
+| | What it is asked |
+|---|---|
+| `goal` | What this campaign is asking you to accomplish. |
+| `scope` | What you own and what you must not touch. |
+| `obligations` | What this campaign requires of you, and what happens to your work if you skip it. |
+
+Use those three as your own first test of every brief, in isolation. If you cannot answer all three
+from that one file, its member will not be able to either.
+
+Note which member is asked what. `goal` is asked of an agent that never receives the mission, so a
+brief has to leave its member able to state a campaign-level purpose from the brief alone. That is
+not licence to explain the campaign. It does mean a brief owes its member the point of its own work.
+
+**Read the restatements as prose.** The check is structural, so it holds identity, branch, missing
+inputs and obligations, and it does not grade content. A member passes with three vacuous sentences.
+One that passes with an empty `goal` has just told you its brief is thin, and that is the cheapest
+signal you will get all run.
 
 ## While it runs
+
+`create` returns before the orchestrator's mission turn has done anything. Green readbacks and a
+green doctor mean the team is correctly instantiated, not that it has started. Watch until you see
+the first dispatch land, because this is the one window where a human is load-bearing.
 
 One command is the whole observation surface:
 
@@ -227,6 +393,11 @@ ask and is never a stale reading from an hour ago.
 The right answer is usually to do nothing. Recovery is mechanical and already running: templated
 continues, then a restart re-anchor, bounded by the policy numbers you set.
 
+Most unnecessary intervention comes from two misreadings. **Slow is not stalled**: a member can commit
+steadily through a two-hour turn and look idle from outside, so check its branch rather than your
+patience. **Free is not stuck**: leaving a seat idle while others work is a legitimate plan, and the
+orchestrator's own `wait` blocks through it.
+
 ### The rules that cost the most to break
 
 **Never type into a live session.** Keystrokes land in the member's terminal interface, and the work
@@ -236,6 +407,20 @@ growth, and `git log` on the member's branch.
 **Never answer a stalled orchestrator.** A stuck orchestrator is a finding worth more than the fix.
 Unsticking it destroys the finding and any claim that the team worked autonomously. Record what it
 was doing, then decide whether this campaign is still answering your question.
+
+The judgement that is yours is *which* failure you are looking at, and the two look identical from
+outside. Infrastructure died, meaning a lost connection, an adapter crash or a machine gone. Recover
+that and record what happened, because nothing is learned by leaving the fleet idle. Or the
+orchestrator genuinely stalled, meaning it had everything it needed and stopped. That is a finding
+about your inputs. Record it, and resist nudging it into looking successful.
+
+You can talk to a running orchestrator, and you should design so that you do not have to. Every
+mid-run correction is an input defect you are paying for at the most expensive possible moment.
+
+Know when to stop granting authority mid-run. Granting the mechanical consequence of a mandate is
+fair, such as deleting a feature's tests along with the feature. Rewriting rules one at a time to
+unblock a requirement is redesigning the brief live. Carry the requirement unmet, record the defect,
+and fix it next time.
 
 **Never repair an agent from the host.** The `send` and `restart` commands refuse an agent by name.
 Agent recovery belongs to the orchestrator's ladder, and a host-to-agent repair path removes the only
@@ -292,12 +477,20 @@ that question is unanswerable.
 `INCOMPLETE-*` marker where a step could not finish. A zero exit is compatible with a partial
 archive, and partial evidence you know about is worth more than none.
 
+**A skipped check is a missing input, never a pass.** Say that in the briefs. A missing tool makes a
+gate report SKIP at exit zero, and "all gates green" then hides the gates that never ran.
+
+Render the archive and read its findings. They are a graded checklist somebody already wrote, and
+the manual's findings reference says what each code means. Decide before you start which of them you
+would accept and which would make you re-run, so the post-mortem is not a negotiation with yourself.
+
 Then do the part no command does for you. Re-run the acceptance gates yourself, from a fresh clone
 of the integration branch. That independent check is the point of the exercise, and it has caught
 failures that every test inside the campaign passed.
 
 Judge the mission reply against the mission you wrote. An outcome is the orchestrator's claim, and
-the branches, the transcripts and the archive are the evidence for or against it.
+the branches, the transcripts and the archive are the evidence for or against it. A member that got
+stuck with committed work is validated from its branch rather than written off.
 
 ## What to keep
 
