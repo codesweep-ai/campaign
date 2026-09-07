@@ -482,7 +482,7 @@ Every member holds the same guest binary. The roles differ in which verbs it wil
 | Verb | What it does |
 |---|---|
 | `inbox` | The current open dispatch: its ID and every message, in order. |
-| `check-inputs` | Verifies every file `member.json` lists under `inputs`, and prints any that are absent. |
+| `check-inputs` | Verifies every file `member.json` lists under `inputs` and every snapshot it lists, and prints any that are absent. |
 | `reply [--file F\|-]` | Writes the reply that closes the current dispatch. |
 
 `reply` on the mission requires `--outcome`, one of `campaign-met`, `campaign-converged`,

@@ -329,6 +329,9 @@ func (a *app) planCampaign(opts createOpts, name string, planning bool) (*model.
 	if err = resolveRepoRefs(&profile); err != nil {
 		return nil, model.Profile{}, err
 	}
+	if err = resolveSnapshots(&profile); err != nil {
+		return nil, model.Profile{}, err
+	}
 	now := time.Now()
 	if planning {
 		now = time.Time{}
@@ -620,6 +623,12 @@ func (a *app) validateCmd() *cobra.Command {
 		// refs resolve, initializable (absent/empty) paths are accepted, and
 		// non-git content is rejected. Nothing on disk is modified.
 		if err = resolveRepoRefs(&profile); err != nil {
+			return err
+		}
+		// And the frozen trees, for the same reason: a snapshot path that is
+		// not there costs nothing here and is a tree the member was promised
+		// and does not have once the fleet is up.
+		if err = resolveSnapshots(&profile); err != nil {
 			return err
 		}
 		// Every declared member needs a written purpose and the campaign needs a

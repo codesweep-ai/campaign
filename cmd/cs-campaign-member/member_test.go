@@ -175,6 +175,47 @@ func TestCheckInputs(t *testing.T) {
 	cmdCheckInputs(env)
 }
 
+// The audit must cover the frozen trees, not only the seeded files. A member
+// is told in its orientation that it has a snapshot, and until SAC-011 nothing
+// looked for it — so the one promise the product made about a directory was
+// the one whose failure reached nobody.
+func TestCheckInputsReportsAMissingSnapshot(t *testing.T) {
+	home, env := fakeHome(t, "agent")
+	for _, in := range env.Member.Inputs {
+		mustDo(t, os.WriteFile(filepath.Join(home, protocol.InputDir, in), []byte("x"), 0o600))
+	}
+	env.Member.Snapshots = []string{"reference", "spec"}
+	// One arrived, one did not.
+	mustDo(t, os.MkdirAll(filepath.Join(home, "reference"), 0o755))
+
+	out, err := captureStdout(t, func() error { cmdCheckInputs(env); return nil })
+	mustDo(t, err)
+
+	if !strings.Contains(out, "MISSING ~/spec (snapshot)") {
+		t.Errorf("a snapshot that never arrived must be reported:\n%s", out)
+	}
+	// The one that is there must not be, or every campaign fails its readback.
+	if strings.Contains(out, "~/reference") {
+		t.Errorf("a snapshot that is present must not be reported:\n%s", out)
+	}
+}
+
+// A file where a directory was meant is not a usable tree either.
+func TestCheckInputsRejectsASnapshotThatIsNotADirectory(t *testing.T) {
+	home, env := fakeHome(t, "agent")
+	for _, in := range env.Member.Inputs {
+		mustDo(t, os.WriteFile(filepath.Join(home, protocol.InputDir, in), []byte("x"), 0o600))
+	}
+	env.Member.Snapshots = []string{"reference"}
+	mustDo(t, os.WriteFile(filepath.Join(home, "reference"), []byte("not a tree"), 0o600))
+
+	out, err := captureStdout(t, func() error { cmdCheckInputs(env); return nil })
+	mustDo(t, err)
+	if !strings.Contains(out, "MISSING ~/reference (snapshot)") {
+		t.Errorf("a file given where a tree was meant must be reported:\n%s", out)
+	}
+}
+
 func TestGuardRefusal(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

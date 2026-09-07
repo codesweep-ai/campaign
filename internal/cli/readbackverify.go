@@ -22,7 +22,7 @@ func readbackPrompt(member model.Member) string {
 	return fmt.Sprintf(`This is dispatch d001: confirm your briefing before any work is assigned.
 
 1. Run: cs-campaign-member check-inputs
-   It prints any briefing file you were promised that is absent.
+   It prints anything you were promised that is absent.
 2. Read ~/%s, and then every file it lists under "inputs", in order.
 3. Write a file (e.g. /tmp/readback.json) holding EXACTLY this JSON, on a single line:
 

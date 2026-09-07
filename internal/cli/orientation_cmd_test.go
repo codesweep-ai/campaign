@@ -213,3 +213,48 @@ func TestOrientationNamesSnapshotsBesideRepos(t *testing.T) {
 		t.Errorf("repos are %v, want one named product", doc.Repos)
 	}
 }
+
+// A snapshot path that is not there must fail while it is still free. A
+// repository resolves through git and a brief is read off disk, so both fail
+// at validate; a snapshot used to pass every check on the way in (SAC-011).
+func TestSnapshotPathMustExistBeforeAnythingIsAllocated(t *testing.T) {
+	dir := t.TempDir()
+	real := filepath.Join(dir, "reference")
+	if err := os.MkdirAll(real, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(dir, "a-file")
+	if err := os.WriteFile(file, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	withSnapshot := func(path string) model.Profile {
+		p := testProfile()
+		m := p.Agents["backend"]
+		m.Snapshots = []model.Snapshot{{Path: path}}
+		p.Agents["backend"] = m
+		return p
+	}
+
+	if err := resolveSnapshots(&[]model.Profile{withSnapshot(real)}[0]); err != nil {
+		t.Errorf("a real directory must be accepted: %v", err)
+	}
+
+	missing := withSnapshot(filepath.Join(dir, "not-here"))
+	err := resolveSnapshots(&missing)
+	if err == nil {
+		t.Fatal("a snapshot path that does not exist must be refused")
+	}
+	// Named, so the operator does not have to hunt for which one.
+	for _, want := range []string{"not-here", "backend"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("refusal does not name %q: %v", want, err)
+		}
+	}
+
+	// A file where a tree was meant lands as nothing the member can walk.
+	notDir := withSnapshot(file)
+	if err := resolveSnapshots(&notDir); err == nil || !strings.Contains(err.Error(), "not a directory") {
+		t.Errorf("a file given as a snapshot must be refused as not a directory: %v", err)
+	}
+}

@@ -79,6 +79,19 @@ func cmdInbox(env *envState) error {
 	return nil
 }
 
+// cmdCheckInputs audits what member.json says this member was given, against
+// what is actually on its disk.
+//
+// It covers the frozen trees as well as the seeded files. A snapshot is named
+// in the orientation and listed here, so a member is told it has one; nothing
+// used to look for it, which made that the one promise whose failure reached
+// nobody (SAC-011). The readback walks this output, so a tree that never
+// arrived now fails create by name rather than surfacing as a member that
+// quietly ignored its reference material.
+//
+// Repositories are deliberately left out. The branch a member believes it is
+// on is compared against the recorded one in the readback, which is the same
+// question asked where the answer is already known.
 func cmdCheckInputs(env *envState) {
 	missing := 0
 	for _, in := range env.Member.Inputs {
@@ -88,8 +101,16 @@ func cmdCheckInputs(env *envState) {
 			missing++
 		}
 	}
+	for _, snap := range env.Member.Snapshots {
+		p := filepath.Join(env.Home, snap)
+		if info, err := os.Stat(p); err != nil || !info.IsDir() {
+			fmt.Printf("MISSING ~/%s (snapshot)\n", snap)
+			missing++
+		}
+	}
 	if missing == 0 {
-		fmt.Printf("all %d listed inputs present\n", len(env.Member.Inputs))
+		fmt.Printf("all %d listed inputs and %d snapshot(s) present\n",
+			len(env.Member.Inputs), len(env.Member.Snapshots))
 	}
 }
 

@@ -299,6 +299,41 @@ func resolveRepoRefs(p *model.Profile) error {
 	return nil
 }
 
+// resolveSnapshots refuses a frozen tree that is not there, before anything is
+// allocated.
+//
+// A repository resolves through git and a brief is read off disk, so a typo in
+// either fails while it is still free. A snapshot used to pass every check on
+// the way in: nothing on the host looked for the directory, and nothing in the
+// member looked for it afterwards, so the orientation named a tree the member
+// did not have. See SAC-011.
+//
+// It must be a directory, because that is what cs-sandbox shares. A file given
+// where a tree was meant lands as nothing the member can walk.
+func resolveSnapshots(p *model.Profile) error {
+	check := func(m *model.MemberProfile) error {
+		for _, snap := range m.Snapshots {
+			info, err := os.Stat(snap.Path)
+			if err != nil {
+				return fmt.Errorf("resolve snapshot %s: %w", snap.Path, err)
+			}
+			if !info.IsDir() {
+				return fmt.Errorf("resolve snapshot %s: not a directory", snap.Path)
+			}
+		}
+		return nil
+	}
+	if err := check(&p.Orchestrator); err != nil {
+		return err
+	}
+	for n, m := range p.Agents {
+		if err := check(&m); err != nil {
+			return fmt.Errorf("agent %s: %w", n, err)
+		}
+	}
+	return nil
+}
+
 const initialRepoCommitBody = "tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904\n" +
 	"author cs-campaign <cs-campaign@localhost> 0 +0000\n" +
 	"committer cs-campaign <cs-campaign@localhost> 0 +0000\n\n" +
