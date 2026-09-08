@@ -1,0 +1,18 @@
+# actionlint validates `runs-on:` against a list of GitHub-hosted runner labels
+# baked into the binary, so a label newer than the actionlint release reads as
+# unknown even though it is perfectly valid. ubuntu-26.04 is one of those: it is
+# a preview image, so no actionlint release knows the label yet.
+#
+# The key is `self-hosted-runner` because that is where actionlint reads extra
+# labels from; this runner is GitHub-hosted, not self-hosted.
+#
+# Why the jobs name it at all: the image carries podman 5.7.0, and podman below
+# 5.0 will not put pasta on its rootless network namespace. That namespace is
+# the only stack that publishes the address a microVM reaches this host at, and
+# every smoke scenario boots microVMs. GitHub's ubuntu-latest went the other
+# way, back to 24.04's podman 4.9.3, so the firecracker engine cannot run there
+# at all. cs-sandbox pins the same image, for the same reason and in a file
+# exactly like this one.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04

@@ -2,10 +2,18 @@
 # smoke tier.
 #
 # The smoke job boots real Firecracker microVMs on a hosted runner. That works
-# because ubuntu-latest does have /dev/kvm — it is root:kvm and the runner user
+# because ubuntu-26.04 does have /dev/kvm — it is root:kvm and the runner user
 # is not in that group, so it reads as absent until the job widens it. What the
 # job does not have is a credential, and it needs none: every model call is
 # served from the committed cassette by a cs-vcr on the campaign's own fabric.
+#
+# Every job here names ubuntu-26.04 rather than ubuntu-latest, and the reason is
+# the podman that image carries. The recorder joins the campaign's own network
+# and a member reaches this host at the address pasta publishes, and podman
+# below 5.0 puts pasta on a container's own network mode but never on the shared
+# rootless namespace. ubuntu-latest is 24.04, whose podman GitHub downgraded
+# below that line, so a fabric built there has no route back to the host at all.
+# cs-sandbox pins the same image for the same reason.
 #
 # The integration tier is not here. It talks to real providers and spends real
 # money, so it runs by hand on a machine with the logins (CONTRIBUTING.md).
@@ -26,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-26.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
@@ -78,7 +86,7 @@ jobs:
   # on a pull request that touched nothing.
   lint:
     name: lint (go)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -96,7 +104,7 @@ jobs:
   # .github/actionlint.yaml.
   actionlint:
     name: workflows
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -113,7 +121,7 @@ jobs:
   # reach here on the day it lands.
   prose:
     name: docs prose
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -132,7 +140,7 @@ jobs:
   # the build.
   refs:
     name: docs refs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -148,7 +156,7 @@ jobs:
   # them pass by seeing nothing.
   oss:
     name: open-source readiness
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -165,7 +173,7 @@ jobs:
   # command prints. It builds first, because every check here asks the binary.
   surface:
     name: docs surface
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -180,7 +188,7 @@ jobs:
   # this job did.
   ledger:
     name: ledger check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -197,7 +205,7 @@ jobs:
   # that stopped matching its sources. This job rebuilds it and compares.
   viewer:
     name: viewer page is current
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -226,7 +234,7 @@ jobs:
   # rather than of another repository's branch tip.
   smoke:
     name: smoke (${{ matrix.scenario }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # Per LEG, not for the tier. One scenario is minutes; a scenario that stalls
     # spends the readback ceiling and then stops, and the legs beside it are
     # unaffected because each has its own runner and its own budget. Six of
@@ -494,7 +502,7 @@ jobs:
   # somebody finds later.
   covmap:
     name: behaviour map
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -516,7 +524,7 @@ jobs:
   # which is the only one worth reporting or gating on.
   coverage:
     name: coverage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [build-test, smoke]
     if: always() && needs.build-test.result == 'success'
     timeout-minutes: 10
