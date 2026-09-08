@@ -109,7 +109,7 @@ cs-campaign ssh|fetch|transcript <campaign>[/member]  # member access
 cs-campaign archive|audit <campaign>                  # evidence
 cs-campaign ls                                        # every campaign on this host
 cs-campaign destroy <campaign>                        # teardown, and reclaim the group
-cs-campaign doctor|pin|manual|version                 # health and metadata
+cs-campaign doctor|manual|version                     # health and metadata
 ```
 
 [`MANUAL.md`](MANUAL.md) documents every command, flag and diagnostic.
