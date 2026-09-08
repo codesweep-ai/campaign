@@ -1,0 +1,22 @@
+{
+  "id": "SAC-017",
+  "title": "No document says how to start a campaign on an application that does not exist yet",
+  "type": "improvement",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "session agent, from a fresh-agent test: an agent given only the binary designed a new-application campaign and named a repository path that was never going to exist",
+  "opened": "2026-09-08",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "Nothing tells an operator what to do when the application does not exist yet.\n\nThe product handles the case well. A repository path that is absent plans as an empty repository, with a deterministic initial commit pinned and `initialize` set, and planning creates nothing. An unborn git repository is adopted on main. A directory that holds files and is not a repository is refused rather than adopted in silence.\n\nProved by probe. Running plan with `--repo` pointed at an absent path exits 0 and leaves the parent directory empty. The pinned initial commit is derived rather than read, so every host computes the same one.\n\nNo document a reader can reach says any of it. MANUAL names no initial commit and no adoption rule. PLAYBOOK describes a repository as a writable clone at the campaign's base commit and never covers the case where there is nothing to clone. SPEC R123 requires the behaviour, and it is written as a rule for the implementation rather than as guidance for an operator.\n\nThe cost showed up in a test. An agent given only the binary was asked to design a campaign building a new task-tracking application. It read the playbook and then wrote a placeholder repository path into its profile. Nothing it could reach told it what the tool does with a path that is not there.\n\nBuilding something new is one of the strongest reasons to run a campaign, so this is a path an operator meets early.",
+  "notes": [],
+  "links": [
+    "SAC-013"
+  ]
+}
