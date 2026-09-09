@@ -209,7 +209,7 @@
               "type": "function"
             },
             {
-              "description": "\n        Available model overrides (optional; inherited parent model is preferred):\n- `gpt-5.6-sol`: Reliable agentic workhorse for everyday tasks. Reasoning efforts: low (default), medium, high, xhigh, max, ultra. Service tiers: priority.\n- `gpt-5.6-terra`: Balanced agentic coding model for everyday work. Reasoning efforts: low, medium (default), high, xhigh, max, ultra. Service tiers: priority.\n- `gpt-5.6-luna`: Fast and affordable agentic coding model. Reasoning efforts: low, medium (default), high, xhigh, max. Service tiers: priority.\n- `gpt-5.5`: Proven previous-generation model for coding and general work. Reasoning efforts: low, medium (default), high, xhigh. Service tiers: priority.\n- `gpt-5.4-mini`: Small, fast, and cost-efficient model for simpler coding tasks. Reasoning efforts: low, medium (default), high, xhigh.\n        Spawns an agent to work on the specified task. If your current task is `/root/task1` and you spawn_agent with task_name \"task_3\" the agent will have canonical task name `/root/task1/task_3`.\nYou are then able to refer to this agent as `task_3` or `/root/task1/task_3` interchangeably. However an agent `/root/task2/task_3` would only be able to communicate with this agent via its canonical name `/root/task1/task_3`.\nThe spawned agent will have the same tools as you and the ability to spawn its own subagents.\n\nOnly call this tool for a concrete, bounded subtask that can run independently alongside useful local work; otherwise continue locally.\nIt will be able to send you and other running agents messages, and its final answer will be provided to you when it finishes.\nThe new agent's canonical task name will be provided to it along with the message.\n\nNote that passing `fork_turns=\"none\"` will not pass any surrounding context to the spawned subagent, which may cause the agent to lack the context it needs to complete its task, whereas `fork_turns=\"all\"` will provide the subagent with all surrounding context.",
+              "description": "\n        Available model overrides (optional; inherited parent model is preferred):\n- `gpt-5.6-sol`: Reliable agentic workhorse for everyday tasks. Reasoning efforts: low (default), medium, high, xhigh, max, ultra. Service tiers: priority.\n- `gpt-5.6-terra`: Balanced agentic coding model for everyday work. Reasoning efforts: low, medium (default), high, xhigh, max, ultra. Service tiers: priority.\n- `gpt-5.6-luna`: Fast and affordable agentic coding model. Reasoning efforts: low, medium (default), high, xhigh, max. Service tiers: priority.\n- `gpt-5.5`: Proven previous-generation model for coding and general work. Reasoning efforts: low, medium (default), high, xhigh. Service tiers: priority.\n        Spawns an agent to work on the specified task. If your current task is `/root/task1` and you spawn_agent with task_name \"task_3\" the agent will have canonical task name `/root/task1/task_3`.\nYou are then able to refer to this agent as `task_3` or `/root/task1/task_3` interchangeably. However an agent `/root/task2/task_3` would only be able to communicate with this agent via its canonical name `/root/task1/task_3`.\nThe spawned agent will have the same tools as you and the ability to spawn its own subagents.\n\nOnly call this tool for a concrete, bounded subtask that can run independently alongside useful local work; otherwise continue locally.\nIt will be able to send you and other running agents messages, and its final answer will be provided to you when it finishes.\nThe new agent's canonical task name will be provided to it along with the message.\n\nNote that passing `fork_turns=\"none\"` will not pass any surrounding context to the spawned subagent, which may cause the agent to lack the context it needs to complete its task, whereas `fork_turns=\"all\"` will provide the subagent with all surrounding context.",
               "name": "spawn_agent",
               "parameters": {
                 "additionalProperties": false,
@@ -338,7 +338,7 @@
     {
       "content": [
         {
-          "text": "I’ll load the campaign manifest and all declared inputs first, then execute dispatch d002 and submit the required summary through the campaign CLI.",
+          "text": "I’ll load the campaign manifest and all listed inputs first, then follow `d002.md` exactly and submit the requested summary through the campaign CLI.",
           "type": "output_text"
         }
       ],
@@ -347,47 +347,21 @@
       "type": "message"
     },
     {
-      "call_id": "call_QBh7CZHxFm0cecYJhb23ntqr",
-      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,240p' ~/.config/cs-campaign/member.json && sed -n '1,260p' ~/.local/share/cs-campaign/input/d002.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output);\n",
+      "call_id": "call_p4IZ2SoBSWYX7nhgDR5LsXet",
+      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,240p' /home/<USER:1>/.config/cs-campaign/member.json && printf '\\\\n--- d002 ---\\\\n' && sed -n '1,260p' /home/<USER:1>/.local/share/cs-campaign/input/d002.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output);\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_QBh7CZHxFm0cecYJhb23ntqr",
+      "call_id": "call_p4IZ2SoBSWYX7nhgDR5LsXet",
       "output": [
         {
           "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "{\n  \"campaign\": \"csrcxsub\",\n  \"member\": \"dev\",\n  \"role\": \"agent\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"fbd9e7e9a920575b3844a40b19899d2b40d85e1f\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-09-06T05:30:24.991678201Z\"\n}\n# Implement and test the greet mission\n\nIn your `subject` repository, deliver exactly the following:\n\n- Create `src/greet.py` with `greet(name)` returning `\"Hello, <name>!\"`.\n- Create `tests/test_greet.py` with unit tests covering both a normal name and the empty string.\n- Ensure `python3 -m unittest discover -s tests` exits 0.\n\nKeep the change narrowly scoped. Run the required test command, inspect the final diff, commit all mission work to your own branch, and reply with the commit hash, files changed, and test result. Your role owns the subject repository; do not omit the commit.\n",
-          "type": "input_text"
-        }
-      ],
-      "type": "custom_tool_call_output"
-    },
-    {
-      "encrypted_content": "gAAAAABqnOzHJOqTzgPni2Q3-fNKIiIJ4_P48DFNzt4WCmCBOF3SrnciqVsPGAOeMbi23-SRtF8_5_BJzqvUiW1nCpDGspuvXASCGObFHEUtKIiq510R--oGjKM8oFk8ySWki9hnDOg-9pW903335KYraD10obbnsLsPFcjXmX_GEV1M5goV2P8bSscFZ4B9RGRdfR0QZbgZ2o8Z6daAr0oY-g6Tz4uHbS281eozIofF2BsIPn4uduVonT-i_avCwS5LuK-9lKGHpaN4Tb0mPP_D_iczdk3L0dGYexqlhMIGY-t9JfD2JCCxoKS3zlh3iNKlncZIhJE2q0bAzymKHxQ7IF0OJz_VoW0Kn4I0heOOd7B6qLIAlYpveGBGz6oH75xOOMiIFrPd-g_0-nVnjRyJHeb6WBXeLr9sHocW-SKptqfd9pYe7_6HCOjBevI-yk1Y_boBK9EDZTyTGPlPsVzxow2h6IZBCK6lzV4pI5LTw2ZFQ8460-PMFO1MvLqHhSl25aQWarZzVW3DCR_EINNEwwQ-ye8YKEUN3IUdaRDBpY74-cAw3B119WLU1wxlg32lFwojZli3iakLAYNvRRaSfo69QU6fcFu_7rd5Vop6LGgHcZ2Ke5AXM_7QKJKaCAje-YChtAmhFkdki9UUwAl6AtthRdDYJO6SSEnTneRZWh7_oA_3NxyT_ZZG3TndSDTA9sR85gjD4M8sctkeCL52Va9cK1ccrZM1hOF8M9w1M395gG8t53xT0iIbJKbBZEZMzcQ9gxGK62lOgbPQYMxA0vozdKaJ66ngOoKEzLh2w47pg0OI0QrcBHAO8Mj4CSX0VCm2qfJ6qVr9YCxOcE5zXm1oXeKnWr4LZ9-xFI0JWerPSVlQia-RUqDQGmwZ0GF_vh63myi2qD3uqIdfnsAxBO_LhfVxrK4jwC7QKwZWXUSwmuLLbz3RdLbJpW5xN-5RebyU6s0ysX14JDTVMhjy2qaPL2LtnaIlOSoCHGuSBAAItGSLztaRX9Zn7PgzKTG_F9AiJuC85-mpJTtdJV0jLfYzcLccUqCCgOxkfF7mAFNI36ZaeMaMxTYggBjU9N4OWPtREYF-D9ZZa1rhD3tMT0KZ5gVZVtBQD7wlmtv73EFNN4cduDEZ_kS-wjWVhKOZN5tghgciAUUSEu8YdGJZWOX3bgH1Bp-eToTTGZla1unXRJvFqxq7ZINq7pguahrd7Iyxihesnd_AoQtuz8ZPbXQ3iFyHSAJurIUA0j6O9WM-i5UpGXKp3bfVxodUFhLSR8E4gM42wg7-G6_rsuIMJjWqhci6nLk1cwT5y1DjqKM84iYlY7C79BGDgMKTfa5oyXt6Npca21_8ObV6ys6rpO1NkW6Oeg==",
-      "summary": [],
-      "type": "reasoning"
-    },
-    {
-      "call_id": "call_gUWD7pk2sOFIIOeBncnNHUrB",
-      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,260p' ~/.local/share/cs-campaign/input/ORIENTATION.md && sed -n '1,260p' ~/.local/share/cs-campaign/input/dev.md && find /home/<USER:1> -maxdepth 3 -type d -name .git -print\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":30000}); text(r.output);\n",
-      "name": "exec",
-      "status": "completed",
-      "type": "custom_tool_call"
-    },
-    {
-      "call_id": "call_gUWD7pk2sOFIIOeBncnNHUrB",
-      "output": [
-        {
-          "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
-          "type": "input_text"
-        },
-        {
-          "text": "# Campaign member orientation\n\nYou are `dev`, running as the **agent** of campaign `csrcxsub`.\n\nThis file is written by the harness at creation. It describes your environment and\nthe one rule everything runs on. It does not describe the work — that is in the\nfiles listed below.\n\n## What you have\n\n- **`~/subject`** — your own clone of the repository, on branch `cs-sandbox/<DEV:1>.<GROUP:1>`.\n  Nobody else commits to that branch.\n\nFiles placed in `~/.local/share/cs-campaign/input` for you:\n\n- `dev.md`\n\n**Read all of them before you begin.** They are the only statement of what you are\nhere to do.\n\n## The one rule\n\nWork reaches you as **dispatches** — read your current one with\n`cs-campaign-member inbox`. A dispatch stays open until you close it:\n\n    cs-campaign-member reply --file <path-to-your-summary>\n\n**Do not stop until you have replied.** If you end your turn without a reply, the\nwork is not done in anyone's eyes but yours: you will simply be prodded to reply,\nand your unsaved reasoning may be gone. Reply, then stop.\n\nTwo more obligations, both irreversible if skipped:\n\n- **Commit your work to your own branch.** Your machine is destroyed at the end of\n  the campaign; a commit on your branch is the only way anything survives. Your\n  reply automatically records whether your branch really differs from its base —\n  an empty branch under a confident reply speaks for itself.\n- **Write durable results to `~/.local/share/cs-campaign/output`** — reports, findings, anything\n  that should outlive the run and is not source code.\n\n## Reporting\n\nYou have no route to the orchestrator or to any other member. You cannot ask\nquestions, and nothing you write travels on its own. The orchestrator sees three\nthings — make all three count:\n\n- **Your branch** — it fetches and inspects your commits. The real record.\n- **Your reply** — what you did, what you changed, whether your tests passed, and\n  anything you could not do. This is the only message it receives from you.\n- **`~/.local/share/cs-campaign/output`** — files you leave there, readable on request.\n\nIf you are blocked or believe your task is wrong, say so plainly **in a reply**\n(`cs-campaign-member reply --needs-input --file …`) and stop. Do not expand your\nscope to work around it, and do not guess at what was meant.\nYou own the subject repository.\n\nImplement exactly what each dispatch asks, run the tests you write, commit to\nyour own branch before replying, and tell the truth in your reply.\n/home/<USER:1>/subject/.git\n",
+          "text": "{\n  \"campaign\": \"csrcxsub\",\n  \"member\": \"dev\",\n  \"role\": \"agent\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"d786e1d144c1562a80d16c0f8e76c8afa03c4b29\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-09-09T05:36:29.685546067Z\"\n}\n\n--- d002 ---\n# Dev dispatch: implement mission m1\n\nIn your `subject` repository, implement the complete mission exactly:\n\n- Deliver `src/greet.py` defining `greet(name)` and returning exactly `Hello, <name>!`.\n- Deliver `tests/test_greet.py` with tests covering both a normal name and the empty string.\n- Ensure `python3 -m unittest discover -s tests` exits 0.\n\nKeep the change minimal and scoped to this request. Run the specified test command, inspect the result, commit all requested work to your own branch, and reply with a concise summary including the commit and test result. Do not leave required work uncommitted.\n",
           "type": "input_text"
         }
       ],
