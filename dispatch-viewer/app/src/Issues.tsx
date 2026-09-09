@@ -54,6 +54,11 @@ export function Issues({ run, events, onSelect }: IssuesProps) {
           />
         </span>
       ),
+      // A badge, not text: Table.md asks for wrap on a column holding
+      // structured elements, which keeps it out of the truncating cell and
+      // its tooltip. Without this the bubble would offer the badge's text
+      // back to a reader who can already see it.
+      wrap: true,
     },
     {
       id: "code",
