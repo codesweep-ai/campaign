@@ -1,0 +1,22 @@
+{
+  "id": "SAC-023",
+  "title": "A campaign with no repository validates, plans, and has nowhere to put the work",
+  "type": "defect",
+  "severity": "high",
+  "status": "open",
+  "foundBy": "session agent, from a fresh-agent test: an agent given only the binary designed a campaign to build an application and declared no repository at all",
+  "opened": "2026-09-09",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "A profile that gives no member a repository passes `validate` and `plan`, and every member is recorded with a branch that nothing can ever create.\n\nR116 requires the orchestrator and every agent to be seeded with separate clones. R38 requires every member to commit its work to its own branch, because harvesting reads a branch and work that is never committed dies with the machine. A member with no clone can meet neither.\n\nProved by probe. A profile declaring three members and no repositories validates with exit 0, and `plan` prints all three with an empty repository list and a branch name each. The failure surfaces after the machines are provisioned and billing, when work has nowhere to go.\n\nThe gap was found by an agent given only the binary and asked to set up a campaign building a new application. It read the documentation on repositories and then declared none, and its own report says why. It could not tell whether the campaign creates the repository or expects one, where the repository should live, or how the base commit is chosen for something new.\n\nThe documentation answers a different question than the one an operator asks. It says what the tool does with a path that is absent. It never says that a repository is the only place a member can put work. Declaring none should not be a choice an operator can make by accident.",
+  "notes": [],
+  "links": [
+    "SAC-017"
+  ]
+}
