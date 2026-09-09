@@ -1,0 +1,24 @@
+{
+  "id": "SAC-021",
+  "title": "The mission stub names two outcome values the product does not have",
+  "type": "defect",
+  "severity": "med",
+  "status": "closed",
+  "foundBy": "user report (host), reading the scaffolded comments: \"they seem very esoteric, stated as if some obscure concepts must be pre-known\"",
+  "opened": "2026-09-09",
+  "resolved": "2026-09-09",
+  "stint": "2026-09-09 scaffold prompts session",
+  "evidence": {
+    "commits": [
+      "6040dba"
+    ],
+    "integrated": [],
+    "verified": "go test ./internal/cli/ -run TestScaffoldPromptsDoNotInventVocabulary -count=1: PASS. Proved by mutation: putting `Met` back into the mission stub fails it by name. End to end, init's closing output now names the playbook, and MANUAL's sample of that output matches the binary, which SURF-303 checks. make check exit 0."
+  },
+  "resolution": "The mission stub carries no outcome value. It says the orchestrator ends with one of four, that every one but success names what is unmet, and sends the reader to the playbook for the list. Deleting the vocabulary rather than correcting it removes the surface the drift came from. TestScaffoldPromptsDoNotInventVocabulary refuses a stub that spells one again.",
+  "details": "`init` scaffolds a mission whose comments name outcomes that do not exist.\n\nThe stub calls the definition of done \"what an outcome of `Met` will be judged against\". It also names \"a `Converged` report\" that must name gaps relative to it. The product has four values and neither of those is among them. `protocol.Outcomes` is `campaign-met`, `campaign-converged`, `campaign-exhausted` and `campaign-blocked`.\n\nAn author writes the mission against the vocabulary the stub gave them, and meets the real one when reading the campaign's verdict at the end. The two outcomes the stub omits are the two an operator most needs to tell apart. Whether effort was ever the problem separates `campaign-exhausted` from `campaign-blocked`, and each implies a different move.\n\nThe drift has a cause worth fixing rather than patching. The stub restates a vocabulary that is defined elsewhere, so it can disagree with it. PLAYBOOK carries the four values in a table with what each means for the operator, and MANUAL carries them too. Nothing held the stub against either.\n\nThe same pass should reach the comments around it. They allude to concepts an author has not met. One names an obligation as irreversible rather than saying that uncommitted work dies with the machine. Another calls a brief standing context without introducing the term.",
+  "notes": [],
+  "links": [
+    "SAC-018"
+  ]
+}
