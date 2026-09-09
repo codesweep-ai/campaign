@@ -1,0 +1,22 @@
+{
+  "id": "SAC-024",
+  "title": "A mission can name outcome values the product does not have, and nothing says so",
+  "type": "defect",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "session agent, from a fresh-agent test: the mission it wrote declared campaign-partial and campaign-unmet, and briefed the orchestrator to reply with one of them",
+  "opened": "2026-09-09",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "A seeded document can declare an outcome vocabulary the product will reject, and every pre-spend command accepts it.\n\nAn agent given only the binary wrote a mission naming `campaign-met`, `campaign-partial` and `campaign-unmet`. Two of those do not exist. The values are `campaign-met`, `campaign-converged`, `campaign-exhausted` and `campaign-blocked`. It then briefed the orchestrator to close the campaign with `campaign-partial`, which the reply verb refuses.\n\nThe failure lands late and expensively. The mission is seeded at create, the orchestrator works the whole campaign against a vocabulary it cannot use, and the refusal arrives when it tries to report. Nothing before that reads the words.\n\nThis is not a documentation gap. MANUAL states the four values in the same sentence as the `--outcome` flag, and the agent cited that sentence. It had the vocabulary and wrote different words anyway.\n\nChecking it is not grading content, which R50 forbids. The outcome vocabulary is a closed set the product owns, in the way the `--set` override paths are a closed allowlist. A seeded document that names a value outside the set is wrong however good the prose around it is.\n\nThe same shape was fixed once already in the scaffolded mission, which named `Met` and `Converged`. Removing the stub took away that instance and left the class in place.",
+  "notes": [],
+  "links": [
+    "SAC-021"
+  ]
+}
