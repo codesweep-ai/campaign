@@ -3,19 +3,26 @@
   "title": "A campaign with no repository validates, plans, and has nowhere to put the work",
   "type": "defect",
   "severity": "high",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, from a fresh-agent test: an agent given only the binary designed a campaign to build an application and declared no repository at all",
   "opened": "2026-09-09",
-  "resolved": null,
-  "stint": null,
+  "resolved": "2026-09-09",
+  "stint": "2026-09-09 scaffold prompts session",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "b967ffb"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "go test ./... -count=1: every package passes. TestAFleetWithNoRepositoryIsRefused covers three cases. A fleet with none is refused and names every member. A fleet whose agents lack one is refused by agent name. A whole fleet passes. End to end, the profile the test agent produced now exits 1 and names orchestrator, backend and frontend. Eleven existing tests had to gain a repository, which measures how reachable the old behaviour was. make check exit 0."
   },
-  "resolution": null,
+  "resolution": "`validate`, `plan` and `create` refuse a member with no repository, before anything is provisioned. The refusal names each member and says what to do. It covers the case the operator is most likely to be in: an application that does not exist yet, where you name the path it should live at.\n\nThe check sits in the planning path rather than in profile parsing. `init` scaffolds a profile with no repository yet, and adding one is the first edit an author makes.\n\nPLAYBOOK leads with the decision. Its heading says repositories and snapshots rather than trees, so it uses the word an operator looks for. It opens by saying a campaign that declares none has nowhere to put its work. The three ways a path resolves are a table in both documents, because the run-on sentences they replaced were read as one wrong rule.",
   "details": "A profile that gives no member a repository passes `validate` and `plan`, and every member is recorded with a branch that nothing can ever create.\n\nR116 requires the orchestrator and every agent to be seeded with separate clones. R38 requires every member to commit its work to its own branch, because harvesting reads a branch and work that is never committed dies with the machine. A member with no clone can meet neither.\n\nProved by probe. A profile declaring three members and no repositories validates with exit 0, and `plan` prints all three with an empty repository list and a branch name each. The failure surfaces after the machines are provisioned and billing, when work has nowhere to go.\n\nThe gap was found by an agent given only the binary and asked to set up a campaign building a new application. It read the documentation on repositories and then declared none, and its own report says why. It could not tell whether the campaign creates the repository or expects one, where the repository should live, or how the base commit is chosen for something new.\n\nThe documentation answers a different question than the one an operator asks. It says what the tool does with a path that is absent. It never says that a repository is the only place a member can put work. Declaring none should not be a choice an operator can make by accident.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-09",
+      "text": "Found by the second fresh-agent test rather than by review. The same run showed the integer gates gone, which was the point of the earlier work, so the test earned its keep twice. It also showed that a brief's headings are not followed now that nothing scaffolds them. That is a separate question about the document SAC-013 covers."
+    }
+  ],
   "links": [
     "SAC-017"
   ]
