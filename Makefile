@@ -476,10 +476,10 @@ setup-smoke: tools
 ## supplies cs-sandbox, cs-vcr and the agent tools, and the tier skips itself,
 ## saying which, where the host cannot carry it.
 ##
-## -p 1 because the members share one host's memory, one fabric address range
-## and one pool of gateway ports. -v because a run boots machines and would
-## otherwise print nothing for minutes — and because a tier that skipped
-## everything looks exactly like one that passed.
+## -p 1 bounds the PACKAGES that run at once, and only one package has these
+## tests. What bounds the scenarios is -parallel, below. -v because a run boots
+## machines and would otherwise print nothing for minutes — and because a tier
+## that skipped everything looks exactly like one that passed.
 ##
 ## -timeout is a deadlock detector rather than a budget: sized far above the
 ## real runtime so that when a member wedges it is Go that ends the run and
@@ -490,6 +490,30 @@ setup-smoke: tools
 ## every unit test in internal/cli — which `make test` already ran, under a
 ## timeout sized for booting virtual machines.
 SMOKE_TESTS ?= TestSmokeReplay
+
+## SMOKE_PARALLEL: how many scenarios boot at once.
+##
+## The tier is written to run them in parallel and this is 1 anyway, because
+## cs-sandbox cannot yet carry it. Two `cs-sandbox create` calls in DIFFERENT
+## groups, started at the same moment, leave one microVM two minutes short of
+## its ready marker and the create times out; run one after the other the same
+## two take six seconds each. Reproduced against cs-sandbox alone, with no
+## campaign involved, so nothing here can work around it.
+##
+## Nothing else stands in the way. A scenario is a campaign, a campaign is a
+## group, and a group is its own isolated network carrying its own members, its
+## own lender and its own recorder. The tier publishes no host port, so there is
+## no fixed number left for a second scenario to want, and two of them were
+## measured sharing a machine without touching each other's cassettes.
+##
+## Raise it once cs-sandbox serialises or fixes that setup. At 3 the tier ran in
+## 204s against 631s serial — worth having — but two scenarios of six failed on
+## the boot bound, and at 2 a different two failed. CI is unaffected either way:
+## each scenario has a runner to itself there, so this number never binds.
+##
+## `?=` so a machine that has the fix can say so:
+##   make test-smoke SMOKE_PARALLEL=3
+SMOKE_PARALLEL ?= 1
 
 ## The wait loop's poll interval, shortened for this tier alone. The campaign's
 ## own number is sized for turns that take minutes; a replayed turn answers in
@@ -521,7 +545,7 @@ test-smoke: setup-smoke
 	  CS_CAMPAIGN_POLL_SECONDS=$(CS_CAMPAIGN_POLL_SECONDS) \
 	  CS_CAMPAIGN_WAIT_SECONDS=$(CS_CAMPAIGN_WAIT_SECONDS) \
 	  CS_COVERDIR=$(COVER_ABS)/smoke go test -tags smoke $(COVERFLAGS) \
-	  -count=1 -p 1 -v -timeout 2400s -run '$(SMOKE_TESTS)' ./internal/cli \
+	  -count=1 -p 1 -parallel $(SMOKE_PARALLEL) -v -timeout 2400s -run '$(SMOKE_TESTS)' ./internal/cli \
 	  -args -test.gocoverdir=$(COVER_ABS)/smoke
 
 # A credential a live scenario needs, kept out of the tree and out of every

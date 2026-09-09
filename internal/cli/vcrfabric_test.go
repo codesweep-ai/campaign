@@ -74,6 +74,11 @@ type vcrProxy struct {
 	// and stdin is the pipe whose closing tells it to.
 	reaper *exec.Cmd
 	stdin  io.WriteCloser
+	// logf is the test's own log, held because the teardown runs from a
+	// t.Cleanup and still has things to say. Printing straight to stdout was
+	// fine while scenarios ran one at a time; three at once interleave, and go
+	// test attributes a t.Logf to the scenario that wrote it.
+	logf func(string, ...any)
 }
 
 // errVCRUnavailable says this host cannot run the proxy at all, which is a
@@ -109,7 +114,7 @@ func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string) (
 	if err != nil {
 		return nil, err
 	}
-	p := &vcrProxy{name: name, group: group, store: store}
+	p := &vcrProxy{name: name, group: group, store: store, logf: t.Logf}
 	args := []string{"run", "-d", "--name", name}
 	// The group's own network, under the alias every member is aimed at, and no
 	// port on this host at all.
@@ -202,13 +207,13 @@ func (p *vcrProxy) stop() {
 		// sixty.
 		if p.diag != "" {
 			if err := os.WriteFile(filepath.Join(p.diag, "proxy.log"), out, 0o600); err == nil {
-				fmt.Printf("cs-vcr %s full log: %s\n", p.name, filepath.Join(p.diag, "proxy.log"))
+				p.logf("cs-vcr %s full log: %s", p.name, filepath.Join(p.diag, "proxy.log"))
 			}
 		}
-		fmt.Printf("cs-vcr %s summary:\n%s\n", p.name, tail(string(out), 20))
+		p.logf("cs-vcr %s summary:\n%s", p.name, tail(string(out), 20))
 	}
 	if dumped, err := filepath.Glob(filepath.Join(p.diag, "[0-9]*.json")); err == nil && len(dumped) > 0 {
-		fmt.Printf("cs-vcr %s dumped %d missed request(s) in %s\n", p.name, len(dumped), p.diag)
+		p.logf("cs-vcr %s dumped %d missed request(s) in %s", p.name, len(dumped), p.diag)
 	}
 	// The reaper is what removes this container when the run dies without
 	// unwinding. Here the run is unwinding, so close its pipe and let it go

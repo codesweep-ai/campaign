@@ -1082,11 +1082,12 @@ A scenario this host cannot sign in for skips with the credential it wants, whic
 reports what one more login would cover. One further test drives a mixed team, because a helper
 that routes by declared CLI is only exercised when the two members differ.
 
-The verb decides where cs-vcr sits, because it decides who dials it. An inheriting member holds the
-credential and reaches the recorder itself, on the campaign fabric. A lent member holds a loan
-token, and the lender on the host swaps it for the credential and dials the recorder from there.
-The same proxy therefore publishes a loopback port as well. No route runs from this host into the campaign's
-rootless network, which is the whole reason for the second door.
+The verb decides who dials cs-vcr, and both callers now reach it in the same place. An inheriting
+member holds the credential and dials the recorder itself. A lent member holds a loan token, and it
+is the lender that swaps it for the credential and dials the recorder. `cs-sandbox` runs that lender
+as a container on the campaign's own network. It resolves the recorder's alias exactly as a member
+does, so the tier publishes no host port for either caller. That is what lets two campaigns replay
+at once: an alias is scoped to the network it is on, where a published port is one per machine.
 
 The replay tier runs every scenario, and so does CI. `opencode-fireworks` was once left out: on a
 two-core runner its member never got its turn started. The driver behind that has since been fixed.

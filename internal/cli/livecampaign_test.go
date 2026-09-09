@@ -567,7 +567,14 @@ func runLiveCampaign(t *testing.T, sc scenario, opts runOptions) campaignRun {
 // with it.
 func fabricatedCredentials(t *testing.T, token string) {
 	t.Helper()
-	t.Setenv("CS_SANDBOX_AGENT_HOME", credentialTree(t, token))
+	home := credentialTree(t, token)
+	// Same reason as ensureGuestBinary: one tree for the process, planted by
+	// whoever gets here first, and a parallel scenario must not try to plant it
+	// again.
+	if os.Getenv("CS_SANDBOX_AGENT_HOME") == home {
+		return
+	}
+	t.Setenv("CS_SANDBOX_AGENT_HOME", home)
 }
 
 // credentialTree builds the fabricated tree ONCE for the whole process, and

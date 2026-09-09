@@ -118,9 +118,10 @@ printf %s "$OPENAI_API_KEY" > ~/.cs-keys/openai
 chmod 600 ~/.cs-keys/openai
 ```
 
-A login and a provider key are **lent** to a member. `cs-sandbox` runs a lender on this host, the
-member gets a token worth nothing anywhere else, and your own credential never leaves the host. That
-is the default, and [`MANUAL.md`](MANUAL.md) says how a profile asks for the copy instead.
+A login and a provider key are **lent** to a member. `cs-sandbox` runs a lender for the campaign's
+group, the member gets a token worth nothing anywhere else, and your own credential never leaves
+this machine. That is the default, and [`MANUAL.md`](MANUAL.md) says how a profile asks for the copy
+instead.
 
 ## 4. Install the cs-sandbox this build names
 
