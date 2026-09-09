@@ -505,9 +505,16 @@ SMOKE_TESTS ?= TestSmokeReplay
 ## than for this repository's CI, where each scenario has a runner to itself and
 ## this number never binds.
 ##
-## Measured on a 28-core host: 631s serial, 434s at 3, all six green both ways.
-## The ceiling is codex-subscription at 366s, which no amount of parallelism
-## moves — past three, the tier costs what that one scenario costs.
+## Measured on a 28-core host: 631s serial, 142s at 3, all six green both ways.
+## Every scenario now costs 63s to 75s, so there is no long pole and the tier
+## costs one batch per three scenarios. Raising this to 6 would buy one batch,
+## about 75s, for twelve concurrent GiB of guest.
+##
+## It was not always so. codex-subscription used to cost 366s on its own and set
+## a ceiling nothing could move, which is what this number was first sized
+## against. That turned out to be VCR-023 rather than the scenario: a straggling
+## startup probe rewound the replay window behind the session, and the client
+## spent four minutes backing off from the miss that followed.
 ##
 ## It needs a cs-sandbox that can create two groups at once. Before SBX-037 that
 ## was not true of any release: two creates started together both reserved the
