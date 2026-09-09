@@ -493,27 +493,30 @@ SMOKE_TESTS ?= TestSmokeReplay
 
 ## SMOKE_PARALLEL: how many scenarios boot at once.
 ##
-## The tier is written to run them in parallel and this is 1 anyway, because
-## cs-sandbox cannot yet carry it. Two `cs-sandbox create` calls in DIFFERENT
-## groups, started at the same moment, leave one microVM two minutes short of
-## its ready marker and the create times out; run one after the other the same
-## two take six seconds each. Reproduced against cs-sandbox alone, with no
-## campaign involved, so nothing here can work around it.
+## A scenario is a campaign, a campaign is a cs-sandbox group, and a group is an
+## isolated network carrying its own members, its own lender and its own
+## recorder under the same alias. Two of them share nothing they can collide
+## over: the tier publishes no host port, so there is no fixed number left for a
+## second scenario to want.
 ##
-## Nothing else stands in the way. A scenario is a campaign, a campaign is a
-## group, and a group is its own isolated network carrying its own members, its
-## own lender and its own recorder. The tier publishes no host port, so there is
-## no fixed number left for a second scenario to want, and two of them were
-## measured sharing a machine without touching each other's cassettes.
+## Three, because that is what the machine rather than the design decides. A
+## scenario is two microVMs at 1 GiB each, so three is around 6 GiB of guest
+## plus the host side of six VMs. It is chosen for a developer laptop rather
+## than for this repository's CI, where each scenario has a runner to itself and
+## this number never binds.
 ##
-## Raise it once cs-sandbox serialises or fixes that setup. At 3 the tier ran in
-## 204s against 631s serial — worth having — but two scenarios of six failed on
-## the boot bound, and at 2 a different two failed. CI is unaffected either way:
-## each scenario has a runner to itself there, so this number never binds.
+## Measured on a 28-core host: 631s serial, 434s at 3, all six green both ways.
+## The ceiling is codex-subscription at 366s, which no amount of parallelism
+## moves — past three, the tier costs what that one scenario costs.
 ##
-## `?=` so a machine that has the fix can say so:
-##   make test-smoke SMOKE_PARALLEL=3
-SMOKE_PARALLEL ?= 1
+## It needs a cs-sandbox that can create two groups at once. Before SBX-037 that
+## was not true of any release: two creates started together both reserved the
+## same tap prefix, and the second brought its tap up over the first group's, so
+## two of six scenarios failed on a boot timeout that named nothing.
+##
+## `?=` so a smaller machine can say so:
+##   make test-smoke SMOKE_PARALLEL=1
+SMOKE_PARALLEL ?= 3
 
 ## The wait loop's poll interval, shortened for this tier alone. The campaign's
 ## own number is sized for turns that take minutes; a replayed turn answers in
