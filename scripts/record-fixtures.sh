@@ -67,12 +67,24 @@ source_home=${CS_SANDBOX_AGENT_HOME:-$HOME}
 
 # The recording does not read that tree directly. CS_SANDBOX_AGENT_HOME moves
 # the whole lookup, logins and keys together, so the run gets a scratch tree
-# instead: the logins are symlinked, so no credential is copied anywhere, and
-# the three keys are written from .env for the lender to read. Nothing lands in
-# the developer's home, which now needs no ~/.cs-keys at all.
+# instead: the logins are copied in and the three keys are written from .env,
+# both for the lender to read. Nothing lands in the developer's home, which now
+# needs no ~/.cs-keys at all.
 #
-# Removed on exit. A SIGKILL is the one case that leaves the keys behind, and
-# they are mode 600 inside a mode 700 directory when it does.
+# The logins were symlinked here once, to avoid copying a credential at all.
+# That stopped working when the lender became a container: it bind-mounts this
+# tree and nothing else, so a symlink pointing out of the tree dangles inside
+# the container and the login reads as absent. What that looked like was not an
+# error but a hang — the lender reported the missing file per request while the
+# campaign waited for turns that could never come, and cs-vcr recorded nothing
+# in twelve minutes.
+#
+# Copying is also the honest shape for this tree, which was already copying the
+# part that matters most: the three provider keys are written here in plaintext.
+# Symlinking the logins bought no secrecy the keys were not already spending.
+#
+# Removed on exit. A SIGKILL is the one case that leaves anything behind, and
+# it is mode 600 inside a mode 700 directory when it does.
 creds_tree=
 cleanup_creds() { [[ -n $creds_tree ]] && rm -rf -- "$creds_tree"; }
 trap cleanup_creds EXIT
@@ -81,7 +93,9 @@ lend_tree() {
   creds_tree=$(mktemp -d "${TMPDIR:-/tmp}/cs-campaign-record-creds.XXXXXX")
   chmod 700 "$creds_tree"
   for agent in claude codex; do
-    [[ -e $source_home/.cs-$agent ]] && ln -s "$source_home/.cs-$agent" "$creds_tree/.cs-$agent"
+    # -a to keep the modes the wrapper wrote: a login is mode 600 at the source
+    # and has to stay that way here.
+    [[ -e $source_home/.cs-$agent ]] && cp -a "$source_home/.cs-$agent" "$creds_tree/.cs-$agent"
   done
   mkdir -m 700 "$creds_tree/.cs-keys"
   write_key() { printf %s "${!2}" > "$creds_tree/.cs-keys/$1"; chmod 600 "$creds_tree/.cs-keys/$1"; }
@@ -237,8 +251,9 @@ read -r -p "Type 'record' to continue: " answer
 echo
 lend_tree
 echo "Credentials for this run: $CS_SANDBOX_AGENT_HOME"
-echo "  .cs-claude, .cs-codex   symlinks to $source_home"
-echo "  .cs-keys/*              written from .env, removed when this exits"
+echo "  .cs-claude, .cs-codex   copied from $source_home"
+echo "  .cs-keys/*              written from .env"
+echo "  the whole tree           mode 700, removed when this exits"
 echo
 make record-fixtures-strict FIXTURE_TESTS="$fixture_tests"
 

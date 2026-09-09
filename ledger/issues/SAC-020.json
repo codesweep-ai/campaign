@@ -1,0 +1,35 @@
+{
+  "id": "SAC-020",
+  "title": "SPEC still lists a pin verb the tool dropped six months ago",
+  "type": "defect",
+  "severity": "low",
+  "status": "closed",
+  "foundBy": "session agent, while reading SPEC 3.1 for the playbook's material",
+  "opened": "2026-09-07",
+  "resolved": "2026-09-07",
+  "stint": "2026-09-07 playbook session",
+  "evidence": {
+    "commits": [
+      "8bb030b"
+    ],
+    "integrated": [],
+    "verified": "go test ./internal/cli/ -run TestSpecNamesEveryCommand -count=1: PASS. Proved by mutation: restoring the old line fails it on two counts, `pin` named with no verb behind it and `playbook` carried by the binary and unnamed. The whole gate is green: make check exit 0, and the surface linter reports 0 errors after the waiver was dropped."
+  },
+  "resolution": "Section 3.1 lists the verbs the binary has. The dead `pin` is gone, `orientation` and `playbook` are named, and section 7.1 says the upstream check where it used to say pin. The stale `sampleSkip` waiver is dropped from `.cs-lint.yaml`. TestSpecNamesEveryCommand now holds the block against the command tree in both directions, which is the gate this section never had.",
+  "details": "SPEC's host command surface lists a `pin` verb that `cs-campaign` does not have.\n\nSection 3.1 prints `cs-campaign doctor|pin|manual|version` as the health and metadata group. Running `cs-campaign pin` answers `unknown command \"pin\"`, and the root command registers no such verb.\n\nThe verb was real and was removed. Commit 133ba66 replaced the operator-written pin file with the `go.mod` embedded in the binary. That change rewrote R75, deleted section 5.8 and dropped the `CS_CAMPAIGN_PIN` variable, and it left the synopsis in 3.1 naming the verb.\n\nTwo other traces are left behind. Section 7.1 lists pin among what `internal/cli` holds, which reads as the upstream check rather than a verb and is defensible. `.cs-lint.yaml` carries a `sampleSkip` waiver for `cs-campaign pin --note ...`, and no document contains that sample any more.\n\nThe surface linter has the rule that would catch this. SURF-101 refuses a command a document names and the tool lacks, and it reports zero errors here. The line is pipe-separated inside a fenced sh block, which reads as a shell pipeline rather than as four verbs.\n\nSPEC is the contract a reader trusts about the surface. A verb listed there that does not exist is the staleness that makes the rest of the page suspect.",
+  "notes": [
+    {
+      "date": "2026-09-07",
+      "text": "The surface linter still cannot read this block. SURF-101 parses `cs-campaign doctor|manual|playbook|version` as a shell pipeline rather than as four verbs, so the rule that exists for this defect stays blind to the synopsis form. The new test covers this repository. Teaching cs-lint the form would cover every project that writes a synopsis this way."
+    },
+    {
+      "date": "2026-09-09",
+      "text": "This record was filed as SAC-015 on a branch and renumbered on integration. The maintainer's own SAC-015 reached the remote first, and an ID belongs to whoever integrates it. The record is otherwise unchanged, and the work it describes is unaffected."
+    },
+    {
+      "date": "2026-09-09",
+      "text": "The maintainer fixed the same line upstream in a275f4e, which dropped the pin verb and left the section without `orientation`. The merge kept this branch's version, which also names `orientation` and `playbook`. TestSpecNamesEveryCommand is the part that is not duplicated, and it would have caught the missing verb as well as the dead one."
+    }
+  ],
+  "links": []
+}

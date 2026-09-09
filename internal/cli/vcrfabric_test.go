@@ -2,128 +2,147 @@
 
 package cli
 
-// One cs-vcr for the run, as a plain process on this host.
+// One cs-vcr per campaign group, joined to that group's own fabric network and
+// reachable from nowhere else.
 //
-// This is cs-sandbox's own recipe for recording a sandbox, and it is followed
-// rather than invented because the credential loan depends on it. A shared
-// sandbox holds its credential and dials the recorder itself, so it needs the
-// name a guest reaches this host under. A LENT one holds a token worth nothing
-// and is handed the lender, which runs here — so the recorder is dialled from
-// this host, on loopback, and never has to be reachable from a guest at all.
+// The alternative is a single host-wide proxy reached through an SSH reverse
+// tunnel per member. Both work; this one is better for three reasons. The
+// container joins only cs-sandbox-<group>, so one campaign cannot read or
+// write another's cassettes. Traffic stays on the podman bridge and never
+// reaches the host INPUT chain, so no firewall rule and no privilege are
+// involved. And the container takes the network alias `vcr` on its own
+// network, so every campaign profile names the same URL regardless of group —
+// aliases are network-scoped, while the container name is host-global and
+// therefore carries the group.
 //
-// One listener on 0.0.0.0 serves both, which is why there is no container, no
-// fabric network to join and no published port. A container would buy
-// isolation between concurrent runs, and this tier is serial.
+// Guests resolve it through the fabric's own dnsmasq, which forwards what it is
+// not authoritative for to the bridge's aardvark, and aardvark answers for
+// network aliases.
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 )
 
-// Where the recorder listens. Fixed rather than drawn from the ephemeral range:
-// the port travels in the profile, the campaign ID is the sha256 of the
-// resolved profile, and a value that moved between a recording and its replay
-// would move every name derived from it.
-const (
-	vcrPort     = "8080"
-	vcrListen   = "0.0.0.0:" + vcrPort
-	vcrAdmin    = "127.0.0.1:8081"
-	vcrLoopback = "127.0.0.1:" + vcrPort
-)
+// vcrImage is a distroless base: the proxy is a static binary bind-mounted in,
+// so the image needs nothing but a place to stand.
+const vcrImage = "gcr.io/distroless/static-debian12:nonroot"
 
-// vcrHost is the name a guest resolves to reach this host, which is how a
-// member that dials the recorder itself finds it. cs-sandbox puts it in every
-// guest's hosts file; the literal is that tool's engine.HostReachableName.
-const vcrHost = "host.containers.internal"
+// vcrBaseURL is where a scenario's model traffic is aimed, in both chains. The
+// alias and the port are fixed, so this string is the same in every campaign
+// and in every group.
+//
+// One URL for both chains is new, and it is the whole reason this tier now
+// publishes nothing. A lent scenario used to name a loopback port on this host,
+// because the client that dials the recorder is the LENDER rather than the
+// guest, and the lender was a host process with no route into a rootless podman
+// network. The lender is a container on the group's own network now, so it
+// resolves this alias exactly as an inheriting member resolves it for itself.
+//
+// What that buys is two campaigns at once. A published port is one per host, so
+// the tier could only ever run one lent scenario at a time; an alias is scoped
+// to the network it is on, so every group can have its own recorder under the
+// same name.
+const vcrBaseURL = "http://vcr:8080"
 
-// vcrURL is where this scenario's members reach their model traffic. A lent
-// scenario names the loopback the LENDER dials; a copying one names the host as
-// its own members reach it.
-func vcrURL(sc scenario) string {
-	if sc.lends() {
-		return "http://" + vcrLoopback
-	}
-	return "http://" + vcrHost + ":" + vcrPort
-}
+// vcrHost is the alias on its own, for the NO_PROXY that keeps a member's model
+// calls off the tunnel and pointed straight at the base URL above.
+const vcrHost = "vcr"
 
-// vcrProxy is the running recorder, and the knowledge of how to stop it.
+// vcrProxy is one running proxy, and the knowledge of how to stop it.
 type vcrProxy struct {
-	cmd   *exec.Cmd
-	out   *syncBuffer
-	mode  string
+	name  string
+	group string
 	store string
-	// diag is this run's diagnostics directory: in replay, the requests it
-	// could not serve. Outside the test's t.TempDir, so it outlives the run
-	// that needs explaining.
+	// diag is this run's diagnostics directory: the proxy's whole log, and in
+	// replay the requests it could not serve. Outside the test's t.TempDir, so
+	// it outlives the run that needs explaining.
 	diag string
-	// done carries the process's exit, so waitForVCR can tell "not up yet"
-	// from "gone" without racing Wait. cmd.ProcessState is nil until Wait
-	// returns, so testing it is a check that never fires.
-	done chan error
-	// reaper outlives this process just long enough to stop the recorder, and
-	// stdin is the pipe whose closing tells it to.
+	// tail streams the container's output while it runs, because --rm takes the
+	// container's log away with the container. Guarded: the streamer writes it
+	// on its own goroutine.
+	// reaper outlives this process just long enough to remove the container,
+	// and stdin is the pipe whose closing tells it to.
 	reaper *exec.Cmd
 	stdin  io.WriteCloser
-	once   sync.Once
-	log    string
-}
-
-// syncBuffer collects the recorder's output so it can be read while it runs.
-// os/exec copies a child's output on a goroutine of its own, so a plain
-// bytes.Buffer is only safe to read once Wait has returned.
-type syncBuffer struct {
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (b *syncBuffer) Write(p []byte) (int, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.buf.Write(p)
-}
-func (b *syncBuffer) String() string {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.buf.String()
+	// logf is the test's own log, held because the teardown runs from a
+	// t.Cleanup and still has things to say. Printing straight to stdout was
+	// fine while scenarios ran one at a time; three at once interleave, and go
+	// test attributes a t.Logf to the scenario that wrote it.
+	logf func(string, ...any)
 }
 
 // errVCRUnavailable says this host cannot run the proxy at all, which is a
 // skip rather than a failure: a tier that could not start has found nothing.
 var errVCRUnavailable = errors.New("cs-vcr cannot run on this host")
 
-// startVCR launches the recorder in record or replay mode, with store as the
-// cassette directory, and returns once it answers.
-func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string) (*vcrProxy, error) {
-	// Before anything is booted: a foreign listener on this port reads as a
-	// healthy recorder to waitForVCR below, and the tier then blames the
-	// members fifteen minutes later. See requirePortFree.
-	if err := requirePortFree(vcrListen, vcrPort); err != nil {
-		return nil, err
+// startVCR launches the proxy on a group's network in record or replay mode,
+// with store as the cassette directory. It returns once the container is up.
+//
+// It returns an error rather than failing the test, because the caller runs it
+// on its own goroutine — the network it joins does not exist until create has
+// made the first member, so the launch has to overlap with create — and
+// t.Fatal outside the test's own goroutine does not stop a test.
+func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string, abandoned <-chan struct{}) (*vcrProxy, error) {
+	if _, err := exec.LookPath("podman"); err != nil {
+		return nil, fmt.Errorf("%w: podman is not installed", errVCRUnavailable)
 	}
-	bin, err := exec.LookPath("cs-vcr")
+	bin, err := stageVCRBinary(configDir)
 	if err != nil {
-		return nil, fmt.Errorf("%w: cs-vcr is not on PATH (go install github.com/codesweep-ai/vcr/cmd/cs-vcr@latest)", errVCRUnavailable)
-	}
-	if err := os.MkdirAll(store, 0o750); err != nil {
 		return nil, err
 	}
+	network := "cs-sandbox-" + group
+	name := "cs-vcr-" + group
+	_ = exec.Command("podman", "rm", "-f", name).Run()
+
+	// The container joins the campaign's network whichever chain this is, so
+	// every scenario waits for that network to exist.
+	if err := waitForFabric(network, abandoned); err != nil {
+		return nil, err
+	}
+
 	config, err := writeVCRConfig(sc, configDir)
 	if err != nil {
 		return nil, err
 	}
+	p := &vcrProxy{name: name, group: group, store: store, logf: t.Logf}
+	args := []string{"run", "-d", "--name", name}
+	// The group's own network, under the alias every member is aimed at, and no
+	// port on this host at all.
+	//
+	// Both chains reach it here. An inheriting member dials the alias itself.
+	// A lent one holds a token worth nothing and never dials the recorder: its
+	// lender does, and that lender is a container cs-sandbox puts on this same
+	// network. Neither client is ever on the host, so nothing has to be
+	// published for one — which is what leaves the tier free to run a second
+	// campaign beside this one.
+	args = append(args, "--network", network+":alias=vcr")
+	args = append(args, []string{
+		// keep-id plus this uid runs the proxy as the invoking user, so a
+		// cassette written into the bind-mounted store is owned by them on the
+		// host. Without it the files land under a subuid and reading them back
+		// needs `podman unshare`.
+		"--userns=keep-id", "--user", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+		"--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
+		"-v", bin + ":/usr/local/bin/cs-vcr:ro,Z",
+		"-v", store + ":/cassettes:Z",
+		"-v", config + ":/vcr-config.yaml:ro,Z",
+		"-e", "CS_VCR_CASSETTES=/cassettes",
+		"-e", "VCR_LISTEN=0.0.0.0:8080",
+		"-e", "VCR_ADMIN=127.0.0.1:8081",
+	}...)
+	// Not under configDir: that is the test's t.TempDir, and a diagnostic that
+	// goes away with the test answers nothing. This sits beside the live tier's
+	// kept evidence.
 	diag, err := filepath.Abs(filepath.Join("..", "..", ".tmp", "live-proxy", group))
 	if err != nil {
 		return nil, err
@@ -131,135 +150,131 @@ func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string) (
 	if err := os.MkdirAll(diag, 0o700); err != nil {
 		return nil, err
 	}
-	args := []string{mode, "--config", config, "--cassettes", store,
-		"--listen", vcrListen, "--admin", vcrAdmin}
+	p.diag = diag
+	// A replay that misses names the step it expected and how the request
+	// differed, but only far enough to fit a log line. The dumped request is
+	// the whole one, and `cs-vcr calibrate` reads a directory of them to
+	// propose the rules that would have matched, which is the documented way
+	// to make a real agent run replayable.
 	if mode == "replay" {
-		// A replay that misses names the step it expected only as far as a log
-		// line fits. The dumped request is the whole one, and `cs-vcr
-		// calibrate` reads a directory of them to propose the rules that would
-		// have matched.
-		args = append(args, "--dump-misses", diag)
+		args = append(args, "-v", diag+":/misses:Z")
 	}
-	// Refuse a port somebody else is on, rather than run against them.
-	//
-	// The recorder binds a fixed port, so a leftover from a run that was killed
-	// before its teardown still holds it. Started anyway, this one exits on
-	// "address already in use" while the campaign talks to the stranger — which
-	// is exactly what happened once, and read as a member that went quiet
-	// fifteen minutes later.
-	if conn, err := net.DialTimeout("tcp", vcrLoopback, time.Second); err == nil {
-		_ = conn.Close()
-		return nil, fmt.Errorf("%w: something is already listening on %s. A recorder left by a run "+
-			"that was killed before teardown holds it; stop it with:  pkill -f 'cs-vcr %s'", errVCRUnavailable, vcrLoopback, mode)
+	args = append(args, vcrImage, "/usr/local/bin/cs-vcr", mode, "--config", "/vcr-config.yaml")
+	if mode == "replay" {
+		args = append(args, "--dump-misses", "/misses")
 	}
-	p := &vcrProxy{cmd: exec.Command(bin, args...), out: &syncBuffer{}, mode: mode, store: store, diag: diag}
-	p.cmd.Stdout, p.cmd.Stderr = p.out, p.out
-	if err := p.cmd.Start(); err != nil {
-		return nil, fmt.Errorf("start cs-vcr %s: %w", mode, err)
+	if out, err := exec.Command("podman", args...).CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("start cs-vcr on %s: %w\n%s", network, err, out)
 	}
-	p.done = make(chan error, 1)
-	go func() { p.done <- p.cmd.Wait() }()
-	p.startReaper()
-	t.Cleanup(func() { p.stop() })
-	if err := waitForVCR(p); err != nil {
+	if err := p.startReaper(); err != nil {
 		return nil, err
 	}
-	t.Logf("cs-vcr %s on %s, cassettes in %s", mode, vcrListen, store)
+	t.Cleanup(p.stop)
+	time.Sleep(2 * time.Second)
+	if out, err := exec.Command("podman", "inspect", name, "--format", "{{.State.Running}}").Output(); err != nil ||
+		strings.TrimSpace(string(out)) != "true" {
+		logs, _ := exec.Command("podman", "logs", name).CombinedOutput()
+		return nil, fmt.Errorf("cs-vcr did not stay up on %s:\n%s", network, logs)
+	}
+	t.Logf("cs-vcr %s on %s as vcr, store=%s", mode, network, store)
 	return p, nil
 }
 
-// waitForVCR blocks until the recorder is accepting connections, so a member
-// created immediately after does not race it.
-func waitForVCR(p *vcrProxy) error {
-	deadline := time.Now().Add(30 * time.Second)
-	for time.Now().Before(deadline) {
-		select {
-		case err := <-p.done:
-			p.done <- err // leave it for logs()
-			return fmt.Errorf("cs-vcr %s exited before it served (%v):\n%s", p.mode, err, tail(p.out.String(), 20))
-		default:
-		}
-		conn, err := net.DialTimeout("tcp", vcrLoopback, time.Second)
-		if err == nil {
-			_ = conn.Close()
-			return nil
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	return fmt.Errorf("cs-vcr %s never answered on %s. Port %s in use?\n%s",
-		p.mode, vcrLoopback, vcrPort, tail(p.out.String(), 20))
-}
-
-// startReaper leaves a process holding one end of a pipe this test holds the
-// other end of, whose only job is to stop the recorder when that pipe closes.
-//
-// Which is what the kernel does to it whenever this process dies, however it
-// dies: exiting, signalled, panicking on the test timeout, or killed outright.
-// t.Cleanup covers a pass or a fail; it does not cover the last two, and a
-// recorder left by one of those holds a fixed port — so the NEXT run starts a
-// recorder that cannot bind, and talks to the leftover instead. That is not
-// hypothetical: it cost a fifteen-minute readback ceiling and a diagnosis.
-//
-// The container this replaced had exactly this, and dropping it with the
-// container is what let the failure back in.
-//
-// Best effort: a reaper that will not start is not worth failing a run over,
-// and the guard in startVCR names the leftover if it ever happens.
-func (p *vcrProxy) startReaper() {
-	cmd := exec.Command("sh", "-c", `cat >/dev/null; kill "$1" 2>/dev/null`, "sh", strconv.Itoa(p.cmd.Process.Pid))
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return
-	}
-	if err := cmd.Start(); err != nil {
-		return
-	}
-	p.reaper, p.stdin = cmd, stdin
-}
-
-// logs stops the recorder gracefully and returns everything it printed.
+// logs stops the proxy gracefully and returns everything it printed.
 //
 // Graceful matters: cs-vcr writes its accounting — how many steps it served and
-// how many upstream calls it made — when it is asked to shut down. A kill takes
-// that away, and the tier's central assertion, that a replay spent nothing,
-// then has nothing to read. Idempotent, so the assertion and the teardown can
-// both ask.
+// how many upstream calls it made — when it is asked to shut down. `podman rm
+// -f` kills it before it can, and the tier's central assertion, that a replay
+// spent nothing, then has nothing to read. Idempotent, so the assertion and
+// the teardown can both ask.
 func (p *vcrProxy) logs() string {
-	p.once.Do(func() {
-		if p.cmd.Process != nil {
-			_ = p.cmd.Process.Signal(os.Interrupt)
-			select {
-			case <-p.done:
-			case <-time.After(10 * time.Second):
-				_ = p.cmd.Process.Kill()
-				<-p.done
-			}
-		}
-		if p.reaper != nil {
-			_ = p.stdin.Close()
-			_ = p.reaper.Wait()
-		}
-		p.log = p.out.String()
-	})
-	return p.log
+	_ = exec.Command("podman", "stop", "--time", "10", p.name).Run()
+	out, err := exec.Command("podman", "logs", p.name).CombinedOutput()
+	if err != nil {
+		return ""
+	}
+	return string(out)
 }
 
-// stop ends the recorder, keeping what it served.
+// stop removes the container, keeping what it served.
 func (p *vcrProxy) stop() {
-	if out := p.logs(); out != "" {
-		// The whole log to a file, the tail to the terminal. The tail is the
-		// wrong 20 lines for every question worth asking: which steps were
-		// served, in what order, and where the session stopped matching.
+	if out := []byte(p.logs()); len(out) > 0 {
+		// The whole log to a file, the tail to the terminal. The container is
+		// removed a few lines below and takes its log with it, and the tail is
+		// the wrong 20 lines for every question worth asking: which steps were
+		// served, in what order, and where the session stopped matching. Read
+		// as a tail alone it says a replay served two requests when it served
+		// sixty.
 		if p.diag != "" {
-			if err := os.WriteFile(filepath.Join(p.diag, "proxy.log"), []byte(out), 0o600); err == nil {
-				fmt.Printf("cs-vcr full log: %s\n", filepath.Join(p.diag, "proxy.log"))
+			if err := os.WriteFile(filepath.Join(p.diag, "proxy.log"), out, 0o600); err == nil {
+				p.logf("cs-vcr %s full log: %s", p.name, filepath.Join(p.diag, "proxy.log"))
 			}
 		}
-		fmt.Printf("cs-vcr summary:\n%s\n", tail(out, 20))
+		p.logf("cs-vcr %s summary:\n%s", p.name, tail(string(out), 20))
 	}
 	if dumped, err := filepath.Glob(filepath.Join(p.diag, "[0-9]*.json")); err == nil && len(dumped) > 0 {
-		fmt.Printf("cs-vcr dumped %d missed request(s) in %s\n", len(dumped), p.diag)
+		p.logf("cs-vcr %s dumped %d missed request(s) in %s", p.name, len(dumped), p.diag)
 	}
+	// The reaper is what removes this container when the run dies without
+	// unwinding. Here the run is unwinding, so close its pipe and let it go
+	// before doing the removal itself.
+	if p.stdin != nil {
+		_ = p.stdin.Close()
+		p.stdin = nil
+	}
+	if p.reaper != nil {
+		_ = p.reaper.Wait()
+		p.reaper = nil
+	}
+	_ = exec.Command("podman", "rm", "-f", p.name).Run()
+}
+
+// waitForFabric waits for the group's network and for the keepalive container
+// that is the last thing brought up for a fabric.
+//
+// Waiting on the network alone is not enough. cs-campaign is still configuring
+// the fabric at that moment — dnsmasq is taking an address on the bridge and
+// the gateway container is starting — and a proxy that begins forwarding then
+// gets a TLS handshake timeout on every upstream call while resolution
+// settles. The symptom arrives fifteen minutes later as a readback timeout,
+// which points nowhere near here.
+func waitForFabric(network string, abandoned <-chan struct{}) error {
+	deadline := time.Now().Add(10 * time.Minute)
+	// abandoned is closed by the caller when create has failed. Ten minutes is
+	// the right budget for a fabric that is on its way and the wrong one for a
+	// fabric nobody is building: without this the wait outlives the run it
+	// belongs to and reports its own timeout in place of the real error.
+	stop := func() bool {
+		select {
+		case <-abandoned:
+			return true
+		case <-time.After(time.Second):
+			return false
+		}
+	}
+	for time.Now().Before(deadline) {
+		if exec.Command("podman", "network", "exists", network).Run() == nil {
+			break
+		}
+		if stop() {
+			return fmt.Errorf("gave up waiting for network %s: the campaign that builds it failed", network)
+		}
+	}
+	if exec.Command("podman", "network", "exists", network).Run() != nil {
+		return fmt.Errorf("network %s never appeared", network)
+	}
+	keepalive := network + "-keepalive"
+	for time.Now().Before(deadline) {
+		out, err := exec.Command("podman", "inspect", "-f", "{{.State.Running}}", keepalive).Output()
+		if err == nil && strings.TrimSpace(string(out)) == "true" {
+			break
+		}
+		if stop() {
+			return fmt.Errorf("gave up waiting for %s: the campaign that builds it failed", keepalive)
+		}
+	}
+	time.Sleep(5 * time.Second) // let dnsmasq finish claiming its address
+	return nil
 }
 
 // writeVCRConfig writes the proxy's configuration into a scratch directory —
@@ -350,7 +365,9 @@ providers:
 }
 
 // providerBlock renders one YAML entry per distinct provider the scenario's
-// members are aimed at, in seat order so the rendering is stable.
+// members are aimed at, in seat order so the rendering is stable. A mixed fleet
+// reaches two: its orchestrator and its agent are different adapters on
+// different providers.
 func providerBlock(sc scenario) string {
 	var b strings.Builder
 	seen := map[string]bool{}
@@ -364,10 +381,69 @@ func providerBlock(sc scenario) string {
 	return b.String()
 }
 
+// stageVCRBinary copies the installed cs-vcr into scratch and returns the copy,
+// which is what the container mounts and runs.
+//
+// A copy rather than the installed binary itself, because the mount carries `Z`
+// and `Z` relabels the source. On a host with SELinux enforcing, a binary under
+// ~/.local/bin is `home_bin_t` and a container cannot exec it at all —
+// `exec container process /usr/local/bin/cs-vcr: Permission denied`, with the
+// proxy dead before it serves a request. Relabelling a copy fixes that without
+// touching the file the developer installed.
+//
+// Bind-mounted rather than baked into an image, so the proxy under test is the
+// one this machine has.
+func stageVCRBinary(dir string) (string, error) {
+	path, err := exec.LookPath("cs-vcr")
+	if err != nil {
+		return "", fmt.Errorf("%w: cs-vcr is not on PATH (go install github.com/codesweep-ai/vcr/cmd/cs-vcr@latest)",
+			errVCRUnavailable)
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read %s: %w", path, err)
+	}
+	staged := filepath.Join(dir, "cs-vcr")
+	if err := os.WriteFile(staged, body, 0o755); err != nil {
+		return "", fmt.Errorf("stage cs-vcr: %w", err)
+	}
+	return staged, nil
+}
+
 func tail(s string, n int) string {
 	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
 	if len(lines) > n {
 		lines = lines[len(lines)-n:]
 	}
 	return strings.Join(lines, "\n")
+}
+
+// startReaper leaves a process holding one end of a pipe this test holds the
+// other end of, whose only job is to remove the container when that pipe
+// closes.
+//
+// Which is what the kernel does to it whenever this process dies, however it
+// dies: exiting, signalled, panicking on the test timeout, or killed outright.
+// t.Cleanup covers a pass or a fail and the interrupt path covers a signal;
+// neither runs for the last two, and a proxy left by one of those holds a port
+// and a network alias until somebody notices.
+//
+// Here rather than in cs-vcr, which has no business knowing what started it:
+// stdin already means something to every other caller of that binary, and to a
+// service manager it means a closed /dev/null, which would read as "shut down"
+// the moment it started. The lifetime belongs to whoever owns the process.
+func (p *vcrProxy) startReaper() error {
+	// `cat` blocks until the pipe closes and podman then removes the container.
+	// A shell because this runs on the host, where there is one; the proxy's own
+	// image is distroless and could not have done this from the inside.
+	cmd := exec.Command("sh", "-c", `cat >/dev/null; exec podman rm -f "$1" >/dev/null 2>&1`, "sh", p.name)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("hold the reaper's pipe: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("start the reaper for %s: %w", p.name, err)
+	}
+	p.reaper, p.stdin = cmd, stdin
+	return nil
 }

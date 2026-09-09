@@ -148,7 +148,7 @@ func TestLiveRecordsACassette(t *testing.T) {
 			// finish — so the gate can refuse it by name.
 			claimRecording(t, store, sc)
 			run := runLiveCampaign(t, sc, runOptions{
-				baseURL:    vcrURL(sc),
+				baseURL:    vcrBaseURL,
 				ceiling:    30 * time.Minute,
 				proxyMode:  "record",
 				proxyStore: store,

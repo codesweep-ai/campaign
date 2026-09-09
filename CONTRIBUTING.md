@@ -177,10 +177,10 @@ A closure citing only the later commit then loses the trail back to the work tha
 will not fit one idea, split it.
 
 **Subject**, always. Under 60 characters, imperative, no trailing period, completing *"If applied,
-this commit will …"*. Say what the change does, in plain English rather than in this project's
-internal shorthand. Use no category label: `fix(proxy):`, `bugfix:` and `[docs]` each name a class
-of change rather than the change itself, which the diff already shows. The gate fails on one, so
-amend before you push.
+this commit will …"*. Say what the change does in plain English. The test: would this subject make
+sense to someone who has not read the diff and does not know this codebase? Use no category label:
+`fix(proxy):`, `bugfix:` and `[docs]` each name a class of change rather than the change itself,
+which the diff already shows. The gate fails on one, so amend before you push.
 
 **Body**, rarely. Most commits need none. Add one only when the subject leaves a question a reader
 would otherwise have to open the diff to answer, and then answer that question. A sentence or two
@@ -192,14 +192,14 @@ session. A rule's reason belongs beside the rule in [`SPEC.md`](SPEC.md), and th
 found it belongs in the pull request.
 
 ```
-Refuse a socket path the AF_UNIX limit would truncate
+Fail early when a campaign name makes paths too long
 ```
 
 ```
-Re-arm the settling window on a restart re-anchor
+Give a restarted member its full time to answer
 
-Otherwise the restart rung reads as stuck while the machine
-is still booting, and the ladder gives up on a live member.
+Otherwise the restart reads as stuck while the machine is
+still booting, and the campaign gives up on a live member.
 ```
 
 Keep the `Co-Authored-By:` trailer when an agent wrote the change. Drop any trailer linking to the

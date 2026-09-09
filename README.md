@@ -97,8 +97,6 @@ DERIVED — computed now, from each node's own machine
 CLAIMED — the orchestrator's own record (a claim, shown beside the facts, never merged)
   09:14:02  plan        backend takes the parser; qa takes the fixtures.
   09:41:55  accepted    backend d003
-
-gateway: port 8214 — one entrance for this campaign's services
 ```
 
 The left half is computed from the machines. The right half is what the orchestrator says it did.

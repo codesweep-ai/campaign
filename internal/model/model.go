@@ -294,14 +294,14 @@ type Campaign struct {
 	// an isolated network, its own SSH trust material and a gateway. Network is
 	// derived from it rather than chosen, so the two cannot drift; it stays in
 	// state because the design requires the resolved network to be recorded.
+	//
+	// The gateway is still the campaign's one entrance, and it is not recorded
+	// here because there is nothing to record: cs-sandbox binds it to no host
+	// port, so it is reached as `ssh <group>-gw` through the engine's own
+	// channel. Inside it members resolve over the group's own DNS, which is
+	// what makes one entrance enough for a whole fleet.
 	Group   string `json:"group"`
 	Network string `json:"network"`
-	// Gateway is the host port publishing the campaign group's SSH jump host.
-	// One stable entrance for the campaign's whole life: inside it members
-	// resolve over the group's own DNS, so `ssh -L <local>:<member>:<port>
-	// <group>-gw` reaches any member's service by name — no per-member forward,
-	// and no hand-assigned host port per member to keep distinct.
-	Gateway int    `json:"gateway,omitempty"`
 	Engine  string `json:"engine"`
 	// Provisioning checkpoints create alone ("creating", "create-failed",
 	// "" once complete). It is never a campaign lifecycle: the campaign runs

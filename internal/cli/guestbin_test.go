@@ -35,5 +35,12 @@ func ensureGuestBinary(t *testing.T) {
 	if guestBinErr != nil {
 		t.Fatalf("cannot build the guest binary for tests: %v", guestBinErr)
 	}
+	// The value is the same for every caller, so a test whose parent already
+	// planted it has nothing to do — and must do nothing: t.Setenv refuses to
+	// run on a test that has called t.Parallel, which is every scenario in the
+	// smoke tier. The parent calls this once before releasing them.
+	if os.Getenv("CS_CAMPAIGN_GUEST_BIN") == guestBinPath {
+		return
+	}
 	t.Setenv("CS_CAMPAIGN_GUEST_BIN", guestBinPath)
 }

@@ -476,10 +476,10 @@ setup-smoke: tools
 ## supplies cs-sandbox, cs-vcr and the agent tools, and the tier skips itself,
 ## saying which, where the host cannot carry it.
 ##
-## -p 1 because the members share one host's memory, one fabric address range
-## and one pool of gateway ports. -v because a run boots machines and would
-## otherwise print nothing for minutes — and because a tier that skipped
-## everything looks exactly like one that passed.
+## -p 1 bounds the PACKAGES that run at once, and only one package has these
+## tests. What bounds the scenarios is -parallel, below. -v because a run boots
+## machines and would otherwise print nothing for minutes — and because a tier
+## that skipped everything looks exactly like one that passed.
 ##
 ## -timeout is a deadlock detector rather than a budget: sized far above the
 ## real runtime so that when a member wedges it is Go that ends the run and
@@ -490,6 +490,40 @@ setup-smoke: tools
 ## every unit test in internal/cli — which `make test` already ran, under a
 ## timeout sized for booting virtual machines.
 SMOKE_TESTS ?= TestSmokeReplay
+
+## SMOKE_PARALLEL: how many scenarios boot at once.
+##
+## A scenario is a campaign, a campaign is a cs-sandbox group, and a group is an
+## isolated network carrying its own members, its own lender and its own
+## recorder under the same alias. Two of them share nothing they can collide
+## over: the tier publishes no host port, so there is no fixed number left for a
+## second scenario to want.
+##
+## Three, because that is what the machine rather than the design decides. A
+## scenario is two microVMs at 1 GiB each, so three is around 6 GiB of guest
+## plus the host side of six VMs. It is chosen for a developer laptop rather
+## than for this repository's CI, where each scenario has a runner to itself and
+## this number never binds.
+##
+## Measured on a 28-core host: 631s serial, 142s at 3, all six green both ways.
+## Every scenario now costs 63s to 75s, so there is no long pole and the tier
+## costs one batch per three scenarios. Raising this to 6 would buy one batch,
+## about 75s, for twelve concurrent GiB of guest.
+##
+## It was not always so. codex-subscription used to cost 366s on its own and set
+## a ceiling nothing could move, which is what this number was first sized
+## against. That turned out to be VCR-023 rather than the scenario: a straggling
+## startup probe rewound the replay window behind the session, and the client
+## spent four minutes backing off from the miss that followed.
+##
+## It needs a cs-sandbox that can create two groups at once. Before SBX-037 that
+## was not true of any release: two creates started together both reserved the
+## same tap prefix, and the second brought its tap up over the first group's, so
+## two of six scenarios failed on a boot timeout that named nothing.
+##
+## `?=` so a smaller machine can say so:
+##   make test-smoke SMOKE_PARALLEL=1
+SMOKE_PARALLEL ?= 3
 
 ## The wait loop's poll interval, shortened for this tier alone. The campaign's
 ## own number is sized for turns that take minutes; a replayed turn answers in
@@ -521,7 +555,7 @@ test-smoke: setup-smoke
 	  CS_CAMPAIGN_POLL_SECONDS=$(CS_CAMPAIGN_POLL_SECONDS) \
 	  CS_CAMPAIGN_WAIT_SECONDS=$(CS_CAMPAIGN_WAIT_SECONDS) \
 	  CS_COVERDIR=$(COVER_ABS)/smoke go test -tags smoke $(COVERFLAGS) \
-	  -count=1 -p 1 -v -timeout 2400s -run '$(SMOKE_TESTS)' ./internal/cli \
+	  -count=1 -p 1 -parallel $(SMOKE_PARALLEL) -v -timeout 2400s -run '$(SMOKE_TESTS)' ./internal/cli \
 	  -args -test.gocoverdir=$(COVER_ABS)/smoke
 
 # A credential a live scenario needs, kept out of the tree and out of every

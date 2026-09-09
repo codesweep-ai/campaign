@@ -37,9 +37,21 @@ const fakeKey = "not-a-real-token-replay-only"
 
 // TestSmokeReplay replays every scenario that has been recorded.
 //
-// Serial: each member is a real machine, and the scenarios share one host's
-// memory, one fabric address range and one pool of gateway ports.
+// Scenarios run in parallel, bounded by `go test -parallel` (the Makefile's
+// SMOKE_PARALLEL). Each one is a campaign, each campaign is a cs-sandbox group,
+// and a group is an isolated network carrying its own members, its own lender
+// and its own recorder under the same alias. Nothing is drawn from a host-wide
+// pool any more: no port is published, so the only shared resource left is the
+// machine's memory and CPU, which is what the bound is for.
+//
+// It used to be serial, and that was the honest description of a tier whose
+// recorder held one fixed host port.
 func TestSmokeReplay(t *testing.T) {
+	// Both of these plant an environment variable for the whole process, and
+	// t.Setenv cannot be called by a parallel test. Done here, before any
+	// scenario is released, so the value is in place for all of them.
+	ensureGuestBinary(t)
+	fabricatedCredentials(t, fakeKey)
 	recorded := 0
 	for _, sc := range scenarios() {
 		if !hasCassette(t, sc) {
@@ -47,13 +59,14 @@ func TestSmokeReplay(t *testing.T) {
 		}
 		recorded++
 		t.Run(sc.name, func(t *testing.T) {
+			t.Parallel()
 			store := cassetteStore(t, sc)
 			assertCassetteAgent(t, sc, store)
 			assertCassetteImage(t, sc, store)
 			assertCassetteRuleset(t, sc, store)
 			assertRecordingFinished(t, sc, store)
 			run := runLiveCampaign(t, sc, runOptions{
-				baseURL:    vcrURL(sc),
+				baseURL:    vcrBaseURL,
 				ceiling:    20 * time.Minute,
 				proxyMode:  "replay",
 				proxyStore: store,

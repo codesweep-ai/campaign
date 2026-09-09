@@ -267,8 +267,6 @@ DERIVED — computed now, from each node's own machine
 CLAIMED — the orchestrator's own record (a claim, shown beside the facts, never merged)
   09:14:02  plan        backend takes the parser; qa takes the fixtures.
   09:41:55  accepted    backend d003
-
-gateway: port 8214 — one entrance for this campaign's services
 ```
 
 **DERIVED** is every node's state, computed now. The orchestrator is included, because it cannot
@@ -404,8 +402,8 @@ ok  audit: every member's declared CLI matches its evidence; no foreign-family s
 cs-campaign destroy <campaign> [--archive] [--archive-output DIR] [--force]
 ```
 
-Tears down every member, then reclaims the group: network, keys, gateway and gateway port. Teardown
-is re-runnable and tolerates a resource that is already gone.
+It tears down every member, then reclaims the group's network, keys and gateway. Teardown is re-runnable
+and tolerates a resource that is already gone.
 
 With `--archive`, the archive runs first and an incomplete collection stops the destroy. Without
 `--force`, a member that refuses to go leaves the campaign state in place rather than orphaning it.
@@ -418,8 +416,8 @@ cs-campaign ls [--json]
 
 ```console
 $ cs-campaign ls
-NAME  PROVISIONING  GROUP           MEMBERS  GATEWAY  AGE
-acme                acme-56aa4ee0   3        8214     2h14m
+NAME  PROVISIONING  GROUP           MEMBERS  AGE
+acme                acme-56aa4ee0   3        2h14m
 ```
 
 A record that cannot be parsed is reported rather than skipped, because a listing that quietly omits

@@ -386,7 +386,6 @@ func (a *app) executeCreate(ctx context.Context, out io.Writer, campaign *model.
 	}
 	// Record the group's entrance now that it exists, so `status` can print it
 	// without the operator having to ask cs-sandbox separately.
-	a.adoptGatewayPort(ctx, campaign)
 	if err = a.sandbox.configureOrchestrator(ctx, campaign); err != nil {
 		return a.failCreate(campaign, fmt.Errorf("configure orchestrator: %w", err))
 	}

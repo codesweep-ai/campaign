@@ -209,7 +209,7 @@
               "type": "function"
             },
             {
-              "description": "\n        Available model overrides (optional; inherited parent model is preferred):\n- `gpt-5.6-sol`: Reliable agentic workhorse for everyday tasks. Reasoning efforts: low (default), medium, high, xhigh, max, ultra. Service tiers: priority.\n- `gpt-5.6-terra`: Balanced agentic coding model for everyday work. Reasoning efforts: low, medium (default), high, xhigh, max, ultra. Service tiers: priority.\n- `gpt-5.6-luna`: Fast and affordable agentic coding model. Reasoning efforts: low, medium (default), high, xhigh, max. Service tiers: priority.\n- `gpt-5.5`: Proven previous-generation model for coding and general work. Reasoning efforts: low, medium (default), high, xhigh. Service tiers: priority.\n- `gpt-5.4-mini`: Small, fast, and cost-efficient model for simpler coding tasks. Reasoning efforts: low, medium (default), high, xhigh.\n        Spawns an agent to work on the specified task. If your current task is `/root/task1` and you spawn_agent with task_name \"task_3\" the agent will have canonical task name `/root/task1/task_3`.\nYou are then able to refer to this agent as `task_3` or `/root/task1/task_3` interchangeably. However an agent `/root/task2/task_3` would only be able to communicate with this agent via its canonical name `/root/task1/task_3`.\nThe spawned agent will have the same tools as you and the ability to spawn its own subagents.\n\nOnly call this tool for a concrete, bounded subtask that can run independently alongside useful local work; otherwise continue locally.\nIt will be able to send you and other running agents messages, and its final answer will be provided to you when it finishes.\nThe new agent's canonical task name will be provided to it along with the message.\n\nNote that passing `fork_turns=\"none\"` will not pass any surrounding context to the spawned subagent, which may cause the agent to lack the context it needs to complete its task, whereas `fork_turns=\"all\"` will provide the subagent with all surrounding context.",
+              "description": "\n        Available model overrides (optional; inherited parent model is preferred):\n- `gpt-5.6-sol`: Reliable agentic workhorse for everyday tasks. Reasoning efforts: low (default), medium, high, xhigh, max, ultra. Service tiers: priority.\n- `gpt-5.6-terra`: Balanced agentic coding model for everyday work. Reasoning efforts: low, medium (default), high, xhigh, max, ultra. Service tiers: priority.\n- `gpt-5.6-luna`: Fast and affordable agentic coding model. Reasoning efforts: low, medium (default), high, xhigh, max. Service tiers: priority.\n- `gpt-5.5`: Proven previous-generation model for coding and general work. Reasoning efforts: low, medium (default), high, xhigh. Service tiers: priority.\n        Spawns an agent to work on the specified task. If your current task is `/root/task1` and you spawn_agent with task_name \"task_3\" the agent will have canonical task name `/root/task1/task_3`.\nYou are then able to refer to this agent as `task_3` or `/root/task1/task_3` interchangeably. However an agent `/root/task2/task_3` would only be able to communicate with this agent via its canonical name `/root/task1/task_3`.\nThe spawned agent will have the same tools as you and the ability to spawn its own subagents.\n\nOnly call this tool for a concrete, bounded subtask that can run independently alongside useful local work; otherwise continue locally.\nIt will be able to send you and other running agents messages, and its final answer will be provided to you when it finishes.\nThe new agent's canonical task name will be provided to it along with the message.\n\nNote that passing `fork_turns=\"none\"` will not pass any surrounding context to the spawned subagent, which may cause the agent to lack the context it needs to complete its task, whereas `fork_turns=\"all\"` will provide the subagent with all surrounding context.",
               "name": "spawn_agent",
               "parameters": {
                 "additionalProperties": false,
@@ -338,7 +338,7 @@
     {
       "content": [
         {
-          "text": "I’ll load the campaign manifest and every declared input first, then follow dispatch `d001` and submit the required reply only after the work is complete.",
+          "text": "I’ll load the campaign manifest and every declared input first, then follow dispatch `d001` exactly and submit the requested summary through the campaign CLI.",
           "type": "output_text"
         }
       ],
@@ -347,40 +347,40 @@
       "type": "message"
     },
     {
-      "call_id": "call_JZ4xk4CGLSrUadfUi9V7lNdS",
-      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,240p' /home/<USER:1>/.config/cs-campaign/member.json\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output)\n",
+      "call_id": "call_3uWgEdmAUw3ntLGoXOR3Zdjy",
+      "input": "const r = await tools.exec_command({cmd:\"set -e\\nmanifest=/home/<USER:1>/.config/cs-campaign/member.json\\nsed -n '1,240p' \\\"$manifest\\\"\\n\",workdir:\"/home/<USER:1>\",yield_time_ms:10000,max_output_tokens:20000});text(r.output)\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_JZ4xk4CGLSrUadfUi9V7lNdS",
+      "call_id": "call_3uWgEdmAUw3ntLGoXOR3Zdjy",
       "output": [
         {
           "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "{\n  \"campaign\": \"csrcxsub\",\n  \"member\": \"orchestrator\",\n  \"role\": \"orchestrator\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"fbd9e7e9a920575b3844a40b19899d2b40d85e1f\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"orchestrator.md\",\n    \"mission.md\",\n    \"roles/dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-09-06T05:30:24.991678201Z\"\n}\n",
+          "text": "{\n  \"campaign\": \"csrcxsub\",\n  \"member\": \"orchestrator\",\n  \"role\": \"orchestrator\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"d786e1d144c1562a80d16c0f8e76c8afa03c4b29\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"orchestrator.md\",\n    \"mission.md\",\n    \"roles/dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-09-09T05:36:29.685546067Z\"\n}\n",
           "type": "input_text"
         }
       ],
       "type": "custom_tool_call_output"
     },
     {
-      "encrypted_content": "gAAAAABqnOyAHuV_lDHaO97EPhWwnn6oE_u2pUPFq5Pu2mr2jsz8app-cIZN1LJsSFPt0W27YyhoZ10IwRGJ-WMJnvGxkUbG6ZcEIpPdoyTw5uH_PC2kCZyAFgfgzWHUkNv3rFDy9y68CR87tosmeujsHIEIuzsaGRsMEWUpKokcgnino5bDMVKuy18ojMa5FiNGQR12xKQw43_XLH30YPsUa_jViHIwX17TC8SlYIIXi-4NKd1-m_Tc0DUo9Et2v-nVegjka18eX3d3b7t15XdOjhP-0oV238efx1tna6GeXjSryLRSSyUd5XbK7kKR_BkQ6XCmNDYmjQCmqBdY6X68gaZOtTUwNhIPOpDl9sUFVQnckgUk2_hJylqblF1IjQalDioivNFLJ10hd5WiNQHwhKmBPxpxsBC5tiIgZYRkGFCf30LMmm6vXqgOo0dF0QhiT1rJqz7EmVAeo1yN4yqMZziANQ6SftY1jW57DRRYxkp4TcqYS6AxAA7pZOkFOr8VpNjE41rBp0bRpmxVn-lIUfTJj6cJrfmtlhcbGwfJ0sFXMXAXnaGpt_g_ErGaXz2ZyiN3W6fII3N2zkRnN8B56ZZkooJ8FjB_I7kqUou_8CRtCTCEFmw7_ZOxuGVIu9utrmGGhYaZkMjcCDOJrj_lsoN_a6vmLMFWiUAHbwVtJiBSbZx87_dFQe87pEojZjnRAZq5vs6mA_ix_xsii3T51ixndUdCiwg5ljciJFlqHRhB_Uk8obGBMFJRjJzKHXEzcViZZBWGgH88D9hCXZAhPFD1qTX5Dn64NZQcCtl7TldZ-fuLjn6cfCBlNsJt6dqH-YC7ovbOpr_pLBQ8Cy3p26oPRzn2xoGMroiXId9Pzg45r0lKCs9s2LCwbzKtWmHNrpN_QzjGYzuR1e6FaXZnoGTu8d4uenQLir6EUkpen9kBcG056mAuv7iJ6yeZL_X0FBoidi4Z3rymbp0gxiwpWnTNjhQq2n4RpJp_lVKmFMA9-hBhLhB6A-rF1GeFi33fcgUUk242SrDqmPOMCbDdiT4wfN1yJKo3UWif0lecS4QyUuXXqDBV2WUhr-29dc5BBPlrOx33u377WDIBUxvJTQQrlYs8pPWsvRSdw34fDx_3YAjLL0r_qkFHGW4sPVNBS1wAd8fvSxZ7MV5S2mA3Us75PxLWBM8J9-qnzFpx48iNDFyV6j8mhWeN48TI74PmYLitG-FV8zIQg4lmmSSZoaEYMMQdi3t2mqfR1CAD13xaWs5mnMmFg1qqB4zmo_ATkHJkgpt933C-guz5o74J_lEhiFKLmufGkmTm685WjplMOrADn7Y=",
+      "encrypted_content": "gAAAAABqoOJvUTzLhz-Z9iX7UUVkdwGtYkTKZqM6qp5o3-VC9FKhu-9jsUrZDraJZbQNUMoZ7mXgxmS5AAv1ijXYzVAg8IrKh1vVSy7ci0mxae0v-WQp8N5ZQjbnuAkJKsgKVYh3Vx5wUXJKMra9i64ObAoUrGpQY5z1Cz5-cQO7O-eVOuRx31LM0Oz6xuWUd1f_gttggFehy0v9MaJxN-vH-E9WAI4wuDFoJd6TXKDUHkfokrHnK09KI2MHVdQ1bd4uPpEQm_ITUK28IqPenaDtmAAFUBMLCMe8ykv3kcvEcwzWHPCGuz8A4iRNWBJ65ooQeymQLIWntqTpO1rUCbDCuwAAejD-5d2uSO9Br33mHRWkmqZ2cQq_5zCcOzvLPfx7XG3zVS8yB6eq-v8B1684dj1ynWCJldoS-nVd08UMs_xwVaGUhmS-GFVCm-UQxZHSstp8E4emZNJ_7T96aq-gKu3cveTtvNBABDDoLGK9Rb7fjvF0DBoACu6wudGqGNI8juQnALXRwG4SILHstBKEGbuBoO1fQidgQHonC__GNwXg8kFUlegEDKs1jGgpkVqhv2gP8nuPffjfBn4cXhnW0ORCwvA_If7JdANTx8eejktjpICMe6Q1TMrFGOHu9smjKwgJbI1ZfFBLkHyHaPkmmuDy2Y29yal_G45lJLqg4uxUpsZoMuQnLaenEAxEZ2gZBhjbZNG1B3YizY59X_YTZ2zN5ig_p5FSCPBcZ_SilcF3JFMVD7_PqBpneNGtaJ_voL6-mcnZVKuz0gaWkNK_lYTNzlmigoR6aVe6yTykYkXOQTVr_meDk5wWj9QBk4B0cUxl9ip9jDfbvDY0dty1nEwQzoHHhma-nqF8avHkPvWyP_f8k98BkjdgdnsEg9zlR-DdzLPoHaFyHnBLT8kor5XZZT2W7M0ATGrEm0jZ5xvdcLLv8EaUOdmWjXpNow8O_OAotOGl1-eJzAHUZTlRPnd67EE5G5lZOPj-fyBg_zJNTLxeZRl8szLm92Ia4ipUfWdGNJJoiCcQyh5RSjcXwIXeX5tP-XYKJj5T22PtyyZR8lV8gWvaJGO2JoG_qNciZohxdZPcXwfQWTro3UI19YSKdA7OOOt2tWmu6FvLjhEWwoAlsa-sp3RkSHieC87MeYgKQBGBGDPCWVCRxrHTzLcGfcLilO0ggv9aAWo6CcGmDCz4DANhN9aly4AMuRpxF5L2BX5_QuiSUqGoo9PKk3QtJrkQqnA4z7IJ0utkauGVBwKCUn0eJdBS4W5S-uyVBPP-eUbScV-UlDeSXwhgw1EBM1S4yZOHodn_f_vtKPUKSn8NZ1M=",
       "summary": [],
       "type": "reasoning"
     },
     {
-      "call_id": "call_97Gcq1iQJGe52XxS7arxZN2x",
-      "input": "const paths = [\n\"/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/orchestrator.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/mission.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/roles/dev.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/d001.md\"\n];\nconst results = await Promise.all(paths.map(path => tools.exec_command({cmd:`sed -n '1,260p' '${path}'`,workdir:\"/home/<USER:1>\",yield_time_ms:10000,max_output_tokens:30000})));\nresults.forEach((r,i)=>{text(`===== ${paths[i]} =====\\n${r.output}`)});\n",
+      "call_id": "call_oFCScRVpA10r7cJWhLGYgLOl",
+      "input": "const paths=[\n\"/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/orchestrator.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/mission.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/roles/dev.md\",\n\"/home/<USER:1>/.local/share/cs-campaign/input/d001.md\"\n];\nconst rs=await Promise.all(paths.map(p=>tools.exec_command({cmd:`sed -n '1,260p' '${p}'`,workdir:\"/home/<USER:1>\",yield_time_ms:10000,max_output_tokens:30000})));\nfor(let i=0;i<rs.length;i++){text(`===== ${paths[i]} =====\\n${rs[i].output}`)}\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_97Gcq1iQJGe52XxS7arxZN2x",
+      "call_id": "call_oFCScRVpA10r7cJWhLGYgLOl",
       "output": [
         {
           "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",

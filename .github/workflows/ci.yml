@@ -2,10 +2,18 @@
 # smoke tier.
 #
 # The smoke job boots real Firecracker microVMs on a hosted runner. That works
-# because ubuntu-latest does have /dev/kvm — it is root:kvm and the runner user
+# because ubuntu-26.04 does have /dev/kvm — it is root:kvm and the runner user
 # is not in that group, so it reads as absent until the job widens it. What the
 # job does not have is a credential, and it needs none: every model call is
 # served from the committed cassette by a cs-vcr on the campaign's own fabric.
+#
+# Every job here names ubuntu-26.04 rather than ubuntu-latest, and the reason is
+# the podman that image carries. The recorder joins the campaign's own network
+# and a member reaches this host at the address pasta publishes, and podman
+# below 5.0 puts pasta on a container's own network mode but never on the shared
+# rootless namespace. ubuntu-latest is 24.04, whose podman GitHub downgraded
+# below that line, so a fabric built there has no route back to the host at all.
+# cs-sandbox pins the same image for the same reason.
 #
 # The integration tier is not here. It talks to real providers and spends real
 # money, so it runs by hand on a machine with the logins (CONTRIBUTING.md).
@@ -26,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-26.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
@@ -78,7 +86,7 @@ jobs:
   # on a pull request that touched nothing.
   lint:
     name: lint (go)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -96,7 +104,7 @@ jobs:
   # .github/actionlint.yaml.
   actionlint:
     name: workflows
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -113,7 +121,7 @@ jobs:
   # reach here on the day it lands.
   prose:
     name: docs prose
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -132,7 +140,7 @@ jobs:
   # the build.
   refs:
     name: docs refs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -148,7 +156,7 @@ jobs:
   # them pass by seeing nothing.
   oss:
     name: open-source readiness
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -165,7 +173,7 @@ jobs:
   # command prints. It builds first, because every check here asks the binary.
   surface:
     name: docs surface
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -180,7 +188,7 @@ jobs:
   # this job did.
   ledger:
     name: ledger check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -197,7 +205,7 @@ jobs:
   # that stopped matching its sources. This job rebuilds it and compares.
   viewer:
     name: viewer page is current
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -226,7 +234,7 @@ jobs:
   # rather than of another repository's branch tip.
   smoke:
     name: smoke (${{ matrix.scenario }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # Per LEG, not for the tier. One scenario is minutes; a scenario that stalls
     # spends the readback ceiling and then stops, and the legs beside it are
     # unaffected because each has its own runner and its own budget. Six of
@@ -335,6 +343,26 @@ jobs:
       # developer's machine on one surface — including the CGO_ENABLED=0 that
       # keeps cs-vcr runnable inside a distroless container, which is the kind
       # of detail a second copy loses.
+      # TEMPORARY, and it answers one question: what IS podman's rootless
+      # network on this runner, before and after the image build?
+      #
+      # The doctor below reports that nothing answers at 169.254.1.2, which only
+      # pasta publishes. cs-sandbox's own CI gets pasta on this exact image and
+      # boots microVMs with it, so the difference is something about THIS job —
+      # and the one structural difference is that this runner both builds the
+      # image and probes, where sandbox splits those across two jobs. Printed
+      # twice for that reason. Remove once it has been read.
+      #
+      # Every command tolerates failure: a diagnostic must not decide a job.
+      - name: rootless network before the build
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          podman info --format 'backend={{.Host.NetworkBackend}} rootless={{.Host.Security.Rootless}}' || true
+          podman info --format 'rootlessNetworkCmd={{.Host.RootlessNetworkCmd}}' || true
+          podman unshare --rootless-netns ip -br addr || true
+          pgrep -a pasta || echo "no pasta process"
+          pgrep -a slirp4netns || echo "no slirp4netns process"
+
       - name: install cs-sandbox and cs-vcr
         id: tools
         if: steps.cassette.outputs.present == 'true'
@@ -419,6 +447,24 @@ jobs:
           mkdir -p "$CS_SANDBOX_FC_CACHE"
           tar -C "$CS_SANDBOX_FC_CACHE" -xzf bin/ci-artifacts/fc-artifacts.tar.gz
 
+      # The same questions once the image has been built, so the two readings
+      # can be compared. See the note above.
+      - name: rootless network after the build
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          podman info --format 'backend={{.Host.NetworkBackend}} rootless={{.Host.Security.Rootless}}' || true
+          podman info --format 'rootlessNetworkCmd={{.Host.RootlessNetworkCmd}}' || true
+          podman unshare --rootless-netns ip -br addr || true
+          pgrep -a pasta || echo "no pasta process"
+          pgrep -a slirp4netns || echo "no slirp4netns process"
+          # And the probe the doctor makes, by hand, so its answer is visible
+          # next to the state above rather than only as a verdict.
+          python3 -m http.server 18099 --bind 0.0.0.0 >/dev/null 2>&1 &
+          sleep 1
+          podman unshare --rootless-netns curl -s -o /dev/null -w 'probe=%{http_code}\n' \
+            --max-time 3 http://169.254.1.2:18099/ || echo "probe: curl failed"
+          kill %1 || true
+
       # Both paths land here, so a cache hit is held to the same bar as a build.
       #
       # The agent tools are already in bin/tools — `make tools` put them there
@@ -494,7 +540,7 @@ jobs:
   # somebody finds later.
   covmap:
     name: behaviour map
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -516,7 +562,7 @@ jobs:
   # which is the only one worth reporting or gating on.
   coverage:
     name: coverage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [build-test, smoke]
     if: always() && needs.build-test.result == 'success'
     timeout-minutes: 10
