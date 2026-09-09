@@ -13,26 +13,25 @@
 // It is a standalone file, not a package: `//go:build ignore` keeps it out of
 // ./... so vet, deadcode, golangci-lint and the coverage baseline ignore it.
 //
-// THE PIN. The ui dependency is a committed tarball whose filename carries the
-// ui commit's short SHA, because npm keys a file: dependency on the specifier
+// THE PIN. The ui dependency is one exact version from the registry, and these
+// rules keep every part of the repo agreeing about it:
+//
+//  1. every @codesweep-ai/ui specifier names that one version, exactly
+//  2. every lockfile entry resolves to it AND carries an integrity
+//  3. the installed package reports that version
+//
+// A committed tarball is still supported and still wins where one exists, for
+// a repo choosing to install without a registry: the filename carries the ui
+// commit's short SHA, because npm keys a file: dependency on the specifier
 // string and silently reuses a tarball swapped underneath an unchanged name.
-// The filename is therefore the pin, and these rules keep every part of the
-// repo agreeing about it:
+// None of these repos does that any more.
 //
-//  1. exactly one committed tarball
-//  2. every @codesweep-ai/ui specifier names that tarball
-//  3. every lockfile entry resolves to it AND carries an integrity
-//  4. the installed marker's SHA starts with the filename's short SHA
+// Rule 2's integrity half is the one a human keeps losing: `npm ci` installs
+// without verifying the bytes when the field is absent, and nothing says so.
+// `npm install` writes it; `npm ci` alone will not put back what is missing.
 //
-// Rule 3's integrity half is the one a human keeps losing: `npm install` after
-// a tarball swap leaves the field absent and says nothing, and `npm ci` then
-// installs without verifying the bytes — which is the very hole the SHA in the
-// filename exists to plug. Restore it with the explicit form:
-//
-//	rm -rf node_modules && npm install ./<dir>/ui-tarball/<the tarball>
-//
-// Rule 4 is the only one needing an install, so it is the only one that skips.
-// Rules 1-3 read committed files and always run, including on a Go-only clone.
+// Rule 3 is the only one needing an install, so it is the only one that skips.
+// Rules 1-2 read committed files and always run, including on a Go-only clone.
 //
 // NAMING. A target that re-records committed files must say so in its name: a
 // destructive target wearing an innocuous name gets run by someone expecting a

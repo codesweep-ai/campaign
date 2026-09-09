@@ -10,7 +10,7 @@ require (
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
-	github.com/codesweep-ai/ledger v0.0.0-20260901203653-31eebb8abefd // indirect
+	github.com/codesweep-ai/ledger v0.0.0-20260909183215-bda511aea589 // indirect
 	github.com/codesweep-ai/lint v0.0.0-20260908052410-0dfc1134ade0 // indirect
 	github.com/codesweep-ai/sandbox v0.0.0-20260909065934-cc506f5497b5 // indirect
 	github.com/codesweep-ai/tracer v0.0.0-20260902020248-82ab96e43dcc // indirect
