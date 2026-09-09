@@ -901,3 +901,56 @@ func TestARefOnARepositoryThatDoesNotExistYet(t *testing.T) {
 		t.Fatalf("resolving created the repository: %v", statErr)
 	}
 }
+
+// SAC-026. A member whose only credential is an environment variable that holds
+// nothing was created anyway: selectedAPIKey returns empty, prepareAuth reads
+// that as nothing to do, and the member boots to a model call it cannot make.
+// Four agents in a six-run trial asked for exactly this check.
+//
+// The grant ladder is first-available rather than additive, so a member with
+// another grant has somewhere else to go and must not be reported. That guard
+// is the difference between a useful warning and noise.
+func TestAMemberWhoseOnlyKeyIsUnsetIsNamed(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	member := func(name string, auth model.Auth) model.Member {
+		return model.Member{Name: name, Profile: model.MemberProfile{CLI: "codex", Auth: auth}}
+	}
+	unset := model.Auth{APIKeyFromEnv: []string{"CS_TEST_KEY_DEFINITELY_UNSET"}}
+	members := []model.Member{
+		member("alone", unset),
+		member("also-has-a-login", model.Auth{APIKeyFromEnv: []string{"CS_TEST_KEY_DEFINITELY_UNSET"}, AgentLogin: []string{"codex"}}),
+		member("no-env-grant", model.Auth{AgentLogin: []string{"codex"}}),
+	}
+
+	var out strings.Builder
+	warnUnsatisfiedKeyEnv(&out, members)
+	got := out.String()
+	if !strings.Contains(got, "alone") || !strings.Contains(got, "CS_TEST_KEY_DEFINITELY_UNSET") {
+		t.Errorf("the member with nothing else was not named:\n%s", got)
+	}
+	for _, quiet := range []string{"also-has-a-login", "no-env-grant"} {
+		if strings.Contains(got, quiet) {
+			t.Errorf("%s has another grant and must not be reported:\n%s", quiet, got)
+		}
+	}
+	// At create the same condition is fatal, and the refusal carries the remedy.
+	err := requireKeyEnv(members)
+	if err == nil {
+		t.Fatal("create would provision a member with no credential")
+	}
+	for _, want := range []string{"alone", "CS_TEST_KEY_DEFINITELY_UNSET", "Export one"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not mention %q:\n%v", want, err)
+		}
+	}
+	// Set it, and both go quiet.
+	t.Setenv("CS_TEST_KEY_DEFINITELY_UNSET", "a-value")
+	out.Reset()
+	warnUnsatisfiedKeyEnv(&out, members)
+	if out.String() != "" {
+		t.Errorf("a satisfied grant must be silent: %q", out.String())
+	}
+	if err := requireKeyEnv(members); err != nil {
+		t.Errorf("a satisfied grant must not refuse: %v", err)
+	}
+}

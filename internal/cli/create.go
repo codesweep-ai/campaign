@@ -289,8 +289,14 @@ func (a *app) createCmd(plan bool) *cobra.Command {
 		// stays parseable.
 		warnLargeSeeds(c.ErrOrStderr(), campaign.Members, inputs)
 		warnInventedOutcomes(c.ErrOrStderr(), inputs)
+		warnUnsatisfiedKeyEnv(c.ErrOrStderr(), campaign.Members)
 		if planning {
 			return writeJSON(c.OutOrStdout(), campaign)
+		}
+		// Fatal from here: the next step provisions machines, and a member with
+		// no key would boot and fail at its first turn.
+		if err = requireKeyEnv(campaign.Members); err != nil {
+			return err
 		}
 		if err = a.gateUpstream(c.Context(), c.OutOrStdout(), campaign, opts.acceptUpstream); err != nil {
 			return err
@@ -653,6 +659,7 @@ func (a *app) validateCmd() *cobra.Command {
 		}
 		warnLargeSeeds(c.ErrOrStderr(), profileMembers(profile), inputs)
 		warnInventedOutcomes(c.ErrOrStderr(), inputs)
+		warnUnsatisfiedKeyEnv(c.ErrOrStderr(), withProfiles(profile))
 		return nil
 	}}
 	cmd.Flags().StringVar(&profilePath, "profile", "", "campaign profile YAML (same as the positional argument)")

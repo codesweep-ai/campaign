@@ -716,6 +716,10 @@ stays where it is, and destroying the member ends the loan. Nothing inside a mem
 refresh or revoke the credential that pays for it. `apiKeyFromEnv` is the exception and is always
 copied in, because the lender reads a file this host keeps rather than an environment.
 
+A member whose only grant is `apiKeyFromEnv` needs one of those variables set in the shell that
+runs `create`, which refuses without it. `validate` and `plan` warn instead, because the key may be
+exported between reading the profile and creating the campaign.
+
 How a grant arrives is its spelling. The plain name takes the campaign's verb, and the two fused
 names are `cs-sandbox`'s own flags:
 

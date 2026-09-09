@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -315,6 +316,59 @@ func resolveRepoRefs(p *model.Profile) error {
 		p.Agents[n] = m
 	}
 	return nil
+}
+
+// unsatisfiedKeyEnv names each member whose only credential is an environment
+// variable that holds nothing on this host.
+//
+// The grant ladder is first-available rather than additive, so a member that
+// also declares a key or a login has somewhere else to go and is not reported.
+// One with nothing else is created with no credential at all: selectedAPIKey
+// returns empty, prepareAuth reads that as nothing to do, and the member boots
+// to a model call it cannot make.
+//
+// Only the environment half is checkable here. A lent login lives on the host
+// and belongs to cs-sandbox, which reports no way to ask which logins it can
+// lend, and keeping a copy of that knowledge would drift.
+func unsatisfiedKeyEnv(members []model.Member) []model.Member {
+	var out []model.Member
+	for _, m := range members {
+		a := m.Profile.Auth
+		if len(a.APIKeyFromEnv) == 0 || len(a.APIKeys()) > 0 || len(a.AgentLogins()) > 0 {
+			continue
+		}
+		if selectedAPIKey(m) == "" {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// warnUnsatisfiedKeyEnv says so before anything is provisioned. A warning
+// rather than a refusal, because validate and plan run in one shell and create
+// may run in another, where the operator has since exported the key.
+func warnUnsatisfiedKeyEnv(w io.Writer, members []model.Member) {
+	for _, m := range unsatisfiedKeyEnv(members) {
+		fmt.Fprintf(w, "warning: %s has no credential — apiKeyFromEnv names %s, and none of those is set here\n",
+			m.Name, strings.Join(m.Profile.Auth.APIKeyFromEnv, ", "))
+	}
+}
+
+// requireKeyEnv is the same check at the moment the credential is needed, where
+// it is fatal: the member would be created and would fail at its first turn.
+func requireKeyEnv(members []model.Member) error {
+	bare := unsatisfiedKeyEnv(members)
+	if len(bare) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(bare))
+	for _, m := range bare {
+		names = append(names, fmt.Sprintf("%s (%s)", m.Name, strings.Join(m.Profile.Auth.APIKeyFromEnv, ", ")))
+	}
+	return fmt.Errorf("no credential for %s\n\n"+
+		"Each names environment variables under apiKeyFromEnv, and none of them is set in this\n"+
+		"shell. The member would be created with no key and fail at its first turn. Export one,\n"+
+		"or give the member a different grant", strings.Join(names, "; "))
 }
 
 // requireRepositories refuses a fleet no member can commit from.

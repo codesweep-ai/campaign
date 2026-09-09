@@ -285,6 +285,16 @@ func warnLargeSeeds(w io.Writer, members []model.Member, inputs campaignInputs) 
 	}
 }
 
+// withProfiles is profileMembers carrying each seat's declared auth, for the
+// checks that read a grant before a campaign record exists.
+func withProfiles(p model.Profile) []model.Member {
+	out := []model.Member{{Name: "orchestrator", Role: "orchestrator", Profile: p.Orchestrator}}
+	for _, name := range sortedNames(p.Agents) {
+		out = append(out, model.Member{Name: name, Role: "agent", Profile: p.Agents[name]})
+	}
+	return out
+}
+
 // profileMembers is the fleet as the profile declares it, for the checks that
 // run before a campaign record exists. Only the name and role are set, which is
 // all a seeded set depends on.
