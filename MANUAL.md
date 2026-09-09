@@ -677,7 +677,9 @@ agents:
 `model` and `effort` are handed to that member's CLI unchanged, so use the slugs that CLI accepts.
 For `opencode`, `effort` requires `model` beside it, because it attaches reasoning options to a
 named model, not to the session. `repos[].ref` picks the branch or tag cloned into the member, and
-`snapshots` gives it a frozen tree it can read.
+`snapshots` gives it a frozen tree it can read. A path that does not exist yet is planned as an
+empty repository and created at `create`, with a fixed initial commit as its base. An unborn
+repository is adopted on `main`. A directory that holds files and is not under git is refused.
 
 ### Credentials
 

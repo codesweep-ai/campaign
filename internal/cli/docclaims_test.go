@@ -117,3 +117,41 @@ func TestManualNamesTheOrientationFileTheProductWrites(t *testing.T) {
 		}
 	}
 }
+
+// MANUAL.md and PLAYBOOK.md tell an operator what happens to a repository path
+// that is not there yet, which is the ordinary case for a new application. It is
+// the claim an author acts on when deciding where the work will live, and
+// nothing else states it: SPEC R123 phrases it as an obligation on the tool
+// rather than as guidance. This holds both documents against the behaviour.
+func TestTheDocumentedNewRepositoryPathIsWhatPlanDoes(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "repo-adoption", covmap.TierUnit)
+	for _, claim := range []string{
+		"A path that does not exist yet is planned as an",
+		"An unborn\nrepository is adopted on `main`",
+	} {
+		if !strings.Contains(campaign.ManualMD, claim) {
+			t.Errorf("MANUAL.md no longer states %q; this test names the sentence it keeps true", claim)
+		}
+	}
+	if !strings.Contains(campaign.PlaybookMD, "has to live in a repository on the host") {
+		t.Error("PLAYBOOK.md no longer says why a new application needs a host-owned repository")
+	}
+	// And the behaviour those sentences describe. Planning an absent path pins a
+	// base and creates nothing, which is what makes it safe to document as the
+	// way to start something new.
+	repo := filepath.Join(t.TempDir(), "not-here-yet")
+	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, repo, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	applyDefaults(&p)
+	if err := resolveRepoRefs(&p); err != nil {
+		t.Fatalf("an absent repository path must plan, not fail: %v", err)
+	}
+	if got := p.Agents["worker"].Repos[0]; !got.Initialize || got.ResolvedCommit != initialRepoCommit() {
+		t.Fatalf("absent path did not plan as an empty repository: %+v", got)
+	}
+	if _, err := os.Stat(repo); !os.IsNotExist(err) {
+		t.Fatalf("planning created the repository: %v", err)
+	}
+}

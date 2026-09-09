@@ -117,6 +117,23 @@ agents:
 The `--repo` and `--snapshot` flags are the profile-less shorthand. Each takes one path and hands it
 to every member, which is enough to try something and not enough to describe a real team.
 
+### Building something that does not exist yet
+
+Point a repository at a path that is not there and the tool makes it. `plan` pins a fixed initial
+commit and creates nothing, `create` makes the repository, and every member clones from that base.
+An unborn repository is adopted on `main`. A directory holding files that git does not track is
+refused rather than adopted in silence.
+
+That matters for more than convenience. A new application has to live in a repository on the host,
+not only inside machines you are going to destroy. The base commit is what makes the work
+fetchable, mergeable and comparable afterwards. For something new there is no natural base, so the
+tool manufactures one and every member starts from it.
+
+Then decide who owns running it. The member that owns an application owns its runtime: build
+scripts, compose definitions, databases and the containers they run in. That is part of what it
+delivers rather than something the orchestrator arranges afterwards, so it is a seam to settle
+before you write the briefs.
+
 ### Phasing work across a fixed team
 
 A campaign has one mission and one team for its whole life, so phases are the orchestrator's policy
