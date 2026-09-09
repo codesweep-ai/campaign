@@ -66,8 +66,8 @@ line quoted here.
 1. **Decide the acceptance gates first.** Everything else hangs off the definition of done.
 2. **Write the product documents** in the target repository, campaign-free.
 3. **Brief the team.** Read what the product already tells every member with `cs-campaign
-   orientation`, then write one brief per member in `roles/`, beside the profile, covering what
-   that text does not. `create` seeds each member its own brief, and the orchestrator the mission
+   orientation`, then write the mission and one brief per member in `roles/`, beside the profile,
+   covering what that text does not. Nothing scaffolds those, on purpose. `create` seeds each member its own brief, and the orchestrator the mission
    and every agent's brief. Nothing is copied into the product repository.
 4. **Create and dispatch.** One mission prompt, then hands off. All judgement lives in the
    orchestrator; the host observes, archives and verifies.
@@ -122,27 +122,34 @@ cs-campaign init <campaign> [--dir DIR] [--orchestrator CLI] [--agent NAME=CLI].
                             [--agent-cli CLI --agents N] [--repo PATH] [--snapshot PATH]
 ```
 
-Scaffolds `profile.yaml`, `mission.md` and one brief per member into `DIR`, which defaults to the
-campaign name. The files are deliberately incomplete: no member has credentials, and every brief is
-a blank to fill in.
+Scaffolds `profile.yaml` into `DIR`, which defaults to the campaign name, and names the documents
+you write yourself. The profile is deliberately incomplete: no member has credentials, and the file
+says where they go.
+
+The mission and the briefs are named and not written. Those two are what a member is seeded with,
+and `validate` refuses a campaign whose files are absent. A scaffolded blank would satisfy that
+check and brief a member with nothing.
 
 ```console
 $ cs-campaign init acme --orchestrator codex --agent backend=claude --agent qa=codex
-wrote acme/mission.md
 wrote acme/profile.yaml
-wrote acme/roles/backend.md
-wrote acme/roles/orchestrator.md
-wrote acme/roles/qa.md
 
 Add credentials to acme/profile.yaml, then read what every member is
 already told, so that no brief restates or contradicts it:
 
   cs-campaign orientation acme --profile acme/profile.yaml
 
-For how to decide what goes in the blanks:
+Then write these, which nothing scaffolds for you:
+
+  acme/mission.md
+  acme/roles/orchestrator.md
+  acme/roles/backend.md
+  acme/roles/qa.md
+
+What goes in each one:
   cs-campaign playbook
 
-Fill in the blanks, then:
+Then:
   cs-campaign validate acme/profile.yaml
 ```
 
@@ -171,8 +178,7 @@ You are `backend`, running as the **agent** of campaign `acme`.
 
 Unlike `validate`, it does not require the briefs to exist. A member whose `roles/<member>.md` is
 unwritten is answered for anyway, and the missing files are named on standard error. That is the
-ordinary case: reading the orientation is what you do before writing a brief. `init` also refuses
-to scaffold a stub for a member added to a profile later.
+ordinary case: reading the orientation is what you do before writing a brief.
 
 The branch it prints is predicted. `cs-sandbox` spells the real one, which `create` reads back
 before it writes the file, so that line alone may differ from what the member receives.

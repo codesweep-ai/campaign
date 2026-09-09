@@ -23,21 +23,13 @@ import (
 // an error that names what is absent should be followed by something that
 // produces it. Otherwise the first thing a new operator meets is a dead end.
 //
-// The stubs are deliberately INCOMPLETE — blanks and bracketed choices, not
-// prose that could be shipped unread. A scaffolder that emitted plausible
-// briefs would produce fleets briefed with boilerplate nobody edited, and a
-// member restates boilerplate as faithfully as it restates real intent. That is
-// the same silent substitution the no-fallback rule exists to prevent, arriving
-// by a different route.
-
-//go:embed assets/stub-mission.md
-var stubMission string
-
-//go:embed assets/stub-orchestrator.md
-var stubOrchestrator string
-
-//go:embed assets/stub-agent.md
-var stubAgent string
+// Only profile.yaml is scaffolded. The mission and the briefs are named and not
+// written, because they are the two documents a member is seeded with: a
+// scaffolded blank exists, and existence is the whole of the check that refuses
+// an unbriefed fleet. Writing them turned "no brief, refused" into "generic
+// brief, accepted", which is the silent substitution R30 exists to prevent
+// arriving by a different route. What goes in each one is in the playbook,
+// which init names on its way out.
 
 // profileHeader and authHint bracket the generated profile with the two things
 // a generated file cannot supply: what to do with it, and the one stanza whose
@@ -139,14 +131,7 @@ func scaffoldCampaign(out io.Writer, dir, name string, profile model.Profile) er
 	// first turn. Comments survive the parser untouched.
 	profileText := render(profileHeader, stubData{Campaign: name}) + string(encoded) + authHint
 
-	files := map[string]string{
-		filepath.Join(dir, "profile.yaml"):      profileText,
-		filepath.Join(dir, missionFileName):     render(stubMission, stubData{Campaign: name}),
-		filepath.Join(roles, "orchestrator.md"): render(stubOrchestrator, stubData{Campaign: name}),
-	}
-	for _, member := range sortedNames(profile.Agents) {
-		files[filepath.Join(roles, member+".md")] = render(stubAgent, stubData{Campaign: name, Member: member})
-	}
+	files := map[string]string{filepath.Join(dir, "profile.yaml"): profileText}
 
 	var existing []string
 	for path := range files {
@@ -165,17 +150,26 @@ func scaffoldCampaign(out io.Writer, dir, name string, profile model.Profile) er
 		}
 		fmt.Fprintf(out, "wrote %s\n", path)
 	}
-	// The orientation line comes BEFORE the blanks, because reading it is what
-	// makes the blanks fillable: a brief is the half of a member's context that
-	// the product does not write, and an author who cannot see the other half
-	// invents it. See orientationCmd.
+	// The documents a member is seeded with are named and not written. Naming
+	// them is the whole job: the file has to exist for the campaign to validate,
+	// so an author who writes nothing is refused rather than briefing a fleet
+	// with blanks.
+	//
+	// The orientation line comes BEFORE them, because reading it is what makes
+	// them writable: a brief is the half of a member's context that the product
+	// does not write, and an author who cannot see the other half invents it.
+	// See orientationCmd.
 	profilePath := filepath.Join(dir, "profile.yaml")
 	fmt.Fprintf(out, "\nAdd credentials to %s, then read what every member is\n"+
 		"already told, so that no brief restates or contradicts it:\n\n"+
 		"  cs-campaign orientation %s --profile %s\n\n"+
-		"For how to decide what goes in the blanks:\n  cs-campaign playbook\n\n"+
-		"Fill in the blanks, then:\n  cs-campaign validate %s\n",
-		profilePath, name, profilePath, profilePath)
+		"Then write these, which nothing scaffolds for you:\n\n", profilePath, name, profilePath)
+	for _, path := range append([]string{filepath.Join(dir, missionFileName),
+		filepath.Join(roles, "orchestrator.md")}, briefPaths(roles, profile)...) {
+		fmt.Fprintf(out, "  %s\n", path)
+	}
+	fmt.Fprintf(out, "\nWhat goes in each one:\n  cs-campaign playbook\n\n"+
+		"Then:\n  cs-campaign validate %s\n", profilePath)
 	return nil
 }
 
@@ -202,5 +196,14 @@ func keysOf(m map[string]string) []string {
 func sortedStrings(in []string) []string {
 	out := append([]string(nil), in...)
 	sort.Strings(out)
+	return out
+}
+
+// briefPaths is one path per declared agent, in the order init names them.
+func briefPaths(roles string, profile model.Profile) []string {
+	out := make([]string, 0, len(profile.Agents))
+	for _, member := range sortedNames(profile.Agents) {
+		out = append(out, filepath.Join(roles, member+".md"))
+	}
 	return out
 }

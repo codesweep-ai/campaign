@@ -189,34 +189,55 @@ Four contradictions are easy to write and all four reach the member as fact:
 - Naming a member verb that member's role refuses.
 - Inventing a fifth outcome value.
 
-### What the tool gives you to fill in
+### What the tool writes, and what you write
 
-`cs-campaign init` scaffolds the three files and leaves every one of them blank on purpose:
+`cs-campaign init` writes one file, the profile, and names the rest:
 
 ```text
 acme/
-├── mission.md          what must be true when the campaign ends
-├── profile.yaml        who runs, on what, with which credentials
-└── roles/<member>.md   one brief per member, orchestrator included
+├── profile.yaml        scaffolded: who runs, on what, with which credentials
+├── mission.md          yours to write
+└── roles/<member>.md   yours to write, one per member, orchestrator included
 ```
 
-Each blank carries a comment saying what belongs there. Those comments are prompts rather than
-instructions, and this document is where the reasoning behind them lives. Nothing checks what you
-write, so a blank left blank reaches a member as silence.
+Nothing scaffolds the mission or the briefs, and that is deliberate. Those two are the documents a
+member is seeded with, and the check that refuses an unbriefed campaign asks whether the file
+exists. A scaffolded blank would pass it and brief a member with nothing.
 
-### An agent's brief is scope
+So an empty workspace is refused by name, and what follows is what to put in each file.
 
-Three things, and the third is the one authors leave out:
+### The mission
 
-1. **What this member owns.** Files, directories, subsystems. Be concrete enough that a second
-   agent reading it would not claim the same ground.
-2. **What it must not touch.** Campaigns go wrong at the seams, so name the things that are
-   somebody else's.
-3. **What proof its work must carry.** A test run, a benchmark, a migration applied. Say what must
-   be true before this member reports done, beyond committing on its own branch.
+`## Definition of done` is rows that each say what must hold and how anyone can tell. Write it as an
+outcome rather than a task list, because the orchestrator decides how to get there. Be specific
+enough that someone else would reach the same verdict independently.
 
-Write for a reader with no context, because that is exactly what a member is. It cannot see the
-mission, the other briefs, or anything you decided in your head.
+Make every row quotable on its own. The orchestrator ends the campaign with one of the four
+outcomes above, and all but success have to name what is still unmet, item by item.
+
+`## Out of scope` is what the team must not do. Name the nearby work you would consider a
+distraction, the neighbouring system you do not want touched, and the rewrite you are not asking
+for. A campaign expands to fill the space you leave, and the orchestrator has no way to guess where
+your interest stops.
+
+### An agent's brief
+
+Three headings, and the third is the one authors leave out.
+
+`## What you own` is files, directories, subsystems. Be concrete enough that a second member reading
+its own brief would not claim the same ground.
+
+`## What you must not touch` names what belongs to somebody else. Campaigns go wrong where two
+members both think a file is theirs.
+
+`## Proof your work must carry` is where a brief is won or lost. Start with the obligation that is
+irreversible: work not committed to that member's own branch dies with the machine. Then add what
+this campaign needs, and ask for what you could check rather than what you could count. "Every
+endpoint has a test that fails without it" holds up. "80% coverage" invites a member to manufacture
+coverage, which is the subject of the section on gates below.
+
+Write all three for a reader with no context, because that is exactly what a member is. It cannot
+see the mission, the other briefs, or anything you decided in your head.
 
 Never hand two members the same brief with a name changed. A generic briefing is restated faithfully
 by a member that read nothing, so the readback cannot see through it.
@@ -259,18 +280,19 @@ Give every fallback a trigger it can actually observe. A clock trigger needs `de
 set. A trigger on another member's progress needs the orchestrator to hold that repository. A
 fallback whose condition is unobservable is a branch that never runs.
 
-### The orchestrator's brief is policy
+### The orchestrator's brief
 
-The mission says what must be achieved. Each agent's brief says what that agent owns. The
-orchestrator's brief says how this team is run, and only you can decide it:
+The mission says what must be achieved. Each agent's brief says what that agent owns. This one says
+how the team is run, and only you can decide it.
 
-- How many rework rounds before it stops sending a piece back.
-- What it does when a teammate fails that many times: reassign, take it on, or abandon that piece.
-- What it must verify itself before reporting an outcome, in its own clone.
-- Whether it writes code at all, or delegates everything.
+`## How to run it` carries the decisions the orchestrator would otherwise invent. How many rework
+rounds before it stops sending a piece back. What it does when a teammate fails that many times.
+Whether it writes code itself or delegates everything.
 
-It is accountable for what the campaign delivers, so it must verify returned work rather than accept
-a member's report. Say that in terms of this campaign: which tests, run where.
+`## What "done" means here` is what the orchestrator must verify before reporting an outcome, in
+its own clone. It is accountable for what the campaign delivers, so it verifies returned work rather
+than accepting a member's report. Where a teammate reports a number, say that the orchestrator
+confirms it rather than taking it: a member's report is a claim and its branch is the evidence.
 
 ## What each member is given to read
 

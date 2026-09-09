@@ -129,7 +129,10 @@ func loadCampaignInputs(profilePath string, p model.Profile) (campaignInputs, er
 		return in, fmt.Errorf("campaign inputs are missing beside %s:\n%s\n\n"+
 			"Every declared member needs a written purpose, and the campaign needs a mission —\n"+
 			"they are seeded into each member at create and are what the fleet is verified against.\n"+
-			"Create the files above, or run `cs-campaign init` to scaffold them",
+			"Write the files above. Nothing scaffolds them, because a blank one would\n"+
+			"pass this check and brief a member with nothing. `cs-campaign playbook` says\n"+
+			"what goes in each, and `cs-campaign orientation` shows what a member is\n"+
+			"already told",
 			profilePath, strings.Join(lines, "\n"))
 	}
 	return in, nil

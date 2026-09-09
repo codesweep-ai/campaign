@@ -2,6 +2,9 @@ package cli
 
 import (
 	"bytes"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -70,45 +73,47 @@ func TestPlaybookStatesTheJudgementTheManualOmits(t *testing.T) {
 	}
 }
 
-// TestScaffoldPromptsDoNotInventVocabulary is SAC-018 and SAC-021 together. The
-// stubs are what an author edits, so they decide what gets written far more than
-// any document does: an agent that had read the playbook still copied the stub's
-// shape and gated three of four briefs on a coverage percentage.
+// TestTheUnscaffoldedDocumentsAreTheOnesAMemberSees is SAC-022. `init` used to
+// write a mission and a brief per member, and the check that refuses an
+// unbriefed campaign asks only whether the file exists — so a scaffolded blank
+// passed it and briefed a member with nothing, which is the substitution R30
+// forbids. It also put authoring guidance in files that are seeded verbatim.
 //
-// Two properties keep them honest. A stub must not restate a vocabulary defined
-// elsewhere, which is how it came to name two outcome values the product does not
-// have. And it must send the author to the reasoning rather than compress it into
-// a comment nobody can decode.
-func TestScaffoldPromptsDoNotInventVocabulary(t *testing.T) {
+// Now only the profile is written, and the guidance lives in one place. Both
+// halves are asserted, because either drifting alone reopens the defect: the
+// scaffolder must not write a seeded document, and the playbook must still say
+// what belongs under every heading those documents carry.
+func TestTheUnscaffoldedDocumentsAreTheOnesAMemberSees(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
-	stubs := map[string]string{
-		"stub-agent.md":        stubAgent,
-		"stub-orchestrator.md": stubOrchestrator,
-		"stub-mission.md":      stubMission,
+	dir := t.TempDir()
+	profile, err := profileFromFlags("codex", []string{"backend=claude"}, "", 0, "", "")
+	if err != nil {
+		t.Fatal(err)
 	}
-	for name, body := range stubs {
-		if !strings.Contains(body, "cs-campaign playbook") {
-			t.Errorf("%s does not send the author to the playbook, so its comments must carry the whole argument", name)
-		}
-		// An outcome value belongs to protocol.Outcomes. A stub that spells one
-		// can disagree with it, and did.
-		for _, invented := range []string{"`Met`", "`Converged`", "`Exhausted`", "`Blocked`"} {
-			if strings.Contains(body, invented) {
-				t.Errorf("%s names %s, which is not an outcome this product has; point at the playbook instead", name, invented)
-			}
+	if err := scaffoldCampaign(io.Discard, dir, "acme", profile); err != nil {
+		t.Fatal(err)
+	}
+	for _, seeded := range []string{missionFileName, "roles/backend.md", "roles/orchestrator.md"} {
+		if _, err := os.Stat(filepath.Join(dir, seeded)); !os.IsNotExist(err) {
+			t.Errorf("init wrote %s; a blank one passes the check meant to refuse an unbriefed fleet", seeded)
 		}
 	}
-	// The gate guidance has to be where the author is looking, not only in the
-	// playbook they may have read hours ago.
-	if !strings.Contains(stubAgent, "manufacture") {
-		t.Error("stub-agent.md no longer warns that a countable gate invites a member to manufacture what is counted")
+	if _, err := os.Stat(filepath.Join(dir, "profile.yaml")); err != nil {
+		t.Errorf("init no longer writes the one file it should: %v", err)
 	}
-	if !strings.Contains(campaign.PlaybookMD, "invites a member to manufacture blocks") {
-		t.Error("PLAYBOOK.md no longer carries the reasoning the stub points at")
+	// The guidance the stubs used to carry has one home now, and it has to name
+	// the headings so it works as a key rather than as prose about the topic.
+	for _, heading := range []string{
+		"## Definition of done", "## Out of scope",
+		"## What you own", "## What you must not touch", "## Proof your work must carry",
+		"## How to run it", `## What "done" means here`,
+	} {
+		if !strings.Contains(campaign.PlaybookMD, heading) {
+			t.Errorf("PLAYBOOK.md no longer says what belongs under %q", heading)
+		}
 	}
-	// And the playbook has to describe what init scaffolds, or the stub is on its
-	// own again and grows back the compressed prose this test exists to prevent.
-	if !strings.Contains(campaign.PlaybookMD, "cs-campaign init") {
-		t.Error("PLAYBOOK.md no longer names what init scaffolds, so it is not the system of record for the stubs")
+	if !strings.Contains(campaign.PlaybookMD, "manufacture\ncoverage") &&
+		!strings.Contains(campaign.PlaybookMD, "manufacture coverage") {
+		t.Error("PLAYBOOK.md no longer warns that a countable gate invites a member to manufacture what is counted")
 	}
 }

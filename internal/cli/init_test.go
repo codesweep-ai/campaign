@@ -39,53 +39,74 @@ func scaffold(t *testing.T, args ...string) (*app, string) {
 	return a, filepath.Join(dir, "camp")
 }
 
-// THE gate. A scaffolder whose output its own validator rejects is worse than no
-// scaffolder: the operator's first two commands contradict each other, and the
-// example cannot drift from the parser only if the parser is what checks it.
+// THE gate, inverted by SAC-022. This test used to assert that a scaffold
+// validates, which was the defect: `init` wrote a mission and a brief per
+// member, the check asks only whether the file exists, and so a campaign nobody
+// had briefed passed on blanks.
 //
-// This also pins the convention from both ends — init writes where
+// What it pins now is the pair. `init` writes the profile and no seeded
+// document, and validate refuses until an author writes them, naming each one.
+// The convention is still pinned from both ends: init writes where
 // loadCampaignInputs looks, and nothing but this test says so.
-func TestValidateAcceptsWhatInitEmits(t *testing.T) {
+func TestValidateRefusesWhatInitEmitsUntilTheDocumentsAreWritten(t *testing.T) {
 	repo := t.TempDir()
 	mustInitRepo(t, repo)
 	a, dir := scaffold(t, "demo", "--orchestrator", "codex", "--agent", "backend=codex", "--agent", "qa=opencode", "--repo", repo)
 
-	cmd := a.validateCmd()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetArgs([]string{filepath.Join(dir, "profile.yaml")})
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("validate rejected what init emitted: %v", err)
+	run := func() (string, error) {
+		cmd := a.validateCmd()
+		var out bytes.Buffer
+		cmd.SetOut(&out)
+		cmd.SetArgs([]string{filepath.Join(dir, "profile.yaml")})
+		err := cmd.Execute()
+		return out.String(), err
 	}
-	if !strings.Contains(out.String(), "3 role briefs") {
-		t.Errorf("validate did not find a brief per member:\n%s", out.String())
+	_, err := run()
+	if err == nil {
+		t.Fatal("validate accepted a campaign whose mission and briefs nobody wrote")
+	}
+	for _, named := range []string{missionFileName, "roles/orchestrator.md", "roles/backend.md", "roles/qa.md"} {
+		if !strings.Contains(err.Error(), named) {
+			t.Errorf("the refusal does not name %s, so an author cannot act on it:\n%v", named, err)
+		}
+	}
+	// Written, however briefly, and the same profile validates. This is the half
+	// that keeps init's paths and the loader's expectations in agreement.
+	for _, named := range []string{missionFileName, "roles/orchestrator.md", "roles/backend.md", "roles/qa.md"} {
+		if err := os.WriteFile(filepath.Join(dir, named), []byte("# written\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out, err := run()
+	if err != nil {
+		t.Fatalf("validate rejected a campaign whose documents exist: %v", err)
+	}
+	if !strings.Contains(out, "3 role briefs") {
+		t.Errorf("validate did not find a brief per member:\n%s", out)
 	}
 }
 
-// The stubs must be visibly unfinished. A scaffolder that emitted shippable
-// prose would produce fleets briefed with boilerplate nobody edited — and a
-// member restates boilerplate as faithfully as it restates real intent, so the
-// readback could not tell the difference.
-func TestScaffoldedBriefsAreVisiblyIncomplete(t *testing.T) {
+// The scaffolder must not write a document a member is seeded with. That is the
+// whole of SAC-022: a blank one passes the existence check that refuses an
+// unbriefed fleet, and a member restates boilerplate as faithfully as it
+// restates real intent. The profile is the exception, because it is never
+// seeded and its comments reach nobody.
+func TestInitScaffoldsOnlyTheProfile(t *testing.T) {
 	_, dir := scaffold(t, "demo", "--orchestrator", "codex", "--agent", "backend=codex")
-	for _, name := range []string{missionFileName, "roles/orchestrator.md", "roles/backend.md"} {
-		body, err := os.ReadFile(filepath.Join(dir, name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(string(body), "<!--") {
-			t.Errorf("%s carries no guidance comments for the operator to replace", name)
-		}
-		if !strings.Contains(string(body), "\n- \n") && !strings.HasSuffix(strings.TrimRight(string(body), "\n"), "- ") {
-			t.Errorf("%s has no blanks left to fill; a stub that reads as finished will ship unedited", name)
+	for _, seeded := range []string{missionFileName, "roles/orchestrator.md", "roles/backend.md"} {
+		if _, err := os.Stat(filepath.Join(dir, seeded)); !os.IsNotExist(err) {
+			t.Errorf("init wrote %s, which a member is seeded with", seeded)
 		}
 	}
-	body, _ := os.ReadFile(filepath.Join(dir, "roles", "backend.md"))
-	if !strings.Contains(string(body), "backend") {
-		t.Error("an agent's brief should name the member it belongs to")
+	body, err := os.ReadFile(filepath.Join(dir, "profile.yaml"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(string(body), "committed on your own branch") {
-		t.Error("the one obligation whose failure is irreversible must survive in the stub")
+	if !strings.Contains(string(body), "<!") && !strings.Contains(string(body), "#") {
+		t.Error("the profile lost the guidance it can safely carry")
+	}
+	if _, err := os.Stat(filepath.Join(dir, rolesDirName)); err != nil {
+		t.Errorf("init should still make the roles directory it names: %v", err)
 	}
 }
 
@@ -94,10 +115,7 @@ func TestScaffoldedBriefsAreVisiblyIncomplete(t *testing.T) {
 // the damage would only surface as a fleet that could not say what it was for.
 func TestInitRefusesToOverwrite(t *testing.T) {
 	a, dir := scaffold(t, "demo", "--orchestrator", "codex", "--agent", "backend=codex")
-	brief := filepath.Join(dir, rolesDirName, "backend.md")
-	if err := os.WriteFile(brief, []byte("# carefully written\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	profile := filepath.Join(dir, "profile.yaml")
 
 	cmd := a.initCmd()
 	cmd.SetOut(&bytes.Buffer{})
@@ -106,12 +124,12 @@ func TestInitRefusesToOverwrite(t *testing.T) {
 	if err == nil {
 		t.Fatal("init overwrote an existing campaign")
 	}
-	if !strings.Contains(err.Error(), "backend.md") {
+	if !strings.Contains(err.Error(), "profile.yaml") {
 		t.Errorf("refusal must name what it would have destroyed: %v", err)
 	}
-	body, _ := os.ReadFile(brief)
-	if string(body) != "# carefully written\n" {
-		t.Error("init clobbered a brief it claimed to refuse")
+	body, _ := os.ReadFile(profile)
+	if !strings.Contains(string(body), "CampaignProfile") {
+		t.Error("init clobbered a profile it claimed to refuse")
 	}
 }
 
