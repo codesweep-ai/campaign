@@ -3,17 +3,19 @@
   "title": "No document tells an operator how to set a campaign up well",
   "type": "improvement",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "user report (host): \"we haven't really told the user of cs-campaign about best practices for how to setup campaigns\"",
   "opened": "2026-09-06",
-  "resolved": null,
+  "resolved": "2026-09-09",
   "stint": "2026-09-07 playbook session",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "12ef20f"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "go test ./internal/cli/ -run TestPlaybook -count=1: PASS, with four tests holding the document. The embed arrived and the verb prints it byte for byte. The manual keeps every imperative and the playbook keeps the reasoning behind each. Every heading a brief or a mission carries is named in the playbook. No embedded document links a file it ships without. End to end, `cs-campaign playbook` prints 614 lines from inside the binary. make check exit 0.\n\nRead by the user, who accepted it. Also exercised by seven fresh-agent runs across two models, each given only the binary and asked to set a campaign up. Every one found the document, and what it says held: repositories declared for every member, no invented outcome values, and no countable gate in any brief."
   },
-  "resolution": null,
+  "resolution": "`cs-campaign playbook` prints PLAYBOOK.md from inside the binary, the way `manual` prints the manual, so an operator with the binary and no clone can read it. It covers the lifecycle. Deciding whether the work suits a campaign, designing the team, writing the mission and the briefs, what to check before spending, reading a run, and harvesting one.\n\nThe manual keeps every rule it stated and gains pointers. The reasoning moved here, which is what the record asked for: MANUAL's Notes for agents carried several rules with the argument compressed out of them.\n\nIt is also the system of record for what an author writes. Nothing scaffolds a mission or a brief any more, and this document says what belongs in each. The guidance is anchored on the three questions the readback asks rather than on headings nothing parses.",
   "details": "Nothing tells an operator how to set a campaign up well.\n\nThe documents each have a job, and none of them is judgement. README is the tour. INSTALL is setup. MANUAL is every command, flag, file, variable, exit code and diagnostic. PROTOCOL states the protocol, SPEC states what the behaviour must be, and AGENTS routes while holding no knowledge of its own.\n\nMANUAL comes closest, with a five step shape and an authoring section, and both are mechanics: where the files go, what the orientation already says. Neither answers how to scope a mission, how many members to give it, how to phase the work, or what a good brief contains.\n\nSAC-006 is the evidence. Role briefs were failing campaigns because their authors could not see the orientation, and the fix made that text readable. What still has no home is the other half: what to write once you can see it.\n\nA command would carry it the way `manual` carries the manual, so an operator with the binary and no clone can read it. The name `authoring` is free, and AUTHORING.md does not exist.\n\nThis is an editorial decision about a document set whose jobs were assigned deliberately, so the shape belongs to the maintainer rather than to whoever files this.",
   "notes": [
     {
@@ -23,6 +25,10 @@
     {
       "date": "2026-09-07",
       "text": "The document and its command are landed in 12ef20f. `cs-campaign playbook` prints PLAYBOOK.md from inside the binary, the way `manual` prints MANUAL.md. The scope is the whole lifecycle, settled with the user: designing a team, writing the mission and the briefs, running and monitoring, harvesting and closing out. The name PLAYBOOK was chosen over RUNNING because AGENTS.md and CONTRIBUTING.md already use running a campaign for driving the harness at all. MANUAL keeps every imperative and gains a pointer, and the reasoning moved across. The text is a first draft read out of SPEC and MANUAL, and it awaits the user's review and the learnings from earlier campaigns."
+    },
+    {
+      "date": "2026-09-09",
+      "text": "Closed on the user's read. The campaign learnings a second session was gathering are not in it yet, and they are an addition to a document that stands rather than a condition of closing this. Ten commits shaped it, and most of the later ones came from watching fresh agents use it."
     }
   ],
   "links": [
