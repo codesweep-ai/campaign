@@ -4,8 +4,8 @@ The manual says what every command does. This says how to decide what to run, wh
 when to leave the team alone.
 
 A **campaign** is one engagement: a fixed team of coding agents, a mission, and the evidence of
-what they did. Read [MANUAL.md](MANUAL.md) for the surface and [SPEC.md](SPEC.md) for the contract.
-Read this before you author one, and again while one is running.
+what they did. Run `cs-campaign manual` for the command surface. Read this before you author a
+campaign, and again while one is running.
 
 Nothing here is enforced. Every rule the product does enforce is in the manual, and the two are
 written to agree.

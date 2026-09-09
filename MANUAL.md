@@ -481,7 +481,7 @@ running it. **If it is not green, do not dispatch.** Fix it or destroy it.
 
 ### playbook, manual, version
 
-`playbook` prints [PLAYBOOK.md](PLAYBOOK.md), the operator's guide to designing a team, writing a
+`playbook` prints the operator's guide to designing a team, writing a
 mission and briefs, reading a running campaign and harvesting one. This manual says what each
 command does; the playbook says how to decide what to run. `manual` prints this file, which is
 compiled into the binary. `version` prints the build stamp.

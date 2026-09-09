@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -117,5 +118,31 @@ func TestTheUnscaffoldedDocumentsAreTheOnesAMemberSees(t *testing.T) {
 	if !strings.Contains(campaign.PlaybookMD, "manufacture\ncoverage") &&
 		!strings.Contains(campaign.PlaybookMD, "manufacture coverage") {
 		t.Error("PLAYBOOK.md no longer warns that a countable gate invites a member to manufacture what is counted")
+	}
+}
+
+// An embedded document travels without its neighbours. `cs-campaign playbook`
+// prints on a host that has the binary and no clone, which is the whole reason
+// it is compiled in, so a relative link to a sibling file resolves to nothing
+// there. The manual has never carried one; the playbook shipped with two.
+//
+// `cs-lint refs` cannot catch this, because the files it links to do exist in
+// the repository. Only the shipped form is broken.
+func TestEmbeddedDocumentsLinkToNoFileTheyShipWithout(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	link := regexp.MustCompile(`\]\([^)]*\.md[^)]*\)`)
+	for name, body := range map[string]string{
+		"PLAYBOOK.md": campaign.PlaybookMD,
+		"MANUAL.md":   campaign.ManualMD,
+	} {
+		if found := link.FindAllString(body, -1); found != nil {
+			t.Errorf("%s links to a file it does not ship with: %v\n"+
+				"name the command that prints it instead, or the backticked filename", name, found)
+		}
+	}
+	// And the playbook stays out of the contract, which is a contributor's
+	// document rather than an operator's.
+	if strings.Contains(campaign.PlaybookMD, "SPEC.md") {
+		t.Error("PLAYBOOK.md sends an operator to SPEC.md, which is written for someone changing the harness")
 	}
 }
