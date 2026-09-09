@@ -1,0 +1,20 @@
+{
+  "id": "SAC-026",
+  "title": "A member whose only credential is an unset variable is provisioned with none",
+  "type": "defect",
+  "severity": "high",
+  "status": "open",
+  "foundBy": "session agent, after four fresh-agent runs asked for a way to check credentials before spending: \"the tool does not offer a dry-run credential check\"",
+  "opened": "2026-09-09",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "A profile can name environment variables that hold no key, and every command accepts it. The member is created with no credential and fails at its first turn.\n\nProved by probe. A profile whose members declare `apiKeyFromEnv` naming variables that are not set validates with exit 0 and no warning.\n\nNothing catches it later either. At create, `selectedAPIKey` walks the declared variables and returns empty when none is set, and `prepareAuth` treats empty as nothing to do and returns no error. The member boots, the model call has no key, and the failure arrives as a turn that cannot run.\n\nThe cost is the whole point of checking before a spend. Machines are provisioned and billing by the time anyone learns the key was never there.\n\nFour agents in six runs asked for exactly this. They could name the grant in a profile and had no way to learn whether the host could satisfy it. One said plainly that it could not verify credential viability without running create.\n\nOnly the environment half is checkable here. A lent login lives on the host and belongs to cs-sandbox, which offers no way to report which logins it can lend, and duplicating that knowledge would drift. An environment variable is this product's own business, because it is this product that reads it.",
+  "notes": [],
+  "links": []
+}
