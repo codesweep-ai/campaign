@@ -1,0 +1,22 @@
+{
+  "id": "SAC-015",
+  "title": "A member with two transcripts failed its readback on a model it had named",
+  "type": "defect",
+  "severity": "high",
+  "status": "closed",
+  "foundBy": "session agent, from the evidence a failed CI leg uploaded, 2026-09-09",
+  "opened": "2026-09-09",
+  "resolved": "2026-09-09",
+  "stint": "2026-09-09 CI bringup",
+  "evidence": {
+    "commits": [
+      "9860d2f"
+    ],
+    "integrated": [],
+    "verified": "The reader was run against the transcripts the failing leg uploaded, with the newer file's model line removed to restore the moment of the check. Reading the newest file alone returns nothing; reading every file returns the model. TestTurnConfigReadsEveryTranscript fails against the old shape and passes against the new one."
+  },
+  "resolution": "observedTurnConfig reads every transcript the member holds rather than the most recent. The shell it runs moved into turnConfigCommand so the invariant has a test of its own, and that test refuses the `head -1` shape outright.",
+  "details": "A readback confirms that a member answered on the model it declared, by reading the transcript its CLI wrote. It read one file: the newest, chosen with `ls -t | head -1`.\n\nA member can hold more than one session file. On the CI leg that failed, dev had two, written three seconds apart. The check read the newer one, which had not named a model yet, and reported that the member named none at all. The turn being confirmed sat complete in the older file, with the model in it.\n\nThe failure is confident and wrong, which is what makes it expensive. It reads as a member answering on the wrong model, so it fails create outright and says do not dispatch. The campaign was correctly configured.\n\nIt hid because the orchestrator holds one transcript and dev sometimes holds two, and because a faster machine writes the second file before the check rather than during it. The scenario passes locally and failed in CI on the same commit.\n\nBoth of that member's files named claude-sonnet-5 by the time the evidence was collected, which is why the artifact alone looks healthy. The reader had to be run against them to see it.",
+  "notes": [],
+  "links": []
+}
