@@ -1,0 +1,32 @@
+{
+  "id": "SAC-022",
+  "title": "No turn can be dispatched from a macOS host, because the driver needs two Linux-only tools",
+  "type": "defect",
+  "severity": "med",
+  "status": "closed",
+  "foundBy": "session agent, bringing the smoke tier up on the self-hosted macOS arm64 host, 2026-09-09",
+  "opened": "2026-09-09",
+  "resolved": "2026-09-09",
+  "stint": "2026-09-09 CI build matrix",
+  "evidence": {
+    "commits": [
+      "3421b3b",
+      "0cb5836"
+    ],
+    "integrated": [],
+    "verified": "CI run 34400422118 was the first with no util-linux step in it. All six macOS smoke legs passed, claude-inherit among them, and nothing in the run failed. The tools those turns needed were not there to be found. Homebrew keeps util-linux keg-only, and the macOS runners' .path carries /opt/homebrew/bin without it, so `command -v flock setsid` under that PATH answers with neither. Before this, by hand on that host, a claude-subscription replay reached campaign-met in 40s with the fixed scripts and neither tool on PATH."
+  },
+  "resolution": "This was fixed upstream rather than documented. The fix is SBX-038 in the sibling project, which replaced the three constructs macOS lacks. The turn lock is a directory naming its owner, the background turn is detached without setsid, and the runner's identity is read from ps rather than /proc. This repository picked it up by repinning its dependencies, and the commits above are that repin and the one that then removed the step installing util-linux on the macOS runners.",
+  "details": "A campaign dispatches every turn from the host: `cs-<cli>-remote -H <member> -b` takes the prompt, holds a per-session lock over it and launches the turn detached. The lock is `flock` and the detach is `setsid`, both from util-linux, and macOS ships neither.\n\nThe failure names neither tool. The driver prints `flock: command not found`, then treats the lock as unheld and reports the session busy. `create` sees a member that never answered: the turn log holds the prompt and nothing else, and no agent process is ever started inside the member. Six members go quiet the same way and the campaign spends its readback bound before it stops.\n\nReproduce it on any macOS host with a member up: `cs-claude-remote -H <ref> --turn-timeout 60 --resume <session> 'say hi'`. It returns `session is busy` after `flock: command not found`.\n\nInstalling the tools makes it work. `brew install util-linux` puts flock and setsid in a keg-only prefix. With that prefix on PATH the whole path runs: a claude-subscription replay on that host passed in 39s, 43 requests replayed, 0 misses. The CI job for that host does exactly this, and fails with a message naming the tools when they are absent.\n\nWhat is unresolved is who should carry it. The drivers are the sibling project's, so the fix is a portable lock and a portable detach there, or a documented macOS prerequisite here. `cs-campaign doctor` checks neither today, so a macOS host reports itself healthy and then cannot run a turn.\n\nThis product ships Linux binaries only and README says so, which is why this is not critical. It became visible because CI now runs the smoke tier on macOS.",
+  "notes": [
+    {
+      "date": "2026-09-09",
+      "text": "This was fixed upstream rather than documented, as SBX-038 in the sandbox project. The turn lock is now a directory naming its owner, the background turn is detached without setsid, and the runner's identity is read from ps instead of /proc. Measured on the macOS arm64 host: a recorded campaign replayed in 40s with neither flock nor setsid anywhere on PATH.\n\nWhat is left here is a `make repin` onto a sandbox build carrying it. Until that lands the smoke job for that host still installs util-linux, because this repository's members run the pinned tools."
+    },
+    {
+      "date": "2026-09-09",
+      "text": "Closed on the run above. The util-linux install stays on that machine and does no harm. Nothing puts a keg-only prefix on PATH, so the tier exercises the portable path rather than falling back to the real tools."
+    }
+  ],
+  "links": []
+}
