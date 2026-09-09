@@ -1,0 +1,20 @@
+{
+  "id": "SAC-019",
+  "title": "A member's seeded files are passed as one argv string, so a large team fails create",
+  "type": "defect",
+  "severity": "high",
+  "status": "open",
+  "foundBy": "user report (host): create fails with \"argument list too long\" when a member's input file set is large",
+  "opened": "2026-09-09",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "`create` fails partway through with \"argument list too long\" once a member's seeded files grow, and no earlier command can see it coming.\n\nEvery file the host writes into a member is base64-encoded into a shell fragment. The fragments are joined with `&&` into one string, and that string is a single argument to `cs-sandbox exec`. Linux caps one argument at MAX_ARG_STRLEN, which is 32 pages. That is a separate and far smaller limit than the total argument space, so the assembly is refused whole by execve.\n\nThe numbers come from this host. The largest single argument accepted is 131071 bytes, so the cap is 131072. Nine files holding 98225 bytes assemble through this repository's own `mkGuestDirs` and `putGuestFile` into a 131787 byte script, and exec refuses it.\n\nThe orchestrator meets it first. It is the one member seeded with the mission and with every role's brief, its own included. The payload therefore grows with team size times the length of each. A reported eight-member run carried nine files at 98225 bytes raw and 130976 base64, which is 96 bytes under the cap before the shell wrapper is counted.\n\nTwo things make it expensive to diagnose. The error names the last file in the sequence, which is arbitrary, because the script is assembled whole and rejected whole. Nothing before `create` assembles the exec, so `validate`, `plan` and `create --dry-run` all pass.\n\nThe campaign is left in `create-failed` with some sandboxes provisioned and billing, and the readback never runs.\n\nThree writers share the pattern, so a fix confined to channel configuration leaves two open. `putGuestFile` seeds the channels and is the reported failure. `PutFileScript` writes a single file to a member. `PutMsgScript` writes dispatch messages, which is how the mission body reaches the orchestrator, so a long mission fails the same way.\n\nNone of this is documented. MANUAL states a different limit, the composed path length, and says nothing about how large a seeded file set may be.",
+  "notes": [],
+  "links": []
+}
