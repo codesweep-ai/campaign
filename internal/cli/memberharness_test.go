@@ -28,12 +28,17 @@ import (
 const fakeToolBody = `ID=$(printf '%s\n' "$@" | grep -o 'Dispatch ID: [dm][0-9]*' | head -1 | awk '{print $3}')
 [ -n "$ID" ] || exit 0
 [ -n "$FAKE_HOME" ] || exit 0
-mkdir -p "$FAKE_HOME/.local/share/cs-campaign/output/replies"
-python3 - "$ID" > "$FAKE_HOME/.local/share/cs-campaign/output/replies/$ID.json" <<'PYEOF2'
+REPLIES="$FAKE_HOME/.local/share/cs-campaign/output/replies"
+mkdir -p "$REPLIES"
+# Temp name then rename, for the reason the stub in campaigndoctor_test.go
+# carries in full: presence is the signal a reply is whole, and a plain redirect
+# publishes an empty file for as long as python3 takes to start.
+python3 - "$ID" > "$REPLIES/.$ID.$$.tmp" <<'PYEOF2'
 import json,sys
 note=json.dumps({"member":"","role":"","branch":"","missing":[],"goal":"stated goal","scope":"stated scope","obligations":"reply before stopping"})
 print(json.dumps({"dispatch":sys.argv[1],"phase":"done","note":note,"at":"2026-01-01T00:00:00Z"}))
 PYEOF2
+mv "$REPLIES/.$ID.$$.tmp" "$REPLIES/$ID.json"
 exit 0`
 
 func fakeToolBytes() []byte { return []byte("#!/bin/sh\n" + fakeToolBody + "\n") }

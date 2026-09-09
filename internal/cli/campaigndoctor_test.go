@@ -38,12 +38,25 @@ func installReplyingRemotes(t *testing.T) {
 	body := `#!/bin/sh
 ID=$(printf '%s\n' "$@" | grep -o 'Dispatch ID: [dm][0-9]*' | head -1 | awk '{print $3}')
 [ -n "$ID" ] || exit 0
-mkdir -p "$FAKE_HOME/.local/share/cs-campaign/output/replies"
-python3 - "$ID" > "$FAKE_HOME/.local/share/cs-campaign/output/replies/$ID.json" <<'PYEOF2'
+REPLIES="$FAKE_HOME/.local/share/cs-campaign/output/replies"
+mkdir -p "$REPLIES"
+# The reply is written to a temp name and renamed, because that is the contract
+# this stands in for: WriteReplyLocal does exactly this, and the reader takes
+# PRESENCE as the signal that a reply is whole. A plain redirect creates the file
+# empty and fills it when python3 finally starts — measured on the arm64 macOS
+# runner, where a file that exists was EMPTY for 356755 of 376485 reads, against
+# 0 of 407367 once renamed. Both members of a mini-guest campaign share one home
+# and one dispatch id, so one member's truncate lands inside the other's read:
+# the temp name carries $$ for that same reason, or the second member's rename
+# would find the file the first one had already moved.
+# that is the "reply is not valid JSON: unexpected end of JSON input" that failed
+# create on a machine running three jobs at once.
+python3 - "$ID" > "$REPLIES/.$ID.$$.tmp" <<'PYEOF2'
 import json,sys
 note=json.dumps({"member":"","role":"","branch":"","missing":[],"goal":"stated goal","scope":"stated scope","obligations":"reply before stopping"})
 print(json.dumps({"dispatch":sys.argv[1],"phase":"done","note":note,"at":"2026-01-01T00:00:00Z"}))
 PYEOF2
+mv "$REPLIES/.$ID.$$.tmp" "$REPLIES/$ID.json"
 `
 	for _, name := range []string{"cs-claude-remote", "cs-codex-remote", "cs-opencode-remote"} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o700); err != nil {
