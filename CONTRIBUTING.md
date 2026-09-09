@@ -192,14 +192,14 @@ session. A rule's reason belongs beside the rule in [`SPEC.md`](SPEC.md), and th
 found it belongs in the pull request.
 
 ```
-Refuse a socket path the AF_UNIX limit would truncate
+Fail early when a campaign name makes paths too long
 ```
 
 ```
-Re-arm the settling window on a restart re-anchor
+Give a restarted member its full time to answer
 
-Otherwise the restart rung reads as stuck while the machine
-is still booting, and the ladder gives up on a live member.
+Otherwise the restart reads as stuck while the machine is
+still booting, and the campaign gives up on a live member.
 ```
 
 Keep the `Co-Authored-By:` trailer when an agent wrote the change. Drop any trailer linking to the
