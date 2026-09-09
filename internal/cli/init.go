@@ -173,6 +173,7 @@ func scaffoldCampaign(out io.Writer, dir, name string, profile model.Profile) er
 	fmt.Fprintf(out, "\nAdd credentials to %s, then read what every member is\n"+
 		"already told, so that no brief restates or contradicts it:\n\n"+
 		"  cs-campaign orientation %s --profile %s\n\n"+
+		"For how to decide what goes in the blanks:\n  cs-campaign playbook\n\n"+
 		"Fill in the blanks, then:\n  cs-campaign validate %s\n",
 		profilePath, name, profilePath, profilePath)
 	return nil

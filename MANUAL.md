@@ -139,6 +139,9 @@ already told, so that no brief restates or contradicts it:
 
   cs-campaign orientation acme --profile acme/profile.yaml
 
+For how to decide what goes in the blanks:
+  cs-campaign playbook
+
 Fill in the blanks, then:
   cs-campaign validate acme/profile.yaml
 ```

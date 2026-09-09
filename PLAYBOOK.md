@@ -172,6 +172,21 @@ Four contradictions are easy to write and all four reach the member as fact:
 - Naming a member verb that member's role refuses.
 - Inventing a fifth outcome value.
 
+### What the tool gives you to fill in
+
+`cs-campaign init` scaffolds the three files and leaves every one of them blank on purpose:
+
+```text
+acme/
+├── mission.md          what must be true when the campaign ends
+├── profile.yaml        who runs, on what, with which credentials
+└── roles/<member>.md   one brief per member, orchestrator included
+```
+
+Each blank carries a comment saying what belongs there. Those comments are prompts rather than
+instructions, and this document is where the reasoning behind them lives. Nothing checks what you
+write, so a blank left blank reaches a member as silence.
+
 ### An agent's brief is scope
 
 Three things, and the third is the one authors leave out:

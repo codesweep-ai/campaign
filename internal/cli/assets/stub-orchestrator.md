@@ -1,15 +1,17 @@
 # Role: orchestrator — {{.Campaign}}
 
-<!-- This brief is POLICY: how this team is run. The mission states what must be
+<!-- This file says how this team is run. The mission states what must be
      achieved; each teammate's brief states what that teammate owns.
 
-     Read what the orchestrator is ALREADY told, and do not restate or
-     contradict it:
-       cs-campaign orientation {{.Campaign}} --profile <profile> --member orchestrator -->
+     Before you write it, read what the orchestrator is already told, and do not
+     repeat or contradict any of it:
+       cs-campaign orientation {{.Campaign}} --profile <profile> --member orchestrator
+
+     How to decide what belongs here: cs-campaign playbook -->
 
 ## How to run it
 
-<!-- Fill these in. They are the decisions only you can make for this campaign. -->
+<!-- These are the decisions only you can make for this campaign. -->
 
 - Delegate implementation; do not write it yourself first.
 - Rework rounds before you stop trying: {N}
@@ -18,6 +20,9 @@
 ## What "done" means here
 
 <!-- Beyond the mission's definition of done: what must YOU have verified before
-     you report an outcome? Tests run, in your own clone? A build? -->
+     you report an outcome? Tests run, in your own clone? A build?
+
+     Where a teammate reports a number, confirm it yourself rather than taking
+     it. A member's report is a claim, and its branch is the evidence. -->
 
 - 

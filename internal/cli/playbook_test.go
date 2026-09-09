@@ -69,3 +69,46 @@ func TestPlaybookStatesTheJudgementTheManualOmits(t *testing.T) {
 		}
 	}
 }
+
+// TestScaffoldPromptsDoNotInventVocabulary is SAC-018 and SAC-021 together. The
+// stubs are what an author edits, so they decide what gets written far more than
+// any document does: an agent that had read the playbook still copied the stub's
+// shape and gated three of four briefs on a coverage percentage.
+//
+// Two properties keep them honest. A stub must not restate a vocabulary defined
+// elsewhere, which is how it came to name two outcome values the product does not
+// have. And it must send the author to the reasoning rather than compress it into
+// a comment nobody can decode.
+func TestScaffoldPromptsDoNotInventVocabulary(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	stubs := map[string]string{
+		"stub-agent.md":        stubAgent,
+		"stub-orchestrator.md": stubOrchestrator,
+		"stub-mission.md":      stubMission,
+	}
+	for name, body := range stubs {
+		if !strings.Contains(body, "cs-campaign playbook") {
+			t.Errorf("%s does not send the author to the playbook, so its comments must carry the whole argument", name)
+		}
+		// An outcome value belongs to protocol.Outcomes. A stub that spells one
+		// can disagree with it, and did.
+		for _, invented := range []string{"`Met`", "`Converged`", "`Exhausted`", "`Blocked`"} {
+			if strings.Contains(body, invented) {
+				t.Errorf("%s names %s, which is not an outcome this product has; point at the playbook instead", name, invented)
+			}
+		}
+	}
+	// The gate guidance has to be where the author is looking, not only in the
+	// playbook they may have read hours ago.
+	if !strings.Contains(stubAgent, "manufacture") {
+		t.Error("stub-agent.md no longer warns that a countable gate invites a member to manufacture what is counted")
+	}
+	if !strings.Contains(campaign.PlaybookMD, "invites a member to manufacture blocks") {
+		t.Error("PLAYBOOK.md no longer carries the reasoning the stub points at")
+	}
+	// And the playbook has to describe what init scaffolds, or the stub is on its
+	// own again and grows back the compressed prose this test exists to prevent.
+	if !strings.Contains(campaign.PlaybookMD, "cs-campaign init") {
+		t.Error("PLAYBOOK.md no longer names what init scaffolds, so it is not the system of record for the stubs")
+	}
+}
