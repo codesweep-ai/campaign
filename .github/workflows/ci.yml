@@ -343,6 +343,26 @@ jobs:
       # developer's machine on one surface — including the CGO_ENABLED=0 that
       # keeps cs-vcr runnable inside a distroless container, which is the kind
       # of detail a second copy loses.
+      # TEMPORARY, and it answers one question: what IS podman's rootless
+      # network on this runner, before and after the image build?
+      #
+      # The doctor below reports that nothing answers at 169.254.1.2, which only
+      # pasta publishes. cs-sandbox's own CI gets pasta on this exact image and
+      # boots microVMs with it, so the difference is something about THIS job —
+      # and the one structural difference is that this runner both builds the
+      # image and probes, where sandbox splits those across two jobs. Printed
+      # twice for that reason. Remove once it has been read.
+      #
+      # Every command tolerates failure: a diagnostic must not decide a job.
+      - name: rootless network before the build
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          podman info --format 'backend={{.Host.NetworkBackend}} rootless={{.Host.Security.Rootless}}' || true
+          podman info --format 'rootlessNetworkCmd={{.Host.RootlessNetworkCmd}}' || true
+          podman unshare --rootless-netns ip -br addr || true
+          pgrep -a pasta || echo "no pasta process"
+          pgrep -a slirp4netns || echo "no slirp4netns process"
+
       - name: install cs-sandbox and cs-vcr
         id: tools
         if: steps.cassette.outputs.present == 'true'
@@ -426,6 +446,24 @@ jobs:
           podman image exists "$CS_SANDBOX_IMAGE"
           mkdir -p "$CS_SANDBOX_FC_CACHE"
           tar -C "$CS_SANDBOX_FC_CACHE" -xzf bin/ci-artifacts/fc-artifacts.tar.gz
+
+      # The same questions once the image has been built, so the two readings
+      # can be compared. See the note above.
+      - name: rootless network after the build
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          podman info --format 'backend={{.Host.NetworkBackend}} rootless={{.Host.Security.Rootless}}' || true
+          podman info --format 'rootlessNetworkCmd={{.Host.RootlessNetworkCmd}}' || true
+          podman unshare --rootless-netns ip -br addr || true
+          pgrep -a pasta || echo "no pasta process"
+          pgrep -a slirp4netns || echo "no slirp4netns process"
+          # And the probe the doctor makes, by hand, so its answer is visible
+          # next to the state above rather than only as a verdict.
+          python3 -m http.server 18099 --bind 0.0.0.0 >/dev/null 2>&1 &
+          sleep 1
+          podman unshare --rootless-netns curl -s -o /dev/null -w 'probe=%{http_code}\n' \
+            --max-time 3 http://169.254.1.2:18099/ || echo "probe: curl failed"
+          kill %1 || true
 
       # Both paths land here, so a cache hit is held to the same bar as a build.
       #
