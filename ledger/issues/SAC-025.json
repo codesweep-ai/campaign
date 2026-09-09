@@ -1,0 +1,22 @@
+{
+  "id": "SAC-025",
+  "title": "A ref on a repository that does not exist yet fails with a bare git exit code",
+  "type": "defect",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "session agent, from a fresh-agent trial: two of three runs wrote a ref beside a path that did not exist and were stopped by an unexplained error",
+  "opened": "2026-09-09",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "Naming a `ref` on a repository path that does not exist yet fails with `exit status 128`, and nothing says why.\n\nProved by probe. A profile that declares a ref beside an absent path exits 1, and the whole of what it says is `resolve repo /tmp/does-not-exist-yet-xyz ref main: exit status 128`. The same profile without the ref validates, because an absent path is planned as an empty repository.\n\n`resolveRepoRefs` asks git to resolve the ref, and falls back to creating the repository only when the ref is the default. A ref the operator wrote skips that recovery and returns git's own failure, wrapped and otherwise unexplained. Git fails for the same reason in both cases, which is that there is no repository there yet.\n\nThe message names neither the cause nor the remedy. It does not say the repository is missing, that the ref is what stopped it, or what to do instead.\n\nThe documents teach the combination that fails. PLAYBOOK shows a repository declared with a ref in one section, and seventeen lines later tells an operator to name a path that is not there. Two agents in a six-run trial wrote both together and were stopped. One of them had declared no repository at all on the command line, so it wrote the block itself from what it had just read.\n\nThe rule is stated nowhere. No document says that a ref only means something on a repository that already exists.",
+  "notes": [],
+  "links": [
+    "SAC-023"
+  ]
+}
