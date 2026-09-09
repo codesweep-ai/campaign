@@ -364,26 +364,47 @@ func turnConfigReadable(cli string) bool {
 	return cli == "claude" || cli == "codex"
 }
 
+// turnConfigCommand is the shell that reads a member's transcripts, kept apart
+// from the call so the one thing that has gone wrong here is testable.
+//
+// It scans EVERY transcript. `head -1` is the shape to keep out: a member can
+// hold more than one session file, and the newest is not always the one that
+// answered.
+func turnConfigCommand(cli string) string {
+	glob, effortKey := `"$HOME"/.cs-codex/sessions/*/*/*/*.jsonl`, "reasoning_effort"
+	if cli == "claude" {
+		// Codex rollouts sit one directory level deeper than claude transcripts.
+		glob, effortKey = `"$HOME"/.cs-claude/projects/*/*.jsonl`, "effort"
+	}
+	// `set --` rather than `ls`, so a name with a space cannot split, and
+	// `[ -e "$1" ]` because an unmatched glob comes back as the pattern itself.
+	return fmt.Sprintf(`set -- %s; [ -e "$1" ] || exit 0; `+
+		`grep -ho '"model":"[^"]*"' "$@" | sed 's/.*:"//;s/"$//' | sort -u | sed 's/^/model=/'; `+
+		`grep -ho '"%s":"[^"]*"' "$@" | sed 's/.*:"//;s/"$//' | sort -u | sed 's/^/effort=/'`, glob, effortKey)
+}
+
 // observedTurnConfig reads the model and reasoning effort a member's CLI
-// actually answered on, out of the transcript that CLI wrote for its most
-// recent session — the evidence half of a declaration, riding the readback
-// turn that already ran.
+// actually answered on, out of the transcripts that CLI wrote — the evidence
+// half of a declaration, riding the readback turn that already ran.
+//
+// EVERY transcript the member has, not the newest one. A CLI can have more than
+// one session file open, and the newest is not always the one that answered:
+// measured on a CI runner where the member wrote a second session three seconds
+// after the first, and the check read that one before it had named its model.
+// The turn it was confirming sat in the older file, complete. Reading only the
+// newest reported a member answering on no model at all, and failed a readback
+// on a campaign that was correctly configured.
+//
+// Reading them all is safe because a member is built for one campaign and
+// destroyed with it, so every transcript under that home belongs to this run.
+// It also matches what the caller already tolerates: a declaration has to be
+// PRESENT among the models named, never the only one, because a CLI names a
+// subagent and a summariser beside the turn.
 func (s sandboxCLI) observedTurnConfig(ctx context.Context, member model.Member) (models, efforts []string, supported bool, err error) {
 	if !turnConfigReadable(member.CLI) {
 		return nil, nil, false, nil
 	}
-	var glob, effortKey string
-	switch member.CLI {
-	case "claude":
-		glob, effortKey = `"$HOME"/.cs-claude/projects/*/*.jsonl`, "effort"
-	default:
-		// Codex rollouts sit one directory level deeper than claude transcripts.
-		glob, effortKey = `"$HOME"/.cs-codex/sessions/*/*/*/*.jsonl`, "reasoning_effort"
-	}
-	command := fmt.Sprintf(`f=$(ls -t %s 2>/dev/null | head -1); [ -n "$f" ] || exit 0; `+
-		`grep -ho '"model":"[^"]*"' "$f" | sed 's/.*:"//;s/"$//' | sort -u | sed 's/^/model=/'; `+
-		`grep -ho '"%s":"[^"]*"' "$f" | sed 's/.*:"//;s/"$//' | sort -u | sed 's/^/effort=/'`, glob, effortKey)
-	out, err := s.memberOutput(ctx, member, command)
+	out, err := s.memberOutput(ctx, member, turnConfigCommand(member.CLI))
 	if err != nil {
 		return nil, nil, true, err
 	}
