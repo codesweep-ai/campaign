@@ -101,15 +101,17 @@ func TestTheUnscaffoldedDocumentsAreTheOnesAMemberSees(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "profile.yaml")); err != nil {
 		t.Errorf("init no longer writes the one file it should: %v", err)
 	}
-	// The guidance the stubs used to carry has one home now, and it has to name
-	// the headings so it works as a key rather than as prose about the topic.
-	for _, heading := range []string{
+	// The guidance the stubs used to carry has one home now. It is anchored to the
+	// readback's three questions rather than to headings: nothing parses a brief,
+	// so heading conformance is not a thing to hold, and the fields a member is
+	// actually asked are.
+	for _, anchor := range []string{
+		"`goal`", "`scope`", "`obligations`",
+		"only suggestions",
 		"## Definition of done", "## Out of scope",
-		"## What you own", "## What you must not touch", "## Proof your work must carry",
-		"## How to run it", `## What "done" means here`,
 	} {
-		if !strings.Contains(campaign.PlaybookMD, heading) {
-			t.Errorf("PLAYBOOK.md no longer says what belongs under %q", heading)
+		if !strings.Contains(campaign.PlaybookMD, anchor) {
+			t.Errorf("PLAYBOOK.md no longer anchors its brief guidance on %q", anchor)
 		}
 	}
 	if !strings.Contains(campaign.PlaybookMD, "manufacture\ncoverage") &&

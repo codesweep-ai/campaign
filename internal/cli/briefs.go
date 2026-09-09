@@ -7,10 +7,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
 	"github.com/codesweep-ai/campaign/internal/model"
+	"github.com/codesweep-ai/campaign/internal/protocol"
 )
 
 // Campaign inputs are discovered by CONVENTION, beside the profile, rather than
@@ -291,4 +294,49 @@ func profileMembers(p model.Profile) []model.Member {
 		members = append(members, model.Member{Name: name, Role: "agent"})
 	}
 	return members
+}
+
+// outcomeToken matches an outcome value where an author is naming it as a value
+// rather than using the word in prose: inside backticks, or after --outcome.
+// Bare text is left alone deliberately, because "campaign-free" and
+// "campaign-specific" are ordinary English and this document set uses both.
+var outcomeToken = regexp.MustCompile("`(campaign-[a-z]+)`|--outcome[= ]+(campaign-[a-z]+)")
+
+// warnInventedOutcomes names a seeded document that declares an outcome the
+// product does not have.
+//
+// The four values are a closed set the product owns, so this checks a
+// vocabulary rather than grading prose, which R50 forbids. A mission that
+// declares its own vocabulary is seeded at create and worked against for the
+// whole campaign, and the refusal arrives when the orchestrator finally tries
+// to report with a word the reply verb rejects.
+//
+// A warning rather than a refusal: a document may name an outcome for a reason
+// this cannot see, and the operator is the one who knows.
+func warnInventedOutcomes(w io.Writer, in campaignInputs) {
+	if !in.Declared || in.Planned {
+		return
+	}
+	files := map[string]string{}
+	if in.Mission.Content != "" {
+		files[in.Mission.Name] = in.Mission.Content
+	}
+	for _, name := range sortedRoleNames(in.Roles) {
+		files[in.Roles[name].Name] = in.Roles[name].Content
+	}
+	for _, name := range sortedStrings(keysOf(files)) {
+		seen := map[string]bool{}
+		for _, m := range outcomeToken.FindAllStringSubmatch(files[name], -1) {
+			token := m[1]
+			if token == "" {
+				token = m[2]
+			}
+			if token == "" || seen[token] || slices.Contains(protocol.Outcomes, token) {
+				continue
+			}
+			seen[token] = true
+			fmt.Fprintf(w, "warning: %s names the outcome %q, which does not exist — the four are %s\n",
+				name, token, strings.Join(protocol.Outcomes, ", "))
+		}
+	}
 }

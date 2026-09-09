@@ -227,6 +227,9 @@ acme/
 Every seat is a **member**. One member is the **orchestrator** and the rest are **agents**, and the
 two roles take different briefs.
 
+The headings suggested below are only suggestions. Nothing parses these files and a member reads
+its brief as prose, so use whatever shape suits the campaign. What has to survive is the content.
+
 Nothing scaffolds the mission or the briefs, and that is deliberate. Those two are the documents a
 member is seeded with, and the check that refuses an unbriefed campaign asks whether the file
 exists. A scaffolded blank would pass it and brief a member with nothing.
@@ -254,25 +257,29 @@ interest stops.
 
 ### An agent's brief
 
-Three sections, and the third is where a brief is won or lost:
+Before a campaign is usable, every member is asked three questions and has to answer them in its
+own words. Those three are the contract, and a brief's only job is to make them answerable:
 
-- `## What you own`
-- `## What you must not touch`
-- `## Proof your work must carry`
+| It is asked | And can only answer it from |
+|---|---|
+| `goal` — what this campaign is asking you to accomplish | the brief, because an agent never sees the mission |
+| `scope` — what you own and what you must not touch | the brief |
+| `obligations` — what this campaign requires, and what happens if you skip it | the brief and the orientation |
 
-**`## What you own`** is files, directories, subsystems. Be concrete enough that another agent
+**What this member owns** is files, directories, subsystems. Be concrete enough that another agent
 reading its own brief would not claim the same ground.
 
-**`## What you must not touch`** names what belongs to another agent. Campaigns go wrong where two
-agents both think a file is theirs.
+**What belongs to someone else** is the other half of `scope`, and it is the half authors drop.
+Campaigns go wrong where two agents both think a file is theirs. A campaign with one agent has no
+seam to guard, and then leaving it out is right.
 
-**`## Proof your work must carry`** starts with the obligation that is irreversible: work an agent
-does not commit to its own branch dies with the machine. Then add what this campaign needs, and ask
-for what you could check rather than what you could count. "Every endpoint has a test that fails
+**What its work must prove** starts with the obligation that is irreversible: work an agent does
+not commit to its own branch dies with the machine. Then add what this campaign needs, and ask for
+what you could check rather than what you could count. "Every endpoint has a test that fails
 without it" holds up. "80% coverage" invites an agent to manufacture coverage, which the section on
 gates below is about.
 
-Write all three for a reader with no context, because that is what an agent is. It cannot see the
+Write all of it for a reader with no context, because that is what an agent is. It cannot see the
 mission, the other briefs, or anything you decided in your head.
 
 Never hand two agents the same brief with a name changed. A generic briefing is restated faithfully
@@ -280,20 +287,22 @@ by an agent that read nothing, so the readback cannot see through it.
 
 ### The orchestrator's brief
 
-Two sections. The mission states what must be achieved and each agent's brief states what that
-agent owns, so this one covers how the campaign is run:
+The mission states what must be achieved and each agent's brief states what that agent owns, so
+this one covers how the campaign is run. Two decisions:
 
-- `## How to run it`
-- `## What "done" means here`
+**How the team is run** carries what the orchestrator would otherwise invent. How many rework
+rounds before it stops sending a piece back. What it does when an agent fails that many times.
+Whether it writes code itself or delegates everything.
 
-**`## How to run it`** carries the decisions the orchestrator would otherwise invent. How many
-rework rounds before it stops sending a piece back. What it does when an agent fails that many
-times. Whether it writes code itself or delegates everything.
+**What it must verify before reporting** is the work it does in its own clone. It is accountable
+for what the campaign delivers, so it verifies returned work rather than accepting an agent's
+report. Where an agent reports a number, say that the orchestrator confirms it: a report is a claim
+and the branch is the evidence.
 
-**`## What "done" means here`** is what the orchestrator must verify before reporting an outcome,
-in its own clone. It is accountable for what the campaign delivers, so it verifies returned work
-rather than accepting an agent's report. Where an agent reports a number, say that the orchestrator
-confirms it: a report is a claim and the branch is the evidence.
+Do not restate the outcome vocabulary. The four values arrive with the mission dispatch, which is
+later and more authoritative than anything you seeded. A brief that names its own is a brief the
+orchestrator will try to close the campaign with. `validate` warns when a seeded document names
+an outcome that does not exist.
 
 ### Give it the exit before it needs one
 

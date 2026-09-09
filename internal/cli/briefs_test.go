@@ -374,3 +374,45 @@ func TestLargeSeedIsWarnedAboutAndNotRefused(t *testing.T) {
 		t.Errorf("an ordinary campaign must be quiet: %q", out.String())
 	}
 }
+
+// SAC-024. An agent given only the binary wrote a mission declaring
+// campaign-partial and campaign-unmet, then briefed the orchestrator to close
+// the campaign with one of them. Both are refused by the reply verb, so the
+// campaign would have run to its end against a vocabulary it could not use.
+//
+// The check has to be quiet about ordinary English: this document set says
+// campaign-free and campaign-specific in prose, and warning on those would make
+// the warning worthless.
+func TestAnInventedOutcomeIsNamedBeforeTheSpend(t *testing.T) {
+	in := campaignInputs{
+		Declared: true,
+		Mission: seededFile{Name: "mission.md", Content: "Close with `campaign-met`, " +
+			"`campaign-partial` or `campaign-unmet`.\n"},
+		Roles: map[string]seededFile{
+			"orchestrator": {Name: "orchestrator.md", Content: "Reply --outcome campaign-unmet if it is broken.\n"},
+			"backend":      {Name: "backend.md", Content: "Write campaign-free documents in the product repository.\n"},
+		},
+	}
+	var out strings.Builder
+	warnInventedOutcomes(&out, in)
+	got := out.String()
+	for _, want := range []string{"mission.md", "campaign-partial", "campaign-unmet", "orchestrator.md"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the warning does not mention %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "campaign-free") {
+		t.Errorf("an ordinary hyphenated word was reported as an outcome:\n%s", got)
+	}
+	if strings.Contains(got, "campaign-met") && !strings.Contains(got, `"campaign-met"`) {
+		// campaign-met appears in the remedy line, never as the invented token.
+		t.Logf("remedy names the real values, which is intended:\n%s", got)
+	}
+	// A campaign that names only real outcomes is silent.
+	out.Reset()
+	warnInventedOutcomes(&out, campaignInputs{Declared: true,
+		Mission: seededFile{Name: "mission.md", Content: "End with `campaign-converged` and name what is unmet.\n"}})
+	if out.String() != "" {
+		t.Errorf("a correct vocabulary must not warn: %q", out.String())
+	}
+}

@@ -288,6 +288,7 @@ func (a *app) createCmd(plan bool) *cobra.Command {
 		// Before anything is provisioned, and on stdout's sibling so plan's JSON
 		// stays parseable.
 		warnLargeSeeds(c.ErrOrStderr(), campaign.Members, inputs)
+		warnInventedOutcomes(c.ErrOrStderr(), inputs)
 		if planning {
 			return writeJSON(c.OutOrStdout(), campaign)
 		}
@@ -651,6 +652,7 @@ func (a *app) validateCmd() *cobra.Command {
 			return err
 		}
 		warnLargeSeeds(c.ErrOrStderr(), profileMembers(profile), inputs)
+		warnInventedOutcomes(c.ErrOrStderr(), inputs)
 		return nil
 	}}
 	cmd.Flags().StringVar(&profilePath, "profile", "", "campaign profile YAML (same as the positional argument)")
