@@ -1,0 +1,23 @@
+{
+  "id": "SAC-022",
+  "title": "A scaffolded brief passes the check meant to refuse an unbriefed fleet",
+  "type": "defect",
+  "severity": "high",
+  "status": "open",
+  "foundBy": "user report (host), asking why the stubs exist at all: \"we are just adding more docs to keep in sync\"",
+  "opened": "2026-09-09",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "`init` writes a brief for every member, and a brief nobody filled in passes validation.\n\nA campaign scaffolded and left entirely untouched validates clean. Running validate on it prints a valid profile line and a mission digest beside a count of role briefs, with every blank still blank. The check behind that line asks whether the file exists. Nothing asks whether anyone wrote it.\n\nR30 forbids a briefing of exactly this shape. A briefing that could be silently substituted for a generic one must not exist, because a member handed boilerplate restates the boilerplate faithfully and the readback cannot see through it. The scaffolding manufactures such a briefing, so `init` turns \"no brief, refused\" into \"generic brief, accepted\".\n\nThe stubs cost more than that. Each one restates guidance the playbook owns, so each is a second copy that can disagree with the first, and one already has. The mission stub named two outcome values the product does not have, which is SAC-021.\n\nA stub also carries authoring guidance into the member. A stub's comments are written for the operator and reach the member verbatim, because nothing strips them. The digest recorded for a seeded file equals the sha256 of the raw file on disk. An author who fills in the blanks and leaves the scaffolding ships authoring guidance into a member's standing context.\n\nThe line worth drawing is whether a file is delivered. `profile.yaml` is never seeded, so its scaffolding is pure value and its comments reach nobody. `mission.md` and `roles/<member>.md` are delivered, and for those an empty directory refuses the campaign while a scaffolded blank does not.",
+  "notes": [],
+  "links": [
+    "SAC-018",
+    "SAC-021"
+  ]
+}
