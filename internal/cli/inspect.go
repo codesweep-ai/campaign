@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -29,21 +28,17 @@ func (a *app) lsCmd() *cobra.Command {
 		// GROUP rather than NETWORK: the group is the isolation boundary and
 		// the handle every cs-sandbox command takes; its network is derived
 		// from it and stays visible in `status`/`inspect` JSON.
-		fmt.Fprintln(table, "NAME\tPROVISIONING\tGROUP\tMEMBERS\tGATEWAY\tAGE")
+		fmt.Fprintln(table, "NAME\tPROVISIONING\tGROUP\tMEMBERS\tAGE")
 		for _, campaign := range campaigns {
 			age := "-"
 			if !campaign.CreatedAt.IsZero() {
 				age = time.Since(campaign.CreatedAt).Round(time.Second).String()
 			}
-			gw := "-"
-			if campaign.Gateway != 0 {
-				gw = strconv.Itoa(campaign.Gateway)
-			}
 			prov := campaign.Provisioning
 			if prov == "" {
 				prov = "-"
 			}
-			fmt.Fprintf(table, "%s\t%s\t%s\t%d\t%s\t%s\n", campaign.Name, prov, campaign.Group, len(campaign.Members), gw, age)
+			fmt.Fprintf(table, "%s\t%s\t%s\t%d\t%s\n", campaign.Name, prov, campaign.Group, len(campaign.Members), age)
 		}
 		return table.Flush()
 	}}

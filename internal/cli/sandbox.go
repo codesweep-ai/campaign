@@ -625,7 +625,6 @@ func (s sandboxCLI) inspect(ctx context.Context, ref string) (Instance, error) {
 type Group struct {
 	Name    string `json:"name"`
 	Network string `json:"network"`
-	Gateway int    `json:"gateway,omitempty"`
 	Members int    `json:"members"`
 }
 

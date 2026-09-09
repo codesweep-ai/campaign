@@ -92,7 +92,7 @@ var errVCRUnavailable = errors.New("cs-vcr cannot run on this host")
 // on its own goroutine — the network it joins does not exist until create has
 // made the first member, so the launch has to overlap with create — and
 // t.Fatal outside the test's own goroutine does not stop a test.
-func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string) (*vcrProxy, error) {
+func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string, abandoned <-chan struct{}) (*vcrProxy, error) {
 	if _, err := exec.LookPath("podman"); err != nil {
 		return nil, fmt.Errorf("%w: podman is not installed", errVCRUnavailable)
 	}
@@ -106,7 +106,7 @@ func startVCR(t *testing.T, sc scenario, group, mode, store, configDir string) (
 
 	// The container joins the campaign's network whichever chain this is, so
 	// every scenario waits for that network to exist.
-	if err := waitForFabric(network); err != nil {
+	if err := waitForFabric(network, abandoned); err != nil {
 		return nil, err
 	}
 
@@ -238,13 +238,27 @@ func (p *vcrProxy) stop() {
 // gets a TLS handshake timeout on every upstream call while resolution
 // settles. The symptom arrives fifteen minutes later as a readback timeout,
 // which points nowhere near here.
-func waitForFabric(network string) error {
+func waitForFabric(network string, abandoned <-chan struct{}) error {
 	deadline := time.Now().Add(10 * time.Minute)
+	// abandoned is closed by the caller when create has failed. Ten minutes is
+	// the right budget for a fabric that is on its way and the wrong one for a
+	// fabric nobody is building: without this the wait outlives the run it
+	// belongs to and reports its own timeout in place of the real error.
+	stop := func() bool {
+		select {
+		case <-abandoned:
+			return true
+		case <-time.After(time.Second):
+			return false
+		}
+	}
 	for time.Now().Before(deadline) {
 		if exec.Command("podman", "network", "exists", network).Run() == nil {
 			break
 		}
-		time.Sleep(time.Second)
+		if stop() {
+			return fmt.Errorf("gave up waiting for network %s: the campaign that builds it failed", network)
+		}
 	}
 	if exec.Command("podman", "network", "exists", network).Run() != nil {
 		return fmt.Errorf("network %s never appeared", network)
@@ -255,7 +269,9 @@ func waitForFabric(network string) error {
 		if err == nil && strings.TrimSpace(string(out)) == "true" {
 			break
 		}
-		time.Sleep(time.Second)
+		if stop() {
+			return fmt.Errorf("gave up waiting for %s: the campaign that builds it failed", keepalive)
+		}
 	}
 	time.Sleep(5 * time.Second) // let dnsmasq finish claiming its address
 	return nil

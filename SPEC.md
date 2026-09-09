@@ -169,8 +169,8 @@ inside their own sandbox.
 **R6.** The host **MUST** remain able to reach every member.
 
 **R7.** Teardown **MUST** reclaim the group once its members are gone: network, keys, gateway
-container, published gateway port, tap prefix and fabric directory. *Gateway ports come from a
-range of a hundred, so a leak per campaign exhausts the host.*
+container, tap prefix and fabric directory. *Tap prefixes are interface names, which are host-global,
+so a leak per campaign is a leak the whole machine carries.*
 
 **R8.** A member has two addresses and they **MUST NOT** be interchangeable. Host-plane commands
 **MUST** use the qualified `<sandbox>.<group>`; an in-group reference from the orchestrator to an
@@ -738,7 +738,7 @@ agents:
 
 One JSON document per campaign, `version: 2`. It records:
 
-- campaign identity, the group, the network and the gateway port;
+- campaign identity, the group and the network;
 - the engine, the create checkpoint and the timestamps;
 - the profile path and digest, the overrides and the resolved policy;
 - the resolved deadline and the upstream verdict at create;
@@ -1152,8 +1152,8 @@ it per scenario before provisioning. `test/cassettes/README.md` has the detail.
 
 #### What an interrupted live run leaves behind
 
-A live run killed part-way leaves machines, a network, a key pair and a gateway port behind, with
-model turns still being charged. The driver catches SIGINT and SIGTERM and reclaims the campaign's
+A live run killed part-way leaves machines, a network and a key pair behind, with model turns still
+being charged. The driver catches SIGINT and SIGTERM and reclaims the campaign's
 group before it exits, and `t.Cleanup` covers a test that merely fails.
 
 The first interrupt reclaims; a second gives up, names the group and leaves it standing. That
@@ -1250,8 +1250,8 @@ stopped by an approval prompt or a deny rule. A model credential the host holds 
 a loan unless the profile declared the copy, and a member holds one model credential rather than
 several. Destroying one campaign leaves another fully operational.
 
-**Lifecycle.** Destroying a campaign reclaims its group, so no network, key pair, gateway, gateway
-port, tap prefix or fabric directory outlives the campaign that created it. A failed host command
+**Lifecycle.** Destroying a campaign reclaims its group, so no network, key pair, gateway, tap
+prefix or fabric directory outlives the campaign that created it. A failed host command
 can resume creation or destruction without losing ownership information. A campaign can run for
 days and recover after a stopped or restarted member.
 
@@ -1297,7 +1297,7 @@ requested service.
   Classification: BEHAVIORAL
 
 [QA-02] Resource reclamation: host artifacts outliving a destroyed campaign = 0
-  Measured by: group listing, network listing, gateway port range and tap prefix after destroy
+  Measured by: group listing, network listing and tap prefix after destroy
   Classification: BEHAVIORAL
 
 [QA-03] Dispatch state durability: state lost to a host restart = 0

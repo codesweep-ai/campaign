@@ -39,7 +39,6 @@ type observation struct {
 	// an unreadable verdict and an unfinished campaign look identical from
 	// the outside, and only one of them is the operator's to wait out.
 	MissionErr string `json:"missionError,omitempty"`
-	Gateway    int    `json:"gateway,omitempty"`
 }
 
 func (a *app) observeCmd() *cobra.Command {
@@ -65,7 +64,7 @@ func (a *app) observeCmd() *cobra.Command {
 // the campaign record so campaign evidence survives a lost orchestrator
 // machine (a backup of a claim, not derived state).
 func (a *app) observeCampaign(ctx context.Context, campaign *model.Campaign) (observation, error) {
-	obs := observation{Gateway: campaign.Gateway}
+	obs := observation{}
 	var orchestrator *model.Member
 	for i := range campaign.Members {
 		if campaign.Members[i].Role == "orchestrator" {
@@ -193,8 +192,5 @@ func printObservation(w io.Writer, obs observation) {
 	}
 	if obs.MissionErr != "" {
 		fmt.Fprintf(w, "\nMISSION REPLY — present, but unreadable\n  %s\n", obs.MissionErr)
-	}
-	if obs.Gateway != 0 {
-		fmt.Fprintf(w, "\ngateway: port %d — one entrance for this campaign's services\n", obs.Gateway)
 	}
 }

@@ -86,8 +86,8 @@ func (a *app) destroyCmd() *cobra.Command {
 			return fmt.Errorf("members still present (%s); campaign state preserved — re-run with --force to destroy", strings.Join(remaining, ", "))
 		}
 		// Only now that no member survives: the group owns host-global
-		// artifacts the members do not — network, SSH trust, gateway and its
-		// port. Unforced on purpose: a second, independent check that the
+		// artifacts the members do not — its network, its SSH trust and its
+		// gateway. Unforced on purpose: a second, independent check that the
 		// group really is empty.
 		if err = a.reclaimGroup(c.Context(), campaign); err != nil {
 			return err
@@ -98,25 +98,6 @@ func (a *app) destroyCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&archive, "archive", false, "archive all member evidence before destruction")
 	cmd.Flags().StringVar(&archiveDir, "archive-output", "", "archive destination (requires --archive)")
 	return cmd
-}
-
-// adoptGatewayPort records the campaign group's SSH jump-host port.
-// Best-effort: a campaign is usable without it.
-func (a *app) adoptGatewayPort(ctx context.Context, campaign *model.Campaign) {
-	if campaign.Group == "" {
-		return
-	}
-	groups, err := a.sandbox.groups(ctx)
-	if err != nil {
-		return
-	}
-	for _, g := range groups {
-		if g.Name == campaign.Group {
-			campaign.Gateway = g.Gateway
-			return
-		}
-	}
-	campaign.Gateway = 0 // the group is gone; do not advertise a dead entrance
 }
 
 // reclaimGroup removes the campaign's cs-sandbox group once its members are

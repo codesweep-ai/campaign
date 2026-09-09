@@ -821,6 +821,7 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 		err   error
 	}
 	var launched chan launch
+	var abandoned chan struct{}
 	if opts.proxyMode != "" {
 		planned, _, err := a.planCampaign(createOpts{profile: profilePath}, name, true)
 		if err != nil {
@@ -851,8 +852,15 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 		// the network appearing and the first model turn — the d001 readback,
 		// inside create — is tens of seconds, which is the room this has.
 		launched = make(chan launch, 1)
+		// Closed when create fails, so the launch stops waiting for a fabric
+		// nobody is building any more. Without it the recorder spends its whole
+		// ten-minute deadline and the test then reports THAT, while the create
+		// error which explains everything is never printed. Measured: six
+		// scenarios each failing at 601s on "network never appeared", with the
+		// real cause invisible in all six.
+		abandoned = make(chan struct{})
 		go func() {
-			started, err := startVCR(t, sc, planned.Group, opts.proxyMode, opts.proxyStore, scratch)
+			started, err := startVCR(t, sc, planned.Group, opts.proxyMode, opts.proxyStore, scratch, abandoned)
 			launched <- launch{started, err}
 		}()
 	}
@@ -864,11 +872,19 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 	create.SetErr(&out)
 	create.SetArgs([]string{name, "--profile", profilePath})
 	createErr := create.Execute()
+	// Before collecting the launch, because the launch is waiting on a fabric
+	// that create was supposed to build: a create that failed has already
+	// decided the recorder's fate, and its error is the one worth reading.
+	if createErr != nil && abandoned != nil {
+		close(abandoned)
+	}
 
 	run := campaignRun{name: name, createOut: out.String()}
 	if launched != nil {
 		l := <-launched
 		switch {
+		case createErr != nil:
+			// The launch was abandoned above; whatever it says is a consequence.
 		case errors.Is(l.err, errVCRUnavailable):
 			t.Skipf("%v", l.err)
 		case l.err != nil:
