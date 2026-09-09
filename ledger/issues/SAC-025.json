@@ -3,19 +3,26 @@
   "title": "A ref on a repository that does not exist yet fails with a bare git exit code",
   "type": "defect",
   "severity": "med",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, from a fresh-agent trial: two of three runs wrote a ref beside a path that did not exist and were stopped by an unexplained error",
   "opened": "2026-09-09",
-  "resolved": null,
-  "stint": null,
+  "resolved": "2026-09-09",
+  "stint": "2026-09-09 scaffold prompts session",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "2e93e4e"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "go test ./... -count=1: every package passes. TestARefOnARepositoryThatDoesNotExistYet holds both halves. The branch the repository will be born on plans as an empty repository. Any other is refused with the path, the ref and the remedy, and without git's exit code. Proved by mutation: restoring the old guard fails it with the exact error the trial agents hit. End to end, the probe profile that exited 1 with exit status 128 now resolves, and the same profile asking for develop is refused by name. make check exit 0."
   },
-  "resolution": null,
+  "resolution": "An absent repository is recognised whatever ref the operator wrote. The branch it will be born on resolves the way no ref at all does. Any other ref is refused, naming the path, the branch it will actually get, and the two ways out.\n\nSubstituting a branch would be worse than refusing. An operator who wrote `develop` asked for something specific, and a repository the tool creates will never have it.\n\nThe documents no longer teach the combination. PLAYBOOK's example drops the ref that sat seventeen lines from the advice to name a path that is not there. Both documents now state the rule, which is that a ref names a branch on a repository that already exists.",
   "details": "Naming a `ref` on a repository path that does not exist yet fails with `exit status 128`, and nothing says why.\n\nProved by probe. A profile that declares a ref beside an absent path exits 1, and the whole of what it says is `resolve repo /tmp/does-not-exist-yet-xyz ref main: exit status 128`. The same profile without the ref validates, because an absent path is planned as an empty repository.\n\n`resolveRepoRefs` asks git to resolve the ref, and falls back to creating the repository only when the ref is the default. A ref the operator wrote skips that recovery and returns git's own failure, wrapped and otherwise unexplained. Git fails for the same reason in both cases, which is that there is no repository there yet.\n\nThe message names neither the cause nor the remedy. It does not say the repository is missing, that the ref is what stopped it, or what to do instead.\n\nThe documents teach the combination that fails. PLAYBOOK shows a repository declared with a ref in one section, and seventeen lines later tells an operator to name a path that is not there. Two agents in a six-run trial wrote both together and were stopped. One of them had declared no repository at all on the command line, so it wrote the block itself from what it had just read.\n\nThe rule is stated nowhere. No document says that a ref only means something on a repository that already exists.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-09",
+      "text": "The code fix alone would not have prevented either failure in the trial. Both agents would still have written the ref, and would have been told why rather than left with an exit code. The playbook edit is the part that stops it happening, and the adjacency it removes was introduced the same day by the fix for SAC-023."
+    }
+  ],
   "links": [
     "SAC-023"
   ]
