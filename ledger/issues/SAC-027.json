@@ -1,0 +1,34 @@
+{
+  "id": "SAC-027",
+  "title": "A scaffolded brief passes the check meant to refuse an unbriefed fleet",
+  "type": "defect",
+  "severity": "high",
+  "status": "closed",
+  "foundBy": "user report (host), asking why the stubs exist at all: \"we are just adding more docs to keep in sync\"",
+  "opened": "2026-09-09",
+  "resolved": "2026-09-09",
+  "stint": "2026-09-09 scaffold prompts session",
+  "evidence": {
+    "commits": [
+      "c600741"
+    ],
+    "integrated": [],
+    "verified": "go test ./... -count=1: every package passes. TestValidateRefusesWhatInitEmitsUntilTheDocumentsAreWritten runs both halves. A freshly scaffolded campaign is refused and the refusal names all four missing files, and the same profile validates once they exist. TestInitScaffoldsOnlyTheProfile holds that no seeded document is written. End to end, init prints one wrote line and validate exits 1. The embed count fell from 9 inputs to 6. make check exit 0."
+  },
+  "resolution": "`init` writes the profile and names the rest. The mission and the briefs are the documents a member is seeded with, so leaving them absent is what makes the existence check mean something. An unwritten campaign is now refused by name, and the refusal says why nothing scaffolds them.\n\nThe guidance the stubs carried lives in the playbook. Its headings match the ones a brief and a mission use, so it reads as a key rather than as prose about the topic. That removes three documents that restated it and could disagree with it, which one already had. It also ends the leak, because a comment written for the operator was seeded to the member verbatim.\n\nThe profile keeps its scaffolding and its comments. It is never seeded, so nothing it carries reaches a member.",
+  "details": "`init` writes a brief for every member, and a brief nobody filled in passes validation.\n\nA campaign scaffolded and left entirely untouched validates clean. Running validate on it prints a valid profile line and a mission digest beside a count of role briefs, with every blank still blank. The check behind that line asks whether the file exists. Nothing asks whether anyone wrote it.\n\nR30 forbids a briefing of exactly this shape. A briefing that could be silently substituted for a generic one must not exist, because a member handed boilerplate restates the boilerplate faithfully and the readback cannot see through it. The scaffolding manufactures such a briefing, so `init` turns \"no brief, refused\" into \"generic brief, accepted\".\n\nThe stubs cost more than that. Each one restates guidance the playbook owns, so each is a second copy that can disagree with the first, and one already has. The mission stub named two outcome values the product does not have, which is SAC-021.\n\nA stub also carries authoring guidance into the member. A stub's comments are written for the operator and reach the member verbatim, because nothing strips them. The digest recorded for a seeded file equals the sha256 of the raw file on disk. An author who fills in the blanks and leaves the scaffolding ships authoring guidance into a member's standing context.\n\nThe line worth drawing is whether a file is delivered. `profile.yaml` is never seeded, so its scaffolding is pure value and its comments reach nobody. `mission.md` and `roles/<member>.md` are delivered, and for those an empty directory refuses the campaign while a scaffolded blank does not.",
+  "notes": [
+    {
+      "date": "2026-09-09",
+      "text": "One test kept the defect in place. TestValidateAcceptsWhatInitEmits held that a scaffold validates, which was the behaviour that let an unbriefed fleet through. It is inverted rather than deleted, because the convention it also pinned is real: init writes where the loader looks."
+    },
+    {
+      "date": "2026-09-09",
+      "text": "This record was filed as SAC-022 on a branch and renumbered on integration. The maintainer's own SAC-022 reached the remote first, and an ID belongs to whoever integrates it. The record is otherwise unchanged, and the work it describes is unaffected."
+    }
+  ],
+  "links": [
+    "SAC-018",
+    "SAC-021"
+  ]
+}

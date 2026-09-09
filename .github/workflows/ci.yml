@@ -1,19 +1,38 @@
 # Build, unit tests, every gate a contributor runs before pushing, and the
-# smoke tier.
+# smoke tier — on every host this product is built and driven from.
 #
-# The smoke job boots real Firecracker microVMs on a hosted runner. That works
-# because ubuntu-26.04 does have /dev/kvm — it is root:kvm and the runner user
-# is not in that group, so it reads as absent until the job widens it. What the
-# job does not have is a credential, and it needs none: every model call is
-# served from the committed cassette by a cs-vcr on the campaign's own fabric.
+# The smoke tier runs three times, and the three answer different questions.
+# One boots real Firecracker microVMs on a hosted runner; one runs the same six
+# campaigns as podman containers on the same runner image; one runs them on the
+# self-hosted macOS arm64 host, the only kind that can boot a real
+# engine at all. None of them holds a credential and none needs one: every model
+# call is served from the committed cassette by a cs-vcr on the campaign's own
+# fabric.
 #
-# Every job here names ubuntu-26.04 rather than ubuntu-latest, and the reason is
-# the podman that image carries. The recorder joins the campaign's own network
-# and a member reaches this host at the address pasta publishes, and podman
-# below 5.0 puts pasta on a container's own network mode but never on the shared
-# rootless namespace. ubuntu-latest is 24.04, whose podman GitHub downgraded
-# below that line, so a fabric built there has no route back to the host at all.
-# cs-sandbox pins the same image for the same reason.
+# Two engines rather than one, because the profile field that chooses between
+# them is a documented product surface (`defaults.engine`) and only one half of
+# it was ever tested. A cassette does not care which: the engine reaches the
+# campaign ID and nothing a model is shown, and the recorder blanks that ID and
+# every name derived from it. What the second engine costs is minutes; what it
+# buys is that `engine: podman` is run rather than only accepted.
+#
+# The macOS leg is podman for a harder reason: macOS has no KVM, so a microVM is
+# not on offer there. It is the only tier that exercises the macOS host paths
+# under a real engine — ~/Library/Application Support as a state root, the
+# podman machine, and every path a member is given having to live under $HOME.
+#
+# Every hosted job here names ubuntu-26.04 rather than ubuntu-latest, and the
+# reason is the podman that image carries. The recorder joins the campaign's own
+# network and a member reaches this host at the address pasta publishes, and
+# podman below 5.0 puts pasta on a container's own network mode but never on the
+# shared rootless namespace. ubuntu-latest is 24.04, whose podman GitHub
+# downgraded below that line, so a fabric built there has no route back to the
+# host at all. cs-sandbox pins the same image for the same reason.
+#
+# Every smoke job waits on build-test, all four legs of it. The tier boots real
+# machines and takes tens of minutes; a branch whose unit tests are red has
+# nothing to learn from it, and the runners it would occupy are shared with the
+# sibling project.
 #
 # The integration tier is not here. It talks to real providers and spends real
 # money, so it runs by hand on a machine with the logins (CONTRIBUTING.md).
@@ -21,6 +40,12 @@ name: ci
 
 on:
   push:
+    # main only. A push event runs the workflow file from the PUSHED REF, so a
+    # side branch can opt itself in by naming itself here — and one did, which
+    # is how a work-in-progress branch started spending the self-hosted runners
+    # on every commit. A branch that wants a run asks for one: `gh workflow run
+    # ci.yml --ref <branch>`, which works because main registers the dispatch
+    # trigger below.
     branches: [main]
   pull_request:
   workflow_dispatch:
@@ -29,20 +54,122 @@ permissions:
   contents: read
 
 jobs:
+  # One matrix for every host this binary is built and driven from, WSL
+  # included. It takes two accommodations: setup-go installs on the Windows side
+  # and is invisible inside the distro, so WSL builds its own toolchain; and
+  # each step runs under matrix.shell, which is plain bash everywhere except
+  # WSL, where it is wsl-bash. Everything between those two points is the same
+  # commands on all four, which is the reason to keep them in one job rather
+  # than four.
+  #
+  # The gates that read the same on every host — formatting, the Go linters,
+  # the prose and document gates, the release manifest — run on the ubuntu leg
+  # alone, as `make check`. Three more copies of a platform-independent report
+  # is three times the log to read and nothing more.
   build-test:
-    name: build-test (${{ matrix.os }})
+    name: build-test (${{ matrix.label }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-26.04]
+        include:
+          - os: ubuntu-26.04
+            label: ubuntu-26.04
+            # Artifact names take neither "/" nor a space, both of which
+            # matrix.label carries, so the coverage artifact is named with this.
+            covlabel: ubuntu-26.04
+            shell: bash
+          # An array, not a label string: self-hosted runners are selected by
+          # ANDing labels, and these three are the ones the runner registers
+          # automatically. That machine runs a pool for this repository and
+          # another for the sibling project; the two are separate registrations
+          # on the same machine, so no custom label is needed to tell them
+          # apart — a runner only ever takes jobs from the repository it is
+          # registered to.
+          - os: [self-hosted, macOS, ARM64]
+            label: macos-arm64 / self-hosted
+            covlabel: macos-arm64-self-hosted
+            shell: bash
+          - os: macos-15-intel
+            label: macos-15-intel
+            covlabel: macos-15-intel
+            shell: bash
+          - os: windows-2025
+            label: windows-2025 / WSL2
+            covlabel: windows-2025-wsl2
+            shell: wsl-bash {0}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 25
+    # The shell has to be set HERE and not per step: `steps.*.shell` accepts no
+    # context at all ("no context is available here"), so `${{ matrix.shell }}`
+    # on a step makes the whole file invalid — GitHub then reports a run with
+    # zero jobs, which looks alarmingly like nothing ran. defaults.run.shell is
+    # evaluated after the matrix expands, so the expression is allowed here.
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
     steps:
+      # FIRST, before checkout, so a fork's code never reaches the self-hosted
+      # machine's disk. This is an ACCIDENT guard, not a security boundary: a
+      # `pull_request` workflow runs from the PR's merge commit, so a hostile
+      # fork can simply delete this step. What actually protects that machine is
+      # the repository's "require approval for all external contributors"
+      # setting — no fork PR runs anything until a maintainer approves it. This
+      # catches the case where that setting is loosened by mistake.
+      #
+      # It fails rather than skips because a matrix leg cannot skip itself, and
+      # a green check that silently tested nothing is worse than a red one.
+      - name: refuse fork PRs on the self-hosted runner
+        if: matrix.label == 'macos-arm64 / self-hosted' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "fork PR from ${{ github.event.pull_request.head.repo.full_name }} — refusing to run on the self-hosted runner" >&2
+          exit 1
+
       - uses: actions/checkout@v7
+
+      # Module caching off for the self-hosted leg only. setup-go restores into
+      # ~/go/pkg/mod, and Go makes everything it puts there read-only. A hosted
+      # runner starts with that directory empty so the restore is unopposed; the
+      # self-hosted host already has it populated from an earlier job, so tar hits
+      # hundreds of files it cannot unlink and the restore fails outright.
+      # The cache exists to fake persistence across throwaway VMs — a runner
+      # that genuinely persists already has the thing being faked.
       - uses: actions/setup-go@v7
+        if: runner.os != 'Windows'
         with:
           go-version-file: go.mod
-          cache: true
+          cache: ${{ matrix.label != 'macos-arm64 / self-hosted' }}
+
+      - uses: Vampire/setup-wsl@v7
+        if: runner.os == 'Windows'
+        with:
+          distribution: Ubuntu-24.04
+          wsl-version: 2
+
+      # The distro is bare, so this is what actions/setup-go does for the others:
+      # a Go toolchain (Ubuntu 24.04 ships 1.22 and go.mod needs 1.27) plus gcc,
+      # without which cgo-enabled builds cannot compile at all. The symlink puts
+      # go on PATH for every later step, so none of them has to know which host
+      # it is on.
+      - name: toolchain
+        if: runner.os == 'Windows'
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          # libc6-dev, not just gcc: --no-install-recommends leaves gcc without
+          # the C standard library headers, and a BROKEN compiler is worse than
+          # none. With no gcc at all Go sets CGO_ENABLED=0 and everything builds;
+          # with gcc present it enables cgo, then dies on `fatal error:
+          # stdlib.h: No such file or directory` — in `go vet`, not just a build.
+          apt-get install -y -qq --no-install-recommends \
+            ca-certificates curl git make gcc libc6-dev
+          # The version go.mod names rather than the latest stable: the day a new
+          # Go ships, "latest" would put this one leg on a toolchain no other job
+          # is running.
+          ver="go$(awk '/^go [0-9]/ { print $2; exit }' go.mod)"
+          curl -fsSL "https://go.dev/dl/${ver}.linux-amd64.tar.gz" | tar -C /usr/local -xz
+          ln -sf /usr/local/go/bin/go /usr/bin/go
+          go version
 
       # No linter install step: golangci-lint, deadcode and actionlint are pinned
       # as Go tools, so the gates build them from the module cache at the
@@ -53,8 +180,34 @@ jobs:
       # (CONTRIBUTING.md): fmt, vet, the Go linters, the unit tier and all
       # three prose gates. The jobs below run three of those again, on their
       # own, so they answer in seconds and answer when the tests are failing.
+      #
+      # The ubuntu leg alone, because everything it adds over the steps below is
+      # platform-independent — and because two of its gates are not: `make
+      # surface` compares the committed documents against a built binary, and
+      # `make coverage-check` reads a baseline recorded on one host.
       - name: make check
+        if: matrix.label == 'ubuntu-26.04'
         run: make check
+
+      # What the other three legs run instead: the compiler and the unit tier,
+      # which are the two things a second operating system can disagree about.
+      - name: vet
+        if: matrix.label != 'ubuntu-26.04'
+        run: go vet ./...
+
+      # The live tiers can't run on every host, but they must still compile
+      # everywhere, so a refactor cannot silently break them. Both tags, and on
+      # every leg: `make check`'s linter reads the smoke tag only, so nothing
+      # else in this workflow compiles the integration files at all.
+      - name: vet (integration build tag)
+        run: go vet -tags integration ./...
+
+      - name: vet (smoke build tag)
+        run: go vet -tags smoke ./...
+
+      - name: test
+        if: matrix.label != 'ubuntu-26.04'
+        run: make test
 
       - name: build
         run: make build-go
@@ -66,15 +219,17 @@ jobs:
       - name: keep this leg's coverage
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-unit-${{ matrix.os }}
+          name: coverage-unit-${{ matrix.covlabel }}
           path: .coverage/
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 7
 
       # Schema only: this validates the manifest and does not prove a release
-      # can be cut. `make snapshot` does that, locally.
+      # can be cut. `make snapshot` does that, locally. Once, on ubuntu: the
+      # manifest is platform-independent.
       - name: goreleaser check
+        if: matrix.label == 'ubuntu-26.04'
         uses: goreleaser/goreleaser-action@v7
         with:
           version: "~> v2"
@@ -222,6 +377,11 @@ jobs:
   # an agent, and a verdict comes back — for nothing, because cs-vcr serves every
   # call from the cassette and the run holds no credential at all.
   #
+  # The engine here is firecracker, which is this product's own: a member is a
+  # machine of its own, with its own kernel, reached over a vsock bridge. The two
+  # podman tiers below say nothing about that path, and it says nothing about
+  # theirs.
+  #
   # It needs no checkout of the sibling repositories: cs-sandbox embeds its own
   # image tree and builds the guest image and the Firecracker artifacts itself,
   # and `make tools` builds both at the versions go.mod pins.
@@ -232,8 +392,12 @@ jobs:
   # last `make repin` — and red, at the upstream gate, on the first commit that
   # does. Pinning also makes the cache key below a property of this repository
   # rather than of another repository's branch tip.
-  smoke:
-    name: smoke (${{ matrix.scenario }})
+  smoke-firecracker:
+    name: smoke firecracker (${{ matrix.scenario }})
+    # The unit tier first, all four hosts of it. This one boots two microVMs per
+    # leg and can spend forty minutes building an image before it does; a branch
+    # that does not compile has nothing to learn from that.
+    needs: [build-test]
     runs-on: ubuntu-26.04
     # Per LEG, not for the tier. One scenario is minutes; a scenario that stalls
     # spends the readback ceiling and then stops, and the legs beside it are
@@ -535,6 +699,408 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
+  # The same six campaigns, run as containers instead of microVMs.
+  #
+  # `defaults.engine` takes firecracker or podman, both are documented, and only
+  # one of them was ever run. This job is the other half. It is not a second
+  # copy of the tier above: what a member does inside a microVM and inside a
+  # container differ in the parts this product is made of — how a member is
+  # reached, how the fabric resolves a name, where a credential lender sits —
+  # and every one of those is on the path between the orchestrator and a verdict.
+  #
+  # It is also the tier the macOS arm64 leg below runs, on a host with no KVM, so a
+  # failure here and a failure there can be told apart: same engine, different
+  # architecture and operating system.
+  #
+  # Cheaper than the firecracker tier by a lot. There is no rootfs to derive and
+  # no artifacts to cache — the image is pulled and that is the whole setup —
+  # which is why this job has no cache step and takes minutes rather than tens
+  # of them.
+  smoke-podman:
+    name: smoke podman (${{ matrix.scenario }})
+    needs: [build-test]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 25
+    strategy:
+      # Every leg reports, for the same reason as the tier above: the
+      # interesting question is which scenarios fail.
+      fail-fast: false
+      matrix:
+        # Held against internal/cli/livecampaign_test.go's scenarios() by
+        # TestWorkflowRunsEveryScenario, so a scenario added there cannot
+        # quietly stop being run here.
+        scenario:
+          - claude-subscription
+          - claude-api-key
+          - codex-subscription
+          - codex-api-key
+          - opencode-fireworks
+          - claude-inherit
+    env:
+      # The one line that makes this job the other engine. It reaches the
+      # profile the tier renders (CS_CAMPAIGN_ENGINE), the doctor `make
+      # setup-smoke` asks, and the /dev/kvm precondition that asks — which a
+      # podman run must not, because a container needs no hypervisor.
+      SMOKE_ENGINE: podman
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Skip the whole job, cheaply, when there is nothing to replay. Same
+      # reasoning and the same glob as the firecracker tier above.
+      - name: is there a cassette to replay?
+        id: cassette
+        run: |
+          set -euo pipefail
+          if compgen -G "test/cassettes/${{ matrix.scenario }}/*/index.jsonl" >/dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "no cassette for ${{ matrix.scenario }}; record one with \`./scripts/record-fixtures.sh ${{ matrix.scenario }}\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # No /dev/kvm here, and nothing that only a microVM needs: no fakeroot, no
+      # mke2fs, no dnsmasq. What is left is what a rootless container fabric
+      # takes — passt for the rootless network namespace, newuidmap to map it —
+      # plus the podman the runner image already carries, printed rather than
+      # trusted.
+      - name: host prerequisites
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            passt uidmap iproute2 curl podman
+          podman --version
+          printf 'runner: %s cpu(s), %s\n' "$(nproc)" "$(free -h | awk '/^Mem:/{print $2" RAM"}')"
+
+      # The same target a contributor runs, at the go.mod pins. See the
+      # firecracker job above for why the pins and not @latest.
+      - name: install cs-sandbox and cs-vcr
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          make tools
+          echo "$PWD/bin/tools" >> "$GITHUB_PATH"
+          # The image this job boots, asked of the binary that names it. See the
+          # firecracker job: image-slim is the bootable slim variant, and the
+          # tier-* labels beside it are the tiers it is built on.
+          image=$(bin/tools/cs-sandbox version --images | awk '$1=="image-slim"{print $2}')
+          test -n "$image" || { echo "cannot read the cs-sandbox slim image name" >&2; exit 1; }
+          echo "CS_SANDBOX_IMAGE=$image" >> "$GITHUB_ENV"
+
+      # A pull rather than a build: the slim image is published for this
+      # architecture at the tag the pin names, and `cs-sandbox build` fetches it
+      # when it is there. Named as its own step so its minutes are legible, and
+      # so `make setup-smoke` below finds the host ready and does nothing.
+      #
+      # The doctor is a gate here rather than the report setup-smoke prints: a
+      # developer's machine that cannot boot is entitled to skip the tier, and
+      # this one is built to run it, so anything short of ready is a failure.
+      #
+      # It can be a gate here because this runner is this job's alone. The same
+      # command is NOT a gate on the macOS arm64 host, where three scenarios share a
+      # machine and the doctor answers for all of them.
+      - name: the image this host will boot
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          cs-sandbox build --engine podman --slim
+          cs-sandbox doctor --engine podman
+          df -h /
+
+      - name: smoke
+        if: steps.cassette.outputs.present == 'true'
+        run: make test-smoke SMOKE_TESTS='TestSmokeReplay/${{ matrix.scenario }}'
+
+      # A leg whose cassette is missing skips every step above and would report
+      # green, which is the "recorded none and looked like recorded all" failure
+      # this tier exists to avoid.
+      - name: a leg with no cassette is not a pass
+        if: steps.cassette.outputs.present != 'true'
+        run: |
+          echo "no cassette for ${{ matrix.scenario }} — it was not replayed" >&2
+          exit 1
+
+      # Why a member went quiet, kept for the same reasons as the firecracker
+      # tier's: the driver log per member, and cs-vcr's own log with the request
+      # it could not serve.
+      - name: keep the evidence of a failed run
+        if: failure() && steps.cassette.outputs.present == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-podman-evidence-${{ matrix.scenario }}
+          path: |
+            .tmp/live-evidence/
+            .tmp/live-proxy/
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
+
+      - name: keep this job's coverage
+        if: steps.cassette.outputs.present == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-smoke-podman-${{ matrix.scenario }}
+          path: .coverage/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+
+  # The arm64 image, built on the machine that boots it.
+  #
+  # The hosted jobs pull the slim image at the tag the pin names. That image is
+  # x86_64: the sibling project publishes its leaf from a hosted runner, so only
+  # the TIERS underneath it are multi-arch. Pulled here it would have this
+  # machine running an emulated guest, which is the one thing an arm64 leg
+  # exists to avoid — measured, and it fails outright: the lender container dies
+  # as "executable file `cs-sandbox` not found in $PATH" because the amd64 image
+  # cannot even be entered.
+  #
+  # So the leaf is built here instead, on top of the arm64 tiers, under a
+  # LOCAL tag. The tag is what makes it a build rather than a pull: `cs-sandbox
+  # build` fetches the published reference when it names one, and a
+  # localhost/… name has nothing to fetch. It is also a name of this
+  # repository's own, so it cannot be confused with the sibling project's
+  # :ci-arm64 on the same machine and in the same store.
+  #
+  # It waits for nothing, exactly as the sibling project's does, so the image is
+  # ready by the time build-test finishes. The legs that consume it gate on
+  # build-test themselves, so a red unit tier still runs no campaign.
+  #
+  # One writer at a time. Two runs building the same tag into one podman store
+  # concurrently is undefined, and the loser would boot whatever the winner
+  # left. Queued rather than cancelled: the second run still has to be tested.
+  image-macos-arm64:
+    name: image (macos-arm64 / self-hosted)
+    # Skips cleanly for fork PRs, like every other job on this machine. The
+    # repository's "require approval for all external contributors" setting is
+    # what actually protects it.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 30
+    concurrency:
+      group: macos-arm64-campaign-image
+      cancel-in-progress: false
+    env:
+      CS_SANDBOX_IMAGE: localhost/campaign-slim:ci-arm64
+    steps:
+      - uses: actions/checkout@v7
+      # Off for the same reason as the build-test leg on this machine: the
+      # module cache persists between jobs and Go leaves it read-only, so the
+      # restore fails trying to unpack over it.
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      # launchd does not order jobs relative to each other and `podman machine
+      # start` takes 20-30s, so after a reboot a runner can pick up a job before
+      # the VM is ready. Guard on state rather than calling start blindly: start
+      # exits 125 when the machine is already running.
+      - name: ensure the podman machine is up
+        run: |
+          set -euo pipefail
+          if [ "$(podman machine inspect --format '{{.State}}' podman-machine-default)" != "running" ]; then
+            echo "machine was down; starting it"
+            podman machine start
+          fi
+          podman info --format '{{.Version.Version}} | {{.Host.Arch}} | rootless={{.Host.Security.Rootless}}'
+
+      - name: install cs-sandbox and cs-vcr
+        run: |
+          set -euo pipefail
+          make tools
+          echo "$PWD/bin/tools" >> "$GITHUB_PATH"
+
+      # The architecture is checked rather than assumed. An emulated guest is
+      # the failure this whole job exists to prevent, and it announces itself
+      # here or nowhere: three scenarios later it is an agent that would not
+      # answer.
+      - name: build it
+        run: |
+          set -euo pipefail
+          cs-sandbox build --engine podman --slim
+          got=$(podman image inspect --format '{{.Architecture}}' "$CS_SANDBOX_IMAGE")
+          echo "built $got $CS_SANDBOX_IMAGE"
+          [ "$got" = "arm64" ] || {
+            echo "::error::$CS_SANDBOX_IMAGE is a $got image on an arm64 machine"
+            exit 1
+          }
+
+  # The whole tier again on macOS, on this project's own self-hosted runners.
+  #
+  # This is the only job that exercises the macOS host paths against a real
+  # engine: the state root, the ssh config the host's own ssh must parse, and
+  # every path a member is given having to live under $HOME — the podman machine
+  # mounts nothing else, so a subject repository under /var/folders is refused
+  # by cs-sandbox outright. GitHub's own arm64 macOS runners cannot stand in for
+  # this and never will: they are "Apple M1 (Virtual)" VMs reporting
+  # kern.hv_support=0, so no podman machine can boot inside one.
+  #
+  # Firecracker is not on offer here — macOS has no KVM — so this is the podman
+  # engine, and the hosted podman job above is what tells a macOS failure apart
+  # from an engine failure.
+  #
+  # Three at a time, because that is how many runners this repository has on
+  # that machine. The bound is written down rather than left to the pool: the
+  # machine also carries the sibling project's runners, all of them sharing one
+  # podman machine and one 16 GB box, and a campaign is two members plus a
+  # lender plus a recorder. Six legs at once is not a thing this hardware should
+  # be asked for, and max-parallel says so where a reader can see it.
+  smoke-macos-arm64:
+    name: smoke podman (macos-arm64 / ${{ matrix.scenario }})
+    needs: [build-test, image-macos-arm64]
+    # Skips cleanly for fork PRs — unlike the build-test leg, which is inside a
+    # matrix and has to fail instead. Same accident-guard caveat applies: the
+    # repository's "require approval for all external contributors" setting is
+    # what actually protects this machine.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        # Held against internal/cli/livecampaign_test.go's scenarios() by
+        # TestWorkflowRunsEveryScenario, so a scenario added there cannot
+        # quietly stop being run here.
+        scenario:
+          - claude-subscription
+          - claude-api-key
+          - codex-subscription
+          - codex-api-key
+          - opencode-fireworks
+          - claude-inherit
+    env:
+      SMOKE_ENGINE: podman
+      # The arm64 image the job above built, not the published amd64 leaf.
+      CS_SANDBOX_IMAGE: localhost/campaign-slim:ci-arm64
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: is there a cassette to replay?
+        id: cassette
+        run: |
+          set -euo pipefail
+          if compgen -G "test/cassettes/${{ matrix.scenario }}/*/index.jsonl" >/dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "no cassette for ${{ matrix.scenario }}; record one with \`./scripts/record-fixtures.sh ${{ matrix.scenario }}\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: ensure the podman machine is up
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          if [ "$(podman machine inspect --format '{{.State}}' podman-machine-default)" != "running" ]; then
+            echo "machine was down; starting it"
+            podman machine start
+          fi
+
+      - name: install cs-sandbox and cs-vcr
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          make tools
+          echo "$PWD/bin/tools" >> "$GITHUB_PATH"
+
+      # Built by image-macos-arm64, and native to this machine. Named rather
+      # than assumed: without it the first thing to fail would be a scenario,
+      # and it would look like the agent's fault.
+      #
+      # The image and its architecture, and NOT `cs-sandbox doctor`, which the
+      # hosted podman job above does gate on. The doctor's verdict is host-wide:
+      # it reports on every group present, so on this machine it reports on the
+      # two other scenarios running beside this one. Measured on 2026-09-09: a
+      # leg failed here because a neighbouring leg's lender was up and mid-replay,
+      # and the doctor called that host unready — "no openai key to lend", of a
+      # campaign that lends a fabricated one and passed. A gate that another job
+      # can turn red is not a gate on this one.
+      - name: the image this machine built
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          podman image exists "$CS_SANDBOX_IMAGE" || {
+            echo "::error::$CS_SANDBOX_IMAGE is not on this machine — image-macos-arm64 builds it"
+            exit 1
+          }
+          podman image inspect --format 'image arch: {{.Architecture}}' "$CS_SANDBOX_IMAGE"
+
+      # Kept, because the teardown below reads it: the tier logs the network it
+      # put each campaign on, and that is the only record of what this leg has
+      # to clean up on a machine several jobs share. pipefail so `tee` cannot
+      # turn a failed run green.
+      - name: smoke
+        if: steps.cassette.outputs.present == 'true'
+        run: |
+          set -o pipefail
+          make test-smoke SMOKE_TESTS='TestSmokeReplay/${{ matrix.scenario }}' 2>&1 | tee smoke.log
+
+      - name: a leg with no cassette is not a pass
+        if: steps.cassette.outputs.present != 'true'
+        run: |
+          echo "no cassette for ${{ matrix.scenario }} — it was not replayed" >&2
+          exit 1
+
+      - name: keep the evidence of a failed run
+        if: failure() && steps.cassette.outputs.present == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-macos-evidence-${{ matrix.scenario }}
+          path: |
+            .tmp/live-evidence/
+            .tmp/live-proxy/
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
+
+      - name: keep this job's coverage
+        if: steps.cassette.outputs.present == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-smoke-macos-${{ matrix.scenario }}
+          path: .coverage/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+
+      # This runner is not ephemeral, so something has to clean up — and it must
+      # clean up THIS leg only: two more scenarios are running beside it on this
+      # machine, and the sibling project's own jobs are too. `podman rm -f
+      # --all` here would take all of them.
+      #
+      # A campaign that reached its verdict has already torn itself down, and
+      # one that failed is torn down by the tier's own cleanup. What this
+      # catches is the run that died between the two — a killed process, a
+      # cancelled job — and the groups it names are the ones this leg's own log
+      # says it created, so nothing else on the machine can be caught by it.
+      #
+      # Best-effort throughout: a cleanup failure must not turn a passing
+      # scenario red.
+      - name: tear down what this scenario left
+        if: always() && steps.cassette.outputs.present == 'true'
+        run: |
+          set -uo pipefail
+          test -f smoke.log || exit 0
+          grep -oE 'cs-sandbox-cs[a-z0-9]+-[0-9a-f]{8}' smoke.log | sort -u |
+            while read -r net; do
+              group=${net#cs-sandbox-}
+              podman network exists "$net" || continue
+              echo "removing the group $group"
+              ./bin/tools/cs-sandbox group rm "$group" -f || podman network rm -f "$net" || true
+            done
+          echo "--- campaign groups still on this machine, for the sweep ---"
+          podman network ls --filter name=cs-sandbox-cs --format '{{.Name}}' || true
+
   # The behaviour map is committed, and it is a pure function of the rubric and
   # the run records. A stale page is a merge gate rather than a confusing diff
   # somebody finds later.
@@ -563,7 +1129,7 @@ jobs:
   coverage:
     name: coverage
     runs-on: ubuntu-26.04
-    needs: [build-test, smoke]
+    needs: [build-test, smoke-firecracker, smoke-podman, smoke-macos-arm64]
     if: always() && needs.build-test.result == 'success'
     timeout-minutes: 10
     steps:
