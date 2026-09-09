@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -303,7 +302,7 @@ func TestWorkflowRunsEveryScenario(t *testing.T) {
 func TestScenarioProfilesSpellTheirCredential(t *testing.T) {
 	for _, sc := range scenarios() {
 		t.Run(sc.name, func(t *testing.T) {
-			body := scenarioProfile(sc, t.TempDir(), vcrURL(sc), replayName(sc))
+			body := scenarioProfile(sc, t.TempDir(), vcrBaseURL, replayName(sc))
 			path := filepath.Join(t.TempDir(), "profile.yaml")
 			writeFileT(t, path, body)
 			profile, _, err := readProfile(path)
@@ -327,10 +326,11 @@ func TestScenarioProfilesSpellTheirCredential(t *testing.T) {
 					t.Errorf("%s still grants an environment key: %v", name, m.Auth.APIKeyFromEnv)
 				}
 			}
-			// A lent member is aimed at the loopback door the lender dials; an
-			// inheriting one at the fabric alias it dials itself.
-			if sc.lends() != strings.Contains(body, vcrLoopback) {
-				t.Errorf("base URL does not match the chain this scenario runs:\n%s", body)
+			// One recorder, one alias, both chains: an inheriting member
+			// dials it, and a lent member's lender dials it from the same
+			// network. Neither names a host port.
+			if !strings.Contains(body, vcrBaseURL) {
+				t.Errorf("base URL does not name the recorder on the fabric:\n%s", body)
 			}
 			// And a lent one leaves the API version to the lender, which adds
 			// its slot's own. See urlSuffix.
@@ -567,22 +567,24 @@ func runLiveCampaign(t *testing.T, sc scenario, opts runOptions) campaignRun {
 // with it.
 func fabricatedCredentials(t *testing.T, token string) {
 	t.Helper()
-	home := credentialTree(t, token)
-	t.Setenv("CS_SANDBOX_AGENT_HOME", home)
-	requireOurLender(t, home)
+	t.Setenv("CS_SANDBOX_AGENT_HOME", credentialTree(t, token))
 }
 
 // credentialTree builds the fabricated tree ONCE for the whole process, and
 // every scenario is pointed at that same one.
 //
-// Per-scenario would be the obvious thing and is wrong. The lender is a daemon:
-// the first `cs-sandbox create` that needs one starts it, it inherits that
-// create's environment, and every later create reuses the running process. A
-// tree per scenario therefore goes stale the moment the second scenario starts
-// — the lender is still reading the first one, which t.TempDir has by then
-// deleted — and the loans it cannot read fail with no request reaching the
-// recorder at all. Measured: two scenarios dead at `requests 0` while the
-// lender logged "no anthropic key to lend".
+// Per-scenario would be the obvious thing and is wrong, though the reason has
+// moved. It used to be that the lender was one host daemon shared by every
+// scenario, so the second scenario's tree was read by a lender still holding
+// the first. Each group runs its own lender container now, and that container
+// bind-mounts this tree read-only for as long as the group lives — so a tree
+// under t.TempDir would be deleted out from under a lender whose campaign is
+// still running, which is the same failure by a shorter route. Measured before
+// the move: two scenarios dead at `requests 0` while the lender logged "no
+// anthropic key to lend".
+//
+// It is also what lets scenarios run side by side. Every lender mounts the same
+// path, so no scenario's teardown can take another's credentials away.
 var (
 	credentialTreeOnce sync.Once
 	credentialTreeDir  string
@@ -601,93 +603,6 @@ func credentialTree(t *testing.T, token string) string {
 		t.Fatalf("build the fabricated credential tree: %v", credentialTreeErr)
 	}
 	return credentialTreeDir
-}
-
-// requireOurLender refuses to run against a lender this run did not get to
-// configure.
-//
-// A lender already up was started by something else — another campaign, an
-// earlier tier — and it reads credentials from whatever home THAT process had.
-// Its loans then resolve against the developer's real profile rather than the
-// fabrication here, which fails outright for a key slot (there is no
-// ~/.cs-keys) and, worse, quietly succeeds for a login slot by lending the real
-// one. Neither is a replay. Refused by name rather than diagnosed later from a
-// member that never answered.
-func requireOurLender(t *testing.T, home string) {
-	t.Helper()
-	pid := runningLenderPID()
-	if pid == 0 {
-		return // none up: the first create starts one with the environment set above
-	}
-	if lenderAgentHome(pid) == home {
-		return
-	}
-	// The remedy depends on whether anything is still borrowing. A lender with
-	// live sandboxes behind it belongs to a running campaign and must not be
-	// touched; one with none is debris from a run that was killed before its
-	// teardown — which is what a `go test` timeout does — and is safe to stop.
-	boxes := runningSandboxes()
-	if boxes == 0 {
-		t.Fatalf("a cs-sandbox lender (pid %d) is left over from an earlier run and reads its "+
-			"credentials from somewhere else, not %s.\nNothing is borrowing from it — no sandbox "+
-			"is running — so it is debris from a run that was killed before teardown. Stop it "+
-			"with:  kill %d", pid, home, pid)
-	}
-	t.Fatalf("a cs-sandbox lender (pid %d) is already running and does not read this run's "+
-		"credentials from %s.\n%d sandbox(es) are still borrowing from it, so it belongs to "+
-		"something live — another campaign, or an earlier tier. Finish or destroy that first "+
-		"rather than stopping the lender: its loans resolve against a different profile, so "+
-		"this tier would neither replay nor stay credential-free.", pid, home, boxes)
-}
-
-// runningSandboxes counts what is on this host, which is how a leftover lender
-// is told from a live one. Best effort: a count that cannot be taken reads as
-// "something is there", which is the cautious direction.
-func runningSandboxes() int {
-	out, err := exec.Command(newSandbox().Bin, "ls", "-q").Output()
-	if err != nil {
-		return 1
-	}
-	return len(strings.Fields(string(out)))
-}
-
-// runningLenderPID reads the pid cs-sandbox records for its lender, and returns
-// 0 when there is none or it is gone.
-func runningLenderPID() int {
-	raw, err := os.ReadFile(filepath.Join(sandboxInstancesDir(), "lender"))
-	if err != nil {
-		return 0
-	}
-	for line := range strings.SplitSeq(string(raw), "\n") {
-		v, ok := strings.CutPrefix(strings.TrimSpace(line), "pid=")
-		if !ok {
-			continue
-		}
-		pid, err := strconv.Atoi(v)
-		if err != nil || pid <= 0 {
-			return 0
-		}
-		if syscall.Kill(pid, 0) != nil {
-			return 0 // recorded but gone
-		}
-		return pid
-	}
-	return 0
-}
-
-// lenderAgentHome reads the credential home a running lender was started with,
-// which is the only way to know what its loans will resolve against.
-func lenderAgentHome(pid int) string {
-	raw, err := os.ReadFile(fmt.Sprintf("/proc/%d/environ", pid))
-	if err != nil {
-		return ""
-	}
-	for entry := range strings.SplitSeq(string(raw), "\x00") {
-		if v, ok := strings.CutPrefix(entry, "CS_SANDBOX_AGENT_HOME="); ok {
-			return v
-		}
-	}
-	return "" // started without one: it reads the developer's real home
 }
 
 func writeFabricatedCredentials(home, token string) error {
@@ -890,10 +805,15 @@ func reclaimGroupForce(ctx context.Context, s sandboxCLI, group string) error {
 func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiveRoot, scratch string, opts runOptions) campaignRun {
 	t.Helper()
 
-	// The recorder is a process on this host, so it is up before create rather
-	// than racing it: a lent member's first model call goes through the lender,
-	// which dials the recorder, and that can happen inside create.
-	var proxy *vcrProxy
+	// A guest-dialled recorder joins the campaign's own network, which create
+	// has not made yet, so the launch overlaps create rather than preceding it.
+	// startVCR waits for the fabric; the window between the network appearing
+	// and the first model turn is tens of seconds.
+	type launch struct {
+		proxy *vcrProxy
+		err   error
+	}
+	var launched chan launch
 	if opts.proxyMode != "" {
 		planned, _, err := a.planCampaign(createOpts{profile: profilePath}, name, true)
 		if err != nil {
@@ -918,14 +838,16 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 		// warm session records the continuation prompt, and then nothing can
 		// replay it cold.
 		forgetHostSessions(t, planned)
-		started, err := startVCR(t, sc, planned.Group, opts.proxyMode, opts.proxyStore, scratch)
-		switch {
-		case errors.Is(err, errVCRUnavailable):
-			t.Skipf("%v", err)
-		case err != nil:
-			t.Fatalf("cs-vcr: %v", err)
-		}
-		proxy = started
+		// On its own goroutine, because startVCR waits for the campaign's
+		// network and create is what makes it. Started before create, it would
+		// wait ten minutes for a fabric nobody is building. The window between
+		// the network appearing and the first model turn — the d001 readback,
+		// inside create — is tens of seconds, which is the room this has.
+		launched = make(chan launch, 1)
+		go func() {
+			started, err := startVCR(t, sc, planned.Group, opts.proxyMode, opts.proxyStore, scratch)
+			launched <- launch{started, err}
+		}()
 	}
 
 	create := a.createCmd(false)
@@ -936,7 +858,17 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 	create.SetArgs([]string{name, "--profile", profilePath})
 	createErr := create.Execute()
 
-	run := campaignRun{name: name, createOut: out.String(), proxy: proxy}
+	run := campaignRun{name: name, createOut: out.String()}
+	if launched != nil {
+		l := <-launched
+		switch {
+		case errors.Is(l.err, errVCRUnavailable):
+			t.Skipf("%v", l.err)
+		case l.err != nil:
+			t.Fatalf("cs-vcr: %v", l.err)
+		}
+		run.proxy = l.proxy
+	}
 	if createErr != nil {
 		// create is where the readback lives, so a failure here is usually a
 		// member that never answered — and the member is about to be torn
@@ -1135,7 +1067,7 @@ func keepEvidence(t *testing.T, a *app, campaign *model.Campaign, why string) {
 	}
 	keepDriverLogs(t, a, campaign, dir)
 	keepAgentPanes(t, a, campaign, dir)
-	keepLenderLog(t, dir)
+	keepLenderLog(t, campaign.Group, dir)
 	t.Logf("evidence kept in %s (%s)", dir, why)
 }
 
@@ -1168,20 +1100,26 @@ func keepAgentPanes(t *testing.T, a *app, campaign *model.Campaign, dir string) 
 	}
 }
 
-// keepLenderLog saves the host lender's log beside the rest.
+// keepLenderLog saves this group's lender log beside the rest.
 //
 // It is the only account of the hop between a member and the recorder, and it
-// is the file that named the last cause outright: loans failing with "no
-// anthropic key to lend" while every other log showed a member simply going
-// quiet. It lives under cs-sandbox's instances root rather than in this
-// repository, so a runner throws it away with the machine.
-func keepLenderLog(t *testing.T, dir string) {
+// is the log that named the last two causes outright: loans failing with "no
+// anthropic key to lend", and an upstream refused at an address the lender
+// could not reach. Every other log showed a member simply going quiet.
+//
+// From the container rather than from a file. cs-sandbox runs one lender per
+// group now, so the log is the container's own and goes away with it, which is
+// why it is copied here while the group still stands.
+func keepLenderLog(t *testing.T, group, dir string) {
 	t.Helper()
-	body, err := os.ReadFile(filepath.Join(sandboxInstancesDir(), "lender.log"))
-	if err != nil || len(body) == 0 {
+	if group == "" {
 		return
 	}
-	if err := os.WriteFile(filepath.Join(dir, "lender.log"), body, 0o600); err != nil {
+	out, err := exec.Command("podman", "logs", groupNetwork(group)+"-lender").CombinedOutput()
+	if err != nil || len(out) == 0 {
+		return
+	}
+	if err := os.WriteFile(filepath.Join(dir, "lender.log"), out, 0o600); err != nil {
 		t.Logf("evidence: lender.log: %v", err)
 	}
 }

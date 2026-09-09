@@ -53,7 +53,7 @@ func TestSmokeReplay(t *testing.T) {
 			assertCassetteRuleset(t, sc, store)
 			assertRecordingFinished(t, sc, store)
 			run := runLiveCampaign(t, sc, runOptions{
-				baseURL:    vcrURL(sc),
+				baseURL:    vcrBaseURL,
 				ceiling:    20 * time.Minute,
 				proxyMode:  "replay",
 				proxyStore: store,
