@@ -67,6 +67,7 @@ func seedMiniGuest(t *testing.T, home, memberCLI string) string {
 			t.Fatal(err)
 		}
 	}
+	seedGuestSha256(t, bin)
 	// A mini guest is a HEALTHY member: it holds exactly what the fake
 	// cs-sandbox says it ships. Seeded here rather than per test, because every
 	// create now runs the harness check and a guest with an empty ~/.local/bin
@@ -75,6 +76,37 @@ func seedMiniGuest(t *testing.T, home, memberCLI string) string {
 	seedMemberTools(t, home)
 	t.Setenv("FAKE_HOME", home)
 	return home
+}
+
+// seedGuestSha256 gives the mini-guest the hashing tool a real one has.
+//
+// The harness probe hashes each member tool with sha256sum, and reports its
+// absence rather than skipping: "we asked and cannot tell" is the state that
+// check exists to remove. A real member is Linux and carries coreutils, so it
+// always has one. This member is a directory on the host, reached by a fake
+// cs-sandbox whose exec runs with PATH=$FAKE_HOME/.local/bin:/usr/bin:/bin —
+// so on Linux it borrowed the host's without anyone noticing, and on macOS,
+// which ships shasum instead, eleven tests failed as members that "may be
+// running any code at all".
+//
+// Seeded into the guest rather than taught to the probe: the fake guest is
+// meant to stand in for a real one, and a real one has this.
+func seedGuestSha256(t *testing.T, bin string) {
+	t.Helper()
+	// The guest's own PATH, not this process's: those two directories are what
+	// the fake sandbox's exec puts in front of $FAKE_HOME/.local/bin.
+	for _, dir := range []string{"/usr/bin", "/bin"} {
+		if _, err := os.Stat(filepath.Join(dir, "sha256sum")); err == nil {
+			return
+		}
+	}
+	if _, err := exec.LookPath("shasum"); err != nil {
+		t.Skip("this host has neither sha256sum nor shasum, so a member's harness cannot be measured")
+	}
+	// Same output shape: `<hex>  <path>`, and the probe reads the first field.
+	if err := os.WriteFile(filepath.Join(bin, "sha256sum"), []byte("#!/bin/sh\nexec shasum -a 256 \"$@\"\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // miniGuestApp builds an app whose fake sandbox provisions instantly and runs

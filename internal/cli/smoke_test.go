@@ -50,7 +50,9 @@ func TestSmokeReplay(t *testing.T) {
 	// Both of these plant an environment variable for the whole process, and
 	// t.Setenv cannot be called by a parallel test. Done here, before any
 	// scenario is released, so the value is in place for all of them.
-	ensureGuestBinary(t)
+	ensureMountableTempDir(t)
+	ensureLiveGuestBinary(t)
+	ensureLiveLenderBinary(t)
 	fabricatedCredentials(t, fakeKey)
 	recorded := 0
 	for _, sc := range scenarios() {

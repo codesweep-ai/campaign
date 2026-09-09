@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -56,6 +57,14 @@ func TestModelConfigValidation(t *testing.T) {
 // properties of running them, not of their text.
 func runGuestCommand(t *testing.T, home, command string) {
 	t.Helper()
+	// The command was composed for the GUEST, and the guest is Linux. It edits
+	// in place with `sed -i` and no suffix, which BSD sed reads as a suffix of
+	// "-e" and refuses — so on a Mac this fails as `sed: -e: No such file or
+	// directory`, which says nothing about the code under test. Every assertion
+	// on what was COMPOSED still runs on every host; only running it is Linux's.
+	if runtime.GOOS != "linux" {
+		t.Skipf("the guest command is written for the guest's GNU userland; this host is %s", runtime.GOOS)
+	}
 	cmd := exec.Command("sh", "-c", command)
 	cmd.Env = append(os.Environ(), "HOME="+home)
 	if out, err := cmd.CombinedOutput(); err != nil {

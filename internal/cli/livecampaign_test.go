@@ -22,6 +22,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -515,7 +516,9 @@ type runOptions struct {
 // nothing behind.
 func runLiveCampaign(t *testing.T, sc scenario, opts runOptions) campaignRun {
 	t.Helper()
-	ensureGuestBinary(t)
+	ensureMountableTempDir(t)
+	ensureLiveGuestBinary(t)
+	ensureLiveLenderBinary(t)
 	// The replay half authenticates with credentials that authenticate nothing.
 	// Every scenario needs them now: a lent one because the LENDER reads the
 	// host's credential and swaps it in, and the inheriting one because
@@ -1222,16 +1225,173 @@ your own branch before replying, and tell the truth in your reply.
 `)
 }
 
+// ensureMountableTempDir puts this process's temporary files somewhere a member
+// can actually be given.
+//
+// Every path these tiers hand a member is a bind mount in the end — the subject
+// repository, the fabricated credential tree the lender reads, the cassette
+// store and the recorder's config. On Linux any path will do. On macOS the
+// engine is a container inside the podman machine, and the only host tree that
+// VM mounts is $HOME: cs-sandbox refuses a --repo outside it outright ("must be
+// under $HOME"), which is where this was found, and the mounts it does not
+// check would have arrived empty.
+//
+// os.TempDir under macOS is /var/folders/…, so t.TempDir() lands outside $HOME
+// by default and every scenario fails at create. Moving TMPDIR moves all of
+// them at once, because they are all t.TempDir() or os.MkdirTemp underneath.
+//
+// The directory is kept rather than removed: Go cleans up what it creates
+// inside it, and a fixed parent is what makes a leftover from a killed run
+// findable.
+func ensureMountableTempDir(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS != "darwin" {
+		return
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("resolve the home directory a member's mounts must live under: %v", err)
+	}
+	dir := filepath.Join(home, ".cache", "cs-campaign", "tmp")
+	// Same reason as ensureGuestBinary below: one value for the process,
+	// planted by whoever gets here first, and a parallel scenario must not
+	// try to plant it again.
+	if os.Getenv("TMPDIR") == dir {
+		return
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatalf("make the temporary directory members can be given: %v", err)
+	}
+	t.Setenv("TMPDIR", dir)
+}
+
+// ensureLiveGuestBinary plants the guest binary these tiers ship into a member.
+//
+// A tier of its own rather than ensureGuestBinary, and the difference is what
+// runs the thing. The unit suite installs it into a FAKE guest — a directory on
+// this host — and executes it here, so it has to be a binary for this host. A
+// live member is Linux whatever this host is, so the binary it is handed has to
+// be one too, and on a Mac the host build is a Mach-O the guest cannot exec at
+// all.
+//
+// GOARCH is this host's because the image is: cs-sandbox builds and pulls the
+// variant native to the machine, so an arm64 Mac runs an arm64 guest and this
+// runner an amd64 one. CGO_ENABLED=0 for the same reason `make guestbin` sets
+// it — a dynamically linked binary is a bet on the guest's loader.
+var liveGuestBinary = sync.OnceValues(func() (string, error) {
+	dir, err := os.MkdirTemp("", "guestbin-live")
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, "cs-campaign-member")
+	if err := buildForGuest(path, "../../cmd/cs-campaign-member"); err != nil {
+		return "", err
+	}
+	return path, nil
+})
+
+func ensureLiveGuestBinary(t *testing.T) {
+	t.Helper()
+	path, err := liveGuestBinary()
+	if err != nil {
+		t.Fatalf("cannot build the guest binary these members will run: %v", err)
+	}
+	// The guard ensureGuestBinary carries, for the same reason: t.Setenv
+	// refuses to run on a test that has called t.Parallel, which is every
+	// scenario in the smoke tier. The parent plants this before releasing them.
+	if os.Getenv("CS_CAMPAIGN_GUEST_BIN") == path {
+		return
+	}
+	t.Setenv("CS_CAMPAIGN_GUEST_BIN", path)
+}
+
+// ensureLiveLenderBinary hands the group's lender a cs-sandbox it can run.
+//
+// A lent scenario puts a lender container on the campaign's network, and that
+// container runs `cs-sandbox lender`. cs-sandbox mounts its OWN executable in
+// where it can — this host's, on Linux, so the lender under test is the build
+// the run is testing — and otherwise leaves the image to supply one. The slim
+// image carries no cs-sandbox at all, so on a Mac the container starts and dies
+// as "executable file `cs-sandbox` not found in $PATH", with the campaign
+// reporting only that create failed.
+//
+// CS_SANDBOX_LENDER_BIN is the documented way in, and a cross build is what it
+// is documented for. Set here for the same reason the two binaries above are:
+// it is a property of running these tiers on a Mac, not of this repository's
+// CI, and a developer's machine hits it identically.
+func ensureLiveLenderBinary(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "linux" {
+		return
+	}
+	path, err := liveLenderBinary()
+	if err != nil {
+		t.Fatalf("cannot build the cs-sandbox this campaign's lender will run: %v", err)
+	}
+	if os.Getenv("CS_SANDBOX_LENDER_BIN") == path {
+		return
+	}
+	t.Setenv("CS_SANDBOX_LENDER_BIN", path)
+}
+
+var liveLenderBinary = sync.OnceValues(func() (string, error) {
+	dir, err := os.MkdirTemp("", "lenderbin")
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, "cs-sandbox")
+	// The pin, like everything else this tier runs: go.mod names the version,
+	// `make tools` installs that one on PATH, and this compiles the same source
+	// for the guest.
+	if err := buildForGuest(path, "github.com/codesweep-ai/sandbox/cmd/cs-sandbox"); err != nil {
+		return "", err
+	}
+	return path, nil
+})
+
+// buildForGuest compiles one package for the guest: Linux, this host's
+// architecture, and static. It is what the two binaries these tiers put INSIDE
+// a machine are built with — the member helper above and the recorder in
+// vcrfabric_test.go — and it is a no-op difference on a Linux host, which is
+// why the failure it prevents only ever shows up on a Mac.
+func buildForGuest(out, pkg string) error {
+	cmd := exec.Command("go", "build", "-o", out, pkg)
+	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+runtime.GOARCH, "CGO_ENABLED=0")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("go build %s for linux/%s: %w\n%s", pkg, runtime.GOARCH, err, out)
+	}
+	return nil
+}
+
+// liveEngine is the sandbox engine every member of these campaigns runs on.
+//
+// Firecracker unless the environment says otherwise, because a microVM is what
+// this product is for and what every cassette was recorded against. CI is the
+// caller that says otherwise: it runs the same replays a second time on podman,
+// which is the only engine a machine without KVM has — a macOS host among them.
+//
+// A changed engine does not invalidate a cassette. The engine reaches the
+// campaign ID, and the ID and every name derived from it are captured and
+// blanked by the normalize block in writeVCRConfig; what would invalidate one
+// is profile CONTENT that reaches a prompt, which the engine is not.
+func liveEngine() string {
+	if e := os.Getenv("CS_CAMPAIGN_ENGINE"); e != "" {
+		return e
+	}
+	return "firecracker"
+}
+
 // scenarioProfile renders the profile for a homogeneous fleet.
 //
 // The profile is hashed into the campaign ID, so every name a run produces
 // derives from this text. A cassette is bound to the profile that recorded it,
-// and editing this function invalidates the recording.
+// and editing this function invalidates the recording — with the one exception
+// liveEngine documents.
 func scenarioProfile(sc scenario, repo, baseURL, name string) string {
 	return fmt.Sprintf(`apiVersion: codesweep.ai/v1alpha1
 kind: CampaignProfile
 defaults:
-  engine: firecracker
+  engine: %s
   deadline: 1h
   resources:
     cpus: 2
@@ -1242,6 +1402,7 @@ orchestrator:
 %sagents:
   dev:
 %s`,
+		liveEngine(),
 		memberBlock(sc, sc.orchSeat(), repo, baseURL, name+"-orchestrator"),
 		indent(memberBlock(sc, sc.agentSeat(), repo, baseURL, name+"-dev")))
 }

@@ -371,7 +371,9 @@ func (s scenario) available() (bool, string) {
 // adapters. Everything but the profile is shared with runLiveCampaign.
 func runMixedCampaign(t *testing.T, orchestrator, agent scenario, ceiling time.Duration) campaignRun {
 	t.Helper()
-	ensureGuestBinary(t)
+	ensureMountableTempDir(t)
+	ensureLiveGuestBinary(t)
+	ensureLiveLenderBinary(t)
 	work := t.TempDir()
 	repo := seedSubjectRepo(t, work)
 	writeCampaignInputs(t, work)
@@ -390,7 +392,7 @@ func mixedProfile(orchestrator, agent scenario, repo string) string {
 	return fmt.Sprintf(`apiVersion: codesweep.ai/v1alpha1
 kind: CampaignProfile
 defaults:
-  engine: firecracker
+  engine: %s
   deadline: 1h
   resources:
     cpus: 2
@@ -400,7 +402,8 @@ defaults:
 orchestrator:
 %sagents:
   dev:
-%s`, memberBlock(orchestrator, orchestrator.agentSeat(), repo, "", ""),
+%s`, liveEngine(),
+		memberBlock(orchestrator, orchestrator.agentSeat(), repo, "", ""),
 		indent(memberBlock(agent, agent.agentSeat(), repo, "", "")))
 }
 

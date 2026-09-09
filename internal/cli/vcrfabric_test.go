@@ -28,6 +28,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -394,6 +395,19 @@ func providerBlock(sc scenario) string {
 // Bind-mounted rather than baked into an image, so the proxy under test is the
 // one this machine has.
 func stageVCRBinary(dir string) (string, error) {
+	staged := filepath.Join(dir, "cs-vcr")
+	// The proxy runs in a container, so it has to be a LINUX binary — and on a
+	// Mac the cs-vcr on PATH is a Mach-O one. Compiled here rather than copied
+	// there, from the version go.mod pins, which is the same one `make tools`
+	// puts on PATH. The failure this avoids is the cgo one described above,
+	// with the same silence: the kernel refuses the exec, the proxy is dead
+	// before it serves a request, and each scenario burns its ceiling.
+	if runtime.GOOS != "linux" {
+		if err := buildForGuest(staged, "github.com/codesweep-ai/vcr/cmd/cs-vcr"); err != nil {
+			return "", err
+		}
+		return staged, nil
+	}
 	path, err := exec.LookPath("cs-vcr")
 	if err != nil {
 		return "", fmt.Errorf("%w: cs-vcr is not on PATH (go install github.com/codesweep-ai/vcr/cmd/cs-vcr@latest)",
@@ -403,7 +417,6 @@ func stageVCRBinary(dir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read %s: %w", path, err)
 	}
-	staged := filepath.Join(dir, "cs-vcr")
 	if err := os.WriteFile(staged, body, 0o755); err != nil {
 		return "", fmt.Errorf("stage cs-vcr: %w", err)
 	}

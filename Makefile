@@ -395,11 +395,27 @@ SBX_IMAGE = $$($(SANDBOX) version --images | awk '$$1=="image"{print $$2}')
 ## anybody has to remember.
 SETUP_IMAGE ?= $(SMOKE_IMAGE)
 
+## SMOKE_ENGINE: what the tiers below boot their members on.
+##
+## Firecracker by default, because a microVM is what this product is for and
+## what every cassette was recorded against. A cassette is not bound to it: the
+## engine reaches the campaign ID and nothing a model is shown, and the recorder
+## blanks that ID and every name derived from it.
+##
+## `make test-smoke SMOKE_ENGINE=podman` is the other way, and it is the only
+## way on a host with no KVM — a Mac among them, where the engine is a container
+## in the podman machine. CI runs the tier both ways for that reason.
+##
+## It reaches three places from here: the precondition below, which asks for
+## /dev/kvm only where a microVM needs it; the doctor, which answers per engine;
+## and the profile the tier renders, through CS_CAMPAIGN_ENGINE.
+SMOKE_ENGINE ?= firecracker
+
 ## What `cs-sandbox build` is asked for when this host lacks the image above.
 ## `--slim` because SETUP_IMAGE names the slim variant, and building one while
 ## the run boots the other is how a target builds an image nobody asked for and
 ## still leaves the run without one.
-SANDBOX_BUILD_FLAGS ?= --engine firecracker --slim
+SANDBOX_BUILD_FLAGS ?= --engine $(SMOKE_ENGINE) --slim
 
 ## setup-smoke: the host state a tier that boots machines needs, at the pinned versions
 ##
@@ -449,21 +465,45 @@ SANDBOX_BUILD_FLAGS ?= --engine firecracker --slim
 ## the same terms: the tier decides what it can run. A build that was actually
 ## attempted and then failed does fail the target, because a host that got that
 ## far has a fault rather than a limitation.
+## What this host has to have before a member can boot on SMOKE_ENGINE: podman
+## either way — it holds the image, and the recorder is a container on the
+## campaign's own network whichever engine the members run on — and a writable
+## /dev/kvm only for firecracker, which is the engine that needs a hypervisor.
+## Asking for /dev/kvm on a podman run would stand the tier down on every Mac,
+## where the engine works and the device does not exist.
+SMOKE_PRECONDITION = command -v podman >/dev/null 2>&1$(if $(filter firecracker,$(SMOKE_ENGINE)), && [ -w /dev/kvm ])
+
+## What "already built" means, per engine. The image is the whole story for a
+## podman run, because a container boots from the image itself. Firecracker
+## needs more: the base rootfs every microVM is copied from is made by the same
+## build and kept beside the image, one slot per variant, and a host can hold
+## the image and still not boot a single member (SBX-034). So the doctor is
+## asked there, and its answer is what decides.
+##
+## It is NOT asked for a podman run, and that is a correctness point rather than
+## a saving. The doctor's verdict is HOST-WIDE: it reports on every group on the
+## machine, including campaigns another process is running right now. Where
+## several run at once — this repository's Mac runners take three at a time —
+## its answer here is sometimes "not ready" because of somebody else's members,
+## and the branch below would then rebuild an image that is already built, from
+## several jobs, onto one tag. Measured on 2026-09-09, where the same host-wide
+## verdict also failed a CI step outright.
+SMOKE_ARTIFACTS_READY = podman image exists "$$image"$(if $(filter firecracker,$(SMOKE_ENGINE)), && CS_SANDBOX_IMAGE="$$image" $(WITH_TOOLS) $(SANDBOX) doctor --engine $(SMOKE_ENGINE) >/dev/null 2>&1)
+
 setup-smoke: tools
-	@if ! command -v podman >/dev/null 2>&1 || [ ! -w /dev/kvm ]; then \
-		echo "setup-smoke: this host boots no microVMs (needs podman and a writable /dev/kvm) — test-smoke will skip"; \
+	@if ! ($(SMOKE_PRECONDITION)); then \
+		echo "setup-smoke: this host boots no $(SMOKE_ENGINE) members — test-smoke will skip"; \
 	else \
 		image=$${CS_SANDBOX_IMAGE:-$(SETUP_IMAGE)}; \
-		if podman image exists "$$image" && \
-		   CS_SANDBOX_IMAGE="$$image" $(WITH_TOOLS) $(SANDBOX) doctor --engine firecracker >/dev/null 2>&1; then \
+		if $(SMOKE_ARTIFACTS_READY); then \
 			echo "setup-smoke: $$image is built, and this host is ready to boot it"; \
 		else \
 			$(WITH_TOOLS) $(SANDBOX) build $(SANDBOX_BUILD_FLAGS); \
 		fi; \
 	fi
 	@image=$${CS_SANDBOX_IMAGE:-$(SETUP_IMAGE)}; \
-	CS_SANDBOX_IMAGE="$$image" $(WITH_TOOLS) $(SANDBOX) doctor --engine firecracker || \
-		echo "setup-smoke: cs-sandbox doctor says this host is not ready; test-smoke will skip what it cannot run"
+	CS_SANDBOX_IMAGE="$$image" $(WITH_TOOLS) $(SANDBOX) doctor --engine $(SMOKE_ENGINE) || \
+		echo "setup-smoke: cs-sandbox doctor reported the issues above; test-smoke will skip what this host cannot run"
 	@$(WITH_TOOLS) go run ./cmd/cs-campaign doctor || \
 		echo "setup-smoke: cs-campaign doctor says the surface is not the one this tree names"
 
@@ -552,6 +592,7 @@ CS_CAMPAIGN_WAIT_SECONDS ?= 4
 test-smoke: setup-smoke
 	@scripts/coverage.sh reset smoke
 	$(WITH_TOOLS) CS_SANDBOX_IMAGE=$${CS_SANDBOX_IMAGE:-$(SMOKE_IMAGE)} \
+	  CS_CAMPAIGN_ENGINE=$(SMOKE_ENGINE) \
 	  CS_CAMPAIGN_POLL_SECONDS=$(CS_CAMPAIGN_POLL_SECONDS) \
 	  CS_CAMPAIGN_WAIT_SECONDS=$(CS_CAMPAIGN_WAIT_SECONDS) \
 	  CS_COVERDIR=$(COVER_ABS)/smoke go test -tags smoke $(COVERFLAGS) \
@@ -584,6 +625,7 @@ INTEGRATION_TESTS ?= TestLiveMatrix|TestLiveHeterogeneousFleet
 # variables to its prerequisites — so the image this builds is the image this
 # boots, which is the property the whole block above exists to keep.
 test-integration: SETUP_IMAGE := $(SBX_IMAGE)
+test-integration: SMOKE_ENGINE := firecracker
 test-integration: SANDBOX_BUILD_FLAGS := --engine firecracker
 test-integration: setup-smoke
 	@scripts/coverage.sh reset integration
