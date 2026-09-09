@@ -30,18 +30,27 @@ func captureExecSandbox(t *testing.T, script string) (sandboxCLI, string) {
 	return sandboxCLI{Bin: tool}, capture
 }
 
-// decodeEmbeddedBase64 extracts the nth base64 payload from a generated
-// "printf %s <payload> | base64 -d" install command.
-func decodeEmbeddedBase64(t *testing.T, command string, n int) []byte {
+// capturePayloads is the fake sandbox fragment that records what each exec was
+// given: the command, and the base64 the guest command reads from stdin. One
+// line per exec, empty for an exec that carries no payload.
+const capturePayloads = `if [ "$1" = exec ]; then printf '%s' "$5" >> "$CAPTURE"; cat >> "$CAPTURE.stdin"; echo >> "$CAPTURE.stdin"; fi`
+
+// capturedPayload decodes the payload the nth exec delivered on stdin. File
+// content travels there rather than in argv, so this is where a test reads what
+// a member was actually given.
+func capturedPayload(t *testing.T, capture string, n int) []byte {
 	t.Helper()
-	parts := strings.Split(command, "printf %s ")
-	if len(parts) <= n {
-		t.Fatalf("command has %d payloads, want > %d: %q", len(parts)-1, n, command)
-	}
-	token, _, _ := strings.Cut(parts[n], " ")
-	decoded, err := base64.StdEncoding.DecodeString(token)
+	raw, err := os.ReadFile(capture + ".stdin")
 	if err != nil {
-		t.Fatalf("decode payload %d: %v", n, err)
+		t.Fatalf("no stdin capture: %v", err)
+	}
+	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+	if len(lines) <= n {
+		t.Fatalf("capture has %d execs, want > %d: %q", len(lines), n, raw)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(lines[n])
+	if err != nil {
+		t.Fatalf("decode payload %d (%q): %v", n, lines[n], err)
 	}
 	return decoded
 }
@@ -51,7 +60,7 @@ func decodeEmbeddedBase64(t *testing.T, command string, n int) []byte {
 // contain the orchestrator itself.
 func TestConfigureOrchestratorManifestScopesAgents(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "helper-scoping", covmap.TierUnit)
-	sandbox, capture := captureExecSandbox(t, `if [ "$1" = exec ]; then printf '%s' "$5" > "$CAPTURE"; fi`)
+	sandbox, capture := captureExecSandbox(t, capturePayloads)
 	campaign := &model.Campaign{Name: "camp", Network: "net", Members: []model.Member{
 		{Name: "orchestrator", Role: "orchestrator", CLI: "codex", Sandbox: "orch", Session: model.Session{Name: "orch"}},
 		{Name: "worker", Role: "agent", CLI: "claude", Sandbox: "wbox", Branch: "cs-sandbox/wbox",
@@ -75,7 +84,7 @@ func TestConfigureOrchestratorManifestScopesAgents(t *testing.T) {
 			Repos   map[string]string `json:"repos"`
 		} `json:"agents"`
 	}
-	if err = json.Unmarshal(decodeEmbeddedBase64(t, string(command), 1), &manifest); err != nil {
+	if err = json.Unmarshal(capturedPayload(t, capture, 0), &manifest); err != nil {
 		t.Fatalf("manifest is not valid JSON: %v", err)
 	}
 	if manifest.Campaign != "camp" || manifest.Network != "net" {
@@ -186,5 +195,67 @@ func TestArchiveTranscriptsOpenCodeAllowlistAndExport(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(base, "transcript", "cli-evidence.tgz")); err != nil {
 		t.Fatalf("evidence tar not written: %v", err)
+	}
+}
+
+// TestLargeSeededSetIsDelivered is SAC-019: a member's whole input set used to
+// be base64-encoded into one shell script and passed as a single argv entry.
+// Linux caps one entry at MAX_ARG_STRLEN, 32 pages, which is far below the
+// total argument space, so an eight-member team's orchestrator failed `create`
+// with "argument list too long" after its machine was already provisioned.
+//
+// The payload now rides on stdin. The property that keeps it fixed is asserted
+// directly: no exec's argv may grow with the content, and every byte must still
+// arrive.
+func TestLargeSeededSetIsDelivered(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "helper-scoping", covmap.TierUnit)
+	ensureGuestBinary(t)
+	s, capture := captureExecSandbox(t, capturePayloads)
+	// Well past the ceiling: seven briefs plus a mission, 40 KB each.
+	const each = 40 << 10
+	roles := map[string]seededFile{}
+	for _, name := range []string{"orchestrator", "backend", "frontend", "qa", "docs", "infra", "translator"} {
+		roles[name] = seededFile{Name: name + ".md", Content: strings.Repeat("b", each)}
+	}
+	inputs := campaignInputs{
+		Declared: true,
+		Mission:  seededFile{Name: missionFileName, Content: strings.Repeat("m", each)},
+		Roles:    roles,
+	}
+	campaign := &model.Campaign{Name: "big", Network: "net", Members: []model.Member{
+		{Name: "orchestrator", Role: "orchestrator", CLI: "codex", Sandbox: "box0", Ref: "box0.grp",
+			Session: model.Session{Name: "box0"}},
+	}}
+	if err := s.configureChannels(context.Background(), campaign, campaign.Members[0], inputs); err != nil {
+		t.Fatalf("a large seeded set must deliver: %v", err)
+	}
+	// MAX_ARG_STRLEN is 32 pages. Every command must sit far below it, and must
+	// not scale with the payload at all.
+	const maxArgStrLen = 32 * 4096
+	commands, err := os.ReadFile(capture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for cmd := range strings.SplitSeq(string(commands), "mkdir -p") {
+		if len(cmd) > maxArgStrLen/8 {
+			t.Fatalf("a delivery command scales with its payload: %d bytes", len(cmd))
+		}
+	}
+	// Every byte arrived. The mission is the third exec: directories, then
+	// member.json, then the orientation, then the seeded files.
+	raw, err := os.ReadFile(capture + ".stdin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The guest binary is streamed raw on the same channel, so only the base64
+	// lines are seeded content.
+	var delivered int
+	for line := range strings.SplitSeq(strings.TrimRight(string(raw), "\n"), "\n") {
+		if decoded, decErr := base64.StdEncoding.DecodeString(line); decErr == nil {
+			delivered += len(decoded)
+		}
+	}
+	if want := 8 * each; delivered < want {
+		t.Fatalf("delivered %d bytes of seeded content, want at least %d", delivered, want)
 	}
 }

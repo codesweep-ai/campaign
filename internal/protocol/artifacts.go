@@ -172,12 +172,21 @@ func AcceptedFor(entries []Entry, node string) map[string]bool {
 func AcceptanceText(node, id string) string { return node + "/" + id }
 
 // PutFileScript is the shell fragment that materialises one file on a node
-// from base64 — the payload never crosses as shell-visible text, so it cannot
-// break quoting or execute. path is $HOME-relative.
-func PutFileScript(path, content string) string {
-	enc := base64.StdEncoding.EncodeToString([]byte(content))
+// from base64 on STDIN. path is $HOME-relative.
+//
+// The payload travels on stdin rather than in the script for two reasons. It
+// never crosses as shell-visible text, so it cannot break quoting or execute.
+// And it is not bounded: Linux caps a SINGLE argv entry at MAX_ARG_STRLEN, 32
+// pages, which is far below total argument space and is what an embedded
+// payload runs into. Encode the content with PutPayload and feed it in.
+func PutFileScript(path string) string {
 	dir := filepath.Dir(path)
-	return fmt.Sprintf(`mkdir -p ~/%s && printf %%s %s | base64 -d > ~/%s && chmod 600 ~/%s`, dir, enc, path, path)
+	return fmt.Sprintf(`mkdir -p ~/%s && base64 -d > ~/%s && chmod 600 ~/%s`, dir, path, path)
+}
+
+// PutPayload encodes what a Put*Script reads from stdin.
+func PutPayload(content string) string {
+	return base64.StdEncoding.EncodeToString([]byte(content))
 }
 
 // PutMsgScript is PutFileScript for dispatch messages: it refuses to clobber
@@ -191,13 +200,16 @@ func PutFileScript(path, content string) string {
 // exposed surface is the orchestrator's guest `send` (a model can emit two
 // tool calls in parallel); host sends are operator-typed, serial by
 // construction, and keep PutFileScript.
-func PutMsgScript(path, content string) string {
-	enc := base64.StdEncoding.EncodeToString([]byte(content))
+func PutMsgScript(path string) string {
 	dir := filepath.Dir(path)
 	// `true >` rather than `: >` — a redirection error on a special builtin
 	// like `:` aborts a POSIX shell outright, skipping the else branch.
-	return fmt.Sprintf(`mkdir -p ~/%s && if { set -C; true > ~/%s; } 2>/dev/null; then printf %%s %s | base64 -d >| ~/%s && chmod 600 ~/%s; else echo %s ~/%s; exit 1; fi`,
-		dir, path, enc, path, path, deliveryCollisionMarker, path)
+	//
+	// The loser drains stdin before it exits. Otherwise the sender is still
+	// writing the payload into a pipe with no reader, and the EPIPE that
+	// follows would race the collision marker for which failure gets reported.
+	return fmt.Sprintf(`mkdir -p ~/%s && if { set -C; true > ~/%s; } 2>/dev/null; then base64 -d >| ~/%s && chmod 600 ~/%s; else cat >/dev/null; echo %s ~/%s; exit 1; fi`,
+		dir, path, path, path, deliveryCollisionMarker, path)
 }
 
 // deliveryCollisionMarker is what PutMsgScript prints when the target name

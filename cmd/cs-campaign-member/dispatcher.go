@@ -58,10 +58,17 @@ func memberBoundForTest(d time.Duration) func() {
 // ssh route below has always said BatchMode; git was left with the default.
 const gitSSH = "ssh -o BatchMode=yes -o ConnectTimeout=10"
 
-var sshOut = func(host, command string) ([]byte, error) {
+// payload, when non-empty, is fed to the remote command on stdin. A dispatch
+// body travels that way rather than inside command: Linux caps one argv entry
+// at MAX_ARG_STRLEN, far below the total argument space, so an embedded body
+// puts a ceiling on how long a message may be.
+var sshOut = func(host, command, payload string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), memberCmdBound)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "ssh", "-o", "BatchMode=yes", host, command)
+	if payload != "" {
+		cmd.Stdin = strings.NewReader(payload)
+	}
 	cmd.WaitDelay = 2 * time.Second
 	return cmd.Output()
 }
@@ -92,7 +99,7 @@ var runSessionCmd = func(name string, args ...string) error {
 // node, or a probe failure — which is a fact about the observation, not the
 // node.
 func probeAgent(rec protocol.AgentRecord) (protocol.Facts, bool) {
-	out, err := sshOut(rec.Sandbox, protocol.ProbeScript(rec.CLI))
+	out, err := sshOut(rec.Sandbox, protocol.ProbeScript(rec.CLI), "")
 	if err != nil {
 		return protocol.Facts{}, true
 	}
@@ -216,7 +223,7 @@ func sendBody(env *envState, name, body string) (sendResult, error) {
 		}
 		msgName := protocol.NextMsgName(facts.Msgs, res.ID, false)
 		msgPath := protocol.InputDir + "/" + msgName
-		out, putErr := sshOut(rec.Sandbox, protocol.PutMsgScript(msgPath, body))
+		out, putErr := sshOut(rec.Sandbox, protocol.PutMsgScript(msgPath), protocol.PutPayload(body))
 		if putErr != nil {
 			// A collision means a concurrent send claimed the name between our
 			// listing and our write (the ID-mint TOCTOU). The winner's message
@@ -372,7 +379,7 @@ func cmdRead(env *envState, args []string) error {
 		}
 		path = protocol.ReplyPath(d.ID)
 	}
-	out, err := sshOut(rec.Sandbox, "cat ~/"+path)
+	out, err := sshOut(rec.Sandbox, "cat ~/"+path, "")
 	if err != nil {
 		return fmt.Errorf("read ~/%s on %s: %v", path, args[0], err)
 	}
@@ -498,7 +505,7 @@ func sendBodyPrepared(env *envState, rec protocol.AgentRecord, facts protocol.Fa
 func deliverPrepared(env *envState, rec protocol.AgentRecord, facts protocol.Facts, id, body string, restart bool) (string, bool, error) {
 	msgName := protocol.NextMsgName(facts.Msgs, id, restart)
 	msgPath := protocol.InputDir + "/" + msgName
-	if out, err := sshOut(rec.Sandbox, protocol.PutMsgScript(msgPath, body)); err != nil {
+	if out, err := sshOut(rec.Sandbox, protocol.PutMsgScript(msgPath), protocol.PutPayload(body)); err != nil {
 		// No retry here: this path acts on a wait snapshot, and a collision
 		// means the world moved under it — the next poll recomputes.
 		if protocol.IsDeliveryCollision(out) {

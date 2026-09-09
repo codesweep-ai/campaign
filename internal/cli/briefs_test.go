@@ -82,8 +82,8 @@ func TestFlagPathCreateNeedsNoBriefs(t *testing.T) {
 	if in.Declared {
 		t.Error("flag-path inputs should not report as declared")
 	}
-	if cmd := in.seedCommand(model.Member{Name: "backend", Role: "agent"}); cmd != "" {
-		t.Errorf("flag path seeded something: %q", cmd)
+	if files := in.seedFiles(model.Member{Name: "backend", Role: "agent"}); len(files) != 0 {
+		t.Errorf("flag path seeded something: %v", files)
 	}
 }
 
@@ -107,7 +107,7 @@ func completeInputs(t *testing.T) campaignInputs {
 // the operator — not the product — decides what each member can see.
 func TestAgentReceivesOnlyItsOwnBrief(t *testing.T) {
 	in := completeInputs(t)
-	got := in.seedCommand(model.Member{Name: "backend", Role: "agent"})
+	got := seededPaths(in.seedFiles(model.Member{Name: "backend", Role: "agent"}))
 	if !strings.Contains(got, guestInputDir+"/backend.md") {
 		t.Errorf("agent did not receive its own brief:\n%s", got)
 	}
@@ -124,7 +124,7 @@ func TestAgentReceivesOnlyItsOwnBrief(t *testing.T) {
 // own brief, which drifts the moment either file is edited.
 func TestOrchestratorReceivesEveryAgentBriefAndTheMission(t *testing.T) {
 	in := completeInputs(t)
-	got := in.seedCommand(model.Member{Name: "orchestrator", Role: "orchestrator"})
+	got := seededPaths(in.seedFiles(model.Member{Name: "orchestrator", Role: "orchestrator"}))
 	for _, want := range []string{
 		guestInputDir + "/" + missionFileName,
 		guestInputDir + "/orchestrator.md",
@@ -319,5 +319,54 @@ func TestReservedInputNamesAreRefused(t *testing.T) {
 	}
 	if _, err := loadCampaignInputs(profile, p); err == nil || !strings.Contains(err.Error(), "reserved") {
 		t.Fatalf("reserved basename must be refused, got %v", err)
+	}
+}
+
+// seededPaths renders what a member is seeded, for the visibility assertions
+// above. They ask which files a member receives, which is the same question
+// whether delivery is one exec or many.
+func seededPaths(files []guestFile) string {
+	var b strings.Builder
+	for _, f := range files {
+		b.WriteString(f.Path)
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// The seeded-size warning is advisory and must stay that way: delivery has no
+// ceiling now, so how much a member should read is the operator's call. It has
+// to name the member, because the orchestrator is the one that grows with the
+// team and an operator needs to know which seat is heavy.
+func TestLargeSeedIsWarnedAboutAndNotRefused(t *testing.T) {
+	big := strings.Repeat("x", seedWarnBytes)
+	in := campaignInputs{
+		Declared: true,
+		Mission:  seededFile{Name: missionFileName, Content: big},
+		Roles: map[string]seededFile{
+			"orchestrator": {Name: "orchestrator.md", Content: big},
+			"backend":      {Name: "backend.md", Content: "small\n"},
+		},
+	}
+	members := []model.Member{
+		{Name: "orchestrator", Role: "orchestrator"},
+		{Name: "backend", Role: "agent"},
+	}
+	var out strings.Builder
+	warnLargeSeeds(&out, members, in)
+	got := out.String()
+	if !strings.Contains(got, "orchestrator") {
+		t.Errorf("the heavy seat must be named:\n%s", got)
+	}
+	if strings.Contains(got, "backend") {
+		t.Errorf("a member under the threshold must not be warned about:\n%s", got)
+	}
+	// Silence is the ordinary case, and nothing here may fail a campaign.
+	out.Reset()
+	warnLargeSeeds(&out, members, campaignInputs{Declared: true, Roles: map[string]seededFile{
+		"orchestrator": {Name: "orchestrator.md", Content: "a brief\n"},
+	}})
+	if out.String() != "" {
+		t.Errorf("an ordinary campaign must be quiet: %q", out.String())
 	}
 }

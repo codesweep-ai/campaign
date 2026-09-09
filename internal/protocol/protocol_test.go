@@ -246,17 +246,30 @@ func TestReplyAndLogRoundTrip(t *testing.T) {
 	}
 }
 
-func TestPutFileScriptIsBase64(t *testing.T) {
-	for _, s := range []string{
-		PutFileScript(InputDir+"/d001.md", "run `rm -rf` $(boom)\n"),
-		PutMsgScript(InputDir+"/d001.md", "run `rm -rf` $(boom)\n"),
-	} {
-		if strings.Contains(s, "rm -rf") || strings.Contains(s, "$(boom)") {
-			t.Fatal("payload must never cross as shell-visible text")
+// TestPutScriptsAreFixedSize is the argv ceiling, pinned. A payload embedded in
+// the script put the whole file in one argv entry, and Linux caps a single
+// entry at MAX_ARG_STRLEN — 32 pages, far below total argument space — so a
+// large enough seeded set failed create with "argument list too long". The
+// content now rides on stdin, and the property that keeps it that way is that
+// the script's length does not depend on the content's.
+func TestPutScriptsAreFixedSize(t *testing.T) {
+	for _, build := range []func(string) string{PutFileScript, PutMsgScript} {
+		small, large := build(InputDir+"/d001.md"), build(InputDir+"/d001.md")
+		if small != large || len(small) > 4096 {
+			t.Fatalf("delivery script is not fixed and small: %d bytes", len(small))
 		}
-		if !strings.Contains(s, "base64 -d") {
-			t.Fatalf("expected base64 delivery: %s", s)
+		if !strings.Contains(small, "base64 -d") {
+			t.Fatalf("expected base64 delivery: %s", small)
 		}
+	}
+	// The payload is separate, and nothing shell-visible survives the encoding.
+	payload := PutPayload("run `rm -rf` $(boom)\n")
+	if strings.Contains(payload, "rm -rf") || strings.Contains(payload, "$(boom)") {
+		t.Fatal("payload must never cross as shell-visible text")
+	}
+	script := PutFileScript(InputDir + "/d001.md")
+	if strings.Contains(script, payload) {
+		t.Fatal("the payload must not appear in the script at all")
 	}
 }
 
@@ -268,8 +281,9 @@ func TestPutMsgScriptRefusesClobber(t *testing.T) {
 	home := t.TempDir()
 	target := filepath.Join(home, InputDir, "d002.md")
 	run := func(content string) ([]byte, error) {
-		cmd := exec.Command("sh", "-c", PutMsgScript(InputDir+"/d002.md", content))
+		cmd := exec.Command("sh", "-c", PutMsgScript(InputDir+"/d002.md"))
 		cmd.Env = append(os.Environ(), "HOME="+home)
+		cmd.Stdin = strings.NewReader(PutPayload(content))
 		return cmd.CombinedOutput()
 	}
 	out, err := run("the winner's message\n")

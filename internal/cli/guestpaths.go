@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"encoding/base64"
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -66,15 +64,13 @@ var reservedInputNames = map[string]bool{
 	"manifest.json":  true,
 }
 
-// putGuestFile builds the shell fragment that materialises one file inside a
-// member from base64. Base64 is not decoration: the payload is composed on the
-// host and must arrive as a literal, so it never crosses as shell-visible text
-// where quoting or a stray backtick could break it — or execute.
-//
-// Paths are $HOME-relative, matching the constants above.
-func putGuestFile(path, content string) string {
-	encoded := base64.StdEncoding.EncodeToString([]byte(content))
-	return fmt.Sprintf("printf %%s %s | base64 -d > ~/%s && chmod 600 ~/%s", encoded, path, path)
+// guestFile is one file to materialise inside a member, at a $HOME-relative
+// path. It is a value rather than a shell fragment because delivery is one
+// exec per file: the content rides on stdin, where no argv limit reaches it.
+// See protocol.PutFileScript for why.
+type guestFile struct {
+	Path    string
+	Content string
 }
 
 // mkGuestDirs builds one mkdir -p covering every directory named.

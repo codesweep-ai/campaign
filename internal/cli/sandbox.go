@@ -253,7 +253,7 @@ func (s sandboxCLI) probeMemberDeadline(ctx context.Context, member model.Member
 
 // putMemberFile materialises one $HOME-relative file inside a member.
 func (s sandboxCLI) putMemberFile(ctx context.Context, member model.Member, path, content string) error {
-	return s.memberRun(ctx, member.Ref, protocol.PutFileScript(path, content))
+	return s.memberRunStdin(ctx, member.Ref, protocol.PutFileScript(path), protocol.PutPayload(content))
 }
 
 func selectedAPIKey(member model.Member) string {
@@ -411,16 +411,25 @@ func (s sandboxCLI) configureChannels(ctx context.Context, campaign *model.Campa
 	if err != nil {
 		return err
 	}
-	parts := []string{
-		mkGuestDirs(guestConfigDir, guestInputDir, guestOutputDir, guestRepliesDir, guestSourceDir, protocol.GuestBinDir),
-		putGuestFile(guestMemberJSON, string(encodedDoc)+"\n"),
-		putGuestFile(guestOrientationFile, orientation),
+	dirs := []string{guestConfigDir, guestInputDir, guestOutputDir, guestRepliesDir, guestSourceDir, protocol.GuestBinDir}
+	if member.Role == "orchestrator" {
+		dirs = append(dirs, guestRolesDir)
 	}
-	if seed := inputs.seedCommand(member); seed != "" {
-		parts = append(parts, seed)
-	}
-	if err := s.memberRun(ctx, member.Ref, strings.Join(parts, " && ")); err != nil {
+	if err := s.memberRun(ctx, member.Ref, mkGuestDirs(dirs...)); err != nil {
 		return err
+	}
+	// One exec per file. The content rides on stdin, so a member's seeded set
+	// has no size ceiling: joining these into one script put the whole payload
+	// in a single argv entry, which execve refuses past MAX_ARG_STRLEN.
+	files := []guestFile{
+		{guestMemberJSON, string(encodedDoc) + "\n"},
+		{guestOrientationFile, orientation},
+	}
+	files = append(files, inputs.seedFiles(member)...)
+	for _, f := range files {
+		if err := s.putMemberFile(ctx, member, f.Path, f.Content); err != nil {
+			return fmt.Errorf("seed %s: %w", f.Path, err)
+		}
 	}
 	return s.installGuestBinary(ctx, member.Ref)
 }
@@ -491,8 +500,10 @@ func (s sandboxCLI) configureOrchestrator(ctx context.Context, campaign *model.C
 	if err != nil {
 		return err
 	}
-	command := putGuestFile(guestManifestJSON, string(encoded)+"\n") + " && " + guardInstallLoop
-	return s.memberRun(ctx, orchestrator.Ref, command)
+	if err := s.putMemberFile(ctx, *orchestrator, guestManifestJSON, string(encoded)+"\n"); err != nil {
+		return err
+	}
+	return s.memberRun(ctx, orchestrator.Ref, guardInstallLoop)
 }
 
 // guardInstallLoop moves each real cs-*-remote tool aside and symlinks its
@@ -504,11 +515,21 @@ var guardInstallLoop = `for f in claude codex opencode; do for s in "" -forget -
 	`if [ -e "$HOME/` + guestRealToolsDir + `/$t" ]; then ln -sf cs-campaign-member "$HOME/` + guestBinDir + `/$t"; fi; done; done`
 
 func (s sandboxCLI) run(ctx context.Context, args ...string) error {
+	return s.runStdin(ctx, "", args...)
+}
+
+// runStdin runs cs-sandbox with payload on stdin, or with the host's own stdin
+// when payload is empty — `ssh` with no arguments attaches a terminal and needs
+// it.
+func (s sandboxCLI) runStdin(ctx context.Context, payload string, args ...string) error {
 	if s.Dry {
 		return nil
 	}
 	cmd := exec.CommandContext(ctx, s.Bin, args...)
 	cmd.Stdin = os.Stdin
+	if payload != "" {
+		cmd.Stdin = strings.NewReader(payload)
+	}
 	cmd.Stdout, cmd.Stderr = s.stdout(), s.stderr()
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("%s %s: %w", s.Bin, strings.Join(args, " "), err)
@@ -537,6 +558,13 @@ func (s sandboxCLI) output(ctx context.Context, args ...string) ([]byte, error) 
 // the guest's profile puts on PATH.
 func (s sandboxCLI) memberRun(ctx context.Context, ref, command string) error {
 	return s.run(ctx, "exec", ref, "sh", "-lc", command)
+}
+
+// memberRunStdin is memberRun with a payload the guest command reads from
+// stdin. It exists so a file's contents never enter argv, where a single entry
+// is capped well below the total argument space.
+func (s sandboxCLI) memberRunStdin(ctx context.Context, ref, command, payload string) error {
+	return s.runStdin(ctx, payload, "exec", ref, "sh", "-lc", command)
 }
 
 // awaitMemberReady blocks until the guest runs a trivial command, or until the

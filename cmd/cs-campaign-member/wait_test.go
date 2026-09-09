@@ -52,11 +52,12 @@ type fakeWorld struct {
 	collide map[string]bool
 }
 
-// putRe matches the delivery fragment of PutFileScript: the base64 payload
-// and the $HOME-relative target path.
-var putRe = regexp.MustCompile(`printf %s ([A-Za-z0-9+/=]+) \| base64 -d >\|? ~/([^ ;]+)`)
+// putRe matches the delivery fragment of PutMsgScript: the $HOME-relative
+// target path. The payload is no longer in the command at all — it arrives on
+// stdin, which is what lifts the argv ceiling on a dispatch body.
+var putRe = regexp.MustCompile(`base64 -d >\|? ~/([^ ;]+)`)
 
-func (w *fakeWorld) sshOut(host, command string) ([]byte, error) {
+func (w *fakeWorld) sshOut(host, command, payload string) ([]byte, error) {
 	a, ok := w.agents[host]
 	if !ok {
 		return nil, fmt.Errorf("unscripted host %q", host)
@@ -79,15 +80,15 @@ func (w *fakeWorld) sshOut(host, command string) ([]byte, error) {
 		return []byte(b.String()), nil
 	}
 	if m := putRe.FindStringSubmatch(command); m != nil {
-		body, err := base64.StdEncoding.DecodeString(m[1])
+		body, err := base64.StdEncoding.DecodeString(payload)
 		if err != nil {
 			return nil, fmt.Errorf("undecodable delivery: %v", err)
 		}
-		name := strings.TrimPrefix(m[2], protocol.InputDir+"/")
+		name := strings.TrimPrefix(m[1], protocol.InputDir+"/")
 		if w.collide[name] {
 			delete(w.collide, name)
 			a.msgs[name] = time.Now().Unix() // the winner's file, not ours
-			return []byte("CS_MSG_EXISTS ~/" + m[2] + "\n"), errors.New("exit status 1")
+			return []byte("CS_MSG_EXISTS ~/" + m[1] + "\n"), errors.New("exit status 1")
 		}
 		a.msgs[name] = time.Now().Unix()
 		w.delivered = append(w.delivered, delivery{host: host, name: name, body: string(body)})

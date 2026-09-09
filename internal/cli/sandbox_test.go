@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 
 	"os"
@@ -306,6 +305,7 @@ func TestOrchestratorManifestUsesInGroupNamesNotHostRefs(t *testing.T) {
 	capture := filepath.Join(dir, "exec-args")
 	body := `#!/bin/sh
 printf '%s\n' "$*" >> "$CAPTURE"
+cat >> "$CAPTURE.stdin"; echo >> "$CAPTURE.stdin"
 `
 	if err := os.WriteFile(tool, []byte(body), 0o700); err != nil {
 		t.Fatal(err)
@@ -331,20 +331,10 @@ printf '%s\n' "$*" >> "$CAPTURE"
 	if !strings.HasPrefix(call, "exec demo-orchestrator.demo-grp ") {
 		t.Fatalf("manifest not installed via the host ref: %q", call)
 	}
-	// The payload is base64; decode it to read what the orchestrator will see.
-	field := strings.Fields(call)
+	// The payload rides on stdin, so that is where the manifest is read from.
 	var manifest map[string]any
-	for _, f := range field {
-		raw, decErr := base64.StdEncoding.DecodeString(f)
-		if decErr != nil || !strings.HasPrefix(string(raw), "{") {
-			continue
-		}
-		if json.Unmarshal(raw, &manifest) == nil {
-			break
-		}
-	}
-	if manifest == nil {
-		t.Fatalf("no manifest payload in call: %q", call)
+	if err := json.Unmarshal(capturedPayload(t, capture, 0), &manifest); err != nil {
+		t.Fatalf("no manifest payload in call: %v\n%s", err, call)
 	}
 	agents, _ := manifest["agents"].(map[string]any)
 	backend, _ := agents["backend"].(map[string]any)
@@ -454,7 +444,7 @@ func TestRepositoryArchiveNamesAndShellArgumentsAreBounded(t *testing.T) {
 // orchestrator never reads is not the same as knowledge it has.
 func TestOrchestratorDoctrineNamesTeammateCLIs(t *testing.T) {
 	ensureGuestBinary(t)
-	s, capture := captureExecSandbox(t, `printf '%s' "$5" >> "$CAPTURE"`)
+	s, capture := captureExecSandbox(t, capturePayloads)
 	campaign := &model.Campaign{Name: "c1", Network: "net", Members: []model.Member{
 		{Name: "orchestrator", Role: "orchestrator", CLI: "claude", Sandbox: "box0", Ref: "box0.grp"},
 		{Name: "fixer", Role: "agent", CLI: "codex", Sandbox: "box1", Ref: "box1.grp"},
@@ -462,11 +452,7 @@ func TestOrchestratorDoctrineNamesTeammateCLIs(t *testing.T) {
 	if err := s.configureChannels(context.Background(), campaign, campaign.Members[0], campaignInputs{Roles: map[string]seededFile{}}); err != nil {
 		t.Fatal(err)
 	}
-	command, err := os.ReadFile(capture)
-	if err != nil {
-		t.Fatal(err)
-	}
-	doctrine := string(decodeEmbeddedBase64(t, string(command), 2))
+	doctrine := string(capturedPayload(t, capture, 2))
 	// The doctrine names each teammate WITH its CLI (the ctv4 lesson) and the one
 	// control path. It no longer teaches the raw cs-*-remote families at all —
 	// send resolves the family from the manifest, and the guard's own refusal

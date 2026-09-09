@@ -127,8 +127,8 @@ func TestUnbriefedFleetIsStillRefusedByValidate(t *testing.T) {
 	}
 	// Nothing may be seeded from a set that describes files which do not exist.
 	for _, m := range []string{"orchestrator", "backend"} {
-		if cmd := in.seedCommand(memberNamed(m)); cmd != "" {
-			t.Errorf("a planned input set produced a seed command for %s: %q", m, cmd)
+		if files := in.seedFiles(memberNamed(m)); len(files) != 0 {
+			t.Errorf("a planned input set produced seeded files for %s: %v", m, files)
 		}
 	}
 }

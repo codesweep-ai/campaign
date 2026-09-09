@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -166,33 +167,27 @@ func plannedCampaignInputs(profilePath string, p model.Profile) (campaignInputs,
 // allocates the work, and it cannot do that without knowing what each teammate
 // owns. The alternative is an operator hand-copying a team table into the
 // orchestrator's own brief, which drifts the moment one file is edited.
-func (in campaignInputs) seedCommand(member model.Member) string {
+func (in campaignInputs) seedFiles(member model.Member) []guestFile {
 	if !in.Declared || in.Planned {
-		return ""
+		return nil
 	}
-	var parts []string
-	dirs := []string{guestInputDir}
-	if member.Role == "orchestrator" {
-		dirs = append(dirs, guestRolesDir)
-	}
-	parts = append(parts, mkGuestDirs(dirs...))
-
+	var files []guestFile
 	if own, ok := in.Roles[member.Name]; ok {
-		parts = append(parts, putGuestFile(guestInputDir+"/"+own.Name, own.Content))
+		files = append(files, guestFile{guestInputDir + "/" + own.Name, own.Content})
 	}
 	if member.Role == "orchestrator" {
 		if in.Mission.Content != "" {
-			parts = append(parts, putGuestFile(guestInputDir+"/"+in.Mission.Name, in.Mission.Content))
+			files = append(files, guestFile{guestInputDir + "/" + in.Mission.Name, in.Mission.Content})
 		}
 		for _, name := range sortedRoleNames(in.Roles) {
 			if name == "orchestrator" {
 				continue
 			}
 			f := in.Roles[name]
-			parts = append(parts, putGuestFile(guestRolesDir+"/"+f.Name, f.Content))
+			files = append(files, guestFile{guestRolesDir + "/" + f.Name, f.Content})
 		}
 	}
-	return strings.Join(parts, " && ")
+	return files
 }
 
 // seededNames lists what a member will find in its input channel, in the order
@@ -252,4 +247,45 @@ func sortedRoleNames(m map[string]seededFile) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// seedWarnBytes is when a member's seeded set is worth a second look. It is not
+// a delivery limit: content rides on stdin and has no ceiling. It is about the
+// reader. The playbook puts a member's total seeded reading in the thousands of
+// words rather than the tens of thousands, and 64 KiB is about ten thousand.
+const seedWarnBytes = 64 << 10
+
+// seededBytes is how much content a member is given, and in how many files.
+func (in campaignInputs) seededBytes(member model.Member) (files, bytes int) {
+	for _, f := range in.seedFiles(member) {
+		files++
+		bytes += len(f.Content)
+	}
+	return files, bytes
+}
+
+// warnLargeSeeds names any member handed an unusually large set, before
+// anything is provisioned. The orchestrator meets it first, because it is the
+// one member given the mission and every role's brief.
+//
+// A warning rather than a refusal: how much a member should read is the
+// operator's call, and the number that used to make this fatal is gone.
+func warnLargeSeeds(w io.Writer, members []model.Member, inputs campaignInputs) {
+	for _, m := range members {
+		if files, bytes := inputs.seededBytes(m); bytes > seedWarnBytes {
+			fmt.Fprintf(w, "warning: %s is seeded %d files, %d KiB — large enough that a reader will skim it; see cs-campaign playbook\n",
+				m.Name, files, bytes>>10)
+		}
+	}
+}
+
+// profileMembers is the fleet as the profile declares it, for the checks that
+// run before a campaign record exists. Only the name and role are set, which is
+// all a seeded set depends on.
+func profileMembers(p model.Profile) []model.Member {
+	members := []model.Member{{Name: "orchestrator", Role: "orchestrator"}}
+	for _, name := range sortedNames(p.Agents) {
+		members = append(members, model.Member{Name: name, Role: "agent"})
+	}
+	return members
 }

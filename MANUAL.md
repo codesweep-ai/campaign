@@ -871,6 +871,13 @@ fails here too. Check the credential its profile named: a stale host login and a
 The team exists and is not the team you declared. Do not dispatch. Fix the instantiation or
 destroy it.
 
+**`warning: <member> is seeded N files, M KiB`**
+
+That member's briefs and mission add up to a set large enough that a reader will skim it. Nothing
+fails, and delivery has no size ceiling: file contents travel on standard input rather than in a
+command line. It is a prompt to reconsider what that member needs, and it names the orchestrator
+most often, because it is the one member given the mission and every role's brief.
+
 **`member <name> would need a N-byte socket path, M over the 108-byte AF_UNIX limit`**
 
 The composed group and member path is too long. Shorten the campaign name or the member name, or
