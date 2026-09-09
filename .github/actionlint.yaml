@@ -13,6 +13,12 @@
 # way, back to 24.04's podman 4.9.3, so the firecracker engine cannot run there
 # at all. cs-sandbox pins the same image, for the same reason and in a file
 # exactly like this one.
+# macos-15-intel is the same case, and it is the only macOS runner GitHub hosts
+# that could carry a container engine at all — their arm64 macOS runners are M1
+# VMs reporting kern.hv_support=0. This repository asks it for the unit tier
+# only; the engine work on arm64 macOS is the self-hosted host's, whose
+# labels actionlint already knows.
 self-hosted-runner:
   labels:
+    - macos-15-intel
     - ubuntu-26.04

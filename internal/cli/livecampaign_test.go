@@ -253,43 +253,62 @@ func (s scenario) clis() []string {
 	return out
 }
 
-// TestWorkflowRunsEveryScenario holds CI's matrix against this file's.
+// TestWorkflowRunsEveryScenario holds CI's matrices against this file's.
 //
 // The tier is one job per scenario, so the workflow names them one by one and
 // a scenario added here would otherwise just stop being run there — silently,
 // because a leg that does not exist reports nothing at all. Cheap to check and
 // impossible to notice by eye.
+//
+// Every matrix, not one: the tier runs three times over — firecracker and
+// podman on hosted runners, podman again on the self-hosted Mac — and a
+// scenario added to one list and not the others is the same silence in a
+// smaller place.
 func TestWorkflowRunsEveryScenario(t *testing.T) {
 	root, err := covmap.FindRepoRoot(".")
 	if err != nil {
 		t.Skip("repo root not found")
 	}
-	body, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
+	path := filepath.Join(root, ".github", "workflows", "ci.yml")
+	body, err := os.ReadFile(path)
 	if err != nil {
 		t.Skipf("no workflow to check: %v", err)
 	}
-	var inMatrix bool
-	var listed []string
-	for line := range strings.SplitSeq(string(body), "\n") {
+	// Each `scenario:` key in the file, with the line it is on, so a mismatch
+	// says which of the three matrices is short.
+	type matrix struct {
+		line   int
+		listed []string
+	}
+	var matrices []matrix
+	open := -1
+	for i, line := range strings.Split(string(body), "\n") {
 		trimmed := strings.TrimSpace(line)
 		switch {
 		case trimmed == "scenario:":
-			inMatrix = true
-		case inMatrix && strings.HasPrefix(trimmed, "- "):
-			listed = append(listed, strings.TrimSpace(strings.TrimPrefix(trimmed, "- ")))
-		case inMatrix && trimmed != "" && !strings.HasPrefix(trimmed, "#"):
-			inMatrix = false
+			matrices = append(matrices, matrix{line: i + 1})
+			open = len(matrices) - 1
+		case open >= 0 && strings.HasPrefix(trimmed, "- "):
+			matrices[open].listed = append(matrices[open].listed, strings.TrimSpace(strings.TrimPrefix(trimmed, "- ")))
+		case open >= 0 && trimmed != "" && !strings.HasPrefix(trimmed, "#"):
+			open = -1
 		}
 	}
 	var want []string
 	for _, sc := range scenarios() {
 		want = append(want, sc.name)
 	}
-	slices.Sort(listed)
 	slices.Sort(want)
-	if !slices.Equal(listed, want) {
-		t.Fatalf("the smoke matrix in .github/workflows/ci.yml runs %v, but scenarios() defines %v.\n"+
-			"A scenario missing from the workflow is never replayed in CI, and its leg does not exist to say so.", listed, want)
+	if len(matrices) == 0 {
+		t.Fatalf("%s runs no scenario matrix at all, so nothing in it replays a cassette", path)
+	}
+	for _, m := range matrices {
+		listed := slices.Clone(m.listed)
+		slices.Sort(listed)
+		if !slices.Equal(listed, want) {
+			t.Errorf("the smoke matrix at ci.yml:%d runs %v, but scenarios() defines %v.\n"+
+				"A scenario missing from the workflow is never replayed in CI, and its leg does not exist to say so.", m.line, listed, want)
+		}
 	}
 }
 
