@@ -3,18 +3,25 @@
   "title": "A member's seeded files are passed as one argv string, so a large team fails create",
   "type": "defect",
   "severity": "high",
-  "status": "open",
+  "status": "closed",
   "foundBy": "user report (host): create fails with \"argument list too long\" when a member's input file set is large",
   "opened": "2026-09-09",
-  "resolved": null,
-  "stint": null,
+  "resolved": "2026-09-09",
+  "stint": "2026-09-09 argv limit session",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "afe95be"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "go test ./... -count=1: all packages pass. TestLargeSeededSetIsDelivered seeds one member 320 KiB across eight files and delivers it. Proved by mutation: putting the payload back in the command fails that test at 444092 bytes in one argv entry. TestPutScriptsAreFixedSize holds the property in the protocol package, that a delivery script's length does not depend on its content. TestPutMsgScriptRefusesClobber still passes, so the noclobber claim on a message name survives. End to end, a profile seeding 155 KiB validates with exit 0 and one warning, and plan's JSON still parses with the warning on stderr. make check exit 0."
   },
-  "resolution": null,
+  "resolution": "All three writers pass the payload on standard input. `PutFileScript` and `PutMsgScript` take a path and read the content from stdin, `PutPayload` encodes it, and the transports carry it: `memberRunStdin` on the host and `sshOut` inside a member. Channel configuration is one exec per file rather than one script for all of them. Nothing bounds a seeded set now, because a pipe has no argv limit. The guest binary already arrived this way, so the fix generalises a pattern the code already trusted.\n\n`validate` and `plan` warn when a member is seeded more than 64 KiB, naming the member and the size. It is advisory, and it is about the reader rather than the kernel: the playbook puts a member's seeded reading in the thousands of words. MANUAL carries the warning in Diagnostics.",
   "details": "`create` fails partway through with \"argument list too long\" once a member's seeded files grow, and no earlier command can see it coming.\n\nEvery file the host writes into a member is base64-encoded into a shell fragment. The fragments are joined with `&&` into one string, and that string is a single argument to `cs-sandbox exec`. Linux caps one argument at MAX_ARG_STRLEN, which is 32 pages. That is a separate and far smaller limit than the total argument space, so the assembly is refused whole by execve.\n\nThe numbers come from this host. The largest single argument accepted is 131071 bytes, so the cap is 131072. Nine files holding 98225 bytes assemble through this repository's own `mkGuestDirs` and `putGuestFile` into a 131787 byte script, and exec refuses it.\n\nThe orchestrator meets it first. It is the one member seeded with the mission and with every role's brief, its own included. The payload therefore grows with team size times the length of each. A reported eight-member run carried nine files at 98225 bytes raw and 130976 base64, which is 96 bytes under the cap before the shell wrapper is counted.\n\nTwo things make it expensive to diagnose. The error names the last file in the sequence, which is arbitrary, because the script is assembled whole and rejected whole. Nothing before `create` assembles the exec, so `validate`, `plan` and `create --dry-run` all pass.\n\nThe campaign is left in `create-failed` with some sandboxes provisioned and billing, and the readback never runs.\n\nThree writers share the pattern, so a fix confined to channel configuration leaves two open. `putGuestFile` seeds the channels and is the reported failure. `PutFileScript` writes a single file to a member. `PutMsgScript` writes dispatch messages, which is how the mission body reaches the orchestrator, so a long mission fails the same way.\n\nNone of this is documented. MANUAL states a different limit, the composed path length, and says nothing about how large a seeded file set may be.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-09",
+      "text": "The failure shape changes with this fix. Channel configuration was one exec and is now one per file, so an interrupted create can leave a member partly seeded. That is already caught downstream. The member's own check-inputs reports the absent files, and the readback fails creation by name rather than letting a half-briefed member work."
+    }
+  ],
   "links": []
 }
