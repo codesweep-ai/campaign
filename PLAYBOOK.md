@@ -118,9 +118,12 @@ orchestrator:
 agents:
   backend:
     cli: claude
-    repos: [{path: /srv/product, ref: main}]
+    repos: [{path: /srv/product}]
     snapshots: [{path: /srv/reference, name: reference}]
 ```
+
+`repos[].ref` picks the branch or tag a member is cloned from, on a repository that already exists.
+Leave it out for one the tool is about to create, because there is no branch there to name yet.
 
 Give the orchestrator every repository it must judge. Without the clone it can read a reply and
 cannot inspect the work behind it.
@@ -139,7 +142,8 @@ orchestrator:
 ```
 
 `plan` pins a first commit and creates nothing, so you can read the whole campaign before anything
-exists. `create` makes the repository at that path and clones every member from it.
+exists. `create` makes the repository at that path and clones every member from it. Do not give it a `ref`:
+the repository is born on `main` with one commit, and any other branch is one nothing will create.
 
 Three cases, and the difference matters:
 

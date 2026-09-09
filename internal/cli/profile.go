@@ -260,6 +260,12 @@ func applyDefaults(p *model.Profile) {
 		p.Agents[n] = m
 	}
 }
+
+// initialRepoBranch is the branch a repository the tool creates is born on.
+// Named because resolveRepoRefs refuses a ref that is not it, and
+// initializeRepos is what makes it true.
+const initialRepoBranch = "main"
+
 func resolveRepoRefs(p *model.Profile) error {
 	resolve := func(m *model.MemberProfile) error {
 		for i := range m.Repos {
@@ -270,16 +276,28 @@ func resolveRepoRefs(p *model.Profile) error {
 			}
 			b, err := exec.Command("git", "-C", r.Path, "rev-parse", "--verify", ref+"^{commit}").Output()
 			if err != nil {
-				if ref == "HEAD" {
-					ok, initErr := canInitializeRepo(r.Path)
-					if initErr != nil {
-						return initErr
+				// git fails the same way whether the ref is missing or the whole
+				// repository is, so ask which it was before reporting its exit
+				// code. A path that can be initialized is the ordinary way to
+				// start a new application, and used to reach the fall-through
+				// below whenever the operator had also written a ref.
+				ok, initErr := canInitializeRepo(r.Path)
+				if initErr != nil {
+					return initErr
+				}
+				if ok {
+					// An initialized repository is created on its default branch
+					// with one commit, so that ref is already what the operator
+					// asked for. Any other is a branch nothing will ever create,
+					// and silently substituting one is worse than refusing.
+					if r.Ref != "" && r.Ref != initialRepoBranch {
+						return fmt.Errorf("repo %s does not exist yet, so it will be created on %s — "+
+							"ref %s cannot be resolved there; drop the ref, or create the repository first",
+							r.Path, initialRepoBranch, r.Ref)
 					}
-					if ok {
-						r.Initialize = true
-						r.ResolvedCommit = initialRepoCommit()
-						continue
-					}
+					r.Initialize = true
+					r.ResolvedCommit = initialRepoCommit()
+					continue
 				}
 				return fmt.Errorf("resolve repo %s ref %s: %w", r.Path, ref, err)
 			}
@@ -414,7 +432,7 @@ func initializeRepos(p *model.Profile) error {
 				return err
 			}
 			if _, statErr := os.Stat(filepath.Join(repo.Path, ".git")); os.IsNotExist(statErr) {
-				if out, initErr := exec.Command("git", "init", "-b", "main", repo.Path).CombinedOutput(); initErr != nil {
+				if out, initErr := exec.Command("git", "init", "-b", initialRepoBranch, repo.Path).CombinedOutput(); initErr != nil {
 					return fmt.Errorf("initialize repository %s: %w: %s", repo.Path, initErr, out)
 				}
 			}
@@ -428,10 +446,10 @@ func initializeRepos(p *model.Profile) error {
 			if got != initialRepoCommit() {
 				return fmt.Errorf("initial commit mismatch for %s: got %s want %s", repo.Path, got, initialRepoCommit())
 			}
-			if out, err = exec.Command("git", "-C", repo.Path, "update-ref", "refs/heads/main", got).CombinedOutput(); err != nil {
+			if out, err = exec.Command("git", "-C", repo.Path, "update-ref", "refs/heads/"+initialRepoBranch, got).CombinedOutput(); err != nil {
 				return fmt.Errorf("set initial branch for %s: %w: %s", repo.Path, err, out)
 			}
-			if out, err = exec.Command("git", "-C", repo.Path, "symbolic-ref", "HEAD", "refs/heads/main").CombinedOutput(); err != nil {
+			if out, err = exec.Command("git", "-C", repo.Path, "symbolic-ref", "HEAD", "refs/heads/"+initialRepoBranch).CombinedOutput(); err != nil {
 				return fmt.Errorf("select initial branch for %s: %w: %s", repo.Path, err, out)
 			}
 		}

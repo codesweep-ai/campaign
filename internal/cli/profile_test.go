@@ -846,3 +846,58 @@ func TestAFleetWithNoRepositoryIsRefused(t *testing.T) {
 		t.Fatalf("a fleet with a repository everywhere must pass: %v", err)
 	}
 }
+
+// SAC-025. A ref beside a path that does not exist used to fall through to
+// git's own exit code, because the recovery that plans an absent path as an
+// empty repository only ran when the operator had written no ref. Two agents in
+// a six-run trial wrote both together, and neither could tell from
+// "exit status 128" what had stopped them.
+//
+// The ref an initialized repository actually gets is accepted, and any other is
+// refused by name. Substituting a branch nothing will create would be worse
+// than refusing, because the operator asked for something specific.
+func TestARefOnARepositoryThatDoesNotExistYet(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "repo-adoption", covmap.TierUnit)
+	absent := filepath.Join(t.TempDir(), "not-here-yet")
+
+	withRef := func(ref string) model.Profile {
+		p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, absent, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		p.Orchestrator.Repos[0].Ref = ref
+		w := p.Agents["worker"]
+		w.Repos = []model.Repo{{Path: absent, Ref: ref}}
+		p.Agents["worker"] = w
+		applyDefaults(&p)
+		return p
+	}
+
+	// The branch it will be born on is what the operator asked for.
+	main := withRef(initialRepoBranch)
+	if err := resolveRepoRefs(&main); err != nil {
+		t.Fatalf("ref %s on an absent path must plan like no ref at all: %v", initialRepoBranch, err)
+	}
+	if got := main.Orchestrator.Repos[0]; !got.Initialize || got.ResolvedCommit != initialRepoCommit() {
+		t.Fatalf("did not plan as an empty repository: %+v", got)
+	}
+
+	// Any other branch is refused, and the refusal has to carry the remedy.
+	other := withRef("develop")
+	err := resolveRepoRefs(&other)
+	if err == nil {
+		t.Fatal("a ref nothing will ever create was accepted")
+	}
+	for _, want := range []string{absent, "does not exist yet", "develop", "drop the ref"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not mention %q:\n%v", want, err)
+		}
+	}
+	if strings.Contains(err.Error(), "exit status") {
+		t.Errorf("the refusal still reports git's exit code rather than the cause:\n%v", err)
+	}
+	// Nothing was created by asking.
+	if _, statErr := os.Stat(absent); !os.IsNotExist(statErr) {
+		t.Fatalf("resolving created the repository: %v", statErr)
+	}
+}

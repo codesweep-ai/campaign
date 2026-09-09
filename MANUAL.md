@@ -695,6 +695,10 @@ one of three ways:
 | a git repository with no commits | adopted, on `main` |
 | files, and no git repository | refused |
 
+`repos[].ref` names a branch or tag on a repository that exists. On one the tool is about to
+create, the only ref that resolves is `main`, which is the branch it is born on, and any other is
+refused by name.
+
 
 ### Credentials
 
