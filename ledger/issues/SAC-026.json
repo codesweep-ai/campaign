@@ -3,18 +3,25 @@
   "title": "A member whose only credential is an unset variable is provisioned with none",
   "type": "defect",
   "severity": "high",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, after four fresh-agent runs asked for a way to check credentials before spending: \"the tool does not offer a dry-run credential check\"",
   "opened": "2026-09-09",
-  "resolved": null,
-  "stint": null,
+  "resolved": "2026-09-09",
+  "stint": "2026-09-09 scaffold prompts session",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "19bd643"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "go test ./internal/cli/ -run TestAMemberWhoseOnlyKeyIsUnsetIsNamed -count=1: PASS. It holds four things. The member with nothing else is named, the two with another grant are not, create refuses with the remedy, and setting the variable silences both. Proved by mutation: dropping the guard that skips a member with another grant reports one that has a login, and the test fails on it. End to end, the probe profile draws two warnings, setting either variable clears them, and adding a login to one member clears that one alone. make check exit 0."
   },
-  "resolution": null,
+  "resolution": "`create` refuses a member whose only grant is `apiKeyFromEnv` when none of the named variables is set, naming the member, the variables and the remedy. `validate` and `plan` warn instead, because they may run in a different shell from the one that exports the key.\n\nA member that also declares a key or a login is left alone. The grant ladder is first-available rather than additive, so that member has somewhere else to go, and reporting it would make the warning noise.\n\nOnly the environment half is checked. A lent login lives on the host and belongs to cs-sandbox, which offers no way to report which logins it can lend. Keeping a copy of that knowledge here would drift, and the same reasoning already sends the tool list to `cs-sandbox agent-tools`.",
   "details": "A profile can name environment variables that hold no key, and every command accepts it. The member is created with no credential and fails at its first turn.\n\nProved by probe. A profile whose members declare `apiKeyFromEnv` naming variables that are not set validates with exit 0 and no warning.\n\nNothing catches it later either. At create, `selectedAPIKey` walks the declared variables and returns empty when none is set, and `prepareAuth` treats empty as nothing to do and returns no error. The member boots, the model call has no key, and the failure arrives as a turn that cannot run.\n\nThe cost is the whole point of checking before a spend. Machines are provisioned and billing by the time anyone learns the key was never there.\n\nFour agents in six runs asked for exactly this. They could name the grant in a profile and had no way to learn whether the host could satisfy it. One said plainly that it could not verify credential viability without running create.\n\nOnly the environment half is checkable here. A lent login lives on the host and belongs to cs-sandbox, which offers no way to report which logins it can lend, and duplicating that knowledge would drift. An environment variable is this product's own business, because it is this product that reads it.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-09",
+      "text": "The other half is an upstream request. Asking whether this host can satisfy `agentLogin` needs a cs-sandbox verb that reports lendable logins, beside the `agent-login` verb that creates one. Until that exists, a profile naming a login is still unverifiable before the spend."
+    }
+  ],
   "links": []
 }
