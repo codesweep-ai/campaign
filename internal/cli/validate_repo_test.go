@@ -22,7 +22,9 @@ orchestrator:
 agents:
   worker:
     cli: codex
-`, repo)
+    repos:
+      - path: %s
+`, repo, repo)
 	if err := os.WriteFile(profile, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}

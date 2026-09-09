@@ -336,6 +336,9 @@ func (a *app) planCampaign(opts createOpts, name string, planning bool) (*model.
 	if err = resolveSnapshots(&profile); err != nil {
 		return nil, model.Profile{}, err
 	}
+	if err = requireRepositories(profile); err != nil {
+		return nil, model.Profile{}, err
+	}
 	now := time.Now()
 	if planning {
 		now = time.Time{}
@@ -644,6 +647,9 @@ func (a *app) validateCmd() *cobra.Command {
 		}
 		fmt.Fprintf(c.OutOrStdout(), "valid CampaignProfile %s\n", digest[:12])
 		fmt.Fprintf(c.OutOrStdout(), "mission %s, %d role briefs\n", inputs.Mission.Digest[:12], len(inputs.Roles))
+		if err = requireRepositories(profile); err != nil {
+			return err
+		}
 		warnLargeSeeds(c.ErrOrStderr(), profileMembers(profile), inputs)
 		return nil
 	}}

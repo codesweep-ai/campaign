@@ -299,6 +299,39 @@ func resolveRepoRefs(p *model.Profile) error {
 	return nil
 }
 
+// requireRepositories refuses a fleet no member can commit from.
+//
+// R116 seeds the orchestrator and every agent with its own clone, and R38 makes
+// a member's branch the only place its work survives — harvesting reads a
+// branch, and a machine is destroyed with everything that never reached one. A
+// member with no repository can meet neither, so a campaign declaring none has
+// nowhere to put what it produces.
+//
+// Checked here rather than in validateProfile because `init` scaffolds a
+// profile that has no repository yet: adding one is the first edit an author
+// makes, and refusing to scaffold it would refuse the ordinary path.
+func requireRepositories(p model.Profile) error {
+	bare := make([]string, 0, len(p.Agents)+1)
+	if len(p.Orchestrator.Repos) == 0 {
+		bare = append(bare, "orchestrator")
+	}
+	for _, name := range sortedNames(p.Agents) {
+		if len(p.Agents[name].Repos) == 0 {
+			bare = append(bare, name)
+		}
+	}
+	if len(bare) == 0 {
+		return nil
+	}
+	return fmt.Errorf("no repository for %s\n\n"+
+		"A member commits its work to a clone of a repository it was given, and that branch is\n"+
+		"the only thing harvesting can read. A member without one has nowhere to put its work.\n\n"+
+		"Declare one under `repos:` for each member, or pass --repo to give every member the same\n"+
+		"one. For an application that does not exist yet, name the path it should live at: plan\n"+
+		"pins a first commit and creates nothing, and create makes the repository",
+		strings.Join(bare, ", "))
+}
+
 // resolveSnapshots refuses a frozen tree that is not there, before anything is
 // allocated.
 //

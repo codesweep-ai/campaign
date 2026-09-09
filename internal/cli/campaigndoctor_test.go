@@ -124,7 +124,9 @@ func createMiniCampaign(t *testing.T, a *app) (string, error) {
 	cmd.SilenceUsage = true
 	var out strings.Builder
 	cmd.SetOut(&out)
-	cmd.SetArgs([]string{"mini", "--orchestrator", "claude", "--agent", "fixer=opencode"})
+	// A repository is required now: a member without one has nowhere to commit.
+	cmd.SetArgs([]string{"mini", "--orchestrator", "claude", "--agent", "fixer=opencode",
+		"--repo", filepath.Join(t.TempDir(), "app")})
 	err := cmd.Execute()
 	return out.String(), err
 }

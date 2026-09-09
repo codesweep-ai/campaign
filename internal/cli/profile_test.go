@@ -139,8 +139,8 @@ func TestPlanAndDryRunDoNotCreateState(t *testing.T) {
 		plan bool
 		args []string
 	}{
-		{"plan", true, []string{"demo", "--orchestrator", "codex", "--agent", "worker=codex"}},
-		{"dry-run", false, []string{"demo", "--dry-run", "--orchestrator", "codex", "--agent", "worker=codex"}},
+		{"plan", true, []string{"demo", "--orchestrator", "codex", "--agent", "worker=codex", "--repo", "/nonexistent/app"}},
+		{"dry-run", false, []string{"demo", "--dry-run", "--orchestrator", "codex", "--agent", "worker=codex", "--repo", "/nonexistent/app"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			stateDir := filepath.Join(t.TempDir(), "state-must-not-exist")
@@ -162,7 +162,7 @@ func TestValidateDoesNotCreateState(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "plan-determinism", covmap.TierUnit)
 	dir := t.TempDir()
 	profile := filepath.Join(dir, "campaign.yaml")
-	if err := os.WriteFile(profile, []byte("apiVersion: codesweep.ai/v1alpha1\nkind: CampaignProfile\norchestrator:\n  cli: codex\nagents:\n  worker:\n    cli: codex\n"), 0o600); err != nil {
+	if err := os.WriteFile(profile, []byte("apiVersion: codesweep.ai/v1alpha1\nkind: CampaignProfile\norchestrator:\n  cli: codex\n  repos: [{path: /nonexistent/app}]\nagents:\n  worker:\n    cli: codex\n    repos: [{path: /nonexistent/app}]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	seedBriefsFor(t, profile, "worker")
@@ -805,5 +805,44 @@ func TestMemberPolicyCarriesStallSecondsAlone(t *testing.T) {
 	p.Orchestrator.Policy.ContinueAttempts = 5
 	if err = validateProfile(p); err == nil {
 		t.Fatal("the orchestrator seat is a member too")
+	}
+}
+
+// TestAFleetWithNoRepositoryIsRefused is SAC-023. A profile giving no member a
+// repository used to validate and plan, and every member was recorded with a
+// branch that nothing could create. R116 seeds each member its own clone and R38
+// makes that branch the only place work survives, so such a campaign has
+// nowhere to put what it produces and says so only after the machines bill.
+//
+// The refusal has to name the members and say what to do, because the operator
+// who wrote the profile did not know a repository was required.
+func TestAFleetWithNoRepositoryIsRefused(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	bare, err := profileFromFlags("codex", []string{"backend=claude", "qa=codex"}, "", 0, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = requireRepositories(bare)
+	if err == nil {
+		t.Fatal("a fleet no member can commit from was accepted")
+	}
+	for _, want := range []string{"orchestrator", "backend", "qa", "--repo", "does not exist yet"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not mention %q, so it cannot be acted on:\n%v", want, err)
+		}
+	}
+	// One member short is still refused, because every member commits its own work.
+	partial := bare
+	partial.Orchestrator.Repos = []model.Repo{{Path: "/srv/app"}}
+	if err := requireRepositories(partial); err == nil || strings.Contains(err.Error(), "orchestrator") {
+		t.Fatalf("a fleet whose agents have no repository must be refused by agent name: %v", err)
+	}
+	// And a whole fleet passes.
+	whole, err := profileFromFlags("codex", []string{"backend=claude"}, "", 0, "/srv/app", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := requireRepositories(whole); err != nil {
+		t.Fatalf("a fleet with a repository everywhere must pass: %v", err)
 	}
 }

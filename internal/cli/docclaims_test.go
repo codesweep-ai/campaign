@@ -126,15 +126,21 @@ func TestManualNamesTheOrientationFileTheProductWrites(t *testing.T) {
 func TestTheDocumentedNewRepositoryPathIsWhatPlanDoes(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "repo-adoption", covmap.TierUnit)
 	for _, claim := range []string{
-		"A path that does not exist yet is planned as an",
-		"An unborn\nrepository is adopted on `main`",
+		"Every member needs at least one repository, and `validate` refuses one without it",
+		"planned as an empty repository and created at `create`",
+		"adopted, on `main`",
 	} {
 		if !strings.Contains(campaign.ManualMD, claim) {
 			t.Errorf("MANUAL.md no longer states %q; this test names the sentence it keeps true", claim)
 		}
 	}
-	if !strings.Contains(campaign.PlaybookMD, "has to live in a repository on the host") {
-		t.Error("PLAYBOOK.md no longer says why a new application needs a host-owned repository")
+	for _, claim := range []string{
+		"has to live in a repository on the host",
+		"a campaign that declares none has nowhere to put its work",
+	} {
+		if !strings.Contains(campaign.PlaybookMD, claim) {
+			t.Errorf("PLAYBOOK.md no longer states %q", claim)
+		}
 	}
 	// And the behaviour those sentences describe. Planning an absent path pins a
 	// base and creates nothing, which is what makes it safe to document as the

@@ -187,7 +187,8 @@ esac
 	runCreate := func() error {
 		cmd := a.createCmd(false)
 		cmd.SilenceUsage = true
-		cmd.SetArgs([]string{"resume-test", "--orchestrator", "codex", "--agent-cli", "codex", "--agents", "1"})
+		cmd.SetArgs([]string{"resume-test", "--orchestrator", "codex", "--agent-cli", "codex", "--agents", "1",
+			"--repo", filepath.Join(t.TempDir(), "app")})
 		return cmd.Execute()
 	}
 	if err := runCreate(); err == nil {
@@ -398,8 +399,17 @@ func TestShellCompletionSmoke(t *testing.T) {
 
 func TestCreateRefusesExistingGeneratedGroup(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "create-resume", covmap.TierUnit)
-	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, "", "")
+	// The repository is part of the resolved profile the campaign ID hashes, so
+	// the fixture and the create below must name the same one.
+	repo := filepath.Join(t.TempDir(), "app")
+	p, err := profileFromFlags("codex", []string{"worker=codex"}, "", 0, repo, "")
 	if err != nil {
+		t.Fatal(err)
+	}
+	// create resolves before it hashes, so the fixture must too, or the group it
+	// plants is not the group create generates.
+	applyDefaults(&p)
+	if err := resolveRepoRefs(&p); err != nil {
 		t.Fatal(err)
 	}
 	campaign := buildCampaign("collision", p, "", "", time.Time{})
@@ -420,7 +430,8 @@ esac
 	a := &app{store: store.Store{Dir: filepath.Join(dir, "state")}, sandbox: sandboxCLI{Bin: tool}}
 	cmd := a.createCmd(false)
 	cmd.SilenceUsage = true
-	cmd.SetArgs([]string{"collision", "--orchestrator", "codex", "--agent", "worker=codex"})
+	cmd.SetArgs([]string{"collision", "--orchestrator", "codex", "--agent", "worker=codex",
+		"--repo", repo})
 	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "foreign sandbox") {
 		t.Fatalf("collision error = %v", err)
 	}
@@ -542,7 +553,10 @@ esac
 	cmd := a.createCmd(false)
 	cmd.SilenceUsage = true
 	cmd.SetOut(&strings.Builder{})
-	cmd.SetArgs([]string{"norepo", "--orchestrator", "codex", "--agent", "worker=codex"})
+	// The profile declares a repository; the fake sandbox reports none, which is
+	// the case under test.
+	cmd.SetArgs([]string{"norepo", "--orchestrator", "codex", "--agent", "worker=codex",
+		"--repo", filepath.Join(dir, "app")})
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("create without repos: %v", err)
 	}

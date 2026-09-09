@@ -180,7 +180,8 @@ func TestCreateRefusesDeviatingUpstreamUnlessAccepted(t *testing.T) {
 	cmd := a.createCmd(false)
 	var out strings.Builder
 	cmd.SetOut(&out)
-	cmd.SetArgs([]string{"gate-test", "--orchestrator", "claude", "--agent", "worker=codex"})
+	cmd.SetArgs([]string{"gate-test", "--orchestrator", "claude", "--agent", "worker=codex",
+		"--repo", filepath.Join(t.TempDir(), "app")})
 	err := cmd.Execute()
 	if err == nil || !strings.Contains(err.Error(), "not the one this cs-campaign was built against") ||
 		!strings.Contains(err.Error(), "--accept-upstream-change") {

@@ -683,9 +683,18 @@ agents:
 `model` and `effort` are handed to that member's CLI unchanged, so use the slugs that CLI accepts.
 For `opencode`, `effort` requires `model` beside it, because it attaches reasoning options to a
 named model, not to the session. `repos[].ref` picks the branch or tag cloned into the member, and
-`snapshots` gives it a frozen tree it can read. A path that does not exist yet is planned as an
-empty repository and created at `create`, with a fixed initial commit as its base. An unborn
-repository is adopted on `main`. A directory that holds files and is not under git is refused.
+`snapshots` gives it a frozen tree it can read.
+
+Every member needs at least one repository, and `validate` refuses one without it. A member commits
+to its clone, and that branch is the only thing `fetch` can read. A repository path is resolved in
+one of three ways:
+
+| The path | What happens |
+|---|---|
+| does not exist | planned as an empty repository and created at `create`, with a fixed first commit as its base |
+| a git repository with no commits | adopted, on `main` |
+| files, and no git repository | refused |
+
 
 ### Credentials
 

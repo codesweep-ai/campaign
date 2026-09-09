@@ -11,13 +11,17 @@ import (
 	"github.com/codesweep-ai/campaign/internal/protocol"
 )
 
+// testProfile is the shared fleet fixture. Every member declares a repository,
+// because a member without one has nowhere to commit and is refused before a
+// campaign is planned.
 func testProfile() model.Profile {
+	repo := []model.Repo{{Path: filepath.Join(os.TempDir(), "cs-campaign-fixture-app")}}
 	return model.Profile{
 		APIVersion: model.APIVersion, Kind: "CampaignProfile",
-		Orchestrator: model.MemberProfile{CLI: "codex"},
+		Orchestrator: model.MemberProfile{CLI: "codex", Repos: repo},
 		Agents: map[string]model.MemberProfile{
-			"backend": {CLI: "codex"},
-			"qa":      {CLI: "opencode"},
+			"backend": {CLI: "codex", Repos: repo},
+			"qa":      {CLI: "opencode", Repos: repo},
 		},
 	}
 }

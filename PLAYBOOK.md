@@ -94,19 +94,27 @@ the work behind it.
 Give it a model you would trust to review, and headroom to think. Its stall threshold defaults to
 1800 seconds against an agent's 180, because reviewing is quieter work than writing.
 
-### Trees a member is given
+### Repositories and snapshots
+
+**Every member needs a repository, and a campaign that declares none has nowhere to put its work.**
+A member commits to a clone of a repository the profile gave it, harvesting reads that branch, and
+anything a member never committed is destroyed with its machine. Decide the repositories before
+anything else. `validate` refuses a member without one.
 
 Two kinds of directory reach a member, and they mean different things:
 
 - **A repository** arrives as a writable clone at the campaign's base commit, on that member's own
-  branch. Work that is not committed there is destroyed with the machine.
+  branch. It is the only place a member's work survives.
 - **A snapshot** arrives as a frozen copy the member can read and not change. Use one for a
   reference implementation, a corpus, a design document set, or last quarter's code.
 
 Both land at `$HOME/<name>` inside the member, named by the profile or by the last segment of the
-host path. Declare them per member in the profile:
+host path. Declare them per member:
 
 ```yaml
+orchestrator:
+  cli: codex
+  repos: [{path: /srv/product}]
 agents:
   backend:
     cli: claude
@@ -114,20 +122,36 @@ agents:
     snapshots: [{path: /srv/reference, name: reference}]
 ```
 
+Give the orchestrator every repository it must judge. Without the clone it can read a reply and
+cannot inspect the work behind it.
+
 The `--repo` and `--snapshot` flags are the profile-less shorthand. Each takes one path and hands it
 to every member, which is enough to try something and not enough to describe a real team.
 
-### Building something that does not exist yet
+### Starting an application that does not exist yet
 
-Point a repository at a path that is not there and the tool makes it. `plan` pins a fixed initial
-commit and creates nothing, `create` makes the repository, and every member clones from that base.
-An unborn repository is adopted on `main`. A directory holding files that git does not track is
-refused rather than adopted in silence.
+Name the path the repository should live at, and let the tool make it. Do not create it first:
 
-That matters for more than convenience. A new application has to live in a repository on the host,
-not only inside machines you are going to destroy. The base commit is what makes the work
-fetchable, mergeable and comparable afterwards. For something new there is no natural base, so the
-tool manufactures one and every member starts from it.
+```yaml
+orchestrator:
+  cli: codex
+  repos: [{path: ~/work/task-tracker}]   # nothing is there yet
+```
+
+`plan` pins a first commit and creates nothing, so you can read the whole campaign before anything
+exists. `create` makes the repository at that path and clones every member from it.
+
+Three cases, and the difference matters:
+
+| The path you name | What happens |
+|---|---|
+| does not exist | created at `create`, with a first commit as the base |
+| holds a git repository with no commits | adopted, on `main` |
+| holds files and no git repository | refused, so nothing is adopted by accident |
+
+The application has to live in a repository on the host rather than only inside machines you are
+going to destroy. The base commit is what makes the work fetchable, mergeable and comparable
+afterwards, and for something new there is no natural base, so the tool makes one.
 
 Then decide who owns running it. The member that owns an application owns its runtime: build
 scripts, compose definitions, databases and the containers they run in. That is part of what it
