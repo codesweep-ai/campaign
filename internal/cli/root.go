@@ -69,7 +69,11 @@ func (a *app) root() *cobra.Command {
 }
 
 func (a *app) versionCmd() *cobra.Command {
-	return &cobra.Command{Use: "version", Args: cobra.NoArgs, Run: func(c *cobra.Command, _ []string) {
+	// The Short is not decoration: a help row with no description does not
+	// match what the surface linter reads a command list with, so a verb
+	// without one is invisible to every check that asks what this tool
+	// carries.
+	return &cobra.Command{Use: "version", Short: "Print the build stamp", Args: cobra.NoArgs, Run: func(c *cobra.Command, _ []string) {
 		fmt.Fprintf(c.OutOrStdout(), "cs-campaign %s (%s/%s, %s)\n", buildVersion(), runtime.GOOS, runtime.GOARCH, runtime.Version())
 	}}
 }
