@@ -16,16 +16,16 @@ before:
     - go mod tidy
     - go vet ./...
     - go test ./...
-    # The guest binary is embedded in cs-campaign, and a plain build embeds the
-    # committed placeholder instead. A release that shipped the placeholder
-    # would install into a member and be refused there, so this hook is not
-    # optional.
-    - make guestbin
+    # The guest binary is NOT built here. It is per-target — see the pre hook on
+    # the cs-campaign build below, which is what keeps an arm64 archive from
+    # shipping an amd64 guest.
 
 builds:
-  # Linux only, and both architectures. A campaign member is a Firecracker
-  # microVM, so the host is a Linux machine with KVM; a darwin build of
-  # cs-campaign would install cleanly and fail at `create`.
+  # Both operating systems and both architectures, matching cs-sandbox. Only
+  # the firecracker engine needs a Linux host with KVM; podman is an engine on
+  # macOS too, and the smoke tier proves it — smoke-macos-arm64 replays every
+  # scenario against podman on an arm64 Mac. A darwin build errors clearly if
+  # asked for an engine the host cannot run.
   - id: cs-campaign
     main: ./cmd/cs-campaign
     binary: cs-campaign
@@ -35,8 +35,22 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-    goos: [linux]
+    goos: [linux, darwin]
     goarch: [amd64, arm64]
+    # The guest binary is embedded in cs-campaign, and it must be linux/<this
+    # target's arch>: cs-sandbox pulls the image variant native to the machine,
+    # so an arm64 host runs an arm64 member and an amd64 guest binary in it is
+    # an exec format error at `create`. A plain build embeds the committed
+    # placeholder instead, which create refuses outright — so this hook is not
+    # optional, and neither is its GUESTARCH.
+    #
+    # It writes one shared file that the compiler then reads through //go:embed,
+    # so the targets must not build concurrently. Every caller passes
+    # --parallelism 1; at the default, arm64 targets pick up whichever guest the
+    # last hook happened to write. See the release target in the Makefile.
+    hooks:
+      pre:
+        - make guestbin GUESTARCH={{ .Arch }}
     mod_timestamp: "{{ .CommitTimestamp }}" # reproducible builds
 
   - id: cs-dispatch-viewer
@@ -48,7 +62,7 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-    goos: [linux]
+    goos: [linux, darwin]
     goarch: [amd64, arm64]
     mod_timestamp: "{{ .CommitTimestamp }}"
 

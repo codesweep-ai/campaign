@@ -16,6 +16,7 @@ PKG        := ./cmd/cs-campaign
 VIEWERBIN  := bin/cs-dispatch-viewer
 VIEWERPKG  := ./dispatch-viewer/cmd/cs-dispatch-viewer
 GUESTBIN   := internal/cli/assets/cs-campaign-member.bin
+GUESTARCH  ?= $(shell go env GOARCH)
 PREFIX     ?= $(HOME)/.local
 VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS    := -s -w
@@ -105,7 +106,7 @@ help:
 ## `go build ./...` and `go test ./...` working. `create` refuses a placeholder
 ## rather than installing one into a member.
 guestbin:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags '-s -w' -o $(GUESTBIN).tmp ./cmd/cs-campaign-member
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(GUESTARCH) go build -trimpath -ldflags '-s -w' -o $(GUESTBIN).tmp ./cmd/cs-campaign-member
 	mv $(GUESTBIN).tmp $(GUESTBIN)
 
 ## build: bin/cs-campaign (guest binary embedded) and bin/cs-dispatch-viewer via
@@ -901,12 +902,18 @@ ci:
 ## Skips the bill of materials and the signature; both need tools a release job
 ## has and a laptop usually does not.
 snapshot:
-	VERSION='$(VERSION)' $(GORELEASER) release --snapshot --clean --skip=sbom,sign
+	VERSION='$(VERSION)' $(GORELEASER) release --snapshot --clean --skip=sbom,sign --parallelism 1
 	@git checkout -q -- $(GUESTBIN) 2>/dev/null || true # goreleaser's hook built the real one
 
 ## release: tagged release (needs a pushed git tag and credentials)
+##
+## --parallelism 1, here and in snapshot above and in .github/workflows/release.yml:
+## .goreleaser.yaml's pre hook builds the embedded guest binary for the target
+## being built, into the one path //go:embed reads. Concurrent targets overwrite
+## each other's guest, and the arm64 archives silently ship an amd64 one — a
+## binary that installs cleanly and fails with an exec format error at `create`.
 release:
-	$(GORELEASER) release --clean
+	$(GORELEASER) release --clean --parallelism 1
 	@git checkout -q -- $(GUESTBIN) 2>/dev/null || true # goreleaser's hook built the real one
 
 ## release-check: validate .goreleaser.yaml

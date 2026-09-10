@@ -209,8 +209,37 @@ jobs:
         if: matrix.label != 'ubuntu-26.04'
         run: make test
 
+      # The compile check only, on the one leg whose binary is not kept: WSL
+      # builds the same Linux binary the ubuntu leg does, and a second copy of
+      # it filed under "Windows" would be a download that misleads.
       - name: build
+        if: runner.os == 'Windows'
         run: make build-go
+
+      # Everywhere else, the same compile check but as a binary worth keeping.
+      # build-go leaves the committed placeholder guest binary embedded and
+      # `create` refuses that, so a downloaded cs-campaign built that way dies
+      # on the first campaign it is asked to make. This target compiles
+      # ./cmd/cs-campaign-member first and restores the placeholder afterwards,
+      # leaving the tree as it found it.
+      - name: build (guest binary embedded)
+        if: runner.os != 'Windows'
+        run: make build-go-embedded
+
+      # Attach the pair, so a pull request's build can be downloaded from the
+      # run's Artifacts and run locally without building anything. Named for
+      # what the binaries run on rather than matrix.covlabel, which names the
+      # runner that built them: whoever downloads one is choosing a platform.
+      - name: upload binaries
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: cs-campaign-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            bin/cs-campaign
+            bin/cs-dispatch-viewer
+          if-no-files-found: error
+          retention-days: 14
 
       # The tier this leg produced, for the coverage job to merge. Uploaded
       # rather than reported here: the unit tier is one number only once it

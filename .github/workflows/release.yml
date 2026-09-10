@@ -32,6 +32,11 @@ jobs:
       - uses: goreleaser/goreleaser-action@v7
         with:
           version: "~> v2"
-          args: release --clean
+          # --parallelism 1 is load-bearing, not a throttle: .goreleaser.yaml's
+          # pre hook builds the embedded guest binary for the target being
+          # built, into the single path //go:embed reads. Concurrent targets
+          # overwrite each other's guest and the arm64 archives ship an amd64
+          # one, which fails with an exec format error at `create`.
+          args: release --clean --parallelism 1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
