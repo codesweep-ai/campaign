@@ -7,7 +7,7 @@ orchestrator:
   repos:
     - path: /tmp/cs-campaign-new-app
   auth:
-    apiKeyFromEnv:
+    inheritApiKeyFromEnv:
       - OPENAI_API_KEY
 agents:
   builder:
@@ -15,5 +15,5 @@ agents:
     repos:
       - path: /tmp/cs-campaign-new-app
     auth:
-      apiKeyFromEnv:
+      inheritApiKeyFromEnv:
         - OPENAI_API_KEY

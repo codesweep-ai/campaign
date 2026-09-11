@@ -61,11 +61,18 @@ const authHint = `
 # host. Spell a grant inheritAgentLogin or inheritApiKey to copy it in for one
 # member, or set defaults.credentials: inherit for the whole campaign.
 #
-# apiKeyFromEnv names host environment variables and is always copied in. The
-# first variable actually set is the one used:
+# Lending is the posture to prefer: the credential never enters the member, and
+# destroying the member ends its access. Copy one in only where the grant cannot
+# be lent.
+#
+# An environment grant names host environment variables and is always copied in,
+# with the first variable actually set being the one used. It is the weakest of
+# the three — the value comes from whatever shell ran create — so the plain
+# apiKeyFromEnv spelling is refused on a seat that resolves to lend, and the
+# copy has to be said out loud:
 #
 #     auth:
-#       apiKeyFromEnv: [OPENAI_API_KEY]
+#       inheritApiKeyFromEnv: [OPENAI_API_KEY]
 #
 # A host login expires when nothing uses it. A lent one is read fresh on every
 # call, so signing in again on the host is all a stale one needs.

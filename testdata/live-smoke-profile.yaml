@@ -12,15 +12,15 @@ orchestrator:
   repos:
     - path: __REPO__
   auth:
-    apiKeyFromEnv: [OPENAI_API_KEY]
+    inheritApiKeyFromEnv: [OPENAI_API_KEY]
 agents:
   worker-a:
     cli: codex
     repos:
       - path: __REPO__
     auth:
-      apiKeyFromEnv: [OPENAI_API_KEY]
+      inheritApiKeyFromEnv: [OPENAI_API_KEY]
   worker-b:
     cli: codex
     auth:
-      apiKeyFromEnv: [OPENAI_API_KEY]
+      inheritApiKeyFromEnv: [OPENAI_API_KEY]

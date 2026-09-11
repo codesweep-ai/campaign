@@ -342,8 +342,8 @@ func TestScenarioProfilesSpellTheirCredential(t *testing.T) {
 				if len(grants) != 1 {
 					t.Errorf("%s must hold exactly one grant, got %v", name, grants)
 				}
-				if len(m.Auth.APIKeyFromEnv) != 0 {
-					t.Errorf("%s still grants an environment key: %v", name, m.Auth.APIKeyFromEnv)
+				if len(m.Auth.APIKeyEnvs()) != 0 {
+					t.Errorf("%s still grants an environment key: %v", name, m.Auth.APIKeyEnvs())
 				}
 			}
 			// One recorder, one alias, both chains: an inheriting member

@@ -55,7 +55,7 @@ var APIKeyProviders = []string{"anthropic", "openai", "fireworks"}
 
 // LendableAgentLogin reports whether a CLI family has a login that can be lent.
 // OpenCode has none: it authenticates from a provider key, so a member running
-// it takes apiKey or apiKeyFromEnv instead.
+// it takes apiKey instead, or an explicit copy where a lend campaign cannot.
 func LendableAgentLogin(cli string) bool { return cli == "claude" || cli == "codex" }
 
 // ValidCredentialVerb reports whether verb is one of them.
@@ -85,9 +85,20 @@ func ValidAPIKeyProvider(provider string) bool { return slices.Contains(APIKeyPr
 // run on a credential its profile did not name.
 type Auth struct {
 	// APIKeyFromEnv names host environment variables, and the first one
-	// actually set is granted. It takes no verb: the lender reads a file this
-	// host keeps, not the environment of whoever ran create.
-	APIKeyFromEnv []string `yaml:"apiKeyFromEnv,omitempty" json:"apiKeyFromEnv,omitempty"`
+	// actually set is granted. It is always COPIED: the lender reads a file
+	// this host keeps, not the environment of whoever ran create, so there is
+	// nothing here to hand out a loan against.
+	//
+	// That makes it an inherit-flavoured grant wearing a neutral name, which is
+	// how a seat meant to borrow its key ended up holding one outright. Under a
+	// lend campaign it is refused, and the copy is spelled out instead:
+	//
+	//	inheritApiKeyFromEnv: [OPENAI_API_KEY]
+	//
+	// Both spellings grant the same thing. The fused one declares the verb, so
+	// the seat records inherit and reads as the copy it is.
+	APIKeyFromEnv        []string `yaml:"apiKeyFromEnv,omitempty" json:"apiKeyFromEnv,omitempty"`
+	InheritAPIKeyFromEnv []string `yaml:"inheritApiKeyFromEnv,omitempty" json:"inheritApiKeyFromEnv,omitempty"`
 
 	// The key grant, in its three spellings. Values are APIKeyProviders.
 	APIKey        []string `yaml:"apiKey,omitempty" json:"apiKey,omitempty"`
@@ -115,6 +126,12 @@ func (a Auth) AgentLogins() []string {
 	return slices.Concat(a.AgentLogin, a.LendAgentLogin, a.InheritAgentLogin)
 }
 
+// APIKeyEnvs is the environment grant in either spelling. Both name host
+// variables and both are copied; only the fused one says so out loud.
+func (a Auth) APIKeyEnvs() []string {
+	return slices.Concat(a.APIKeyFromEnv, a.InheritAPIKeyFromEnv)
+}
+
 // DeclaredCredentials is the verb this member's own spellings state, empty
 // where it uses the neutral ones and takes the campaign's. A member declaring
 // both verbs is refused by validation, so lend is reported first here rather
@@ -123,7 +140,7 @@ func (a Auth) DeclaredCredentials() string {
 	switch {
 	case len(a.LendAPIKey) > 0 || len(a.LendAgentLogin) > 0:
 		return CredentialLend
-	case len(a.InheritAPIKey) > 0 || len(a.InheritAgentLogin) > 0:
+	case len(a.InheritAPIKey) > 0 || len(a.InheritAgentLogin) > 0 || len(a.InheritAPIKeyFromEnv) > 0:
 		return CredentialInherit
 	}
 	return ""
@@ -134,7 +151,7 @@ func (a Auth) DeclaredCredentials() string {
 func (a Auth) Spellings() (neutral, lend, inherit bool) {
 	return len(a.APIKey) > 0 || len(a.AgentLogin) > 0,
 		len(a.LendAPIKey) > 0 || len(a.LendAgentLogin) > 0,
-		len(a.InheritAPIKey) > 0 || len(a.InheritAgentLogin) > 0
+		len(a.InheritAPIKey) > 0 || len(a.InheritAgentLogin) > 0 || len(a.InheritAPIKeyFromEnv) > 0
 }
 
 // Model and Effort are the cost/capability lever, declared rather than injected

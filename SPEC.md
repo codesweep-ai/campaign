@@ -709,7 +709,7 @@ orchestrator:
   cli: codex
   model: gpt-5.1-codex
   repos: [{path: /srv/product}]
-  auth: {apiKeyFromEnv: [OPENAI_API_KEY]}
+  auth: {apiKey: [openai]}
 agents:
   backend:
     cli: claude
@@ -730,7 +730,8 @@ agents:
 | `repos[].path`, `.ref`, `.name` | member | A host repository cloned into the member. |
 | `snapshots[].path`, `.name` | member | A frozen tree the member can read. |
 | `credentials` | `defaults` | The verb every member takes unless it spells one: `lend` or `inherit`. Default `lend`. |
-| `auth.apiKeyFromEnv` | member | Host environment variable names whose values are granted. Always copied in. |
+| `auth.apiKeyFromEnv` | member | Host environment variable names whose values are granted. Always copied in, so refused where the seat resolves to `lend`. |
+| `auth.inheritApiKeyFromEnv` | member | The same grant, declaring the copy. The environment grant's only fused spelling: there is nothing here to lend. |
 | `auth.apiKey`, `auth.lendApiKey`, `auth.inheritApiKey` | member | Providers whose key the host holds: `anthropic`, `openai`, `fireworks`. |
 | `auth.agentLogin`, `auth.lendAgentLogin`, `auth.inheritAgentLogin` | member | CLI families whose host login this member signs in with. |
 
@@ -1206,7 +1207,7 @@ example a reader copies stays true.
 
 ```console
 $ cs-campaign validate --profile testdata/example-campaign/profile.yaml
-valid CampaignProfile 2544b277c598
+valid CampaignProfile ee13c41a4d1e
 mission e6802c6e662f, 2 role briefs
 ```
 

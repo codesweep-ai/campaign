@@ -31,7 +31,14 @@ var envName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 // "fireworks-ai/accounts/fireworks/models/kimi-k3".
 var modelToken = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]*$`)
 
-func readProfile(path string) (model.Profile, string, error) {
+// decodeProfile reads and decodes a profile, without validating it.
+//
+// Split from readProfile because some of what validateProfile checks depends on
+// the campaign's verb, and `--credentials` / `--set defaults.credentials` move
+// that verb after the file has been read. Validating here would hold a profile
+// against a verb no member ends up resolving to, and refuse a run the override
+// had already made correct. create and plan validate after applySets instead.
+func decodeProfile(path string) (model.Profile, string, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return model.Profile{}, "", err
@@ -43,7 +50,20 @@ func readProfile(path string) (model.Profile, string, error) {
 		return p, "", fmt.Errorf("decode profile: %w", err)
 	}
 	h := sha256.Sum256(b)
-	return p, hex.EncodeToString(h[:]), validateProfile(p)
+	return p, hex.EncodeToString(h[:]), nil
+}
+
+// readProfile is decodeProfile plus validation, for the callers that take a
+// profile exactly as written: `validate`, which takes no override flags. That
+// is deliberate. An override belongs to a run and every one of them has a
+// spelling in the file, so a run that moves the campaign's verb is what `plan`
+// checks, and `validate` answers for the profile itself.
+func readProfile(path string) (model.Profile, string, error) {
+	p, digest, err := decodeProfile(path)
+	if err != nil {
+		return p, digest, err
+	}
+	return p, digest, validateProfile(p)
 }
 func validateProfile(p model.Profile) error {
 	if p.APIVersion != model.APIVersion {
@@ -153,10 +173,21 @@ func validateAuth(a model.Auth, verb string) error {
 	if err := validateSpelling(a); err != nil {
 		return err
 	}
-	for _, key := range a.APIKeyFromEnv {
+	for _, key := range a.APIKeyEnvs() {
 		if !envName.MatchString(key) {
 			return fmt.Errorf("invalid API-key environment name %q", key)
 		}
+	}
+	// The same rule the login check below applies, for the same reason: a verb
+	// this grant cannot carry out is refused where it is written, not honoured
+	// as something else at create. An environment key is always copied in, so a
+	// seat that asked to lend and named one would come up holding the raw key
+	// while its record claimed a loan.
+	if verb == model.CredentialLend && len(a.APIKeyFromEnv) > 0 {
+		return fmt.Errorf("apiKeyFromEnv is always copied into the member and cannot be lent, but this seat resolves to credentials: lend — "+
+			"lend the key instead with apiKey: [%s] (the host keeps it in ~/.cs-keys), "+
+			"or say the copy out loud with inheritApiKeyFromEnv: [%s]",
+			strings.Join(model.APIKeyProviders, "|"), strings.Join(a.APIKeyFromEnv, ", "))
 	}
 	for _, provider := range a.APIKeys() {
 		if !model.ValidAPIKeyProvider(provider) {
@@ -168,7 +199,10 @@ func validateAuth(a model.Auth, verb string) error {
 			return fmt.Errorf("unsupported agentLogin family %q (want one of %s)", family, strings.Join(model.AdapterCLIs, ", "))
 		}
 		if verb == model.CredentialLend && !model.LendableAgentLogin(family) {
-			return fmt.Errorf("%s has no login to lend — grant it a key with apiKey or apiKeyFromEnv, or copy one in with inheritAgentLogin", family)
+			// Only grants that are legal under THIS verb: naming apiKeyFromEnv
+			// here would send the reader straight into the refusal above.
+			return fmt.Errorf("%s has no login to lend — grant it a key with apiKey (the host keeps one per provider in ~/.cs-keys), "+
+				"or copy a credential in with inheritAgentLogin or inheritApiKeyFromEnv", family)
 		}
 	}
 	return nil
@@ -334,7 +368,7 @@ func unsatisfiedKeyEnv(members []model.Member) []model.Member {
 	var out []model.Member
 	for _, m := range members {
 		a := m.Profile.Auth
-		if len(a.APIKeyFromEnv) == 0 || len(a.APIKeys()) > 0 || len(a.AgentLogins()) > 0 {
+		if len(a.APIKeyEnvs()) == 0 || len(a.APIKeys()) > 0 || len(a.AgentLogins()) > 0 {
 			continue
 		}
 		if selectedAPIKey(m) == "" {
@@ -349,9 +383,41 @@ func unsatisfiedKeyEnv(members []model.Member) []model.Member {
 // may run in another, where the operator has since exported the key.
 func warnUnsatisfiedKeyEnv(w io.Writer, members []model.Member) {
 	for _, m := range unsatisfiedKeyEnv(members) {
-		fmt.Fprintf(w, "warning: %s has no credential — apiKeyFromEnv names %s, and none of those is set here\n",
-			m.Name, strings.Join(m.Profile.Auth.APIKeyFromEnv, ", "))
+		fmt.Fprintf(w, "warning: %s has no credential — the environment grant names %s, and none of those is set here\n",
+			m.Name, strings.Join(m.Profile.Auth.APIKeyEnvs(), ", "))
 	}
+}
+
+// warnCopiedCredentials names every seat that will hold a credential outright
+// rather than borrow one.
+//
+// Copying is legal and sometimes necessary — OpenCode has no login to lend, and
+// an environment key cannot be lent at all — but it is the weaker posture: the
+// member holds the real secret, it survives inside that machine until the
+// machine does, and nothing on the host can revoke it. The profile says so in a
+// spelling that is easy to read past, so the resolved answer is stated once,
+// before anything is provisioned, where it is still cheap to change.
+//
+// Silent on a fully lent campaign, which is the shape this warning is trying to
+// make ordinary.
+func warnCopiedCredentials(w io.Writer, members []model.Member) {
+	var names []string
+	for _, m := range members {
+		if m.Profile.Auth.Credentials != model.CredentialInherit {
+			continue
+		}
+		if len(m.Profile.Auth.APIKeys()) == 0 && len(m.Profile.Auth.AgentLogins()) == 0 && len(m.Profile.Auth.APIKeyEnvs()) == 0 {
+			continue // nothing granted: unsatisfiedKeyEnv speaks to that instead
+		}
+		names = append(names, m.Name)
+	}
+	if len(names) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "warning: %s hold credentials rather than borrow them — the copy lives in the member "+
+		"until it is destroyed, and the host cannot revoke it. Lend instead where the grant allows it "+
+		"(agentLogin for claude or codex, apiKey for a provider the host keeps in ~/.cs-keys).\n",
+		strings.Join(names, ", "))
 }
 
 // requireKeyEnv is the same check at the moment the credential is needed, where
@@ -363,10 +429,10 @@ func requireKeyEnv(members []model.Member) error {
 	}
 	names := make([]string, 0, len(bare))
 	for _, m := range bare {
-		names = append(names, fmt.Sprintf("%s (%s)", m.Name, strings.Join(m.Profile.Auth.APIKeyFromEnv, ", ")))
+		names = append(names, fmt.Sprintf("%s (%s)", m.Name, strings.Join(m.Profile.Auth.APIKeyEnvs(), ", ")))
 	}
 	return fmt.Errorf("no credential for %s\n\n"+
-		"Each names environment variables under apiKeyFromEnv, and none of them is set in this\n"+
+		"Each names environment variables under an apiKeyFromEnv grant, and none is set in this\n"+
 		"shell. The member would be created with no key and fail at its first turn. Export one,\n"+
 		"or give the member a different grant", strings.Join(names, "; "))
 }
@@ -584,6 +650,11 @@ func supportedSetPaths() []string {
 	return out
 }
 
+// applySets applies the supported overrides and validates what they produced.
+// It validates rather than leaving that to the caller because an override can
+// move the campaign's verb: `--credentials` and `--set defaults.credentials`
+// both land here, and the verb-dependent rules have to be enforced against the
+// verb every member ends up resolving to.
 func applySets(p *model.Profile, sets []string) error {
 	for _, raw := range sets {
 		parts := strings.SplitN(raw, "=", 2)

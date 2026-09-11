@@ -131,6 +131,42 @@ cannot inspect the work behind it.
 The `--repo` and `--snapshot` flags are the profile-less shorthand. Each takes one path and hands it
 to every member, which is enough to try something and not enough to describe a real team.
 
+### Credentials: lend first
+
+A campaign spends real money against real accounts, on machines you are going to throw away. How the
+credential gets there is a design decision like any other, and there is a preference order:
+
+1. **Lend it.** `agentLogin: [claude]` for a Claude or Codex seat, `apiKey: [openai]` for a provider
+   key the host keeps in `~/.cs-keys/<provider>`. The member holds a loan token that is worth
+   nothing off this host, and the credential never enters the machine. Destroying the member ends
+   the loan. A stale login is repaired by signing in again on the host, with nothing to redo inside
+   the fleet. This is the default verb, and it should be the answer for almost every seat.
+2. **Copy it in**, with `inheritAgentLogin` or `inheritApiKey`, where the grant cannot be lent.
+   OpenCode authenticates from a provider key and has no login to lend. Something inside the member
+   may also need the secret itself.
+3. **Pass it from the environment**, with `inheritApiKeyFromEnv`, only when the key cannot live on
+   this host at all. It is the weakest of the three. The raw value is read out of whatever shell ran
+   `create`, so the key a campaign spends depends on how that shell was set up. The member then
+   holds it outright until the machine is destroyed.
+
+The gap between 1 and 3 is not a style preference. A lent seat can be cut off from the host; a seat
+holding a copy cannot be cut off at all, short of destroying it. Reach for 2 or 3 because the grant
+you need cannot be lent, never because it was the shorter thing to write.
+
+`validate` refuses `apiKeyFromEnv` on a seat that resolves to `lend`. An environment variable has no
+host-side file to lend, so the seat would come up holding the raw key while its record claimed a
+loan. The refusal names both ways out.
+
+Whatever you settle on, `validate`, `plan` and `create` list the seats that hold a credential rather
+than borrow one, before anything is provisioned. Afterwards `cs-sandbox ls` reports each member's
+grant in its CREDS column, where `lent` is what a well-configured fleet reads. An environment key is
+the blind spot: it reaches the member as a plain variable, so that column stays empty for the seat
+holding it.
+
+Seats do not have to agree. A campaign that lends its Claude logins and copies one key into the seat
+that needs it is a normal shape. The verb is resolved per member, so only the seats that need the
+weaker grant carry it.
+
 ### Starting an application that does not exist yet
 
 Name the path the repository should live at, and let the tool make it. Do not create it first:

@@ -257,7 +257,7 @@ func (s sandboxCLI) putMemberFile(ctx context.Context, member model.Member, path
 }
 
 func selectedAPIKey(member model.Member) string {
-	for _, key := range member.Profile.Auth.APIKeyFromEnv {
+	for _, key := range member.Profile.Auth.APIKeyEnvs() {
 		if value, ok := os.LookupEnv(key); ok && value != "" {
 			return key
 		}

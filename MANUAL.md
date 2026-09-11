@@ -190,7 +190,8 @@ cs-campaign validate [PROFILE] [--profile PROFILE]
 ```
 
 Checks the profile, the mission and every brief. It allocates nothing and creates nothing, and it
-accepts exactly what `create` accepts.
+judges the file as written. `--credentials` and `--set` belong to a run rather than to a profile, so
+`plan` is what checks a run that uses either.
 
 ```console
 $ cs-campaign validate acme/profile.yaml
@@ -667,7 +668,7 @@ defaults:
 orchestrator:
   cli: codex
   repos: [{path: /srv/product}]
-  auth: {apiKeyFromEnv: [OPENAI_API_KEY]}
+  auth: {apiKey: [openai]}
 agents:
   backend:
     cli: claude
@@ -710,11 +711,38 @@ the credential itself.
 | `agentLogin` | CLI families: `claude`, `codex`, `opencode` | that family's host login |
 | `apiKey` | providers: `anthropic`, `openai`, `fireworks` | `~/.cs-keys/<provider>` on the host |
 | `apiKeyFromEnv` | host environment variables | the environment `create` runs in |
+| `inheritApiKeyFromEnv` | the same, declaring the copy | the environment `create` runs in |
 
 A grant is **lent**. The member is handed a loan token worth nothing off this host, the credential
 stays where it is, and destroying the member ends the loan. Nothing inside a member can read,
-refresh or revoke the credential that pays for it. `apiKeyFromEnv` is the exception and is always
-copied in, because the lender reads a file this host keeps rather than an environment.
+refresh or revoke the credential that pays for it. Lending is the default and the posture to
+prefer: prove the campaign works this way before reaching for anything that copies.
+
+`apiKeyFromEnv` is the exception and is always copied in, because the lender reads a file this host
+keeps rather than an environment. No host-side file sits behind an environment variable, so there is
+nothing to mint a loan against. That makes it the one grant a `lend` campaign cannot carry out, and
+`validate` refuses it there rather than quietly copying instead:
+
+```console
+$ cs-campaign validate acme/profile.yaml
+cs-campaign: agent ux: apiKeyFromEnv is always copied into the member and cannot be lent, but this
+seat resolves to credentials: lend — lend the key instead with apiKey: [anthropic|openai|fireworks]
+(the host keeps it in ~/.cs-keys), or say the copy out loud with inheritApiKeyFromEnv: [OPENAI_API_KEY]
+```
+
+The first way out is the one to take: put the key in `~/.cs-keys/<provider>` and grant `apiKey`,
+which lends. The second, `inheritApiKeyFromEnv`, grants exactly the same variable and only states
+the verb. Use it where the key genuinely cannot live on this host. The seat then records `inherit`
+and reads as the copy it is.
+
+Whatever a campaign ends up with, `validate`, `plan` and `create` name the seats that hold a
+credential rather than borrow one, before anything is provisioned:
+
+```console
+warning: frontend, qa, ux hold credentials rather than borrow them — the copy lives in the member
+until it is destroyed, and the host cannot revoke it. Lend instead where the grant allows it
+(agentLogin for claude or codex, apiKey for a provider the host keeps in ~/.cs-keys).
+```
 
 A member whose only grant is `apiKeyFromEnv` needs one of those variables set in the shell that
 runs `create`, which refuses without it. `validate` and `plan` warn instead, because the key may be
@@ -734,21 +762,27 @@ agents:
     auth:
       inheritAgentLogin: [claude]   # --inherit-agent-login claude
       inheritApiKey: [fireworks]    # --inherit-api-key fireworks
+  offhost:
+    auth:
+      inheritApiKeyFromEnv: [OPENAI_API_KEY]   # copied from create's own shell
 ```
 
 `lendAgentLogin` and `lendApiKey` spell the other verb, for a member that lends where its campaign
-copies. `--credentials lend|inherit` sets the campaign's verb for one run.
+copies. `inheritApiKeyFromEnv` is the environment grant's only fused form. There is no
+`lendApiKeyFromEnv`, because lending is the thing this grant cannot do. `--credentials lend|inherit`
+sets the campaign's verb for one run.
 
 **A member speaks one verb.** Mixing a `lend` spelling with an `inherit` one, or a plain grant with
 a fused one, declares two modes for a seat that has one. `validate` refuses it. `apiKeyFromEnv`
-carries no verb and sits beside any spelling, and the resolved verb is recorded on every member.
+states no verb of its own, so it needs a seat that already resolves to `inherit`. Every member
+records the mode it resolved to.
 
 OpenCode has no login to lend, so an OpenCode login is spelled `inheritAgentLogin` or belongs to a
 campaign whose verb is `inherit`. `validate` says so rather than letting `create` find out.
 
-A member is granted one credential, never a blend: the first `apiKeyFromEnv` variable that is set,
-else the key grant, else the login grant. A key displaces a login because an agent that finds a key
-in its environment spends the key, whatever it was signed in as.
+A member is granted one credential, never a blend: the first environment variable that is set in
+either spelling, else the key grant, else the login grant. A key displaces a login because an agent
+that finds a key in its environment spends the key, whatever it was signed in as.
 
 A host login expires when nothing uses it. A lent one is read fresh on every call, so signing in
 again on the host is all a stale one needs.
@@ -849,7 +883,7 @@ Everything else a campaign declares lives in the profile alone.
 Precedence for the instances directory is `CS_SANDBOX_INSTANCES_DIR`, then `CS_SANDBOX_HOME`, then
 `XDG_DATA_HOME`, then the platform default under the home directory.
 
-Anything named in a member's `auth.apiKeyFromEnv` is read from the host environment at create and
+Anything named in a member's environment grant is read from the host environment at create and
 granted to that member. `auth.agentLogin` and `auth.apiKey` are read by `cs-sandbox` from the host
 instead, and reach a member as a loan token unless an `inherit` spelling asks for the copy. `env:` entries in a profile reach the member's sandbox; a bare `KEY` inherits
 the host's value without the value passing through campaign state.
@@ -883,7 +917,7 @@ pin, rebuild and reinstall, or pass `--accept-upstream-change` to record the dev
 **`opencode has no login to lend`**
 
 OpenCode signs in with a provider key rather than with a login of its own. Grant that member
-`apiKey` or `apiKeyFromEnv`, or spell the login `inheritAgentLogin` to copy one in.
+`apiKey`, or spell the copy explicitly with `inheritAgentLogin` or `inheritApiKeyFromEnv`.
 
 **`readback FAILED — N member(s) could not confirm their briefing; do not dispatch`**
 

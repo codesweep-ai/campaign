@@ -16,14 +16,14 @@ orchestrator:
   repos:
     - path: __REPO__
   auth:
-    apiKeyFromEnv: [FIREWORKS_API_KEY]
+    inheritApiKeyFromEnv: [FIREWORKS_API_KEY]
 agents:
   codex-worker:
     cli: codex
     repos:
       - path: __REPO__
     auth:
-      apiKeyFromEnv: [OPENAI_API_KEY]
+      inheritApiKeyFromEnv: [OPENAI_API_KEY]
   claude-worker:
     cli: claude
     auth:

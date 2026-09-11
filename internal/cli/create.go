@@ -290,6 +290,7 @@ func (a *app) createCmd(plan bool) *cobra.Command {
 		warnLargeSeeds(c.ErrOrStderr(), campaign.Members, inputs)
 		warnInventedOutcomes(c.ErrOrStderr(), inputs)
 		warnUnsatisfiedKeyEnv(c.ErrOrStderr(), campaign.Members)
+		warnCopiedCredentials(c.ErrOrStderr(), campaign.Members)
 		if planning {
 			return writeJSON(c.OutOrStdout(), campaign)
 		}
@@ -333,6 +334,8 @@ func (a *app) planCampaign(opts createOpts, name string, planning bool) (*model.
 	if err != nil {
 		return nil, model.Profile{}, err
 	}
+	// The profile arrives decoded and unjudged, and applySets validates what
+	// the overrides produced. That is the whole judgement this path takes.
 	if err = applySets(&profile, sets); err != nil {
 		return nil, model.Profile{}, err
 	}
@@ -607,7 +610,9 @@ func (a *app) resolveProfile(opts createOpts) (model.Profile, string, error) {
 		if opts.orchestrator != "" || len(opts.agents) > 0 || opts.agentCLI != "" || opts.count > 0 || opts.repo != "" || opts.snapshot != "" {
 			return model.Profile{}, "", errors.New("--profile is mutually exclusive with fleet flags")
 		}
-		return readProfile(expandPath(opts.profile))
+		// Decoded, not yet validated: planCampaign validates once the
+		// overrides that can move the campaign's verb have been applied.
+		return decodeProfile(expandPath(opts.profile))
 	}
 	profile, err := profileFromFlags(opts.orchestrator, opts.agents, opts.agentCLI, opts.count, opts.repo, opts.snapshot)
 	return profile, "", err
@@ -632,8 +637,8 @@ func (a *app) validateCmd() *cobra.Command {
 		}
 		applyDefaults(&profile)
 		// Validate repositories with the same read-only resolution create
-		// uses, so a profile validates if and only if it would create: real
-		// refs resolve, initializable (absent/empty) paths are accepted, and
+		// uses, so a path that resolves here resolves there: real refs
+		// resolve, initializable (absent/empty) paths are accepted, and
 		// non-git content is rejected. Nothing on disk is modified.
 		if err = resolveRepoRefs(&profile); err != nil {
 			return err
@@ -660,6 +665,7 @@ func (a *app) validateCmd() *cobra.Command {
 		warnLargeSeeds(c.ErrOrStderr(), profileMembers(profile), inputs)
 		warnInventedOutcomes(c.ErrOrStderr(), inputs)
 		warnUnsatisfiedKeyEnv(c.ErrOrStderr(), withProfiles(profile))
+		warnCopiedCredentials(c.ErrOrStderr(), withProfiles(profile))
 		return nil
 	}}
 	cmd.Flags().StringVar(&profilePath, "profile", "", "campaign profile YAML (same as the positional argument)")

@@ -399,13 +399,190 @@ func TestAMemberSpeaksOneVerb(t *testing.T) {
 			}
 		})
 	}
-	// apiKeyFromEnv carries no verb, so it sits beside any spelling.
+	// apiKeyFromEnv still carries no verb of its own, so it sits beside a seat
+	// that has already declared the one verb it can live under.
 	ok := model.Profile{APIVersion: model.APIVersion, Kind: "CampaignProfile",
 		Orchestrator: model.MemberProfile{CLI: "claude"},
 		Agents: map[string]model.MemberProfile{"w": {CLI: "codex", Auth: model.Auth{
 			APIKeyFromEnv: []string{"OPENAI_API_KEY"}, InheritAgentLogin: []string{"codex"}}}}}
 	if err := validateProfile(ok); err != nil {
-		t.Fatalf("apiKeyFromEnv takes no verb and must not conflict: %v", err)
+		t.Fatalf("apiKeyFromEnv beside an inherit spelling must not conflict: %v", err)
+	}
+}
+
+// An environment key is read out of the shell that runs create and copied into
+// the member. There is no host-side file behind it, so there is nothing to mint
+// a loan against — a seat that resolves to lend and names one is asking for
+// something create cannot do, and would come up holding the raw key while its
+// record claimed a loan. That is the misconfiguration this rule exists to make
+// unwritable, so it fails in the profile rather than at the CREDS column.
+func TestAnEnvironmentKeyCannotBeLent(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	lend := model.Profile{APIVersion: model.APIVersion, Kind: "CampaignProfile",
+		Orchestrator: model.MemberProfile{CLI: "claude", Auth: model.Auth{AgentLogin: []string{"claude"}}},
+		Agents: map[string]model.MemberProfile{"w": {CLI: "codex", Auth: model.Auth{
+			APIKeyFromEnv: []string{"OPENAI_API_KEY"}}}}}
+	err := validateProfile(lend)
+	if err == nil {
+		t.Fatal("accepted an environment key on a seat that resolves to lend")
+	}
+	// The message has to carry the fix, because the grant it refuses is the one
+	// an author reaches for first.
+	for _, want := range []string{"apiKey:", "inheritApiKeyFromEnv:"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("refusal must name %q as the way out: %v", want, err)
+		}
+	}
+	// The campaign's verb is what it resolves against, not the spelling alone:
+	// the same grant is fine where the campaign copies.
+	lend.Defaults.Credentials = model.CredentialInherit
+	if err := validateProfile(lend); err != nil {
+		t.Fatalf("an inherit campaign must still take apiKeyFromEnv: %v", err)
+	}
+}
+
+// The fused spelling is the escape hatch, and it has to be typed. It grants
+// exactly what the neutral one does, and differs only in saying which verb the
+// seat is under — which is what makes the member record read as the copy it is.
+func TestAnEnvironmentKeyCopiesWhenItSaysSo(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	p := model.Profile{APIVersion: model.APIVersion, Kind: "CampaignProfile",
+		Orchestrator: model.MemberProfile{CLI: "claude", Auth: model.Auth{AgentLogin: []string{"claude"}}},
+		Agents: map[string]model.MemberProfile{"w": {CLI: "codex", Auth: model.Auth{
+			InheritAPIKeyFromEnv: []string{"OPENAI_API_KEY"}}}}}
+	if err := validateProfile(p); err != nil {
+		t.Fatalf("the explicit copy must be accepted under a lend campaign: %v", err)
+	}
+	applyDefaults(&p)
+	if got := p.Agents["w"].Auth.Credentials; got != model.CredentialInherit {
+		t.Errorf("a seat that copies must record inherit, got %q", got)
+	}
+	// And the orchestrator beside it still lends: the escape is per seat, not a
+	// switch that drags the whole campaign into copy mode.
+	if got := p.Orchestrator.Auth.Credentials; got != model.CredentialLend {
+		t.Errorf("the lending seat must be untouched, got %q", got)
+	}
+	// Both spellings grant the same variable, so everything downstream of the
+	// grant has to see it through APIKeyEnvs.
+	if got := p.Agents["w"].Auth.APIKeyEnvs(); !slices.Equal(got, []string{"OPENAI_API_KEY"}) {
+		t.Errorf("the fused spelling must grant its variable: %v", got)
+	}
+}
+
+// The fused environment spelling is new, and it meets the one-verb rule from a
+// direction that rule has not been held against before. Every combination of it
+// with a login grant, spelled each of the three ways, in one place — because the
+// interesting failures here are combinations, not single grants.
+func TestEnvironmentGrantsAgainstEveryLoginSpelling(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	for name, tc := range map[string]struct {
+		auth    model.Auth
+		refused bool
+	}{
+		// The escape hatch, alone and beside the one verb it agrees with.
+		"fused env alone":           {model.Auth{InheritAPIKeyFromEnv: []string{"OPENAI_API_KEY"}}, false},
+		"fused env + inherit login": {model.Auth{InheritAPIKeyFromEnv: []string{"OPENAI_API_KEY"}, InheritAgentLogin: []string{"claude"}}, false},
+		// Two verbs on one seat, reached through the new spelling.
+		"fused env + lend login":    {model.Auth{InheritAPIKeyFromEnv: []string{"OPENAI_API_KEY"}, LendAgentLogin: []string{"claude"}}, true},
+		"fused env + neutral login": {model.Auth{InheritAPIKeyFromEnv: []string{"OPENAI_API_KEY"}, AgentLogin: []string{"claude"}}, true},
+		// The plain spelling: refused wherever the seat resolves to lend, and
+		// fine where another grant has already declared the copy.
+		"plain env alone":           {model.Auth{APIKeyFromEnv: []string{"OPENAI_API_KEY"}}, true},
+		"plain env + lend login":    {model.Auth{APIKeyFromEnv: []string{"OPENAI_API_KEY"}, LendAgentLogin: []string{"claude"}}, true},
+		"plain env + inherit login": {model.Auth{APIKeyFromEnv: []string{"OPENAI_API_KEY"}, InheritAgentLogin: []string{"claude"}}, false},
+		// Both spellings: the fused one settles the verb, so the plain one is no
+		// longer under lend and both variables are candidates.
+		"both env spellings": {model.Auth{APIKeyFromEnv: []string{"A_KEY"}, InheritAPIKeyFromEnv: []string{"B_KEY"}}, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := model.Profile{APIVersion: model.APIVersion, Kind: "CampaignProfile",
+				Orchestrator: model.MemberProfile{CLI: "claude", Auth: model.Auth{AgentLogin: []string{"claude"}}},
+				Agents:       map[string]model.MemberProfile{"w": {CLI: "codex", Auth: tc.auth}}}
+			err := validateProfile(p)
+			if tc.refused && err == nil {
+				t.Errorf("accepted two verbs on one seat: %+v", tc.auth)
+			}
+			if !tc.refused && err != nil {
+				t.Errorf("refused a coherent grant: %v", err)
+			}
+		})
+	}
+}
+
+// The verb-dependent rules have to run against the verb the campaign actually
+// ends up with. --credentials (and --set defaults.credentials) move it after the
+// file is read, so validating at read time held a profile against a verb no
+// member resolved to and refused a run the override had already made correct.
+//
+// It bit opencode first, which has no login to lend, and would have bitten every
+// environment-key profile once those became verb-dependent too.
+func TestAnOverriddenVerbIsWhatGetsValidated(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "profile.yaml")
+	repo := filepath.Join(dir, "app")
+	// Both grants that a lend campaign refuses, in one profile.
+	if err := os.WriteFile(path, []byte(`apiVersion: `+model.APIVersion+`
+kind: CampaignProfile
+orchestrator:
+  cli: claude
+  repos: [{path: `+repo+`}]
+  auth: {agentLogin: [claude]}
+agents:
+  w:
+    cli: opencode
+    repos: [{path: `+repo+`}]
+    auth: {agentLogin: [opencode], apiKeyFromEnv: [OPENAI_API_KEY]}
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// As written, under the default verb, it is refused. That is the answer
+	// `validate` gives, because it has no override to apply.
+	if _, _, err := readProfile(path); err == nil {
+		t.Fatal("a lend campaign must refuse both grants")
+	}
+	if _, _, err := (&app{}).planCampaign(createOpts{profile: path}, "acme", true); err == nil {
+		t.Fatal("plan must refuse the same file under the campaign's default verb")
+	}
+	// And with the override it plans: the campaign the flags resolve to is what
+	// gets judged, and the verb it resolved to reaches every member.
+	campaign, _, err := (&app{}).planCampaign(createOpts{profile: path, credentials: model.CredentialInherit}, "acme", true)
+	if err != nil {
+		t.Fatalf("the overridden verb must be what is validated: %v", err)
+	}
+	for _, m := range campaign.Members {
+		if m.Profile.Auth.Credentials != model.CredentialInherit {
+			t.Errorf("%s resolved to %q, want the override", m.Name, m.Profile.Auth.Credentials)
+		}
+	}
+}
+
+// Copying is legal and sometimes the only option, but it is the weaker posture
+// and the profile spells it in a way that is easy to read past. Saying which
+// seats ended up holding a credential costs one line and is the whole reason
+// the CREDS column gets scanned after the fact.
+func TestCopiedCredentialsAreNamedBeforeCreate(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	members := []model.Member{
+		{Name: "lends", Profile: model.MemberProfile{Auth: model.Auth{
+			AgentLogin: []string{"claude"}, Credentials: model.CredentialLend}}},
+		{Name: "copies", Profile: model.MemberProfile{Auth: model.Auth{
+			InheritAPIKeyFromEnv: []string{"OPENAI_API_KEY"}, Credentials: model.CredentialInherit}}},
+	}
+	var buf bytes.Buffer
+	warnCopiedCredentials(&buf, members)
+	if !strings.Contains(buf.String(), "copies") {
+		t.Errorf("the copying seat must be named: %q", buf.String())
+	}
+	if strings.Contains(buf.String(), "lends") {
+		t.Errorf("a lending seat must not be reported: %q", buf.String())
+	}
+	// Silence is the point: a fully lent campaign is the shape being encouraged,
+	// and a warning that always fires stops being read.
+	buf.Reset()
+	warnCopiedCredentials(&buf, members[:1])
+	if buf.Len() != 0 {
+		t.Errorf("a fully lent campaign must be silent: %q", buf.String())
 	}
 }
 
