@@ -1205,10 +1205,14 @@ it builds from the same variable. Every supported adapter is reachable one way o
 a mission and one brief per member. It allocates nothing, and `make check` validates it, so an
 example a reader copies stays true.
 
+It declares no `repos:`, because the repository is the one thing the operator supplies. So `validate`
+reads the profile, the mission and both briefs, and then names that as the only thing still missing:
+
 ```console
 $ cs-campaign validate --profile testdata/example-campaign/profile.yaml
 valid CampaignProfile ee13c41a4d1e
 mission e6802c6e662f, 2 role briefs
+cs-campaign: no repository for orchestrator, worker
 ```
 
 #### Doc claims are tests

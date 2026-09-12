@@ -161,3 +161,58 @@ func TestTheDocumentedNewRepositoryPathIsWhatPlanDoes(t *testing.T) {
 		t.Fatalf("planning created the repository: %v", err)
 	}
 }
+
+// SPEC.md § "The example campaign" carries a console block, and claims `make
+// check` validates the example so "an example a reader copies stays true".
+// Nothing did: b967ffb made a repository mandatory without revisiting either the
+// example or the transcript, so the block showed a run that exits 0 when the
+// command had started refusing. This is what makes the sentence true. It pins
+// the digests too, because SPEC prints them: editing the profile or the mission
+// without updating the block is the drift this catches.
+func TestTheExampleCampaignValidatesAsTheSpecShows(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The two lines the example is there to prove: the profile decodes, and the
+	// mission and both briefs are found beside it.
+	const stdout = "valid CampaignProfile ee13c41a4d1e\nmission e6802c6e662f, 2 role briefs\n"
+	// It declares no `repos:` on purpose — the repository is the operator's to
+	// supply — so the refusal is the documented end of this run, not a failure.
+	const refusal = "no repository for orchestrator, worker"
+
+	var out, errOut strings.Builder
+	c := (&app{}).validateCmd()
+	// As root.go runs it: the root command silences both, so a refusal prints
+	// the error and not a usage dump. Executing the subcommand alone would put
+	// usage on stdout and the transcript would not be the one an operator sees.
+	c.SilenceUsage, c.SilenceErrors = true, true
+	c.SetOut(&out)
+	c.SetErr(&errOut)
+	c.SetArgs([]string{filepath.Join(root, "testdata", "example-campaign", "profile.yaml")})
+	err = c.Execute()
+	if err == nil {
+		t.Fatal("the example declares no repository, so validate must refuse it")
+	}
+	if got, _, _ := strings.Cut(err.Error(), "\n"); got != refusal {
+		t.Errorf("validate refused with %q; SPEC.md's console block shows %q", got, refusal)
+	}
+	if out.String() != stdout {
+		t.Errorf("validate printed:\n%s\nSPEC.md's console block shows:\n%s", out.String(), stdout)
+	}
+
+	// And the document itself, so the block cannot drift away from the run.
+	spec, readErr := os.ReadFile(filepath.Join(root, "SPEC.md"))
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	for _, claim := range []string{
+		"$ cs-campaign validate --profile testdata/example-campaign/profile.yaml\n" + stdout + "cs-campaign: " + refusal,
+		"It allocates nothing, and `make check` validates it",
+	} {
+		if !strings.Contains(string(spec), claim) {
+			t.Errorf("SPEC.md no longer states %q; this test names the sentence it keeps true", claim)
+		}
+	}
+}
