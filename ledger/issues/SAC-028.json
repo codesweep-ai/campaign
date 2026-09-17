@@ -1,0 +1,35 @@
+{
+  "id": "SAC-028",
+  "title": "An opencode member's declared model was never confirmed",
+  "type": "defect",
+  "severity": "med",
+  "status": "closed",
+  "foundBy": "user report (host), reading a live readback line: \"it's odd with the no readback for opencode\"",
+  "opened": "2026-09-17",
+  "resolved": "2026-09-17",
+  "stint": "2026-09-17 opencode readback session",
+  "evidence": {
+    "commits": [
+      "d05958e"
+    ],
+    "integrated": [],
+    "verified": "go test ./internal/cli/ -run 'TurnConfig|OpencodeEffort' -count=1 passes. TestTurnConfigReadsTheOpencodeLog runs the reader for real against a log copied from a live member, and finds both the build model and the smaller title model. Mutating the awk field offset by one character made it fail, so the test holds the shell rather than the wording. make check passes."
+  },
+  "resolution": "The reader now has an opencode branch. It reads the provider and the model out of the opencode log and composes them as provider slash model, which is the form a profile declares. Effort stays unconfirmable, so it now has a predicate of its own and an opencode member that declares one is no longer checked against nothing.",
+  "details": "A readback confirms that the model a profile declares is the model the turn answered on. For claude and codex it reads the session transcript. For opencode it did neither, and printed that the declaration could not be confirmed.\n\nThe reason recorded in the code was that opencode keeps its sessions in a SQLite store, with no transcript to read. That is true of the sessions. It is not true of the model, which the opencode log names on every stream line, beside the provider.\n\nSo every opencode member ran with an unverified model. A profile could name one model, the turn could answer on another, and nothing would say so. A fleet of opencode members had no confirmed model at all, which is the case a demo campaign hit.",
+  "notes": [
+    {
+      "date": "2026-09-17",
+      "text": "A first reading of this blamed the wrong file. The archive holds a session export naming the model, so the export looked like the thing to read. Checking a live member showed no export directory at all: the archive step writes it during collection, and at readback time only the SQLite store exists. The log is what is readable while a campaign runs, and a probe inside a running member is what settled it."
+    },
+    {
+      "date": "2026-09-17",
+      "text": "Effort is the half that stays unconfirmed. The log carries a reasoning count rather than the effort label a profile declares. Claiming the whole declaration readable would have failed a correctly configured campaign on its effort, so the model and the effort are now asked separately."
+    },
+    {
+      "date": "2026-09-17",
+      "text": "The log names a second model on the same run, because the title subagent answers on a smaller one. The existing rule already covers this: a declaration has to be present among what answered rather than alone. The test asserts both models are reported, so a future change cannot quietly narrow it to one."
+    }
+  ],
+  "links": []
+}
