@@ -357,10 +357,25 @@ func shellArgs(values []string) string {
 	return strings.Join(quoted, " ")
 }
 
-// turnConfigReadable reports whether this adapter leaves a transcript naming the
-// model it answered on. opencode keeps sessions in a SQLite store instead, so a
-// declaration there is applied and recorded but cannot be confirmed.
+// turnConfigReadable reports whether this adapter leaves something on disk
+// naming the model it answered on.
+//
+// claude and codex write per-session transcripts. opencode does not: its
+// sessions live in a SQLite store. Its log names the provider and model of
+// every stream though, which is the same evidence read from a different file,
+// so a declaration there is confirmable after all.
 func turnConfigReadable(cli string) bool {
+	return cli == "claude" || cli == "codex" || cli == "opencode"
+}
+
+// turnEffortReadable reports whether the adapter also names the reasoning
+// effort it answered on.
+//
+// opencode does not. Its log carries `reasoning=0`, which is a count rather
+// than the effort label a profile declares, so an effort on an opencode member
+// is applied and recorded but never confirmed. Checking it against nothing
+// would fail a correctly configured campaign.
+func turnEffortReadable(cli string) bool {
 	return cli == "claude" || cli == "codex"
 }
 
@@ -371,6 +386,17 @@ func turnConfigReadable(cli string) bool {
 // hold more than one session file, and the newest is not always the one that
 // answered.
 func turnConfigCommand(cli string) string {
+	if cli == "opencode" {
+		// The log names both halves on the stream line, in the order seen here,
+		// but the fields are read by name rather than by position: a log format
+		// that reorders them must not silently stop confirming anything.
+		//
+		// Composed as provider/model, which is the form a profile declares.
+		return `set -- "$HOME"/.local/share/opencode/log/*.log; [ -e "$1" ] || exit 0; ` +
+			`awk '{p="";m="";for(i=1;i<=NF;i++){` +
+			`if($i ~ /^providerID=/){p=substr($i,12)}else if($i ~ /^modelID=/){m=substr($i,9)}} ` +
+			`if(p!=""&&m!=""){print "model=" p "/" m}}' "$@" | sort -u`
+	}
 	glob, effortKey := `"$HOME"/.cs-codex/sessions/*/*/*/*.jsonl`, "reasoning_effort"
 	if cli == "claude" {
 		// Codex rollouts sit one directory level deeper than claude transcripts.

@@ -168,7 +168,7 @@ func (a *app) assertDeclaredTurnConfig(ctx context.Context, member model.Member)
 			return detail
 		}
 	}
-	if member.Effort != "" {
+	if member.Effort != "" && turnEffortReadable(member.CLI) {
 		if detail := matches("effort", member.Effort, efforts); detail != "" {
 			return detail
 		}
@@ -210,6 +210,9 @@ func declaredSuffix(member model.Member) string {
 	}
 	if !turnConfigReadable(member.CLI) {
 		return " on " + summary + " (declared — this adapter's turn cannot be read back to confirm it)"
+	}
+	if member.Effort != "" && !turnEffortReadable(member.CLI) {
+		return " on " + summary + " (model confirmed by the answering turn; this adapter does not name its effort)"
 	}
 	return " on " + summary + " (confirmed by the answering turn)"
 }
