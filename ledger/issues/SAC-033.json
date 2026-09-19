@@ -1,0 +1,23 @@
+{
+  "id": "SAC-033",
+  "title": "Let an operator record and replay a campaign, as the smoke tier already does",
+  "type": "feature-idea",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "session agent working in the tour repository, which records and replays a three member campaign through cs-vcr, after building the same thing from outside in a shell script",
+  "opened": "2026-09-19",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The smoke tier replays a whole campaign from cassettes, with no credential and no provider. Everything that makes that work lives in test code: `internal/cli/vcrfabric_test.go`, `livecampaign_test.go` and `smoke_test.go`. The `cs-campaign` command has no way to ask for it.\n\nThe tour repository wanted a campaign a stranger can run for nothing, so it rebuilt the harness in a shell script, `scripts/campaign-vcr`. It works. One committed recording of a three member campaign, 157 model calls, replays with `upstream calls 0` and `misses 0`, and gives the same commit ids on every run. It took five recordings to get there, and what they needed is the design a `--record` and `--replay` pair would have to carry.\n\n1. **The proxy has to start in a gap.** The campaign's network does not exist until `create` makes the first member, and the first readback needs the proxy. The script polls for the network while `create` runs. Inside `create` this is one ordered step.\n2. **The network has to come from the campaign's own record.** The script first searched the host for a network with the campaign's name, and joined another campaign's.\n3. **The proxy has to outlive the mission.** The mission closes when the orchestrator runs `reply`, and the model still gets that command's result and may make one more call. A proxy stopped at mission close records one request short, and every replay then misses at the end.\n4. **A lent member needs only its base URL.** `OPENCODE_BASE_URL` in the profile's `env:` block is enough, because cs-sandbox makes it the loan's upstream. `CS_SANDBOX_AGENT_HOME` has to name a tree with a key file of some kind for a replay.\n5. **`CS_CAMPAIGN_WAIT_SECONDS` must not be shortened when the agents do real work.** A wait that returns before `npm install` has finished lets the recorded orchestrator act on work that does not exist yet.\n6. **The recorder's identity has to be blanked.** The harness blanks the username. A real agent also prints the git name and address, and makes up mail addresses, which the sandbox record SBX-043 and the vcr records VCR-025 and VCR-026 describe.\n7. **The world has to be held still for the result to repeat.** `NPM_CONFIG_BEFORE` and fixed `GIT_*` dates gave byte-identical deliveries.\n8. **A cassette goes stale silently.** Any edit to the mission, a brief or the profile changes the prompts. The tour stores a hash of them beside the cassette, and its gate compares it.\n\nWith the flags in the command, a campaign author gets a free rehearsal of their own campaign. They also get a CI job that proves a brief change did not break the protocol.",
+  "notes": [],
+  "links": [
+    "SAC-029",
+    "SAC-032"
+  ]
+}
