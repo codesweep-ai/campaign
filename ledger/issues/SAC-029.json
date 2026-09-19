@@ -1,0 +1,20 @@
+{
+  "id": "SAC-029",
+  "title": "The orchestrator's orientation names fetch and never push",
+  "type": "improvement",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "session agent working in the simple-tools-demo repository, which runs a three member campaign at the pinned build of 2026-09-17, while reading why an orchestrator improvised a handoff",
+  "opened": "2026-09-19",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "`internal/cli/assets/orientation.md.tmpl` tells the orchestrator to judge a reply with `cs-campaign-member read <member>` and `cs-campaign-member fetch <member>`. It does not mention `cs-campaign-member push <member>` anywhere. `MANUAL.md` documents `push`, and it is the only supported way to put work into an agent's clone.\n\nAn orchestrator reads the orientation and not the manual. In the demo campaign it had to hand the developer's work to a qa member. In one run it improvised, and in another it dispatched a command the member could not run. The qa member then spent three dispatches hunting for a branch it could never reach.\n\nThe demo now carries the instruction in its own role brief, which is a workaround every campaign author has to rediscover. With the brief naming `push` and the ref `refs/campaign/orchestrator`, the same orchestrator pushed to each member on cue in three runs.\n\nTo reproduce, run `grep -n push internal/cli/assets/orientation.md.tmpl`, which prints nothing.",
+  "notes": [],
+  "links": []
+}

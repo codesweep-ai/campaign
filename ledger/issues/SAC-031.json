@@ -1,0 +1,20 @@
+{
+  "id": "SAC-031",
+  "title": "The global --json flag is ignored by version and doctor",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent working in the simple-tools-demo repository, which runs a three member campaign at the pinned build of 2026-09-17, while scripting a version check",
+  "opened": "2026-09-19",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "`cs-campaign --help` lists `--json   print machine-readable JSON` as a global flag. `cs-campaign ls --json` does what the flag says. `cs-campaign version --json` and `cs-campaign doctor --json` both accept the flag, print their ordinary text, and exit 0.\n\nA script that asks for JSON and gets text fails later and further away, in whatever parses the output. A flag a command cannot honour should be refused by that command.\n\nTo reproduce, run `cs-campaign version --json`. It prints the same single line of text as `cs-campaign version`.",
+  "notes": [],
+  "links": []
+}

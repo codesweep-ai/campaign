@@ -1,0 +1,20 @@
+{
+  "id": "SAC-030",
+  "title": "An agent the kernel kills for memory still reads as node-working",
+  "type": "defect",
+  "severity": "high",
+  "status": "open",
+  "foundBy": "session agent working in the simple-tools-demo repository, which runs a three member campaign at the pinned build of 2026-09-17, while reading a member's session after an unexplained five minute stall",
+  "opened": "2026-09-19",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "A member whose agent process is killed keeps reporting `node-working`, and nothing says the agent is gone.\n\nThe demo gave each member 2048 MiB. The agent was killed by the guest kernel during `npm install`. `sudo dmesg` inside the member printed `Out of memory: Killed process 7898 (opencode)`. The opencode session stopped with a tool call left in status `running`, and no error was recorded anywhere.\n\n`cs-campaign observe` went on showing the member as `node-working` with `0 cont, 0 restarts`. One member showed `open 360s` while its agent had been dead for minutes. About five minutes after the kill, `wait` prodded the member with a `d002.001.md` input, and a new session redid the work. It happened to two members in one run.\n\nRecovery was sound, so the campaign still had the outcome `campaign-met`. The cost is that the operator cannot tell a dead agent from a slow model. The stall was first taken for a slow provider. It was found only by opening the member and reading its kernel log.\n\nThe probe already visits the member on every poll. It could report that no agent process is running while a dispatch is open, which is a fact about the node and needs no guess about the cause.\n\nTo reproduce, create an opencode member with `resources: {memoryMiB: 2048}` and dispatch a task that runs `npm install` for a Vite application.",
+  "notes": [],
+  "links": []
+}
