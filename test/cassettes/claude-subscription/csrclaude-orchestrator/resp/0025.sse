@@ -1,0 +1,21 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfFJsN4KWqSBAuNGBRzHj","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":555,"cache_read_input_tokens":51816,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":555},"output_tokens":20,"service_tier":"standard","inference_geo":"not_available"},"context_management":null}         }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01DWta4sasQ1hDaNVZM6ktaG","name":"Bash","input":{},"caller":{"type":"direct"}}    }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git merge --ff-only campaign/dev/subject 2\u003e\u00261 || git merge campaign/dev/subject -m \\\"Merge verified greet implementation from dev\\\"\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0            }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":555,"cache_read_input_tokens":51816,"output_tokens":107,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}      }
+
+event: message_stop
+data: {"type":"message_stop" }
+

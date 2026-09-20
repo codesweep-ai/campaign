@@ -338,7 +338,7 @@
     {
       "content": [
         {
-          "text": "I’m loading the campaign manifest and its full input set first, then I’ll carry out dispatch `d001` and submit the required summary through the campaign member command.",
+          "text": "I’ll load the campaign manifest, read every listed input in full, then execute the dispatch and submit the required summary reply.",
           "type": "output_text"
         }
       ],
@@ -347,43 +347,38 @@
       "type": "message"
     },
     {
-      "call_id": "call_XF1T7CuuoU1wdAl97S2Yd0W0",
-      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,240p' ~/.config/cs-campaign/member.json\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output)\n",
+      "call_id": "call_KdRye4MHm3zlNVdYwVZUqG0s",
+      "input": "const r = await tools.exec_command({cmd:\"cat /home/<USER:1>/.config/cs-campaign/member.json\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output)\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_XF1T7CuuoU1wdAl97S2Yd0W0",
+      "call_id": "call_KdRye4MHm3zlNVdYwVZUqG0s",
       "output": [
         {
           "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "{\n  \"campaign\": \"csrcxsub\",\n  \"member\": \"dev\",\n  \"role\": \"agent\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"d786e1d144c1562a80d16c0f8e76c8afa03c4b29\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-09-09T05:36:29.685546067Z\"\n}\n",
+          "text": "{\n  \"campaign\": \"csrcxsub\",\n  \"member\": \"dev\",\n  \"role\": \"agent\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"a64f4febf127499da09f0503dc1e8c00774bd03f\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"providerWaitSeconds\": 3600,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-09-20T21:21:40.162282426Z\"\n}\n",
           "type": "input_text"
         }
       ],
       "type": "custom_tool_call_output"
     },
     {
-      "encrypted_content": "gAAAAABqoOJtEFBUwGG0x-nTWrRuPBkN8g7pf-EgB_mr1YIWfdDySClVhXFjgeaiadF-5wG8_fS97fvBBS8pqeK3TVJAjqIwsYYhORlRwx1TDuXNnmTcObpHhKKox2zDxeoYGRj3kUBjyLhnKmOFaT2qaohX-mxnqDsysKb3Yy9aWjocjdPBJCdMMXaPz9x8pabKuOUMgT-Xr84l7gh1__9HGwz4YaL2XfmSISAWTRJZGQDDpfmvXWqGbfmXVXX9qKU-LxMRbbcoXZd8AN3fec8tzoZrXW-QYlQOYtmkDLFxeGpeAifsOe1JCL7jWAgdIoa7T2xOPBf8_YU-5Lc8IbzmghgbEPgXBWxYVdr0n2-C8G09oJy_YN0DMaBXmeRdUyE_zemhNV2J_x41GS5IwrQxMrCNzYMrb95wJUQUEQE4ZI82uqO2PN-zsWAmWTtpdnnWum7dBivjfsZdmIhAlw9s89E-bzgs0ONaK3NfReBkvO-nXlfGEg6pEHyTSqYi6Ip31uP-Pr08SQOk4giT27vAyReiLwOPQ2BjtgJhSb5wSsm-D7-W3MDIElUCWNr_HgpgPJ5dR2w1U2RdaUDVf1AUcT0HBcUlaTITTGhdOkkQ-SYszzugR82B5WxJnbXLIZE3xtQqQQhYPHYY5l5nGX0ZHTZ2m4QHDCDfUmawS16ZWCfWHQoERvTnHRCv7QI5wkdU7wPuzyKp1SIqlDBzNmepowFVLNHhy9We9EVIdp6ELJnygxekuJ5a9pWjqZPuXbkqQ3QSUsSM8i6czmGJF1nbdilC26GgxdiEAy6N8s5aRSeEi3KPpaQ-9g_gw-3SCnfGSyCxY-M2H0YWAWzrDQxm6Dr4Wx9GAQvMO3g_w6_cfP-QqxXpvxDjmx59FeNtvzTx8oL76EFu3n6RU40uOVdcNaYimTf_f5XDx9UnKsZACAKLnj4uXmf71cf4OTI755HN0WUlIh2vfJXqzwqq0cuDWgsEjusnL2XhusICe9vO2Z6B40a2diC2JsiyGXgYvJmzUZJw6juv4OimXR0wso7lFbvT7x0R0VhDYRr4sBFEi3v4EC4EYmiLPAs7dQTNuLHvpwBJHxAXILOjmlukByZYrEAy0OfKgqKC1b-g3FTH6hQyFhpmvm0T6lmKXfyYED-mG98STsBbS96nBYJk5Y1aItfP2UErvqVcfpZ9YthYgXRZmMr6mbh3B1AlXbPQCAy080q_e04D9Npz-w8wuulULiT7fwjuwYE6cSJF9YufS0ljE9rgLh_cUH426pkwyCrmdPTrNKEYpXt-U_gjtgk9Wd0rXE8ZsPEVFHWPZLZ2Eo5geMZLSPfugqDKZt2C4HX6FrO-C3e6",
-      "summary": [],
-      "type": "reasoning"
-    },
-    {
-      "call_id": "call_dXbnqnH3qNQYKkNgq7AsTQaT",
-      "input": "const paths = [\n  \"/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md\",\n  \"/home/<USER:1>/.local/share/cs-campaign/input/dev.md\",\n  \"/home/<USER:1>/.local/share/cs-campaign/input/d001.md\"\n];\nfor (const p of paths) {\n  const r = await tools.exec_command({cmd:`sed -n '1,260p' '${p}'`,workdir:\"/home/<USER:1>\",yield_time_ms:10000,max_output_tokens:30000});\n  text(`FILE ${p}\\n${r.output}`);\n}\n",
+      "call_id": "call_32QJ5Y6EMvGs9u8omtRCST8I",
+      "input": "const paths=[\"/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md\",\"/home/<USER:1>/.local/share/cs-campaign/input/dev.md\",\"/home/<USER:1>/.local/share/cs-campaign/input/d001.md\"]; const rs=await Promise.all(paths.map(p=>tools.exec_command({cmd:`cat ${p}`,workdir:\"/home/<USER:1>\",yield_time_ms:10000,max_output_tokens:30000}))); rs.forEach((r,i)=>{text(`FILE ${paths[i]}\\n${r.output}`)})\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_dXbnqnH3qNQYKkNgq7AsTQaT",
+      "call_id": "call_32QJ5Y6EMvGs9u8omtRCST8I",
       "output": [
         {
-          "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
+          "text": "Script completed\nWall time 0.0 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
@@ -395,7 +390,7 @@
           "type": "input_text"
         },
         {
-          "text": "FILE /home/<USER:1>/.local/share/cs-campaign/input/d001.md\nThis is dispatch d001: confirm your briefing before any work is assigned.\n\n1. Run: cs-campaign-member check-inputs\n   It prints any briefing file you were promised that is absent.\n2. Read ~/.config/cs-campaign/member.json, and then every file it lists under \"inputs\", in order.\n3. Write a file (e.g. /tmp/readback.json) holding EXACTLY this JSON, on a single line:\n\n{\"member\":\"dev\",\"role\":\"agent\",\"branch\":\"<your branch, from member.json>\",\"missing\":[<output of check-inputs, as strings, else empty>],\"goal\":\"<one sentence, in your own words: what this campaign is asking you to accomplish>\",\"scope\":\"<one sentence: what you own and what you must not touch>\",\"obligations\":\"<one sentence: what this campaign requires of you, and what happens to your work if you do not do it>\"}\n\n4. Reply with it: cs-campaign-member reply --file /tmp/readback.json\n\nDo not perform any of the work yet. Your reply closes this dispatch.",
+          "text": "FILE /home/<USER:1>/.local/share/cs-campaign/input/d001.md\nThis is dispatch d001: confirm your briefing before any work is assigned.\n\n1. Run: cs-campaign-member check-inputs\n   It prints anything you were promised that is absent.\n2. Read ~/.config/cs-campaign/member.json, and then every file it lists under \"inputs\", in order.\n3. Write a file (e.g. /tmp/readback.json) holding EXACTLY this JSON, on a single line:\n\n{\"member\":\"dev\",\"role\":\"agent\",\"branch\":\"<your branch, from member.json>\",\"missing\":[<output of check-inputs, as strings, else empty>],\"goal\":\"<one sentence, in your own words: what this campaign is asking you to accomplish>\",\"scope\":\"<one sentence: what you own and what you must not touch>\",\"obligations\":\"<one sentence: what this campaign requires of you, and what happens to your work if you do not do it>\"}\n\n4. Reply with it: cs-campaign-member reply --file /tmp/readback.json\n\nDo not perform any of the work yet. Your reply closes this dispatch.",
           "type": "input_text"
         }
       ],

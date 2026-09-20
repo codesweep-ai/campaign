@@ -1,0 +1,21 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfFK3Lx8HQYvRf3UGdGsu","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":123,"cache_read_input_tokens":44502,"cache_creation":{"ephemeral_5m_input_tokens":123,"ephemeral_1h_input_tokens":0},"output_tokens":20,"service_tier":"standard","inference_geo":"global"},"context_management":null}              }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01TYeFGcEVLyfcCJoGjE9Wzk","name":"Write","input":{},"caller":{"type":"direct"}}  }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/home/<USER:1>/.local/share/cs-campaign/output/d002-summary.md\", \"content\": \"# Dispatch d002: \\\"greet, tested\\\" feature\\n\\n## What I did\\n\\n1. Created `src/greet.py`:\\n   ```python\\n   def greet(name):\\n       return f\\\"Hello, {name}!\\\"\\n   ```\\n\\n2. Created `tests/test_greet.py` with two unit tests:\\n   - `test_normal_name`: asserts `greet(\\\"World\\\") == \\\"Hello, World!\\\"`\\n   - `test_empty_string`: asserts `greet(\\\"\\\") == \\\"Hello, !\\\"`\\n\\n   (The test file adds `../src` to `sys.path` so `from greet import greet`\\n   resolves without a package/`conftest.py` setup.)\\n\\n## Verification\\n\\nRan, from the repo root (`~/subject`):\\n\\n```\\npython3 -m unittest discover -s tests\\n```\\n\\nOutput:\\n```\\n..\\n----------------------------------------------------------------------\\nRan 2 tests in 0.000s\\n\\nOK\\n```\\n\\nExit code: `0`.\\n\\n## Commit\\n\\nCommitted on branch `cs-sandbox/<DEV:1>.<GROUP:1>`:\\n\\n```\\ne0f0487 Add greet function with unit tests\\n 2 files changed, 21 insertions(+)\\n create mode 100644 src/greet.py\\n create mode 100644 tests/test_greet.py\\n```\\n\\nThis commit sits directly on top of the branch's base commit (`852c73f`), so\\nthe branch now differs from base as expected.\\n\\n## Notes / honesty check\\n\\n- All requirements in the dispatch were met; no failures encountered.\\n- Nothing was skipped or worked around.\\n- `__pycache__` directories generated during the test run were deleted before\\n  committing (not part of the tracked diff).\\n\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0            }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":123,"cache_read_input_tokens":44502,"output_tokens":624,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}             }
+
+event: message_stop
+data: {"type":"message_stop"  }
+

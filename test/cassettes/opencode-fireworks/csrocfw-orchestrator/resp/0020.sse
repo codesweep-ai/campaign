@@ -1,21 +1,57 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CenrevKJexVxYfP7n8pn1","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":411,"cache_read_input_tokens":50368,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":411},"output_tokens":20,"service_tier":"standard","inference_geo":"not_available"}}  }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfFKpTQKudEqqHjRko258","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":130,"cache_read_input_tokens":50637,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":130},"output_tokens":5,"service_tier":"standard","inference_geo":"not_available"},"context_management":null} }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01LoTQ3dm5HUExYx2VxbKZUV","name":"Bash","input":{},"caller":{"type":"direct"}}              }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}          }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cd /tmp/verify_dev \u0026\u0026 cat src/greet.py \u0026\u0026 echo \\\"---\\\" \u0026\u0026 cat tests/test_greet.py \u0026\u0026 echo \\\"---running tests---\\\" \u0026\u0026 python3 -m unittest discover -s tests; echo \\\"exit=$?\\\"\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EskDCqgBCBIYAipAr8PVCVt5opnAArx+iIoSrScIpd9WbjhwSGhXlEzj4YoZHTuwSBDIsiUxdZPYMwOzVIxiaoehyihpxDpPIAqrdTIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRlZmE0MmI5Ni1jMTFiLTQ5MDgtYmU0ZC1kNDJjYTlhYjAwMWNyEDYerf48dPRGg2rHVsnZfX+IAQGoAeiEwdUGsAECEgwA8ptLl6lG4R7bD/0aDBGzcKp6uFNKxCAS4iIw/J3lpLM86krkVqicGBPwC/Gez/GERFYAwSddbMSYEtQyXkZBqeJE7/5Im/nKfJJBKs0BT4tNbwE0VyqS+09eKaj0o1pYRymNpowDjnwCfj/vgGAypMqd5monN1EqLT9s4/y3vzA3CpyJv/ipm//DT2XcealUdBT/n81GLJ3DhS91CtMnQbZrEPQfCYiVQ2EwjJV9LNFtGGmUg3XJ0IHCXilSlAmciBEDhwhBdvQF+eYnTEaOl4ex7k5tn2mMbMCrJ02g2vm0DAh9v/omy09KuWo5f+0kYAItkC2DY31CVXafEfrRHMJ94Uzv9JcfSbAX0utxsEHPFjmjOHbsR2PochgB"}         }
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0               }
+data: {"type":"content_block_stop","index":0       }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}            }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Now let"}               }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"'s check my own inbox for"}        }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" the mission dispatch to"}             }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" see"} }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" how to close out"}               }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" the campaign."}  }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1  }
+
+event: content_block_start
+data: {"type":"content_block_start","index":2,"content_block":{"type":"tool_use","id":"toolu_01J7aBPazQi2F8NBGZbRA4j1","name":"Bash","input":{},"caller":{"type":"direct"}}               }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member inbox 2\u003e\u00261\"}","type":"input_json_delta"},"index":2,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":2}
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":411,"cache_read_input_tokens":50368,"output_tokens":120,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}      }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":130,"cache_read_input_tokens":50637,"output_tokens":167,"output_tokens_details":{"thinking_tokens":75}},"context_management":{"applied_edits":[]}      }
 
 event: message_stop
-data: {"type":"message_stop"  }
+data: {"type":"message_stop"            }
 
