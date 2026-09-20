@@ -95,6 +95,14 @@ var runSessionCmd = func(name string, args ...string) error {
 	return exec.Command(name, args...).Run()
 }
 
+// clockNow and clockSleep are the dispatcher's only two readings of time. They
+// are variables for the reason the three routes above are: a wait that backs
+// off for minutes can then be tested against a scripted clock, in no time.
+var (
+	clockNow   = time.Now
+	clockSleep = time.Sleep
+)
+
 // probeAgent is the one round trip of PROTOCOL.md §6: every fact about one
 // node, or a probe failure — which is a fact about the observation, not the
 // node.
@@ -151,7 +159,7 @@ type nodeLook struct {
 func snapshot(env *envState, blind map[string]int) map[string]nodeLook {
 	entries := env.logEntries()
 	pol := env.policy()
-	now := time.Now().Unix()
+	now := clockNow().Unix()
 	out := map[string]nodeLook{}
 	for name, rec := range env.Manifest.Agents {
 		facts, failed := probeAgent(rec)
@@ -409,7 +417,7 @@ func cmdAccept(env *envState, args []string) error {
 	}
 	// Node-qualified: dispatch IDs are per-node sequences, so a bare "d002"
 	// names a different dispatch on every agent (adversarial review, finding 2).
-	if err := protocol.AppendLogLocal(env.Home, protocol.Entry{At: time.Now().UTC(), Kind: "accepted", Text: protocol.AcceptanceText(args[0], d.ID)}); err != nil {
+	if err := protocol.AppendLogLocal(env.Home, protocol.Entry{At: clockNow().UTC(), Kind: "accepted", Text: protocol.AcceptanceText(args[0], d.ID)}); err != nil {
 		return err
 	}
 	fmt.Printf("accepted %s from %s — the agent is free for its next dispatch\n", d.ID, args[0])
@@ -427,7 +435,7 @@ func cmdNote(env *envState, args []string) error {
 	if strings.TrimSpace(body) == "" {
 		return fmt.Errorf("an empty %s records nothing: pass --file <path> (\"-\" reads stdin)", args[0])
 	}
-	if err := protocol.AppendLogLocal(env.Home, protocol.Entry{At: time.Now().UTC(), Kind: args[0], Text: body}); err != nil {
+	if err := protocol.AppendLogLocal(env.Home, protocol.Entry{At: clockNow().UTC(), Kind: args[0], Text: body}); err != nil {
 		return err
 	}
 	fmt.Printf("recorded %s\n", args[0])
@@ -572,7 +580,7 @@ func cmdWait(env *envState, args []string) error {
 	}
 	chunk = protocol.WaitChunk(chunk)
 	pol := env.policy()
-	deadline := time.Now().Add(time.Duration(chunk) * time.Second)
+	deadline := clockNow().Add(time.Duration(chunk) * time.Second)
 	blind := map[string]int{}
 	names := sortedAgents(env)
 	var acted []string
@@ -628,7 +636,7 @@ func cmdWait(env *envState, args []string) error {
 			}
 			return nil
 		}
-		if time.Now().After(deadline) {
+		if clockNow().After(deadline) {
 			// "nothing actionable" would be a lie in a chunk that ran the
 			// ladder (seen live: it printed above its own recovery report).
 			what := "nothing actionable"
@@ -653,7 +661,7 @@ func cmdWait(env *envState, args []string) error {
 			}
 			return nil
 		}
-		time.Sleep(protocol.PollInterval(pol))
+		clockSleep(protocol.PollInterval(pol))
 	}
 }
 
