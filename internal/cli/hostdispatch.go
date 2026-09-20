@@ -71,7 +71,16 @@ func (a *app) openMission(ctx context.Context, member model.Member, body string)
 }
 
 func (a *app) deliver(ctx context.Context, member model.Member, facts protocol.Facts, id, body string, restart bool) error {
-	msgName := protocol.NextMsgName(facts.Msgs, id, restart)
+	return a.deliverNamed(ctx, member, protocol.NextMsgName(facts.Msgs, id, restart), id, body)
+}
+
+// hostResume carries an open dispatch on without spending a rung: the member's
+// provider refused its last turn and the wait is over, or the turn never ran.
+func (a *app) hostResume(ctx context.Context, member model.Member, facts protocol.Facts, id string, refused bool) error {
+	return a.deliverNamed(ctx, member, protocol.NextResumeName(facts.Msgs, id), id, protocol.ResumeBody(id, refused))
+}
+
+func (a *app) deliverNamed(ctx context.Context, member model.Member, msgName, id, body string) error {
 	msgPath := guestInputDir + "/" + msgName
 	if err := a.sandbox.putMemberFile(ctx, member, msgPath, body); err != nil {
 		return fmt.Errorf("deliver %s to %s: %w", msgName, member.Name, err)
@@ -137,6 +146,7 @@ func (a *app) awaitReply(ctx context.Context, out io.Writer, member model.Member
 	pol = pol.Resolve()
 	deadline := time.Now().Add(bound)
 	blind := 0
+	refusalSaid := false // one line per refusal, not one per look
 	for {
 		facts, failed := a.sandbox.probeMember(ctx, member)
 		if failed {
@@ -148,14 +158,35 @@ func (a *app) awaitReply(ctx context.Context, out io.Writer, member model.Member
 			return a.readReply(ctx, member, id)
 		}
 		obs := protocol.Compute(facts, failed, protocol.Blind{Looks: blind}, map[string]bool{}, pol, time.Now().Unix())
+		if obs.State != protocol.StateRefused {
+			refusalSaid = false
+		}
 		switch obs.State {
 		case protocol.StateReplied:
 			// Some other dispatch's reply — ours is still outstanding, and the
 			// check above is what ends this wait. Keep waiting.
 		case protocol.StateStuck:
 			return protocol.Reply{}, fmt.Errorf("%s is stuck (%s)", member.Name, obs.Detail)
+		case protocol.StateRefused:
+			// The provider refused the member's turn. Waiting is the move, and
+			// the wait is said out loud: at create this used to look like a
+			// member that would not answer its briefing.
+			if obs.NextMove == "resume" {
+				fmt.Fprintf(out, "…  %s: the wait its provider asked for is over — resumed, no rung spent (%s)\n", member.Name, obs.Detail)
+				if err := a.hostResume(ctx, member, facts, obs.Dispatch, true); err != nil {
+					fmt.Fprintf(out, "…  %s: resume failed and will be tried again: %v\n", member.Name, err)
+				}
+			} else if !refusalSaid {
+				fmt.Fprintf(out, "…  %s: its provider refused the turn — waiting (%s)\n", member.Name, obs.Detail)
+			}
+			refusalSaid = true
 		case protocol.StateStopped:
 			switch obs.NextMove {
+			case "resume":
+				fmt.Fprintf(out, "…  %s: no turn ran for its last message — resumed, no rung spent\n", member.Name)
+				if err := a.hostResume(ctx, member, facts, obs.Dispatch, false); err != nil {
+					fmt.Fprintf(out, "…  %s: resume failed and will be tried again: %v\n", member.Name, err)
+				}
 			case "continue":
 				fmt.Fprintf(out, "…  %s stopped without replying — continued (%s)\n", member.Name, obs.Detail)
 				if _, _, err := a.hostSendPrepared(ctx, member, facts, protocol.ContinueBody(obs.Dispatch), false); err != nil {

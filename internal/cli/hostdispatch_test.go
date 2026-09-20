@@ -5,9 +5,11 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -70,5 +72,63 @@ func TestAwaitReplyAnswersWithTheDispatchItWasAskedFor(t *testing.T) {
 	}
 	if later.Dispatch != "d002" {
 		t.Fatalf("awaited d002 and got %s's reply", later.Dispatch)
+	}
+}
+
+// probeOnlyApp fakes a member whose probe answers with the given lines and
+// records every other command the host runs against it.
+func probeOnlyApp(t *testing.T, probe string) (*app, string) {
+	t.Helper()
+	dir := t.TempDir()
+	calls := filepath.Join(dir, "calls")
+	tool := filepath.Join(dir, "fake-sandbox")
+	body := "#!/bin/sh\ncase \"$5\" in\n  *DRIVERS*) printf '" + probe + "' ;;\n  *) echo \"$*\" >> " + calls + " ;;\nesac\n"
+	if err := os.WriteFile(tool, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return &app{store: store.Store{Dir: filepath.Join(dir, "state")}, sandbox: sandboxCLI{Bin: tool}}, calls
+}
+
+// At create, a credential the provider rejects used to read as a member that
+// would not answer its briefing: the ladder ran, and the failure named silence.
+// The readback now fails on the first look, names the credential, and sends
+// nothing into it.
+func TestAwaitReplyNamesARejectedCredentialAtOnce(t *testing.T) {
+	now := time.Now().Unix()
+	probe := fmt.Sprintf(`MSG %d d001.md\nDRIVERS 0\nAGENT idle\nTURNEND %d 5 unauthorized - turn failed: Incorrect API key provided\n`, now-20, now-10)
+	a, calls := probeOnlyApp(t, probe)
+	pol := protocol.Policy{PollSeconds: 1, SettlingSeconds: 1}
+
+	start := time.Now()
+	_, err := a.awaitReply(context.Background(), io.Discard, model.Member{Name: "dev", Role: "agent", CLI: "codex", Sandbox: "box", Ref: "dev.g"}, "d001", pol, 30*time.Second)
+	if err == nil || !strings.Contains(err.Error(), "credential") || !strings.Contains(err.Error(), "Incorrect API key") {
+		t.Fatalf("the readback must fail naming the credential and the provider's words; got: %v", err)
+	}
+	if time.Since(start) > 5*time.Second {
+		t.Fatalf("the readback took %s to report a credential the first look could see", time.Since(start))
+	}
+	if b, _ := os.ReadFile(calls); len(b) != 0 {
+		t.Fatalf("the host acted on a member whose credential was rejected:\n%s", b)
+	}
+}
+
+// A throttled member at create is waited for, out loud, and nothing is sent
+// while the wait its provider asked for is still running.
+func TestAwaitReplyWaitsOutARefusalAndSaysSo(t *testing.T) {
+	now := time.Now().Unix()
+	probe := fmt.Sprintf(`MSG %d d001.md\nDRIVERS 0\nAGENT idle\nTURNEND %d 5 throttled 600 turn failed: Rate limit reached\n`, now-20, now-5)
+	a, calls := probeOnlyApp(t, probe)
+	pol := protocol.Policy{PollSeconds: 1, SettlingSeconds: 1}
+
+	var out strings.Builder
+	_, err := a.awaitReply(context.Background(), &out, model.Member{Name: "dev", Role: "agent", CLI: "codex", Sandbox: "box", Ref: "dev.g"}, "d001", pol, 3*time.Second)
+	if err == nil || !strings.Contains(err.Error(), "node-refused") {
+		t.Fatalf("the bound should end this wait, naming the refusal; got: %v", err)
+	}
+	if n := strings.Count(out.String(), "provider refused"); n != 1 {
+		t.Fatalf("a refusal is said once, not once per look; said %d times:\n%s", n, out.String())
+	}
+	if b, _ := os.ReadFile(calls); len(b) != 0 {
+		t.Fatalf("the host sent something into a wait the provider asked for:\n%s", b)
 	}
 }
