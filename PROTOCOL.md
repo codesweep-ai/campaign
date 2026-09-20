@@ -179,7 +179,7 @@ the load the provider refused. Three endings are read and not laddered:
 
 | The turn ended because | What it costs | Why |
 |---|---|---|
-| the provider throttled the node, or was overloaded or down | a wait, then the same session carries on; no rung | the node did nothing wrong, and retrying is the load |
+| the provider throttled the node, was overloaded or down, or could not be reached | a wait, then the same session carries on; no rung | the node did nothing wrong, and retrying is the load |
 | the provider rejected the node's credential | nothing is sent; the node is `node-stuck` at the first look | no instrument of a dispatcher's repairs a credential (§9) |
 | the node's context is too long for its model | the restart, first | a continue sends the same context again, and only a restart shortens it |
 

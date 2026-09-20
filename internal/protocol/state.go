@@ -29,13 +29,17 @@ const (
 	StateRefused State = "node-refused"
 )
 
-// The failure classes a turn driver records. Only these four change a move;
+// The failure classes a turn driver records. Only these five change a move;
 // anything else is reported and left to the ladder.
 const (
 	ClassThrottled    = "throttled"
 	ClassCapacity     = "capacity"
 	ClassUnauthorized = "unauthorized"
 	ClassContext      = "context"
+	// ClassUnreachable is a turn that ended because no provider answered at
+	// all: the node's network was down, or the proxy in front of its provider
+	// was gone.
+	ClassUnreachable = "unreachable"
 )
 
 // TurnEnd is one line of the node's own turn log: how a turn ended, written on
@@ -48,8 +52,12 @@ type TurnEnd struct {
 	Reason     string
 }
 
-// Refused says the provider ended the turn for a reason that waiting cures.
-func (e TurnEnd) Refused() bool { return e.Class == ClassThrottled || e.Class == ClassCapacity }
+// Refused says the turn ended for a reason that lies outside the node and that
+// waiting cures: the provider throttled it, was overloaded, or could not be
+// reached.
+func (e TurnEnd) Refused() bool {
+	return e.Class == ClassThrottled || e.Class == ClassCapacity || e.Class == ClassUnreachable
+}
 
 // Facts is everything one probe of one node returns — one round trip, per
 // PROTOCOL.md §6: connect, ask, done.

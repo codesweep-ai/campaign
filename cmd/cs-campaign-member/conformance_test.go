@@ -775,3 +775,30 @@ func TestConformanceWaitTellsTheOrchestratorToLeaveARefusedNodeAlone(t *testing.
 		t.Errorf("a refused node is not a judgment:\n%s", out)
 	}
 }
+
+// A node whose provider cannot be reached at all has done nothing wrong, and
+// the ladder would send its context into a network that is down. Measured on a
+// real agent: five minutes of dropped connections end a turn as "unreachable".
+// It is waited out exactly as a throttle is.
+func TestConformanceAnUnreachableProviderIsWaitedOut(t *testing.T) {
+	dev := &simNode{name: "dev"}
+	w := newSimWorld(t, dev)
+	back := w.now + 2400
+	dev.script = func(now int64) turnOutcome {
+		if now < back {
+			return turnOutcome{runs: 300, class: "unreachable"}
+		}
+		return turnOutcome{runs: 300, reply: true}
+	}
+	final := w.campaign(w.env(), 4*3600)
+
+	if final["dev"] != protocol.StateFree {
+		t.Errorf("a node cut off from its provider for forty minutes must deliver once it is back; it ended %s", final["dev"])
+	}
+	if d := w.current(dev); d.Continues != 0 || d.Restarts != 0 {
+		t.Errorf("a provider that could not be reached cost the node %d continues and %d restarts", d.Continues, d.Restarts)
+	}
+	if len(w.kills) != 0 {
+		t.Errorf("a session was restarted while its provider could not be reached")
+	}
+}

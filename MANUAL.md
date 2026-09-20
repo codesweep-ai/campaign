@@ -290,7 +290,7 @@ observe its own death and you can.
 | `node-replied` | The reply exists and the orchestrator has not accepted it. |
 | `node-stuck` | The ladder is spent, a bound tripped, the machine is gone, or the provider rejected the node's credential. The line says which. |
 | `node-unreachable` | This look failed. An overlay on every state, not a state. |
-| `node-refused` | The node's provider ended its last turn: a throttle, an overload or an outage. An overlay. The harness waits and then carries the same session on, and no rung is spent. |
+| `node-refused` | The node's provider ended its last turn, or could not be reached: a throttle, an overload, an outage or a network that is down. An overlay. The harness waits and then carries the same session on, and no rung is spent. |
 
 A `node-refused` line carries what the provider said and what happens next, as in
 `throttled 40s ago · 3 refused in a row · provider asked for 12s · resuming in 80s, no rung spent`.

@@ -463,8 +463,9 @@ newest message **MUST NOT** be used. *The reason used to reach only the machine 
 turn, which may be another member. A throttle, an outage and a rejected credential then all read
 as a node that stopped. An old reason describes an attempt that has been superseded.*
 
-**R129.** A turn the provider ended because it throttled the node, was overloaded or was down
-**MUST** cost a wait and **MUST NOT** spend a continue or a restart. The wait **MUST** be at least
+**R129.** Some turns end for a reason outside the node: the provider throttled it, was overloaded
+or down, or could not be reached. Such a turn **MUST** cost a wait and **MUST NOT** spend a continue
+or a restart. The wait **MUST** be at least
 what the provider asked for, **MUST** grow while the refusals repeat, and **MUST** be computed from
 the node's record of its turns. When it ends, the same session is carried on with a message that
 spends no rung. A dispatch **MUST NOT** sit behind refusals for longer than `providerWaitSeconds`,
