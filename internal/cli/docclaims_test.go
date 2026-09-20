@@ -308,7 +308,7 @@ func TestTheDocumentedRecordAgeIsOnAStoppedLine(t *testing.T) {
 		Replies: map[string]bool{},
 		Record:  now - 40,
 	}
-	o := protocol.Compute(facts, false, 0, map[string]bool{}, protocol.Policy{}, now)
+	o := protocol.Compute(facts, false, protocol.Blind{}, map[string]bool{}, protocol.Policy{}, now)
 	if o.State != protocol.StateStopped {
 		t.Fatalf("a record that changed 40s ago must not move the state: %+v", o)
 	}

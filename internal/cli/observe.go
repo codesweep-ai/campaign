@@ -98,7 +98,7 @@ func (a *app) observeCampaign(ctx context.Context, campaign *model.Campaign) (ob
 		if member.Role != "orchestrator" {
 			acc = protocol.AcceptedFor(entries, member.Name)
 		}
-		o := protocol.Compute(facts, failed, blindRun, acc, pol, now)
+		o := protocol.Compute(facts, failed, protocol.Blind{Looks: blindRun}, acc, pol, now)
 		obs.Derived = append(obs.Derived, nodeView{
 			Name: member.Name, Role: member.Role,
 			State: string(o.State), Dispatch: o.Dispatch, Detail: o.Detail,

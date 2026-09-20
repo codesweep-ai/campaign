@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -156,24 +157,98 @@ type nodeLook struct {
 	Facts protocol.Facts
 }
 
-func snapshot(env *envState, blind map[string]int) map[string]nodeLook {
+func snapshot(env *envState) map[string]nodeLook {
 	entries := env.logEntries()
 	pol := env.policy()
 	now := clockNow().Unix()
-	out := map[string]nodeLook{}
+	type probed struct {
+		facts  protocol.Facts
+		failed bool
+	}
+	looks, anySeen := map[string]probed{}, false
 	for name, rec := range env.Manifest.Agents {
 		facts, failed := probeAgent(rec)
-		if failed {
-			blind[name]++
-		} else {
-			blind[name] = 0
+		looks[name] = probed{facts, failed}
+		anySeen = anySeen || !failed
+	}
+	mem := loadObserver(env.Home)
+	// What this look adds to a node's unseen time. Capped, so a gap between
+	// two waits — the model thinking — is not counted as time spent looking.
+	step := int64(0)
+	if mem.LastLook > 0 {
+		step = min(now-mem.LastLook, 2*int64(pol.PollSeconds))
+	}
+	mem.LastLook = now
+	// When no node answers, the observer has learned about itself: its own
+	// network, or a host too slow to answer in time. No node moves toward
+	// "machine gone" on such a look. A fleet of one cannot tell the two apart,
+	// and an outage longer than the provider wait bound is counted after all, so
+	// a fabric that is truly gone is still concluded.
+	selfBlind := !anySeen && len(looks) > 1
+	if selfBlind {
+		mem.AllBlind += step
+	} else {
+		mem.AllBlind = 0
+	}
+	count := !selfBlind || mem.AllBlind >= int64(pol.ProviderWaitSeconds)
+	out := map[string]nodeLook{}
+	for name, l := range looks {
+		switch {
+		case !l.failed:
+			delete(mem.Unseen, name)
+		case count:
+			mem.Unseen[name] += max(step, 1)
 		}
 		out[name] = nodeLook{
-			Obs:   protocol.Compute(facts, failed, blind[name], protocol.AcceptedFor(entries, name), pol, now),
-			Facts: facts,
+			Obs:   protocol.Compute(l.facts, l.failed, protocol.Blind{Seconds: mem.Unseen[name]}, protocol.AcceptedFor(entries, name), pol, now),
+			Facts: l.facts,
 		}
 	}
+	mem.save(env.Home)
 	return out
+}
+
+// observerMemory is what this observer knows about its own looks: when it last
+// looked, and how long each node has gone unseen. It is not node state. It is
+// the one thing that cannot be recomputed by looking, because its subject is a
+// machine that does not answer, and it has to outlive a wait call because a
+// wait is chunked to fit a tool call (PROTOCOL.md §8) and a lost machine stays
+// lost for longer than that. Losing the file costs nothing but time: the count
+// starts again.
+type observerMemory struct {
+	LastLook int64            `json:"lastLook"`
+	AllBlind int64            `json:"allBlind,omitempty"`
+	Unseen   map[string]int64 `json:"unseen,omitempty"`
+}
+
+func observerPath(home string) string {
+	return filepath.Join(home, protocol.ChannelsDir, "locks", "observer.json")
+}
+
+func loadObserver(home string) *observerMemory {
+	mem := &observerMemory{}
+	if b, err := os.ReadFile(observerPath(home)); err == nil {
+		_ = json.Unmarshal(b, mem)
+	}
+	if mem.Unseen == nil {
+		mem.Unseen = map[string]int64{}
+	}
+	return mem
+}
+
+func (m *observerMemory) save(home string) {
+	path := observerPath(home)
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return
+	}
+	tmp := path + ".tmp"
+	if os.WriteFile(tmp, b, 0o600) == nil {
+		_ = os.Rename(tmp, path)
+	}
 }
 
 func printSnapshot(obs map[string]nodeLook, names []string) {
@@ -185,9 +260,7 @@ func printSnapshot(obs map[string]nodeLook, names []string) {
 }
 
 func cmdObserve(env *envState) {
-	blind := map[string]int{}
-	obs := snapshot(env, blind)
-	printSnapshot(obs, sortedAgents(env))
+	printSnapshot(snapshot(env), sortedAgents(env))
 }
 
 // sendResult is what one send did: the dispatch it landed in, whether it
@@ -587,11 +660,10 @@ func cmdWait(env *envState, args []string) error {
 	chunk = protocol.WaitChunk(chunk)
 	pol := env.policy()
 	deadline := clockNow().Add(time.Duration(chunk) * time.Second)
-	blind := map[string]int{}
 	names := sortedAgents(env)
 	var acted []string
 	for {
-		obs := snapshot(env, blind)
+		obs := snapshot(env)
 		// Mechanical moves act on THIS snapshot's facts — no re-probe, no
 		// reclassification. Re-probing let a reply landing mid-cycle turn a
 		// continue into a fabricated new dispatch (adversarial review, finding

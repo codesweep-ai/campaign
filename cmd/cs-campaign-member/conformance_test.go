@@ -166,6 +166,10 @@ func (w *simWorld) sshOut(host, command, payload string) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("unscripted host %q", host)
 	}
+	// A round trip takes time. With none, exactly ten looks fit inside the
+	// default wait, which is the default threshold, and the simulation would
+	// conclude what no real observer can.
+	w.advance(1)
 	if w.blind != nil && w.blind(w.now) {
 		return nil, fmt.Errorf("ssh: connect to host %s: network is unreachable", host)
 	}
@@ -285,12 +289,26 @@ func (w *simWorld) campaign(env *envState, horizon int64) map[string]protocol.St
 	final := map[string]protocol.State{}
 	settled := map[string]bool{}
 	for calls := 0; w.now < end && len(settled) < len(w.nodes); calls++ {
-		before := w.now
-		if _, err := captureStdout(w.t, func() error { return cmdWait(env, nil) }); err != nil {
+		before, settledBefore := w.now, len(settled)
+		out, err := captureStdout(w.t, func() error { return cmdWait(env, nil) })
+		if err != nil {
 			w.t.Fatalf("wait: %v", err)
 		}
-		obs := snapshot(env, map[string]int{})
+		// What wait told the orchestrator is what the orchestrator acts on. A
+		// model that is told a node is stuck writes its queue off, and no later
+		// look gives that work back.
+		for name := range env.Manifest.Agents {
+			if strings.Contains(out, name+" is stuck") && !settled[name] {
+				final[name] = protocol.StateStuck
+				settled[name] = true
+				w.looks = append(w.looks, simLook{at: w.now, node: name, state: protocol.StateStuck})
+			}
+		}
+		obs := snapshot(env)
 		for name, look := range obs {
+			if settled[name] {
+				continue
+			}
 			final[name] = look.Obs.State
 			w.looks = append(w.looks, simLook{at: w.now, node: name, state: look.Obs.State})
 			switch look.Obs.State {
@@ -302,11 +320,11 @@ func (w *simWorld) campaign(env *envState, horizon int64) map[string]protocol.St
 				settled[name] = true
 			}
 		}
-		// A wait that returns without the clock moving, while nothing new is
+		// A wait that returns without sleeping once, while nothing new is
 		// settled, is a wait that cannot be waited out. A model pays a turn for
 		// each such call. A handful is a defect; the loop guard keeps the test
 		// from spinning on it.
-		if w.now == before {
+		if w.now-before < int64(protocol.DefaultPolicy().PollSeconds) && len(settled) == settledBefore {
 			w.spins++
 			if w.spins > 50 {
 				break
@@ -489,7 +507,7 @@ func TestConformanceRejectedCredentialStopsAtOnce(t *testing.T) {
 func TestConformanceRungsAreOnlyChargedForTurnsThatStarted(t *testing.T) {
 	dev := &simNode{name: "dev", script: func(now int64) turnOutcome { return turnOutcome{runs: 60} }}
 	w := newSimWorld(t, dev)
-	outage := w.now + 1
+	outage := w.now + 30
 	dev.startFails = func(now int64) bool { return now > outage && now < outage+1800 }
 	// The opening turn stops without replying, so the ladder has work to do.
 	first := true
@@ -511,6 +529,19 @@ func TestConformanceRungsAreOnlyChargedForTurnsThatStarted(t *testing.T) {
 // I6: when the observer loses every node at once it has learned about itself.
 // No machine is gone, and the campaign must come through the outage.
 func TestConformanceObserverOutageCondemnsNoNode(t *testing.T) {
+	for _, chunk := range []string{"", "840"} {
+		t.Run("chunk="+chunk, func(t *testing.T) {
+			if chunk != "" {
+				// The manual's advice for a replay of real work. Ten looks now fit
+				// inside one wait, which is what let the count reach its threshold.
+				t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", chunk)
+			}
+			observerOutage(t)
+		})
+	}
+}
+
+func observerOutage(t *testing.T) {
 	a, b := &simNode{name: "a", script: healthy}, &simNode{name: "b", script: healthy}
 	for _, n := range []*simNode{a, b} {
 		n.script = func(int64) turnOutcome { return turnOutcome{runs: 3600, reply: true} }
@@ -536,7 +567,6 @@ func TestConformanceObserverOutageCondemnsNoNode(t *testing.T) {
 // policy, while its neighbour stays reachable. The conclusion must not depend
 // on how many looks happen to fit inside one wait.
 func TestConformanceLostMachineIsConcluded(t *testing.T) {
-	pending(t, "SAC-041")
 	gone := &simNode{name: "gone", script: func(int64) turnOutcome { return turnOutcome{runs: 9 * 3600, reply: true} }}
 	fine := &simNode{name: "fine", script: func(int64) turnOutcome { return turnOutcome{runs: 9 * 3600, reply: true} }}
 	w := newSimWorld(t, fine, gone)
@@ -593,7 +623,7 @@ func TestConformanceGeneratedWorlds(t *testing.T) {
 			w.checkRungsAreTurns(n)
 		}
 		// I7: two observers with no memory agree.
-		one, two := snapshot(env, map[string]int{}), snapshot(env, map[string]int{})
+		one, two := snapshot(env), snapshot(env)
 		for name := range one {
 			if one[name].Obs.State != two[name].Obs.State {
 				t.Errorf("I7 (seed %d): two looks at %s in the same instant disagree: %s and %s", seed, name, one[name].Obs.State, two[name].Obs.State)

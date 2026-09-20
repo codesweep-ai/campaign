@@ -176,24 +176,42 @@ type Observation struct {
 	NextMove string
 }
 
+// Blind is what an observer knows about its own failed looks at one node. It
+// is the observer's knowledge and never the node's (PROTOCOL.md §5).
+//
+// Looks is a run of consecutive failed probes, which is how the host counts:
+// a burst inside one observe. Seconds is how long the node has gone unseen
+// while the observer could see at least one other node, which is how a
+// dispatcher counts, because its looks are spread over many wait calls and a
+// count cannot outlive the call that made it.
+type Blind struct {
+	Looks   int
+	Seconds int64
+}
+
 // Compute derives one node's state. accepted is the orchestrator's acceptance
-// record — the single input from outside the node. blindRun counts
-// consecutive failed probes and is observer-local; probeFailed marks this
-// look as one of them.
+// record — the single input from outside the node. blind is observer-local;
+// probeFailed marks this look as a failed one.
 //
 // Order is load-bearing (SPEC.md §7.3): reachability precedes everything, and
 // the reply check precedes the liveness check — a node that replied and then
 // exited is node-replied, not node-stopped.
-func Compute(f Facts, probeFailed bool, blindRun int, accepted map[string]bool, pol Policy, now int64) Observation {
+func Compute(f Facts, probeFailed bool, blind Blind, accepted map[string]bool, pol Policy, now int64) Observation {
 	pol = pol.Resolve()
 	if probeFailed {
-		if blindRun >= pol.BlindProbes {
-			return Observation{State: StateStuck, Detail: fmt.Sprintf("unreachable for %d probes — machine gone", blindRun)}
+		goneAfter := int64(pol.BlindProbes) * int64(pol.PollSeconds)
+		switch {
+		case blind.Looks >= pol.BlindProbes:
+			return Observation{State: StateStuck, Detail: fmt.Sprintf("unreachable for %d probes — machine gone", blind.Looks)}
+		case blind.Seconds >= goneAfter:
+			return Observation{State: StateStuck, Detail: fmt.Sprintf("unreachable for %s while other nodes answered — machine gone", shortAge(blind.Seconds))}
+		case blind.Seconds > 0:
+			return Observation{State: StateUnreachable, Detail: fmt.Sprintf("unseen for %s; concluded gone at %s", shortAge(blind.Seconds), shortAge(goneAfter))}
 		}
 		// Honest wording, not a verdict: below the threshold the observer has
 		// learned nothing about the node — only that this look (and the run
 		// before it) failed.
-		return Observation{State: StateUnreachable, Detail: fmt.Sprintf("%d failed look(s); %d consecutive required to conclude the machine is gone", blindRun, pol.BlindProbes)}
+		return Observation{State: StateUnreachable, Detail: fmt.Sprintf("%d failed look(s); %d consecutive required to conclude the machine is gone", blind.Looks, pol.BlindProbes)}
 	}
 	d := Current(f.Msgs)
 	if d == nil {

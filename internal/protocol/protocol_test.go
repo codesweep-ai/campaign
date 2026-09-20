@@ -120,54 +120,54 @@ func TestComputeTable(t *testing.T) {
 	open := msgs("d001.md@9000") // opened 1000s ago... within elapsed (just)
 
 	// probe failures
-	if o := Compute(Facts{}, true, 1, acc, pol, now); o.State != StateUnreachable {
+	if o := Compute(Facts{}, true, Blind{Looks: 1}, acc, pol, now); o.State != StateUnreachable {
 		t.Fatalf("one failed probe is an overlay: %+v", o)
 	} else if !strings.Contains(o.Detail, "3 consecutive required to conclude") {
 		t.Fatalf("below the threshold the detail must never read as a verdict: %q", o.Detail)
 	}
-	if o := Compute(Facts{}, true, 3, acc, pol, now); o.State != StateStuck {
+	if o := Compute(Facts{}, true, Blind{Looks: 3}, acc, pol, now); o.State != StateStuck {
 		t.Fatalf("a run of failed probes is a conclusion: %+v", o)
 	}
 	// no dispatch
-	if o := Compute(Facts{}, false, 0, acc, pol, now); o.State != StateFree {
+	if o := Compute(Facts{}, false, Blind{Looks: 0}, acc, pol, now); o.State != StateFree {
 		t.Fatalf("free: %+v", o)
 	}
 	// reply precedes liveness: replied-then-exited is replied, not stopped
 	f := Facts{Msgs: open, Replies: map[string]bool{"d001": true}}
-	if o := Compute(f, false, 0, acc, pol, now); o.State != StateReplied {
+	if o := Compute(f, false, Blind{Looks: 0}, acc, pol, now); o.State != StateReplied {
 		t.Fatalf("reply check precedes liveness: %+v", o)
 	}
 	// accepted -> free (the one off-node input)
-	if o := Compute(f, false, 0, map[string]bool{"d001": true}, pol, now); o.State != StateFree {
+	if o := Compute(f, false, Blind{Looks: 0}, map[string]bool{"d001": true}, pol, now); o.State != StateFree {
 		t.Fatalf("accepted reads free: %+v", o)
 	}
 	// active
 	f = Facts{Msgs: open, Replies: map[string]bool{}, Drivers: 1}
-	if o := Compute(f, false, 0, acc, pol, now); o.State != StateWorking {
+	if o := Compute(f, false, Blind{Looks: 0}, acc, pol, now); o.State != StateWorking {
 		t.Fatalf("working: %+v", o)
 	}
 	// settling: newest message young, no driver yet -> still working
 	young := msgs("d001.md@9950")
 	f = Facts{Msgs: young, Replies: map[string]bool{}}
-	if o := Compute(f, false, 0, acc, pol, now); o.State != StateWorking {
+	if o := Compute(f, false, Blind{Looks: 0}, acc, pol, now); o.State != StateWorking {
 		t.Fatalf("settling window reads working: %+v", o)
 	}
 	// settling re-arms on every send: old-but-in-bounds dispatch, young continuation
 	rearmed := msgs("d001.md@9200", "d001.001.md@9950")
 	f = Facts{Msgs: rearmed, Replies: map[string]bool{}}
-	if o := Compute(f, false, 0, acc, pol, now); o.State != StateWorking {
+	if o := Compute(f, false, Blind{Looks: 0}, acc, pol, now); o.State != StateWorking {
 		t.Fatalf("settling must key on newest message, not dispatch age: %+v", o)
 	}
 	// stopped, continue next
 	stale := msgs("d001.md@9500")
 	f = Facts{Msgs: stale, Replies: map[string]bool{}}
-	if o := Compute(f, false, 0, acc, pol, now); o.State != StateStopped || o.NextMove != "continue" {
+	if o := Compute(f, false, Blind{Looks: 0}, acc, pol, now); o.State != StateStopped || o.NextMove != "continue" {
 		t.Fatalf("stopped/continue: %+v", o)
 	}
 	// stopped, restart next once continues are spent
 	spent := msgs("d001.md@9500", "d001.001.md@9600", "d001.002.md@9700")
 	f = Facts{Msgs: spent, Replies: map[string]bool{}}
-	if o := Compute(f, false, 0, acc, pol, now); o.State != StateStopped || o.NextMove != "restart" {
+	if o := Compute(f, false, Blind{Looks: 0}, acc, pol, now); o.State != StateStopped || o.NextMove != "restart" {
 		t.Fatalf("stopped/restart: %+v", o)
 	}
 	// A fresh restart re-anchor is a SEND: inside the settling window the node
@@ -176,14 +176,14 @@ func TestComputeTable(t *testing.T) {
 	// (adversarial review, finding 1; the old assertion here blessed the bug).
 	restarted := msgs("d001.md@9500", "d001.001.md@9600", "d001.002.md@9700", "d001.003.restart.md@9990")
 	f = Facts{Msgs: restarted, Replies: map[string]bool{}}
-	if o := Compute(f, false, 0, acc, pol, now); o.State != StateWorking {
+	if o := Compute(f, false, Blind{Looks: 0}, acc, pol, now); o.State != StateWorking {
 		t.Fatalf("a restart inside its settling window must read working: %+v", o)
 	}
 	// Only once the re-anchor has aged past settling with no driver and no
 	// reply is the ladder genuinely exhausted.
 	dead := msgs("d001.md@9500", "d001.001.md@9600", "d001.002.md@9700", "d001.003.restart.md@9850")
 	f = Facts{Msgs: dead, Replies: map[string]bool{}}
-	if o := Compute(f, false, 0, acc, pol, now); o.State != StateStuck {
+	if o := Compute(f, false, Blind{Looks: 0}, acc, pol, now); o.State != StateStuck {
 		t.Fatalf("exhausted ladder past settling is stuck: %+v", o)
 	}
 	// elapsed bound from dispatch open, not reset by continuation
@@ -191,7 +191,7 @@ func TestComputeTable(t *testing.T) {
 	pol2 := pol
 	pol2.ElapsedSeconds = 1500
 	f = Facts{Msgs: ancient, Replies: map[string]bool{}}
-	if o := Compute(f, false, 0, acc, pol2, now); o.State != StateStuck {
+	if o := Compute(f, false, Blind{Looks: 0}, acc, pol2, now); o.State != StateStuck {
 		t.Fatalf("elapsed runs from dispatch open: %+v", o)
 	}
 }
@@ -325,10 +325,10 @@ func TestAcceptanceIsPerNode(t *testing.T) {
 	}
 	pol := Policy{ContinueAttempts: 2, Restarts: 1, ElapsedSeconds: 1000, BlindProbes: 3, SettlingSeconds: 100}
 	f := Facts{Msgs: msgs("d002.md@9000"), Replies: map[string]bool{"d002": true}}
-	if o := Compute(f, false, 0, front, pol, 10000); o.State != StateReplied {
+	if o := Compute(f, false, Blind{Looks: 0}, front, pol, 10000); o.State != StateReplied {
 		t.Fatalf("frontend's reply must surface for judgment, not read pre-accepted: %+v", o)
 	}
-	if o := Compute(f, false, 0, AcceptedFor(entries, "backend"), pol, 10000); o.State != StateFree {
+	if o := Compute(f, false, Blind{Looks: 0}, AcceptedFor(entries, "backend"), pol, 10000); o.State != StateFree {
 		t.Fatalf("backend's accepted reply reads free: %+v", o)
 	}
 	if got := AcceptanceText("backend", "d002"); got != "backend/d002" {
@@ -455,7 +455,7 @@ func TestAStoppedNodeSaysWhenItsRecordLastChanged(t *testing.T) {
 		{now - 5*3600, " · session record changed 5h ago"},
 		{now + 3, " · session record changed 0s ago"}, // the member's clock runs ahead
 	} {
-		o := Compute(Facts{Msgs: open, Replies: map[string]bool{}, Record: tc.record}, false, 0, map[string]bool{}, pol, now)
+		o := Compute(Facts{Msgs: open, Replies: map[string]bool{}, Record: tc.record}, false, Blind{}, map[string]bool{}, pol, now)
 		if o.State != StateStopped || o.NextMove != "continue" {
 			t.Fatalf("record %d moved the state or the move: %+v", tc.record, o)
 		}
@@ -465,7 +465,7 @@ func TestAStoppedNodeSaysWhenItsRecordLastChanged(t *testing.T) {
 	}
 	// It is said of a stopped node only. A working node has a driver, which is
 	// the better evidence, and its line stays as it was.
-	o := Compute(Facts{Msgs: open, Replies: map[string]bool{}, Drivers: 1, Record: now - 1}, false, 0, map[string]bool{}, pol, now)
+	o := Compute(Facts{Msgs: open, Replies: map[string]bool{}, Drivers: 1, Record: now - 1}, false, Blind{}, map[string]bool{}, pol, now)
 	if o.State != StateWorking || strings.Contains(o.Detail, "session record") {
 		t.Errorf("a working node's line must not change: %+v", o)
 	}

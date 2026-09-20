@@ -147,7 +147,7 @@ func (a *app) awaitReply(ctx context.Context, out io.Writer, member model.Member
 		if !failed && facts.Replies[id] {
 			return a.readReply(ctx, member, id)
 		}
-		obs := protocol.Compute(facts, failed, blind, map[string]bool{}, pol, time.Now().Unix())
+		obs := protocol.Compute(facts, failed, protocol.Blind{Looks: blind}, map[string]bool{}, pol, time.Now().Unix())
 		switch obs.State {
 		case protocol.StateReplied:
 			// Some other dispatch's reply — ours is still outstanding, and the
