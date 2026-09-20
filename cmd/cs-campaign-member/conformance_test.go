@@ -724,3 +724,27 @@ func TestConformanceOldToolsKeepTheOldLadder(t *testing.T) {
 			final["dev"], d.Continues, d.Restarts, d.Resumes)
 	}
 }
+
+// A machine starved of CPU misses the probe's bound while it works steadily. A
+// missed bound is silence and not an error, and no amount of it concludes that
+// the machine is gone (SPEC R65).
+func TestConformanceASlowMachineIsNotALostMachine(t *testing.T) {
+	slow := &simNode{name: "slow", script: func(int64) turnOutcome { return turnOutcome{runs: 2 * 3600, reply: true} }}
+	fine := &simNode{name: "fine", script: func(int64) turnOutcome { return turnOutcome{runs: 2 * 3600, reply: true} }}
+	w := newSimWorld(t, fine, slow)
+	start := w.now
+	inner := w.sshOut
+	sshOut = func(host, command, payload string) ([]byte, error) {
+		if host == slow.host && w.now > start+60 && w.now < start+2*3600 {
+			w.advance(int64(memberCmdBound / time.Second))
+			return nil, fmt.Errorf("gave up after %s: %w", memberCmdBound, errMissedBound)
+		}
+		return inner(host, command, payload)
+	}
+	final := w.campaign(w.env(), 4*3600)
+	for name, s := range final {
+		if s != protocol.StateFree {
+			t.Errorf("%s ended %s; it was slow to answer for two hours and never gone", name, s)
+		}
+	}
+}

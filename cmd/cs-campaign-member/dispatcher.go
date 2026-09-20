@@ -71,8 +71,17 @@ var sshOut = func(host, command, payload string) ([]byte, error) {
 		cmd.Stdin = strings.NewReader(payload)
 	}
 	cmd.WaitDelay = 2 * time.Second
-	return cmd.Output()
+	out, err := cmd.Output()
+	if ctx.Err() != nil {
+		return out, fmt.Errorf("gave up after %s: %w", memberCmdBound, errMissedBound)
+	}
+	return out, err
 }
+
+// errMissedBound marks a round trip that ran out of time rather than failed. An
+// error comes back from a machine that answered; a missed bound is silence,
+// which a machine under load produces as readily as one that is gone (R65).
+var errMissedBound = errors.New("no answer within the bound")
 
 // gitCmd runs one git command against a teammate's machine, bounded, with the
 // ssh options git does not set for itself.
@@ -108,11 +117,17 @@ var (
 // node, or a probe failure — which is a fact about the observation, not the
 // node.
 func probeAgent(rec protocol.AgentRecord) (protocol.Facts, bool) {
+	facts, failed, _ := probeAgentBound(rec)
+	return facts, failed
+}
+
+// probeAgentBound also says whether a failed probe merely ran out of time.
+func probeAgentBound(rec protocol.AgentRecord) (facts protocol.Facts, failed, missedBound bool) {
 	out, err := sshOut(rec.Sandbox, protocol.ProbeScript(rec.CLI), "")
 	if err != nil {
-		return protocol.Facts{}, true
+		return protocol.Facts{}, true, errors.Is(err, errMissedBound)
 	}
-	return protocol.ParseProbe(string(out)), false
+	return protocol.ParseProbe(string(out)), false, false
 }
 
 func (e *envState) logEntries() []protocol.Entry {
@@ -162,13 +177,13 @@ func snapshot(env *envState) map[string]nodeLook {
 	pol := env.policy()
 	now := clockNow().Unix()
 	type probed struct {
-		facts  protocol.Facts
-		failed bool
+		facts          protocol.Facts
+		failed, missed bool
 	}
 	looks, anySeen := map[string]probed{}, false
 	for name, rec := range env.Manifest.Agents {
-		facts, failed := probeAgent(rec)
-		looks[name] = probed{facts, failed}
+		facts, failed, missed := probeAgentBound(rec)
+		looks[name] = probed{facts, failed, missed}
 		anySeen = anySeen || !failed
 	}
 	mem := loadObserver(env.Home)
@@ -196,6 +211,9 @@ func snapshot(env *envState) map[string]nodeLook {
 		switch {
 		case !l.failed:
 			delete(mem.Unseen, name)
+		case l.missed:
+			// Silence within the bound is what a machine under load produces.
+			// It moves no node toward "gone" (R65).
 		case count:
 			mem.Unseen[name] += max(step, 1)
 		}
