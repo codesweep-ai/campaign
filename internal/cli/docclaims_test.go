@@ -246,3 +246,35 @@ func TestTheDocumentedWaitOverrideCanBeRaised(t *testing.T) {
 		t.Errorf("an override must beat a smaller --for, got %d", got)
 	}
 }
+
+// MANUAL.md tells an operator to read `destroy --dry-run` before the one
+// command that cannot be undone, and PLAYBOOK.md puts it in the harvest order.
+// The operator acts on two promises: that the flag exists, and that a preview
+// removes nothing. The second is held by
+// TestDestroyDryRunNamesWhatItWouldRemoveAndRemovesNothing. This holds the first,
+// and that the documents still say it.
+func TestTheDocumentedDestroyPreviewExists(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for doc, want := range map[string]string{
+		"MANUAL.md":   "cs-campaign destroy <campaign> [--archive] [--archive-output DIR] [--force] [--dry-run]",
+		"PLAYBOOK.md": "cs-campaign destroy acme --dry-run",
+	} {
+		body, err := os.ReadFile(filepath.Join(root, doc))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), want) {
+			t.Errorf("%s no longer carries %q", doc, want)
+		}
+	}
+	flag := (&app{}).destroyCmd().Flags().Lookup("dry-run")
+	if flag == nil {
+		t.Fatal("destroy has no --dry-run, which MANUAL.md and PLAYBOOK.md tell an operator to run first")
+	}
+	if flag.Usage != "resolve only; destroy nothing" {
+		t.Errorf("destroy --dry-run describes itself as %q", flag.Usage)
+	}
+}

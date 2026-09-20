@@ -26,7 +26,7 @@ cs-campaign fetch <campaign>[/member]
 cs-campaign transcript <campaign>[/member]
 cs-campaign archive <campaign> [--output DIR]
 cs-campaign audit [<campaign>] [--archive DIR]
-cs-campaign destroy <campaign> [--archive] [--archive-output DIR] [--force]
+cs-campaign destroy <campaign> [--archive] [--archive-output DIR] [--force] [--dry-run]
 cs-campaign ls [--json]
 cs-campaign doctor [<campaign>]
 cs-campaign playbook | manual | version
@@ -409,7 +409,7 @@ ok  audit: every member's declared CLI matches its evidence; no foreign-family s
 ### destroy
 
 ```sh
-cs-campaign destroy <campaign> [--archive] [--archive-output DIR] [--force]
+cs-campaign destroy <campaign> [--archive] [--archive-output DIR] [--force] [--dry-run]
 ```
 
 It tears down every member, then reclaims the group's network, keys and gateway. Teardown is re-runnable
@@ -417,6 +417,35 @@ and tolerates a resource that is already gone.
 
 With `--archive`, the archive runs first and an incomplete collection stops the destroy. Without
 `--force`, a member that refuses to go leaves the campaign state in place rather than orphaning it.
+
+`destroy` cannot be undone, and a member's machine is the only copy of whatever was never fetched
+or archived. So read what it will do first, with `--dry-run`. The preview takes no lock, removes
+nothing and archives nothing, and it accepts the other flags so that it can say what they would do.
+
+```console
+$ cs-campaign destroy acme --dry-run
+destroy acme --dry-run: nothing is removed.
+
+group    acme-1f0c (network cs-sandbox-acme-1f0c)
+members  it would destroy these, last member first:
+  frontend      frontend-1f0c.acme-1f0c      present, running
+  orchestrator  orchestrator-1f0c.acme-1f0c  present, running
+absent   in the record with no live machine, so destroy skips these:
+  backend       backend-1f0c.acme-1f0c
+then     it reclaims the group's network, keys and gateway, and deletes the campaign record
+archive  --archive is not set. Whatever was never fetched or archived goes with the machines.
+force    --force is not set. cs-sandbox then only reports each member and removes nothing,
+         and the campaign record is kept.
+keeps    4 other sandbox(es) on this host are outside the group, and destroy does not touch them
+         6 record(s) of the members' agent sessions on this host, under ~/.cs-codex-remote-sessions
+         archives, and branches already fetched to this host
+```
+
+The preview names three sets of machines, because `destroy` treats them differently. A member that
+is present is destroyed. A member with no live machine is skipped. A machine that is in the group
+and not in the record is listed as `stray`. `destroy` leaves a stray machine alone, and the group
+cannot be reclaimed while it stays, so the campaign record is kept. The `keeps` lines say what
+outlives the campaign on this host.
 
 ### ls
 
@@ -643,6 +672,7 @@ Severity reflects the kind of problem.
 | `--archive` | `destroy` | Archive all member evidence before destruction. |
 | `--archive-output DIR` | `destroy` | Archive destination. Requires `--archive`. |
 | `-f`, `--force` | `destroy` | Force member destruction. |
+| `--dry-run` | `destroy` | Resolve only; destroy nothing. Prints what would be removed and what would stay. |
 | `--archive DIR` | `audit` | Audit a preserved archive instead of live machines. |
 | `-o PATH` | `cs-dispatch-viewer` | Where the page is written. |
 

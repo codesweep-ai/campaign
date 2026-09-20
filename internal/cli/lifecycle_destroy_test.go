@@ -124,3 +124,121 @@ exit 0`)
 		t.Fatal("campaign state should be deleted once members and group are gone")
 	}
 }
+
+// `destroy --dry-run` answers the question an operator has before the one
+// command that cannot be undone: which machines, exactly, and nothing else?
+// It must name the three sets destroy treats differently, and it must remove
+// nothing, archive nothing and keep the record, whatever other flags it is
+// given. A preview that acted would be worse than none.
+func TestDestroyDryRunNamesWhatItWouldRemoveAndRemovesNothing(t *testing.T) {
+	sandboxDir := installFakeTool(t, "fake-sandbox", `
+printf '%s\n' "$*" >> "$CALLS"
+case "$1" in
+  ls) cat "$LS_FILE" ;;
+esac
+exit 0`)
+	lsFile := filepath.Join(sandboxDir, "ls.json")
+	if err := os.WriteFile(lsFile, []byte(`[
+{"ref":"orch.acme-grp","name":"orch","group":"acme-grp","status":"running"},
+{"ref":"dev.acme-grp","name":"dev","group":"acme-grp","status":"stopped"},
+{"ref":"left.acme-grp","name":"left","group":"acme-grp","status":"running"},
+{"ref":"theirs.other-grp","name":"theirs","group":"other-grp","status":"running"}]`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	calls := filepath.Join(sandboxDir, "calls")
+	t.Setenv("LS_FILE", lsFile)
+	t.Setenv("CALLS", calls)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	// What the remote tools keep on the host for a member, which destroy leaves.
+	sessions := filepath.Join(home, ".cs-codex-remote-sessions")
+	if err := os.MkdirAll(sessions, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"acme-1-qa", "acme-1-qa.token", "other-9-qa"} {
+		if err := os.WriteFile(filepath.Join(sessions, name), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stateDir := t.TempDir()
+	a := &app{store: store.Store{Dir: stateDir}, sandbox: sandboxCLI{Bin: filepath.Join(sandboxDir, "fake-sandbox")}}
+	campaign := &model.Campaign{Name: "acme", Group: "acme-grp", Network: "cs-sandbox-acme-grp", Members: []model.Member{
+		{Name: "orchestrator", Role: "orchestrator", CLI: "codex", Sandbox: "orch", Ref: "orch.acme-grp", Session: model.Session{Name: "acme-1-orchestrator"}},
+		{Name: "developer", Role: "agent", CLI: "codex", Sandbox: "dev", Ref: "dev.acme-grp", Session: model.Session{Name: "acme-1-developer"}},
+		{Name: "qa", Role: "agent", CLI: "codex", Sandbox: "qa", Ref: "qa.acme-grp", Session: model.Session{Name: "acme-1-qa"}},
+	}}
+	if err := a.store.Save(campaign); err != nil {
+		t.Fatal(err)
+	}
+	run := func(args ...string) (string, error) {
+		cmd := a.destroyCmd()
+		var out strings.Builder
+		cmd.SetOut(&out)
+		cmd.SetErr(&out)
+		cmd.SetArgs(args)
+		err := cmd.Execute()
+		return out.String(), err
+	}
+
+	archiveRoot := filepath.Join(t.TempDir(), "final")
+	out, err := run("acme", "--dry-run", "--force", "--archive", "--archive-output", archiveRoot)
+	if err != nil {
+		t.Fatalf("a preview must succeed: %v\n%s", err, out)
+	}
+	for _, want := range []string{
+		"nothing is removed",
+		"acme-grp",
+		"orch.acme-grp  present, running",
+		"dev.acme-grp   present, stopped",
+		"absent",
+		"qa.acme-grp",
+		"stray",
+		"left.acme-grp",
+		"cannot reclaim the group while a stray machine stays",
+		"into " + archiveRoot,
+		"1 other sandbox(es)",
+		"2 record(s) of the members' agent sessions on this host, under ~/.cs-codex-remote-sessions",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the preview does not say %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "theirs.other-grp") {
+		t.Errorf("another group's sandbox is not this campaign's to list by name:\n%s", out)
+	}
+	// Last member first, as destroy takes them.
+	if d, o := strings.Index(out, "dev.acme-grp"), strings.Index(out, "orch.acme-grp"); d < 0 || o < 0 || d > o {
+		t.Errorf("members must be listed in the order destroy takes them, last first:\n%s", out)
+	}
+
+	made, err := os.ReadFile(calls)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for call := range strings.SplitSeq(strings.TrimSpace(string(made)), "\n") {
+		if !strings.HasPrefix(call, "ls") {
+			t.Errorf("a preview may only list, and it ran `cs-sandbox %s`", call)
+		}
+	}
+	if _, err := os.Stat(archiveRoot); !os.IsNotExist(err) {
+		t.Errorf("a preview must not archive, and %s exists", archiveRoot)
+	}
+	if _, err := a.store.Load("acme"); err != nil {
+		t.Errorf("a preview must keep the campaign record: %v", err)
+	}
+
+	// The flag rules are destroy's own, so a preview refuses what destroy refuses.
+	if _, err := run("acme", "--dry-run", "--archive-output", archiveRoot); err == nil {
+		t.Error("--archive-output without --archive must be refused in a preview too")
+	}
+	// Without --force and --archive the preview says what that means.
+	out, err = run("acme", "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"--force is not set", "--archive is not set"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the preview does not say %q:\n%s", want, out)
+		}
+	}
+}

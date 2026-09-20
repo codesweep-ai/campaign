@@ -608,8 +608,12 @@ The microVMs are the only copy of a member's work until you harvest it. Order ma
 cs-campaign fetch acme                     # every member's branch into the host repository
 cs-campaign archive acme                   # evidence, with the team audit in the same pass
 cs-dispatch-viewer archives/acme-<stamp>   # one self-contained HTML page
+cs-campaign destroy acme --dry-run         # read which machines will go, and what stays
 cs-campaign destroy acme                   # teardown, and reclaim the group
 ```
+
+Read the preview before the real command, above all on a host that runs more than one campaign.
+It names every machine `destroy` will remove, and nothing outside the campaign's group is on it.
 
 **Archive before destroy, always.** The audit runs inside the archive while the sandboxes still
 exist, so it can check that each member's declared CLI is the one that did the work. After teardown
