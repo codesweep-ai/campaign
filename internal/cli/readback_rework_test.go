@@ -38,7 +38,8 @@ S="` + state + `"
 cmd=""; for a in "$@"; do cmd="$a"; done
 case "$cmd" in
   *DRIVERS*)
-    for f in "$S"/input/*.md; do [ -e "$f" ] && echo "MSG $(stat -c %Y "$f") $(basename "$f")"; done
+    # stat -c is GNU and stat -f is BSD: a macOS runner has only the second.
+    for f in "$S"/input/*.md; do [ -e "$f" ] && echo "MSG $(stat -c %Y "$f" 2>/dev/null || stat -f %m "$f") $(basename "$f")"; done
     for f in "$S"/replies/*.json; do [ -e "$f" ] && echo "REPLY $(basename "$f" .json)"; done
     echo "DRIVERS 0"; echo "AGENT idle" ;;
   *"base64 -d"*)
