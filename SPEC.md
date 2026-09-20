@@ -433,9 +433,11 @@ the work.*
 **R63.** A node that stopped without replying **MUST** get the ladder rather than a failure
 verdict.
 
-**R64.** Liveness **MUST** be measured from the node's own process table, as the presence of its
-family's turn driver. *That is the right measure for silent work: the process is there whether or
-not anything is being emitted.*
+**R64.** Liveness **MUST** be measured from the node's own machine. A node is active when its
+family's turn driver is in the process table, or when the agent answers that it is in a turn. *Both are right
+for silent work, because neither depends on anything being emitted. A driver wraps only a turn the
+host started, and an agent CLI can start one of its own, so the driver alone reads a working node as
+stopped. A node whose tools cannot answer is measured by the driver alone, as before.*
 
 A `node-stopped` observation **SHOULD** also report when the node's own session record last
 changed. That report **MUST NOT** decide a state or a ladder move. *A driver wraps only a turn the
@@ -454,6 +456,50 @@ machine that answered, and a run of them is evidence it has died. A missed bound
 machine under load produces as readily as a machine that is gone. A node starved of CPU misses the
 bound while working steadily, and calling it gone is the same mistake as calling a slow node
 stalled.*
+
+**R128.** Why a node's last turn ended **MUST** be read from the node's own machine, in the same
+look as every other fact, and **MUST** be shown beside the state. A reason older than the node's
+newest message **MUST NOT** be used. *The reason used to reach only the machine that launched the
+turn, which may be another member. A throttle, an outage and a rejected credential then all read
+as a node that stopped. An old reason describes an attempt that has been superseded.*
+
+**R129.** A turn the provider ended because it throttled the node, was overloaded or was down
+**MUST** cost a wait and **MUST NOT** spend a continue or a restart. The wait **MUST** be at least
+what the provider asked for, **MUST** grow while the refusals repeat, and **MUST** be computed from
+the node's record of its turns. When it ends, the same session is carried on with a message that
+spends no rung. A dispatch **MUST NOT** sit behind refusals for longer than `providerWaitSeconds`,
+after which the node is `node-stuck` and the refusal is named. *Both rungs of the ladder send the
+node's context again, and that is the load the provider refused. Observed: healthy members of a
+throttled fleet were continued within seconds, restarted within minutes, and written off.*
+
+**R130.** Nodes whose waits end together **MUST NOT** be carried on together. In one look the
+dispatcher's `wait` **MUST** carry on at most one refused node. *Their combined return is what was refused.*
+
+**R131.** A credential the provider rejected **MUST** be a judgment on the first look that sees it,
+and nothing **MUST** be sent to the node meanwhile. At `create`, the readback **MUST** fail at once
+and name the credential. *No continue or restart repairs a credential. Before this, a rejected key
+at create read as a member that would not answer its briefing.*
+
+**R132.** A rung **MUST** be charged only for a turn that ran. A continue or a restart whose message
+was delivered and whose turn never launched spends nothing, and the dispatch is carried on with a
+message that spends no rung. Launching a turn **MUST** be bounded, as every other route to a
+member's machine is. *Launching crosses the network and starts a program, so it fails under the
+conditions recovery exists for. Counted from messages alone, three failed launches left a healthy
+node stuck with its ladder spent and no turn run.*
+
+**R133.** The dispatcher **MUST** conclude that a machine is gone from how long the node has gone
+unseen while another node answered, and **MUST** keep that across `wait` calls. A look in which no
+node answered **MUST NOT** count, and neither may a probe that ran out of time (R65). *A count of
+looks cannot outlive the call that made it, and at the defaults fewer looks fit in one call than
+the threshold asks for, so a lost machine was never concluded. With a longer chunk a network fault
+of the observer's own condemned every node at once. What the observer keeps is knowledge about its
+own looking. It is not node state, and R55 is untouched: losing it costs only time.*
+
+**R134.** A `node-stuck` judgment **MUST** end a `wait` once. The `wait` records in the
+orchestrator's log that it reported the node, and a later `wait` names the node and does not return
+for it. *This is R125's fault again, in the other state. A stuck node never clears, so every later
+`wait` returned on its first look and the orchestrator could not block for the rest of the
+campaign.*
 
 **R125.** The dispatcher's blocking `wait` **MUST** return only on a judgment. A judgment is a
 **world event** that needs a decision no code can make: `node-replied` and `node-stuck`, those two
@@ -778,6 +824,7 @@ Files in a node's input channel, under `~/.local/share/cs-campaign/input/`:
 | `d007.md` | the opening message of dispatch `d007` |
 | `d007.001.md` | its first continuation |
 | `d007.002.restart.md` | a restart re-anchor, counted as a restart rather than a continue |
+| `d007.003.resume.md` | a continuation that spends no rung: the provider refused the last turn, or the turn never ran |
 | `m1.md`, `m1.001.md` | the mission and its continuations |
 
 IDs run `d001` to `d999` per node, so lexical order is chronological order in every listing. The
@@ -822,7 +869,9 @@ so a torn write must never be observable.
 {"at":"2026-08-19T17:02:11Z","kind":"plan","text":"backend takes the parser; qa takes the fixtures."}
 ```
 
-`kind` is `plan`, `accepted` or `assessment`, and nothing else. A later entry of a kind supersedes
+`kind` is `plan`, `accepted`, `assessment` or `reported`, and nothing else. A `reported` entry is
+written by `wait` and never by hand. Its text is `<node>/<dispatch>`, and it says the orchestrator
+has been told that node is stuck (R134). A later entry of a kind supersedes
 an earlier one. There is no rewrite path.
 
 ### 5.7 The archive
@@ -894,9 +943,10 @@ member document and in the orchestrator's manifest, and every node is computed a
 | `continueAttempts` | 2 | Continues before escalating to a restart. |
 | `restarts` | 1 | Restarts before a node is unrecoverable. |
 | `elapsedSeconds` | the campaign deadline, else 86400 | Bound on recovering one dispatch, from its opening. |
-| `blindProbes` | 10 | Consecutive failed probes before a machine is called gone. |
+| `blindProbes` | 10 | Failed probes before a machine is called gone. The host counts them in one burst. The orchestrator's `wait` counts `blindProbes` times `pollSeconds` of unseen time, across calls (R133). |
 | `pollSeconds` | 30 | How often the orchestrator's `wait` looks. |
 | `settlingSeconds` | 300 | Grace after any send before a driverless node counts as stopped. |
+| `providerWaitSeconds` | 3600 | How long one dispatch may sit behind a provider's refusals, or behind launches that fail, before the node is `node-stuck`. No rung is spent meanwhile (R129, R132). |
 | `stallSeconds` | 180 for agents, 1800 for the orchestrator | The turn driver's own idle threshold, delivered at create through the sandbox environment. |
 
 `stallSeconds` is the one number resolved per seat, because it is the one number that is not the
@@ -1034,6 +1084,25 @@ Each tier answers a question the one below it cannot, and each costs more than t
 A build tag adds files to a package rather than hiding the rest, so every tier above unit also
 passes `-run` to select its own tests. Without it `make test-smoke` would re-run the unit tier
 under a timeout sized for booting microVMs.
+
+#### The conformance suite
+
+Part of the unit tier, in `cmd/cs-campaign-member/conformance_test.go`. It runs the shipped
+snapshot, state computation and `wait` loop against a simulated fleet on a scripted clock.
+Hours of backoff take milliseconds, and no machine or provider is involved. A scenario is a
+timeline. One scenario has a provider that throttles a node for forty minutes. Another has a credential that the provider rejects. An observer loses its
+network, a launcher fails, or a machine goes quiet under load.
+
+Each scenario is judged by an invariant of the protocol and never by what the code prints. *A
+provider's refusal spends no rung. No node is resumed inside a wait its provider asked for. A
+fleet does not return in the same second. A rung is a turn. A look that saw nothing condemns
+nobody. A judgment ends a wait once.* The invariants are phrased with the protocol package's public
+functions, so they hold for any implementation of R128 to R134 and outlive the one that first
+passed them. Two details of the simulation are load-bearing. A round trip costs a second, because
+with none exactly ten looks fit in a default wait and hide R133's fault. The simulated orchestrator
+acts on what `wait` tells it, because a model does.
+
+A new recovery rule **SHOULD** arrive with its scenario, written first and seen to fail.
 
 #### The smoke tier
 

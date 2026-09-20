@@ -167,10 +167,31 @@ A dispatcher has two instruments, ordered by cost:
 | **continue** | cheap; the node keeps its context | a node that merely stopped |
 | **restart** | the node loses its context and re-anchors from its brief | a wedged session |
 
-**The ladder replaces diagnosis.** `node-stopped` is ambiguous between a node that stopped and
-a session that wedged, and those are not distinguishable by observation. A dispatcher does not
-identify the cause: it applies the cheaper remedy, then the dearer one, and learns which
-failure it had from whichever worked.
+**The ladder replaces diagnosis, where diagnosis is impossible.** `node-stopped` is ambiguous
+between a node that stopped and a session that wedged, and those are not distinguishable by
+observation. A dispatcher does not identify the cause: it applies the cheaper remedy, then the
+dearer one, and learns which failure it had from whichever worked.
+
+**A cause that can be looked up is not diagnosed either. It is read.** A node's machine records
+how each of its turns ended (§6). When that record says the node's provider ended the turn, the
+ladder is the wrong answer. Both of its instruments send the node's context again, and that is
+the load the provider refused. Three endings are read and not laddered:
+
+| The turn ended because | What it costs | Why |
+|---|---|---|
+| the provider throttled the node, or was overloaded or down | a wait, then the same session carries on; no rung | the node did nothing wrong, and retrying is the load |
+| the provider rejected the node's credential | nothing is sent; the node is `node-stuck` at the first look | no instrument of a dispatcher's repairs a credential (§9) |
+| the node's context is too long for its model | the restart, first | a continue sends the same context again, and only a restart shortens it |
+
+Every other ending, and every ending the node's machine cannot explain, gets the ladder as
+before. **A reason older than the newest message is never used**: it describes an attempt that
+has been superseded, and must not be held against the next one.
+
+**A rung is a turn.** A continue or a restart whose message arrived and whose turn never ran has
+spent nothing, and the dispatch is carried on without charge. Launching a turn crosses the
+network and starts a program, so it fails under exactly the conditions recovery exists for. A
+ladder that counted messages could be spent by a bad connection, against a node that was never
+given a turn.
 
 **The budget is bounded by both attempts and elapsed time, whichever trips first.** The
 elapsed bound runs from the moment the dispatch opened; a continuation does not reset it.
@@ -229,13 +250,29 @@ stateDiagram-v2
     replied --> [*] : campaign ends — the orchestrator's terminal
 ```
 
+**`node-refused` is deliberately not a state either.** It is the second overlay. While a node's
+provider is refusing its turns, the dispatcher has learned something about the node's
+surroundings and nothing about the node. A failed probe is a fact about the observation in just
+the same way. The move is to wait for at least as long as the provider asked, for longer
+each time it refuses again, and then to carry the same session on. Nodes refused together are
+not brought back together, because their combined return is what was refused. The wait is
+computed from the node's own record of its turns, never kept by the dispatcher. It is bounded by
+an operator's number, and the elapsed bound runs throughout, so a provider that never relents
+ends in `node-stuck` with the refusal named.
+
 **`node-unreachable` is deliberately not a state.** When a probe fails, the observer has learned
 nothing, which is a fact about the observation rather than about the node. Drawing it as a state
 invites treating "I cannot see it" as "it is idle," which is the direction that gets live
 work destroyed. It overlays every state and resolves when the probe next succeeds.
 
 **Sustained unreachability is a conclusion: the machine is gone.** One failed probe carries no
-information; a run of them does. No recovery instrument reaches a machine that cannot be
+information; a run of them does. **A look in which no node answered is a fact about the
+observer.** Its own network failed, or its own machine was too slow, and no node moves toward
+the conclusion on such a look. The same holds for a probe that ran out of time, which is what a
+machine under load produces. How long a node has gone unseen is the one thing an observer may
+remember between looks. Its subject is a machine that does not answer, so it cannot be looked
+up. A wait is also chunked (§8) into calls far shorter than a lost machine stays lost. It is the
+observer's knowledge about its own looking, never node state, and losing it costs only time. No recovery instrument reaches a machine that cannot be
 reached at all, so this is the §9 boundary rather than another rung of the ladder. The
 threshold is policy, like the recovery budget, making these the only two node-level policy
 inputs that rest on an operator's number rather than on observation alone.
@@ -258,13 +295,14 @@ stored.** Look, act, discard, the way you run `ps`.
 |---|---|
 | what was it asked, and when? | the dispatch in its input channel |
 | did it come back? | whether its reply exists |
-| is it alive, and for how long? | its process table |
+| is it alive, and for how long? | its process table, and the agent's own word on whether it is in a turn |
+| how did its last turn end? | the node's own record of its turns |
 | has the orchestrator accepted its reply? | **the orchestrator's acceptance record** (§7) |
 
-The first three live inside the node's own machine. A node cannot reach out, so nothing it
+All but the last live inside the node's own machine. A node cannot reach out, so nothing it
 produces ever travels on its own. Computing a state means: connect, ask, done. One round trip.
 
-**The fourth is the single exception.** Every other transition leaves physical evidence: a
+**Acceptance is the single exception.** Every other transition leaves physical evidence: a
 dispatch appears, a reply appears, a process vanishes. `accept` leaves nothing, because it is
 not an action on the node. It is the orchestrator judging the work good enough, and afterwards
 the node's machine is byte-identical to before. So `node-free` and `node-replied`
@@ -303,10 +341,17 @@ Only campaign judgment, the class of thing that exists nowhere but in its own he
 | **plan** | work not yet dispatched, and its ordering |
 | **acceptances** | which dispatches it has judged sufficient |
 | **assessment** | how the mission is going, what is unmet, what is at risk |
+| **reported** | which stuck nodes its `wait` has already told it about |
 
 > **Node state is derived and never recorded. Campaign state is recorded and never derived.**
 
-It records nothing about liveness or dispatch state. The branch is the work itself, and it is
+**A judgment ends a wait once.** `node-stuck` never clears, and nothing on the node's machine
+records that the orchestrator was told. Without the `reported` entry every later wait would
+return at once, and the orchestrator could never block again (§8). The entry is written by the
+wait itself when it returns the judgment. It belongs in the log for the reason everything else
+does: an orchestrator that lost its memory reads there what it already knows.
+
+It records nothing else about liveness or dispatch state. The branch is the work itself, and it is
 what the orchestrator reads *before* an acceptance: input to the judgment, never part of node
 state.
 
@@ -401,9 +446,11 @@ highest-value line an operator can see, and a single merged status column destro
 **During a campaign, the host observes; it does not act.** Every repair inside a campaign belongs to the
 orchestrator, and a campaign that needs the host to keep it running has an orchestrator
 defect (§8). The boundary sits at the machines themselves: a node whose machine is gone
-cannot be restarted by an orchestrator, which has no power to create or boot one. That
-repair is infrastructure work by a human, outside this protocol rather than an exception
-within it.
+cannot be restarted by an orchestrator, which has no power to create or boot one. A credential
+the provider rejects is on the same side of that boundary, because an orchestrator cannot issue
+or renew one. Both repairs are infrastructure work by a human, outside this protocol rather
+than an exception within it. Both go into an assessment at once (§7), and both end a campaign
+that cannot go on without the node as `campaign-blocked`.
 
 ## 10. Left to the implementation
 
@@ -412,7 +459,12 @@ Deliberately unspecified, because the protocol does not depend on the answers:
 - **The values of the continue budget**: how many attempts, over how long. Policy, and it
   will differ by campaign and by node.
 - **How a node is observed to be active.** §6 says the state is computed from the node's own
-  machine; which signal proves liveness is a property of the runtime, not of the protocol.
+  machine; which signal proves liveness is a property of the runtime, not of the protocol. A
+  process that wraps a turn cannot see a turn the agent started by itself, so the runtime should
+  also be able to ask the agent.
+- **How long to wait on a refusal, and how the return of a refused fleet is spread.** Only the
+  properties are fixed: at least what the provider asked, longer on each repeat, not together,
+  and bounded.
 - **How the log and the reply are represented on disk.** Any format works that lets a reader
   check for a reply's existence cheaply and append to the log without rewriting it.
 

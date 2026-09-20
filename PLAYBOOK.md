@@ -526,11 +526,12 @@ ask and is never a stale reading from an hour ago.
 | State | What it means | What you do |
 |---|---|---|
 | `node-free` | No dispatch is open, or the open one was replied to and accepted. | Nothing. |
-| `node-working` | A dispatch is open and the turn driver is alive. | Nothing. |
-| `node-stopped` | A dispatch is open, no driver is alive, the ladder has a move left. | Nothing. The ladder runs. For the orchestrator, read the record age on the line before you think of a nudge. |
+| `node-working` | A dispatch is open, and the turn driver is alive or the agent says it is in a turn. | Nothing. |
+| `node-stopped` | A dispatch is open, the node is not in a turn, the ladder has a move left. | Nothing. The ladder runs. For the orchestrator, read the record age on the line before you think of a nudge. |
 | `node-replied` | The reply exists and the orchestrator has not accepted it. | Nothing. Judging it is the orchestrator's job. |
-| `node-stuck` | The ladder is spent, the bound tripped, or the machine is gone. | Read the transcript, and decide. |
+| `node-stuck` | The ladder is spent, a bound tripped, the machine is gone, or the credential was rejected. | Read the line, which says which. A rejected credential is yours to renew. Otherwise read the transcript, and decide. |
 | `node-unreachable` | This look failed. It overlays a state rather than replacing one. | Look again before concluding anything. |
+| `node-refused` | The provider throttled the member, or was overloaded or down. The harness is waiting and spends no rung. | Nothing, unless every member shows it for a long time. Then the key is over its limit or the provider is down, and fewer members on the key is the lever. |
 
 The right answer is usually to do nothing. Recovery is mechanical and already running: templated
 continues, then a restart re-anchor, bounded by the policy numbers you set.

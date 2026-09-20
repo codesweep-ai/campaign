@@ -748,3 +748,30 @@ func TestConformanceASlowMachineIsNotALostMachine(t *testing.T) {
 		}
 	}
 }
+
+// The orchestrator is a model, and what wait prints is all it knows. While a
+// node is refused, wait must say that it is holding and that the node's work is
+// not to be given away. Reassigning a throttled member's job is what cost a
+// campaign its hold-out.
+func TestConformanceWaitTellsTheOrchestratorToLeaveARefusedNodeAlone(t *testing.T) {
+	dev := &simNode{name: "dev"}
+	w := newSimWorld(t, dev)
+	dev.script = throttledUntil(w.now+3600, 600)
+	env := w.env()
+	if _, err := sendBody(env, "dev", "do the work"); err != nil {
+		t.Fatal(err)
+	}
+	w.advance(200) // the opening turn is refused at +120s, and the provider asked for ten minutes
+	out, err := captureStdout(t, func() error { return cmdWait(env, nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"node-refused", "throttled", "do not reassign", "no rung spent"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("wait's report on a refused node is missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "judgment is due") {
+		t.Errorf("a refused node is not a judgment:\n%s", out)
+	}
+}

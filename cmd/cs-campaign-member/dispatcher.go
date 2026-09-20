@@ -704,13 +704,14 @@ func cmdWait(env *envState, args []string) error {
 		// 4). Delivering into the snapshot's known-open dispatch is safe either
 		// way: a reply that raced us has closed it, and the reply check
 		// precedes everything on the next look.
-		var judgment, free, known []string
+		var judgment, free, known, refused []string
 		resumed := false
 		entries := env.logEntries()
 		for _, n := range names {
 			o := obs[n].Obs
 			switch o.State {
 			case protocol.StateRefused:
+				refused = append(refused, n)
 				// Members refused together must not come back together: that is
 				// the load that was refused. One per look, so a fleet returns over
 				// minutes. The rest are due and are taken on the looks that follow.
@@ -791,6 +792,12 @@ func cmdWait(env *envState, args []string) error {
 			// actionable" reads as a fleet with nothing left to give. A free
 			// node is assignable — it is just not a judgment, because the
 			// orchestrator is what freed it. Name it here, do not return for it.
+			if len(refused) > 0 {
+				// The orchestrator is a model, and this line is all it is told. A
+				// refused node looks like lost time, and the costly mistake is to
+				// give its work to someone else while it waits.
+				what += fmt.Sprintf("; %s: the provider refused the last turn, and wait is holding and will carry the same session on — leave it, and do not reassign its work", strings.Join(refused, ", "))
+			}
 			if len(known) > 0 {
 				what += fmt.Sprintf("; %s still stuck, as already reported", strings.Join(known, ", "))
 			}

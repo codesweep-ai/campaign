@@ -285,11 +285,23 @@ observe its own death and you can.
 | State | Meaning |
 |---|---|
 | `node-free` | No dispatch is open, or the open one was replied to and accepted. |
-| `node-working` | A dispatch is open and this node's turn driver is alive. |
-| `node-stopped` | A dispatch is open, no turn driver is alive, and the ladder has a move left. |
+| `node-working` | A dispatch is open, and this node's turn driver is alive or its agent says it is in a turn. |
+| `node-stopped` | A dispatch is open, the node is not in a turn, and the ladder has a move left. |
 | `node-replied` | The reply exists and the orchestrator has not accepted it. |
-| `node-stuck` | The ladder is spent, the elapsed bound tripped, or the machine is gone. |
+| `node-stuck` | The ladder is spent, a bound tripped, the machine is gone, or the provider rejected the node's credential. The line says which. |
 | `node-unreachable` | This look failed. An overlay on every state, not a state. |
+| `node-refused` | The node's provider ended its last turn: a throttle, an overload or an outage. An overlay. The harness waits and then carries the same session on, and no rung is spent. |
+
+A `node-refused` line carries what the provider said and what happens next, as in
+`throttled 40s ago · 3 refused in a row · provider asked for 12s · resuming in 80s, no rung spent`.
+The wait is at least what the provider asked for, and it doubles from 30 seconds to 10 minutes while
+the refusals repeat. Members refused together come back one per look, because their combined
+return is what was refused. `providerWaitSeconds` bounds the whole wait. A line that reads
+`the provider rejected this node's credential` is yours to repair: nothing the orchestrator can
+send fixes a key. The repair is to renew the key, and then to restart the member's session with `cs-campaign restart`.
+
+A stopped or stuck line also quotes how the node's last turn ended, in the turn driver's own
+words. The members' machines keep that in `~/.cs-turns/<cli>.log`, and `archive` collects it.
 
 A `node-stopped` line also says when the node's own session record last changed, as in
 `0 cont, 0 restarts · continue next · session record changed 40s ago`. A turn driver wraps only a
@@ -836,9 +848,10 @@ set.
 | `continueAttempts` | 2 | Continues before escalating to a restart. |
 | `restarts` | 1 | Restarts before a node is unrecoverable. |
 | `elapsedSeconds` | the campaign deadline, else 86400 | Bound on recovering one dispatch, from its opening. |
-| `blindProbes` | 10 | Consecutive failed probes before a machine is called gone. |
+| `blindProbes` | 10 | Failed probes before a machine is called gone. `observe` counts them in one burst. The orchestrator's `wait` counts `blindProbes` times `pollSeconds` of unseen time while another member answered. |
 | `pollSeconds` | 30 | How often the orchestrator's `wait` looks. |
 | `settlingSeconds` | 300 | Grace after any send before a driverless node counts as stopped. |
+| `providerWaitSeconds` | 3600 | How long one dispatch may sit behind a provider's refusals, or behind turn launches that fail, before the node is `node-stuck`. |
 | `stallSeconds` | 180 for agents, 1800 for the orchestrator | The turn driver's own idle threshold. |
 
 `stallSeconds` is the one number resolved per seat, which is how the orchestrator gets a longer
