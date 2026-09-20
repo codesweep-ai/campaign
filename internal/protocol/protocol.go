@@ -53,13 +53,18 @@ const MaxDispatchSeq = 999
 //
 // The .restart marker exists so recovery state is countable from a directory
 // listing alone — derived, never remembered (SPEC.md §4.5, R59).
-var msgName = regexp.MustCompile(`^(d[0-9]{3}|m1)(?:\.([0-9]{3})(\.restart)?)?\.md$`)
+//
+// The .resume marker is a continuation that spends no rung. It carries on a
+// dispatch whose node did nothing wrong: its provider refused the last turn and
+// the wait is over, or the turn for the message before it never launched.
+var msgName = regexp.MustCompile(`^(d[0-9]{3}|m1)(?:\.([0-9]{3})(\.restart|\.resume)?)?\.md$`)
 
 // Msg is one message file in a node's input channel, as observed.
 type Msg struct {
 	ID      string
 	Seq     int  // 0 for the opening message
 	Restart bool // this continuation is a restart's re-anchor
+	Resume  bool // this continuation spends no rung
 	MTime   int64
 	Name    string
 }
@@ -75,7 +80,7 @@ func ParseMsgName(name string, mtime int64) (Msg, bool) {
 	if m[2] != "" {
 		seq, _ = strconv.Atoi(m[2])
 	}
-	return Msg{ID: m[1], Seq: seq, Restart: m[3] != "", MTime: mtime, Name: name}, true
+	return Msg{ID: m[1], Seq: seq, Restart: m[3] == ".restart", Resume: m[3] == ".resume", MTime: mtime, Name: name}, true
 }
 
 // Dispatch is the reconstructed view of one dispatch from its messages.
@@ -85,6 +90,9 @@ type Dispatch struct {
 	NewestMsg int64 // latest message mtime — the settling window keys on this
 	Continues int   // plain continuations
 	Restarts  int   // restart re-anchors
+	Resumes   int   // continuations that spent no rung
+	// Msgs is every message of the dispatch, oldest first.
+	Msgs []Msg
 }
 
 // Current returns the newest dispatch reconstructed from the input channel,
@@ -106,13 +114,18 @@ func Current(msgs []Msg) *Dispatch {
 				d.NewestMsg = m.MTime
 			}
 			if m.Seq > 0 {
-				if m.Restart {
+				switch {
+				case m.Restart:
 					d.Restarts++
-				} else {
+				case m.Resume:
+					d.Resumes++
+				default:
 					d.Continues++
 				}
 			}
 		}
+		d.Msgs = append([]Msg(nil), ms...)
+		SortMsgs(d.Msgs)
 		if cur == nil || d.OpenedAt > cur.OpenedAt ||
 			(d.OpenedAt == cur.OpenedAt && d.ID > cur.ID) {
 			cur = d
@@ -143,6 +156,13 @@ func NextDispatchID(msgs []Msg) (string, error) {
 // when the dispatch has no messages, else the next continuation (or restart
 // re-anchor when restart is set).
 func NextMsgName(msgs []Msg, id string, restart bool) string {
+	return nextMsgName(msgs, id, map[bool]string{true: ".restart"}[restart])
+}
+
+// NextResumeName names the next continuation of dispatch id that spends no rung.
+func NextResumeName(msgs []Msg, id string) string { return nextMsgName(msgs, id, ".resume") }
+
+func nextMsgName(msgs []Msg, id, kind string) string {
 	seq := 0
 	for _, m := range msgs {
 		if m.ID == id && m.Seq > seq {
@@ -159,10 +179,7 @@ func NextMsgName(msgs []Msg, id string, restart bool) string {
 	if !exists {
 		return id + ".md"
 	}
-	if restart {
-		return fmt.Sprintf("%s.%03d.restart.md", id, seq+1)
-	}
-	return fmt.Sprintf("%s.%03d.md", id, seq+1)
+	return fmt.Sprintf("%s.%03d%s.md", id, seq+1, kind)
 }
 
 // SortMsgs orders messages chronologically (mtime, then name — names are
@@ -188,6 +205,11 @@ type Policy struct {
 	BlindProbes      int `json:"blindProbes,omitempty" yaml:"blindProbes,omitempty"`
 	PollSeconds      int `json:"pollSeconds,omitempty" yaml:"pollSeconds,omitempty"`
 	SettlingSeconds  int `json:"settlingSeconds,omitempty" yaml:"settlingSeconds,omitempty"`
+	// ProviderWaitSeconds bounds how long a dispatch may sit behind a condition
+	// that is not the node's doing: a provider that refuses its turns, or a turn
+	// launcher that fails. No rung is spent meanwhile, and the elapsed bound
+	// still runs.
+	ProviderWaitSeconds int `json:"providerWaitSeconds,omitempty" yaml:"providerWaitSeconds,omitempty"`
 	// StallSeconds reaches the turn drivers as CS_<CLI>_STALL_SECS via
 	// cs-sandbox create --env (the seeded ~/.ssh/environment). Per member;
 	// the orchestrator seat defaults far higher — long quiet is normal for a
@@ -202,13 +224,14 @@ type Policy struct {
 // defaults.deadline overrides it at create.
 func DefaultPolicy() Policy {
 	return Policy{
-		ContinueAttempts: 2,
-		Restarts:         1,
-		ElapsedSeconds:   86400,
-		BlindProbes:      10,
-		PollSeconds:      30,
-		SettlingSeconds:  300,
-		StallSeconds:     180,
+		ContinueAttempts:    2,
+		Restarts:            1,
+		ElapsedSeconds:      86400,
+		BlindProbes:         10,
+		PollSeconds:         30,
+		SettlingSeconds:     300,
+		ProviderWaitSeconds: 3600,
+		StallSeconds:        180,
 	}
 }
 
@@ -237,6 +260,7 @@ func (p Policy) CampaignOnlyFields() []string {
 		{"blindProbes", p.BlindProbes},
 		{"pollSeconds", p.PollSeconds},
 		{"settlingSeconds", p.SettlingSeconds},
+		{"providerWaitSeconds", p.ProviderWaitSeconds},
 	} {
 		if field.value != 0 {
 			out = append(out, "policy."+field.name)
@@ -265,6 +289,9 @@ func (p Policy) Resolve() Policy {
 	}
 	if p.SettlingSeconds == 0 {
 		p.SettlingSeconds = d.SettlingSeconds
+	}
+	if p.ProviderWaitSeconds == 0 {
+		p.ProviderWaitSeconds = d.ProviderWaitSeconds
 	}
 	if p.StallSeconds == 0 {
 		p.StallSeconds = d.StallSeconds

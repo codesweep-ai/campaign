@@ -248,6 +248,19 @@ func ContinueBody(id string) string {
 		"If it is not done, continue working, and reply when it is.", id, ReplyPath(id))
 }
 
+// ResumeBody is what a node reads when it is carried on at no cost to it. The
+// provider ended its last turn, or the turn never ran, and the wait is over.
+// It is short on purpose: the session still holds everything, and a long
+// message is more load on a provider that has just been refusing.
+func ResumeBody(id string, refused bool) string {
+	why := "The turn for your last message did not run."
+	if refused {
+		why = "Your provider ended your last turn with an error, and the wait it asked for is over."
+	}
+	return fmt.Sprintf("%s Dispatch %s is still open. Carry on from where you were, and when the work is "+
+		"concluded run `cs-campaign-member reply --file <path-to-your-summary>`.", why, id)
+}
+
 // RestartBody is the re-anchor a restarted session receives: mechanical
 // replay, never a dispatcher-authored summary. The new session lost its
 // memory, so it is pointed back at everything it already had.

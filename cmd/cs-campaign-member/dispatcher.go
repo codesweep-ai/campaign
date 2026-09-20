@@ -501,17 +501,23 @@ func doRestartPrepared(env *envState, name string, rec protocol.AgentRecord, fac
 // sendRestartPrepared delivers a restart re-anchor (a .restart continuation)
 // using facts already probed.
 func sendRestartPrepared(env *envState, rec protocol.AgentRecord, facts protocol.Facts, id, body string) (string, bool, error) {
-	return deliverPrepared(env, rec, facts, id, body, true)
+	return deliverPrepared(env, rec, facts, protocol.NextMsgName(facts.Msgs, id, true), id, body)
+}
+
+// sendResumePrepared carries a dispatch on without spending a rung: a .resume
+// continuation, for a node whose provider refused its last turn or whose last
+// turn never ran.
+func sendResumePrepared(env *envState, rec protocol.AgentRecord, facts protocol.Facts, id, body string) (string, bool, error) {
+	return deliverPrepared(env, rec, facts, protocol.NextResumeName(facts.Msgs, id), id, body)
 }
 
 // sendBodyPrepared delivers a plain continuation into a known dispatch using
 // facts already probed.
 func sendBodyPrepared(env *envState, rec protocol.AgentRecord, facts protocol.Facts, id, body string) (string, bool, error) {
-	return deliverPrepared(env, rec, facts, id, body, false)
+	return deliverPrepared(env, rec, facts, protocol.NextMsgName(facts.Msgs, id, false), id, body)
 }
 
-func deliverPrepared(env *envState, rec protocol.AgentRecord, facts protocol.Facts, id, body string, restart bool) (string, bool, error) {
-	msgName := protocol.NextMsgName(facts.Msgs, id, restart)
+func deliverPrepared(env *envState, rec protocol.AgentRecord, _ protocol.Facts, msgName, id, body string) (string, bool, error) {
 	msgPath := protocol.InputDir + "/" + msgName
 	if out, err := sshOut(rec.Sandbox, protocol.PutMsgScript(msgPath), protocol.PutPayload(body)); err != nil {
 		// No retry here: this path acts on a wait snapshot, and a collision
@@ -593,12 +599,33 @@ func cmdWait(env *envState, args []string) error {
 		// way: a reply that raced us has closed it, and the reply check
 		// precedes everything on the next look.
 		var judgment, free []string
+		resumed := false
 		for _, n := range names {
 			o := obs[n].Obs
 			switch o.State {
+			case protocol.StateRefused:
+				// Members refused together must not come back together: that is
+				// the load that was refused. One per look, so a fleet returns over
+				// minutes. The rest are due and are taken on the looks that follow.
+				if o.NextMove != "resume" || resumed {
+					continue
+				}
+				resumed = true
+				rec := env.Manifest.Agents[n]
+				if _, _, err := sendResumePrepared(env, rec, obs[n].Facts, o.Dispatch, protocol.ResumeBody(o.Dispatch, true)); err != nil {
+					acted = append(acted, fmt.Sprintf("resume %s FAILED: %v", n, err))
+				} else {
+					acted = append(acted, fmt.Sprintf("resumed %s (%s) after its provider's refusal, no rung spent", n, o.Dispatch))
+				}
 			case protocol.StateStopped:
 				rec := env.Manifest.Agents[n]
 				switch o.NextMove {
+				case "resume":
+					if _, _, err := sendResumePrepared(env, rec, obs[n].Facts, o.Dispatch, protocol.ResumeBody(o.Dispatch, false)); err != nil {
+						acted = append(acted, fmt.Sprintf("resume %s FAILED: %v", n, err))
+					} else {
+						acted = append(acted, fmt.Sprintf("resumed %s (%s): its last turn never ran, no rung spent", n, o.Dispatch))
+					}
 				case "continue":
 					if _, _, err := sendBodyPrepared(env, rec, obs[n].Facts, o.Dispatch, protocol.ContinueBody(o.Dispatch)); err != nil {
 						acted = append(acted, fmt.Sprintf("continue %s FAILED: %v", n, err))

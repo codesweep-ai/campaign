@@ -375,10 +375,12 @@ func (w *simWorld) checkWaitsHonoured(n *simNode) {
 	}
 }
 
-// I5: a rung is charged only for a turn that started.
+// I5: a rung is charged only for a turn that started. The count is the
+// protocol's own, computed from what the node's machine says.
 func (w *simWorld) checkRungsAreTurns(n *simNode) {
 	w.t.Helper()
-	d := w.current(n)
+	facts := protocol.ParseProbe(w.probeOutput(n))
+	d := protocol.Current(facts.Msgs)
 	if d == nil {
 		return
 	}
@@ -388,8 +390,9 @@ func (w *simWorld) checkRungsAreTurns(n *simNode) {
 			started++
 		}
 	}
+	continues, restarts := protocol.Charged(d, facts)
 	// The opening turn is not a rung.
-	if rungs := d.Continues + d.Restarts; rungs > max(0, started-1) {
+	if rungs := continues + restarts; rungs > max(0, started-1) {
 		w.t.Errorf("I5: %s was charged %d rungs and only %d recovery turns ever started", n.name, rungs, max(0, started-1))
 	}
 }
@@ -424,7 +427,6 @@ func healthy(now int64) turnOutcome { return turnOutcome{runs: 300, reply: true}
 // member is healthy throughout, so it must end with its work delivered, no
 // rung charged, and never resumed inside a wait the provider asked for.
 func TestConformanceThrottleThatClears(t *testing.T) {
-	pending(t, "SAC-034")
 	dev := &simNode{name: "dev"}
 	w := newSimWorld(t, dev)
 	dev.script = throttledUntil(w.now+2400, 15)
@@ -439,7 +441,6 @@ func TestConformanceThrottleThatClears(t *testing.T) {
 
 // I3: members refused together do not come back together.
 func TestConformanceFleetDoesNotResumeInStep(t *testing.T) {
-	pending(t, "SAC-034")
 	var nodes []*simNode
 	for i := range 6 {
 		nodes = append(nodes, &simNode{name: fmt.Sprintf("m%d", i)})
@@ -468,7 +469,6 @@ func TestConformanceFleetDoesNotResumeInStep(t *testing.T) {
 // I4: a rejected credential is the operator's repair. The first look after it
 // is a judgment, and nothing is sent into it.
 func TestConformanceRejectedCredentialStopsAtOnce(t *testing.T) {
-	pending(t, "SAC-035")
 	dev := &simNode{name: "dev", script: func(int64) turnOutcome {
 		return turnOutcome{runs: 5, class: classUnauthorized}
 	}}
@@ -487,7 +487,6 @@ func TestConformanceRejectedCredentialStopsAtOnce(t *testing.T) {
 // minutes. Messages land, no turn runs, and the node must not be written off
 // for turns it was never given.
 func TestConformanceRungsAreOnlyChargedForTurnsThatStarted(t *testing.T) {
-	pending(t, "SAC-042")
 	dev := &simNode{name: "dev", script: func(now int64) turnOutcome { return turnOutcome{runs: 60} }}
 	w := newSimWorld(t, dev)
 	outage := w.now + 1
