@@ -383,6 +383,395 @@
     {
       "content": "<system-reminder>\n<total_tokens>14951854 tokens left</total_tokens>\n</system-reminder>",
       "role": "system"
+    },
+    {
+      "content": [
+        {
+          "id": "toolu_01Y5Unb28XJunCwRRL3xoEDU",
+          "input": {
+            "command": "cs-campaign-member send dev --file /tmp/dev_dispatch1.md"
+          },
+          "name": "Bash",
+          "type": "tool_use"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "dev/d002 opened",
+          "is_error": false,
+          "tool_use_id": "toolu_01Y5Unb28XJunCwRRL3xoEDU",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>14951696 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
+    },
+    {
+      "content": [
+        {
+          "id": "toolu_018M4ZxfETnaxVjwXbDgT3Xi",
+          "input": {
+            "command": "cs-campaign-member wait"
+          },
+          "name": "Bash",
+          "type": "tool_use"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "wait returned — a judgment is due.\n\nnode           state            dispatch detail\ndev            node-replied     d002     reply present, not accepted\n\ndev replied to d002: read it (`cs-campaign-member read dev`), then `accept dev` or send rework with `send dev --file <path>`.",
+          "is_error": false,
+          "tool_use_id": "toolu_018M4ZxfETnaxVjwXbDgT3Xi",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>14951587 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
+    },
+    {
+      "content": [
+        {
+          "id": "toolu_01AE9AxvoJrPDNkJiTkXxAbK",
+          "input": {
+            "command": "cs-campaign-member read dev"
+          },
+          "name": "Bash",
+          "type": "tool_use"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "{\n  \"dispatch\": \"d002\",\n  \"phase\": \"done\",\n  \"note\": \"# d002 reply — \\\"greet, tested\\\"\\n\\n## Verification\\n\\nCommand run from repo root (`~/subject`):\\n\\n    python3 -m unittest discover -s tests\\n\\nExit code: **0**. Output:\\n\\n    ..\\n    ----------------------------------------------------------------------\\n    Ran 2 tests in 0.000s\\n\\n    OK\\n\\n## Commit\\n\\nCommitted to my own branch `cs-sandbox/<DEV:1>.<GROUP:1>`:\\n\\n    f0e572c Add greet() function with unittest coverage\\n\\n## File contents\\n\\n`src/greet.py`:\\n\\n```python\\ndef greet(name):\\n    return \\\"Hello, \\\" + name + \\\"!\\\"\\n```\\n\\n`tests/test_greet.py`:\\n\\n```python\\nimport unittest\\n\\nfrom src.greet import greet\\n\\n\\nclass TestGreet(unittest.TestCase):\\n    def test_normal_name(self):\\n        self.assertEqual(greet(\\\"World\\\"), \\\"Hello, World!\\\")\\n\\n    def test_empty_string(self):\\n        self.assertEqual(greet(\\\"\\\"), \\\"Hello, !\\\")\\n\\n\\nif __name__ == \\\"__main__\\\":\\n    unittest.main()\\n```\\n\\nNothing beyond the requested scope was added. Everything reported above actually\\nran and passed.\\n\",\n  \"at\": \"2026-09-20T20:48:43.371499147Z\",\n  \"repos\": [\n    {\n      \"repo\": \"subject\",\n      \"head\": \"f0e572cd889fff5bd048007a7b08cc28ed15acf8\",\n      \"treeDiffersFromBase\": true,\n      \"dirty\": true\n    }\n  ]\n}",
+          "is_error": false,
+          "tool_use_id": "toolu_01AE9AxvoJrPDNkJiTkXxAbK",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>14951393 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
+    },
+    {
+      "content": [
+        {
+          "signature": "EvsDCqgBCBIYAipAvwRzxb5CjGlGF5taBi65kmjYdoNRadTwEYvDu5e6IfDKlZJDH3WVv6+j6gwJehAMSsLWm0+l8S8oZo12wYtEyTIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRlZmE0MmI5Ni1jMTFiLTQ5MDgtYmU0ZC1kNDJjYTlhYjAwMWNyEDYerf48dPRGg2rHVsnZfX+IAQGoAbmNwdUGsAECEgxEeIo4GHBTPdiZ0HsaDE9i9HR01pjaI+7usSIwpF6IfXL9ZnCgtE6wb+5/j91FWcK2Peni2FNgGC0bkfBaP0A2DgxYM15fUsHnma5IKv8BIMVsRQqHpthmDVgh9tlIb+VAOSDK4JkvwEa8Li9xrfdWD+l9MtLNS7hYtUlmMtibigB7WLTBh5Iew3Onxkb8txLJnC3Bbsy9GVvBzbKdu80JtFbTlU7aRRgJqpbxNAsO3Dwoam7NpnllcNAuJfnm3aKwa17J4yxdUx2ueTL38JV/KlC9nU66J3paEcbFxZs1oOCe9BrHpPYh7DDz7tEjH8Ef8ncMKShiQyhOG7ALZW9VIjfhhrsK4HJhJGA49XuPUuNqL5kAezOlz+lU/H9RYfbMtigcWgwHipgwglEySHPr50tBNsfhgzZruPPaJ/W9q7Hy38WEovWV2B23wqfoGAE=",
+          "thinking": "",
+          "type": "thinking"
+        },
+        {
+          "text": "The reply looks complete, but per my role I must verify by fetching the branch rather than trusting the report. Let me fetch and check directly.",
+          "type": "text"
+        },
+        {
+          "id": "toolu_01NHYyWqX1pvFhDkdCTdZZun",
+          "input": {
+            "command": "cs-campaign-member fetch dev 2>&1 | tail -50"
+          },
+          "name": "Bash",
+          "type": "tool_use"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "refs/remotes/campaign/dev/subject — tree differs from base (real changes present)",
+          "is_error": false,
+          "tool_use_id": "toolu_01NHYyWqX1pvFhDkdCTdZZun",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>14950530 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
+    },
+    {
+      "content": [
+        {
+          "id": "toolu_01YNLVBTmbneRtLYxudxBy5V",
+          "input": {
+            "command": "cd ~/subject && git fetch --all -q 2>&1 | tail -20; git log campaign/dev/subject -3 --stat 2>&1"
+          },
+          "name": "Bash",
+          "type": "tool_use"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "commit f0e572cd889fff5bd048007a7b08cc28ed15acf8\nAuthor: campaign test <test@example.invalid>\nDate:   Sun Sep 20 20:48:19 2026 +0000\n\n    Add greet() function with unittest coverage\n\n src/greet.py        |  2 ++\n tests/test_greet.py | 15 +++++++++++++++\n 2 files changed, 17 insertions(+)\n\ncommit db35ac7e1ff33db5784028f663ced78738201faf\nAuthor: t <t@t>\nDate:   Sun Sep 20 20:46:48 2026 +0000\n\n    base\n\n README.md | 1 +\n 1 file changed, 1 insertion(+)",
+          "is_error": false,
+          "tool_use_id": "toolu_01YNLVBTmbneRtLYxudxBy5V",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>14950360 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
+    },
+    {
+      "content": [
+        {
+          "signature": "EusDCqgBCBIYAipAJ2J44scthcaIWuFVC1HXUUtKfoN9dj7vX/kjI6ueMYOYdgSIsnbgwItMOm01HemSqWIE9klqU/s7ZL+bxBsLbTIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRlZmE0MmI5Ni1jMTFiLTQ5MDgtYmU0ZC1kNDJjYTlhYjAwMWNyEDYerf48dPRGg2rHVsnZfX+IAQGoAb6NwdUGsAECEgyzDXLJ2B1M91nrbowaDMkyBVCG5U+JSeufgiIww2FKzCT5Gm6VShcxaT19TdEc8RzgeP3J9KUTrLL8VGtyZO88WbjCbvWJqcrxpnX1Ku8BW5t7AZYR3BMV3VKyJDS5uUC68qjRPB/FMWJp3J0PQUN8nctE1LEX2K311EGhmE/2uMq36NNHK0wcOUWqVLRG9UsJ7Ial8YsO6oqnrx4KP+y29GXac0DjTolqOKHhFlN5mgIbjN5iB3UbAA8YGYN/cUY/UhU6Hg55fm0o+xwqu1P4UNDOb/0au7JVzk3vwUSt1Bj+1bThJ0Gxe0HdimebhZgQjLDwv9Mt5u2xBW9WNiqcwkcvdaj27UNKCCsAlJeCLO6pGQ4ffFX0FdYZcB0Va4IpkC+GeGMrGaUlLXyfJdiB/ik1VZpXiFIL+FQ5CFYYAQ==",
+          "thinking": "",
+          "type": "thinking"
+        },
+        {
+          "id": "toolu_01TwqFSGU6UigEqZuZAwzXwY",
+          "input": {
+            "command": "cd ~/subject && git show campaign/dev/subject:src/greet.py; echo \"---\"; git show campaign/dev/subject:tests/test_greet.py"
+          },
+          "name": "Bash",
+          "type": "tool_use"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "def greet(name):\n    return \"Hello, \" + name + \"!\"\n---\nimport unittest\n\nfrom src.greet import greet\n\n\nclass TestGreet(unittest.TestCase):\n    def test_normal_name(self):\n        self.assertEqual(greet(\"World\"), \"Hello, World!\")\n\n    def test_empty_string(self):\n        self.assertEqual(greet(\"\"), \"Hello, !\")\n\n\nif __name__ == \"__main__\":\n    unittest.main()",
+          "is_error": false,
+          "tool_use_id": "toolu_01TwqFSGU6UigEqZuZAwzXwY",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>14949912 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
+    },
+    {
+      "content": [
+        {
+          "text": "Now let me actually run the test suite myself against this commit to independently verify, rather than trust dev's reported output.",
+          "type": "text"
+        },
+        {
+          "id": "toolu_01GyChi731Zi2m7CQWTDhjQV",
+          "input": {
+            "command": "rm -rf /tmp/verify_greet && git -C ~/subject worktree add /tmp/verify_greet campaign/dev/subject -q && cd /tmp/verify_greet && ls -la && python3 -m unittest discover -s tests; echo \"EXIT: $?\""
+          },
+          "name": "Bash",
+          "type": "tool_use"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "total 24\ndrwxr-xr-x 4 <USER_GROUP:1> 4096 Sep 20 20:49 .\ndrwxrwxrwt 7 root  root  4096 Sep 20 20:49 ..\n-rw-r--r-- 1 <USER_GROUP:1>   56 Sep 20 20:49 .git\n-rw-r--r-- 1 <USER_GROUP:1>   17 Sep 20 20:49 README.md\ndrwxr-xr-x 2 <USER_GROUP:1> 4096 Sep 20 20:49 src\ndrwxr-xr-x 2 <USER_GROUP:1> 4096 Sep 20 20:49 tests\n..\n----------------------------------------------------------------------\nRan 2 tests in 0.000s\n\nOK\nEXIT: 0\nShell cwd was reset to /home/<USER:1>",
+          "is_error": false,
+          "tool_use_id": "toolu_01GyChi731Zi2m7CQWTDhjQV",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>14949547 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
+    },
+    {
+      "content": [
+        {
+          "signature": "EtsFCqgBCBIYAipAhTe83tZo+kzxP6XElpOh2bKAmdDn5Fd5RmmxnEPEihk7ouJsWRcSG0YwX84JPqAebmAdsuC6SSL1DVYJIb9SUTIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRlZmE0MmI5Ni1jMTFiLTQ5MDgtYmU0ZC1kNDJjYTlhYjAwMWNyEDYerf48dPRGg2rHVsnZfX+IAQGoAcONwdUGsAECEgyFAjuqLi3wp+xhuegaDHgV75ES7K9aeT3sByIw9l9ke8v82p3+ocrEruq/T+ad29lbyVsvv6RUBVtEf0rXGqdxZb7ozN2wc4FGzOIBKt8D3vN7AqLGwj6dimu4hVa8U8Gh48UTlVs2h7qUhyYybZPm4+FZaNcCySHcozsrpOatA0xiLPvLWWuPFOhwRMmJhrJDw9av4Tab8IHE5n3V/IFYG3jeau2ajFVE6t5iHGxZBjnr2WXeWhnePFFFb3BwRdPPgx4xwmq5o+H+3knooyNKiXiCCyTWHdEF8yn/lfo5jazbJJHdInwkYnkkpWZGpGxt7QwHl1Qv1zue2sJ5W6q2VQvc1F0x68inEMZ+xFgcwPHIDx9hhtEChuSvAwd1xVnJ4a9NpcYiOD2X1F+W2TQYH6zeu1C0fK26gd5ubiBMC41quLkTLTEngYbjaXl+a4uQX9+F9Px7NTVC+ne91Ln4uazZWfVXe1QkXGCD5HC29QqZ+wemvZ7sUFzX+scmLQHfXVH67PGnNycES33R5BIW4yWkj51f7quEUXGgkRn/DMCq5VmLQeTERyyQurGiG7MHwXgQxjXwO6nSyFO9rDgAYwT0eXZqVju8YXA9pkl2Vsjb0yNkUVeFrMRT34jT+jwe6C3P+IXaIOz+1IAl4BIp4E7JX1sP1phmhP3ADTOASN3N6YmXnO8DJcwBONgpQ9M7noc25CbRCTKqjKSC6CVncfNyt4YdO2Wz6wgO+rgYAQ==",
+          "thinking": "",
+          "type": "thinking"
+        },
+        {
+          "text": "Independently verified — exit code 0, both tests pass. All three mission criteria are met. Let me clean up and accept.",
+          "type": "text"
+        },
+        {
+          "id": "toolu_01Xw7oaoCnwn2AHryi82v5bF",
+          "input": {
+            "command": "git -C ~/subject worktree remove /tmp/verify_greet --force"
+          },
+          "name": "Bash",
+          "type": "tool_use"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "(Bash completed with no output)",
+          "is_error": false,
+          "tool_use_id": "toolu_01Xw7oaoCnwn2AHryi82v5bF",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>14948975 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
+    },
+    {
+      "content": [
+        {
+          "id": "toolu_01WfmTUYKvma7gmq9URvN6Y7",
+          "input": {
+            "command": "cs-campaign-member accept dev"
+          },
+          "name": "Bash",
+          "type": "tool_use"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "accepted d002 from dev — the agent is free for its next dispatch",
+          "is_error": false,
+          "tool_use_id": "toolu_01WfmTUYKvma7gmq9URvN6Y7",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>14948862 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
+    },
+    {
+      "content": [
+        {
+          "signature": "EokFCqgBCBIYAipAj6apN8zt62xCcfRbmCEDaAaxqehJdHEaHmuJfVHDj2nAnVrUVDkwA20T1z/ImE4nRYkbeBGabFVErfBN24DTZDIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRlZmE0MmI5Ni1jMTFiLTQ5MDgtYmU0ZC1kNDJjYTlhYjAwMWNyEDYerf48dPRGg2rHVsnZfX+IAQGoAceNwdUGsAECEgx9p/0cL1PDkPO/ywUaDJJddilomUwaRbxrFyIwwR0It477lkgULtgYuk2UdQIMS142YQFtqh4jbuVy9FUCQlITxN0odWWA+GqbqVuZKo0Ds9vatovNPpkof2wIQ6GZeP5I525gLNV9FBQsjGBvLjJSP9MrHENo9SswY6EyDYzLQN6Iww92cNnAgXqL9vveasFJ/rQItAoJ+t0ELWJNb40PUIpuupD0GlXKWwwAK3Ccix8ow1Mij0ITvgo3qX4pwDZqmiBXhgIhYz62o4xDYg1Mg88jgdsTu1KKo+EQ3/hErefkeKJeGtjIs/EzLCjSeXf2UnPNZthzZSH/cZ2LAqqHmX+W+I/MKeiCujSQDEAmkPgkO2HzovQ1lweDzc059I7K8PzLPecpmEqgHiEC9FILKYt1lFviNc3+RU+gX9NeD7nXTJVhpXppnaiaUyQGcyCw6VZGMyRy/9DccEDRjeWqKKOXo6RZEIx43hhZbcmBsu7s/2oE1TZTeBdsxOdCVAMkGH31MW6jmyXmbt5H+nk4wnYqgahWqIVw4mNTFx/o2JDN/sXXPn7BWd3DgbGyRmqk7Ic5A4YxZrNW7hWdciB2tUIgn+8zF7VbNzoLXT/ZwWOnyeYL/uZVaOcxxxgB",
+          "thinking": "",
+          "type": "thinking"
+        },
+        {
+          "id": "toolu_019bkqqk5VB7q8JPovjZY4fv",
+          "input": {
+            "command": "cs-campaign-member inbox; echo \"---help---\"; cs-campaign-member reply --help 2>&1"
+          },
+          "name": "Bash",
+          "type": "tool_use"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "Exit code 1\ndispatch m1 — 1 message(s) — OPEN\n\n--- ~/.local/share/cs-campaign/input/m1.md ---\nThis dispatch is the campaign's mission, and it stays open until you reply to it.\n\nThe mission itself is stated in ~/.local/share/cs-campaign/input/mission.md — read it with your brief and your teammates' briefs, plan, and run the campaign per your orientation: dispatch work with `cs-campaign-member send`, block in `cs-campaign-member wait` between judgments, judge every reply (fetch the branch — the reply carries measured tree-vs-base evidence), and record plan, acceptances and assessments with `accept` and `note`.\n\nReply ONLY when the campaign is concluded — your reply ends it. It must carry exactly one outcome:\n\n  --outcome campaign-met        every stated criterion is satisfied (if you can name something unmet, it is not met)\n  --outcome campaign-converged  criteria remain unmet and more effort from this fleet would not close them\n  --outcome campaign-exhausted  budget or clock ran out while progress was still being made\n  --outcome campaign-blocked    effort was never the problem — an obstacle no iteration resolves (a lost machine, a mission impossible as written)\n\nEvery outcome except campaign-met must name what remains unmet: --unmet \"<item>\" per item.\n\n  cs-campaign-member reply --file <your-summary.md> --outcome <one-of-the-four> [--unmet \"...\"]...\n\nRun that reply as a command of its own. Chained after anything else — a test\nrun, a git command, a shell that stops on the first error — it is the last\nlink, so ANY earlier link that fails takes the reply with it. Your turn then\nends with the campaign still open and your verdict unsent, which from the\noutside cannot be told apart from a judge who never reached one. Verify first,\nin as many commands as you like; then reply in one of its own.\n\nDo not end your turn without either calling wait or replying.\n\nYou owe a reply: when the work is concluded, run\n  cs-campaign-member reply --file <path-to-your-summary>\nEnding your turn without one reads as stopped, and you will be continued.\n---help---\ncs-campaign-member: unknown reply flag \"--help\"",
+          "is_error": true,
+          "tool_use_id": "toolu_019bkqqk5VB7q8JPovjZY4fv",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>14948571 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
+    },
+    {
+      "content": [
+        {
+          "text": "All three mission criteria are satisfied and independently verified. Let me write the final summary and close the mission.",
+          "type": "text"
+        },
+        {
+          "id": "toolu_01R2hGqyBo31Anh2S5crcLtb",
+          "input": {
+            "content": "# Campaign csrocfw — \"greet, tested\" — outcome: campaign-met\n\n## What was delivered\n\nOn dev's branch `cs-sandbox/<DEV:1>.<GROUP:1>`, commit\n`f0e572cd889fff5bd048007a7b08cc28ed15acf8` (on top of base `db35ac7e`):\n\n- `src/greet.py`:\n  ```python\n  def greet(name):\n      return \"Hello, \" + name + \"!\"\n  ```\n- `tests/test_greet.py`: unittest-based tests covering a normal name\n  (`greet(\"World\") == \"Hello, World!\"`) and the empty string\n  (`greet(\"\") == \"Hello, !\"`).\n\n## Verification (independent, not just dev's report)\n\nI fetched dev's branch into a separate worktree at the accepted commit and ran\nthe exact required command myself:\n\n    python3 -m unittest discover -s tests\n\nResult: exit code 0, `Ran 2 tests ... OK`. This matches dev's reported output.\n\n## Process\n\n- d001: both orchestrator and dev confirmed briefings (no code expected); accepted.\n- d002: dispatched the mission's concrete requirements to dev in full (file\n  paths, function contract, both required test cases, the exact verification\n  command). Dev replied with commit hash, file contents, and test output.\n  I fetched the branch, diffed the committed file contents against the\n  requirement, and reran the test command myself in an isolated worktree\n  before accepting.\n\n## Result\n\nAll three stated mission criteria are satisfied:\n1. `src/greet.py` with `greet(name)` returning `\"Hello, <name>!\"` — present, correct.\n2. `tests/test_greet.py` covering a normal name and the empty string — present, correct.\n3. `python3 -m unittest discover -s tests` exits 0 — confirmed independently.\n\nNo criteria remain unmet.\n",
+            "file_path": "~/.local/share/cs-campaign/output/summary.md"
+          },
+          "name": "Write",
+          "type": "tool_use"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "File created successfully at: ~/.local/share/cs-campaign/output/summary.md (file state is current in your context — no need to Read it back)",
+          "tool_use_id": "toolu_01R2hGqyBo31Anh2S5crcLtb",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>14947031 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
+    },
+    {
+      "content": [
+        {
+          "signature": "EsAFCqgBCBIYAipA2gOuS1Ih5LBK3LaojUsbHAqB9XyzHA7kbq5VU0PLnGuB8yAW2JS9n97gqBOAcwZkeMh7Fog9kIN7V+Yt9Oc9mzIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRlZmE0MmI5Ni1jMTFiLTQ5MDgtYmU0ZC1kNDJjYTlhYjAwMWNyEDYerf48dPRGg2rHVsnZfX+IAQGoAdGNwdUGsAECEgypbwMGHx7kVhEJ7P0aDG0YxQNEruknKY9OvSIwomz+sggJo4Nhbrmgxl2yTWzERbsNHD8Zwk+coXRQFjFldr1EmYeP6B6GCCvN5eCmKsQDtfaZq+v9JoJiHnZyon68W7qwBEvrz3uUzvgtUSOkQKof+MD95TDW5ZScfLYC2qZh98uNWWtfeObSCtE1mnhV14nYD9pswoW8NryXk4orlcmSCcJ/IXLXAPqdBSKiTpMAILf2VphWtwsL4xRc0Vf1/9Csc+6OBdm/K2X3Hn1fmsaEC32hNB15yEVIzBOg2hDYdjx7tL1vcv58e7JYDkIM/2LVVHE0EnXcFCBx/MBxVQ+eB29xjUyi1GZH+ABDMI6YRHC6qaDksYlBlzDMYnwqY0kHkf+YChca433mR992UCVO2mfr7idj0vLoBgYeReX7ii1b69vDGtM4oD1m4d2fv6DwFYZlEv1IBTTDA+MTrCqV8oEQOGchCUI/yhmMDtOmBhTjKflHyaM92lViLoiiO7rvPAp9RYwQL7AXY56M8X8k1UXrMhQJSNeYM6EXbVbrbRujm076jteI1wKSZ5Mt0ILt0YCsWNN2ZAK+vSzXoSRFp8sazI3Wx6b3PfaBceR5lrc1gY2sDhiKQecstgeBqGx9603gXTIVHoQZUw5vn1o9z20As0NHnFuuBMiJe1XL+wV05rlk8zgoIch4w3aydX0E1lwYAQ==",
+          "thinking": "",
+          "type": "thinking"
+        },
+        {
+          "id": "toolu_01W7kkvfmThktZxt2KGDdKm2",
+          "input": {
+            "command": "cs-campaign-member reply --file ~/.local/share/cs-campaign/output/summary.md --outcome campaign-met"
+          },
+          "name": "Bash",
+          "type": "tool_use"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "replied to m1 — the dispatch is closed. You may finish your turn.",
+          "is_error": false,
+          "tool_use_id": "toolu_01W7kkvfmThktZxt2KGDdKm2",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>14946706 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
+    },
+    {
+      "content": "Campaign csrocfw concluded with outcome **campaign-met**.\n\nSummary: dispatched dev to implement `src/greet.py` (`greet(name)` → `\"Hello, <name>!\"`) and `tests/test_greet.py` (normal name + empty string), then independently verified by fetching dev's branch, diffing the committed files against the requirement, and rerunning `python3 -m unittest discover -s tests` myself in an isolated worktree — exit 0, both tests pass. Accepted dev's work and closed the mission with a summary written to `~/.local/share/cs-campaign/output/summary.md`.",
+      "role": "assistant"
+    },
+    {
+      "content": "Read ~/.local/share/cs-campaign/input/m1.md and follow it. Dispatch ID: m1. When the work is concluded, run `cs-campaign-member reply --file <path-to-your-summary>`. Ending your turn without a reply reads as stopped, and you will be continued.",
+      "role": "user"
+    },
+    {
+      "content": "<system-reminder>\n<total_tokens>15000000 tokens left</total_tokens>\n</system-reminder>",
+      "role": "system"
     }
   ],
   "metadata": {},

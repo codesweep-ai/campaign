@@ -33,7 +33,7 @@
       ]
     },
     {
-      "content": "<path>/home/<USER:1>/.config/cs-campaign/member.json</path>\n<type>file</type>\n<content>\n1: {\n2:   \"campaign\": \"csrocfw\",\n3:   \"member\": \"dev\",\n4:   \"role\": \"agent\",\n5:   \"network\": \"cs-sandbox-<GROUP:1>\",\n6:   \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n7:   \"repos\": [\n8:     {\n9:       \"name\": \"subject\",\n10:       \"base\": \"1fdce0c05b0104010437749bc427c96cf007bd0b\"\n11:     }\n12:   ],\n13:   \"inputs\": [\n14:     \"ORIENTATION.md\",\n15:     \"dev.md\"\n16:   ],\n17:   \"inputDir\": \".local/share/cs-campaign/input\",\n18:   \"outputDir\": \".local/share/cs-campaign/output\",\n19:   \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n20:   \"policy\": {\n21:     \"continueAttempts\": 2,\n22:     \"restarts\": 1,\n23:     \"elapsedSeconds\": 3600,\n24:     \"blindProbes\": 10,\n25:     \"pollSeconds\": 15,\n26:     \"settlingSeconds\": 300,\n27:     \"providerWaitSeconds\": 3600,\n28:     \"stallSeconds\": 180\n29:   },\n30:   \"deadline\": \"2026-09-20T21:28:31.563847213Z\"\n31: }\n\n(End of file - total 31 lines)\n</content>",
+      "content": "<path>/home/<USER:1>/.config/cs-campaign/member.json</path>\n<type>file</type>\n<content>\n1: {\n2:   \"campaign\": \"csrocfw\",\n3:   \"member\": \"dev\",\n4:   \"role\": \"agent\",\n5:   \"network\": \"cs-sandbox-<GROUP:1>\",\n6:   \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n7:   \"repos\": [\n8:     {\n9:       \"name\": \"subject\",\n10:       \"base\": \"db35ac7e1ff33db5784028f663ced78738201faf\"\n11:     }\n12:   ],\n13:   \"inputs\": [\n14:     \"ORIENTATION.md\",\n15:     \"dev.md\"\n16:   ],\n17:   \"inputDir\": \".local/share/cs-campaign/input\",\n18:   \"outputDir\": \".local/share/cs-campaign/output\",\n19:   \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n20:   \"policy\": {\n21:     \"continueAttempts\": 2,\n22:     \"restarts\": 1,\n23:     \"elapsedSeconds\": 3600,\n24:     \"blindProbes\": 10,\n25:     \"pollSeconds\": 15,\n26:     \"settlingSeconds\": 300,\n27:     \"providerWaitSeconds\": 3600,\n28:     \"stallSeconds\": 180\n29:   },\n30:   \"deadline\": \"2026-09-20T21:46:48.957097236Z\"\n31: }\n\n(End of file - total 31 lines)\n</content>",
       "role": "tool",
       "tool_call_id": "read_0"
     },
@@ -90,12 +90,12 @@
     },
     {
       "content": "",
-      "reasoning_content": "check-inputs output: \"all 2 listed inputs and 0 snapshot(s) present\" — no missing items. So missing: []. Write readback.json and reply.",
+      "reasoning_content": "Write readback.json and reply.",
       "role": "assistant",
       "tool_calls": [
         {
           "function": {
-            "arguments": "{\"filePath\":\"/tmp/readback.json\",\"content\":\"{\\\"member\\\":\\\"dev\\\",\\\"role\\\":\\\"agent\\\",\\\"branch\\\":\\\"cs-sandbox/<DEV:1>.<GROUP:1>\\\",\\\"missing\\\":[],\\\"goal\\\":\\\"Implement exactly what each campaign dispatch asks for in my clone of the subject repository at ~/subject.\\\",\\\"scope\\\":\\\"I own the subject repository on my own branch and must not touch anything outside it or expand scope beyond what a dispatch states.\\\",\\\"obligations\\\":\\\"I must read all inputs, commit working changes to my branch, write durable results to the output directory, and close every dispatch with a truthful reply before stopping, or the work will be lost when the machine is destroyed.\\\"}\\n\"}",
+            "arguments": "{\"filePath\":\"/tmp/readback.json\",\"content\":\"{\\\"member\\\":\\\"dev\\\",\\\"role\\\":\\\"agent\\\",\\\"branch\\\":\\\"cs-sandbox/<DEV:1>.<GROUP:1>\\\",\\\"missing\\\":[],\\\"goal\\\":\\\"Carry out each dispatch for campaign csrocfw by implementing exactly what it asks in the subject repository, testing it, and reporting honestly.\\\",\\\"scope\\\":\\\"I own the ~/subject repository and my own branch; I must not touch anything outside it or expand scope to work around blockers.\\\",\\\"obligations\\\":\\\"I must read every dispatch, implement and test the work, commit to my own branch, write durable results to the output dir, and reply to close each dispatch — otherwise the machine is destroyed and any uncommitted work is lost.\\\"}\\n\"}",
             "name": "write"
           },
           "id": "write_5",
