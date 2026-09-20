@@ -20,9 +20,11 @@ package cli
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -76,10 +78,11 @@ func TestSmokeReplay(t *testing.T) {
 				fixedName:  replayName(sc),
 			})
 
-			if run.verdict.Outcome != "campaign-met" {
-				t.Fatalf("the recorded campaign was met, so its replay must be too; got %s: %s",
-					run.verdict.Outcome, run.verdict.Note)
+			if run.verdict.Outcome != sc.outcome() {
+				t.Fatalf("the recording ended %s, so its replay must too; got %s: %s",
+					sc.outcome(), run.verdict.Outcome, run.verdict.Note)
 			}
+			assertFaultAnswered(t, sc, run)
 			assertSpentNothing(t, run.proxy)
 			for _, cli := range sc.clis() {
 				proveCampaignBehaviours(t, cli, covmap.TierSmoke)
@@ -88,6 +91,31 @@ func TestSmokeReplay(t *testing.T) {
 	}
 	if recorded == 0 {
 		t.Skip("no cassette under test/cassettes: record one with `make fixtures`")
+	}
+}
+
+// assertFaultAnswered is what the fault tier adds to a replay: proof that the
+// campaign SAW the provider refuse, and answered it the way the protocol says.
+//
+// The outcome alone does not carry that. A campaign that waited a refusal out
+// and a campaign that never noticed one both end met, and the second is the
+// regression this tier exists to catch — a driver that stops naming its
+// failure, an image whose driver disagrees with its host, a CLI whose screen
+// text moved under the parser.
+//
+// It asserts on states rather than on words, so it outlives the wording.
+func assertFaultAnswered(t *testing.T, sc scenario, run campaignRun) {
+	t.Helper()
+	if sc.fault == nil {
+		return
+	}
+	for _, want := range sc.fault.wantStates {
+		if !run.states[want] {
+			t.Errorf("a %s fault was armed, and no node ever read %s.\n"+
+				"The campaign reached its verdict without seeing the refusal, which is the"+
+				" fault this tier exists to catch.\nstates seen: %v",
+				sc.name, want, slices.Sorted(maps.Keys(run.states)))
+		}
 	}
 }
 
@@ -200,11 +228,11 @@ func assertRecordingFinished(t *testing.T, sc scenario, store string) {
 	if err := json.Unmarshal(raw, &claim); err != nil {
 		t.Fatalf("unreadable %s for %s: %v", recordingClaimName, sc.name, err)
 	}
-	if claim.Outcome == "campaign-met" {
+	if claim.Outcome == sc.outcome() {
 		return
 	}
-	t.Fatalf("this cassette came out of a recording that ended %q, and the replay below asserts campaign-met\nre-record it with `make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/%s'`",
-		claim.Outcome, sc.name)
+	t.Fatalf("this cassette came out of a recording that ended %q, and the replay below asserts %s\nre-record it with `make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/%s'`",
+		claim.Outcome, sc.outcome(), sc.name)
 }
 
 // assertCassetteAgent skips a scenario whose cassette was recorded against a

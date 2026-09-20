@@ -451,6 +451,11 @@ jobs:
           - codex-api-key
           - opencode-fireworks
           - claude-inherit
+          # The fault tier: the same fleet under an injected provider failure,
+          # replayed from a cassette recorded with that fault armed.
+          - codex-fault-throttled
+          - codex-fault-unauthorized
+          - codex-fault-unreachable
     env:
       # CS_SANDBOX_IMAGE is NOT set here. cs-sandbox names each image variant
       # after the version that built it, so the reference is derived rather than
@@ -765,6 +770,11 @@ jobs:
           - codex-api-key
           - opencode-fireworks
           - claude-inherit
+          # The fault tier: the same fleet under an injected provider failure,
+          # replayed from a cassette recorded with that fault armed.
+          - codex-fault-throttled
+          - codex-fault-unauthorized
+          - codex-fault-unreachable
     env:
       # The one line that makes this job the other engine. It reaches the
       # profile the tier renders (CS_CAMPAIGN_ENGINE), the doctor `make
@@ -1004,6 +1014,11 @@ jobs:
           - codex-api-key
           - opencode-fireworks
           - claude-inherit
+          # The fault tier: the same fleet under an injected provider failure,
+          # replayed from a cassette recorded with that fault armed.
+          - codex-fault-throttled
+          - codex-fault-unauthorized
+          - codex-fault-unreachable
     env:
       SMOKE_ENGINE: podman
       # The arm64 image the job above built, not the published amd64 leaf.

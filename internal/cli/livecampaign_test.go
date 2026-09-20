@@ -42,6 +42,33 @@ import (
 // because the matrix exists to answer "does this backend drive a campaign in
 // either role", and a mixed fleet answers that for neither. Heterogeneity has
 // its own test, since it is a separate promise (SPEC.md R82).
+// faultSpec is a provider failure armed on one member once its fleet is up,
+// so the campaign meets the condition under test on a real machine rather than
+// in a simulation.
+//
+// The fault is armed on the LENDER, which sits in front of cs-vcr. A refused
+// call is answered by the lender and never reaches the recorder, so the
+// cassette's order is undisturbed and a scenario recorded under a fault
+// replays under the same fault for nothing.
+type faultSpec struct {
+	// member is the fleet member whose calls are refused, by name. The worker
+	// rather than the orchestrator, so the refusal lands on dispatched work.
+	member string
+	// args are the flags `cs-sandbox lender fault` is armed with.
+	args []string
+	// wantStates are states `observe` must report at some point in the run.
+	// This is the assertion that fails when a driver stops naming its failure:
+	// the outcome alone can be right for the wrong reason.
+	wantStates []string
+	// Nothing here asserts that a refusal spent no rung, though that is the
+	// protocol's sharpest claim about one. It is asserted where it can be
+	// asserted exactly: the conformance suite drives the real Compute and the
+	// real wait loop against a scripted clock, and invariant I1 fails if a
+	// refusal ever charges a rung or reaches restart. This tier is here for
+	// what a simulation cannot reach — that a real driver, under a real
+	// refusal, still produces the facts that invariant reasons about.
+}
+
 type scenario struct {
 	// name is the subtest, and the cassette when this scenario is recorded.
 	name string
@@ -73,6 +100,12 @@ type scenario struct {
 	// It decides the whole shape of the run, because the two paths reach the
 	// provider differently. See vcrPlacement.
 	verb string
+	// fault arms a provider failure on one member after create, for the fault
+	// tier. Nil for the scenarios that record an undisturbed campaign.
+	fault *faultSpec
+	// wantOutcome is the verdict this scenario ends on. Empty means
+	// campaign-met, which every scenario without a fault is held to.
+	wantOutcome string
 	// baseURLEnv is the base-URL variable this adapter is aimed with, and the
 	// one thing that decides whether a scenario can be recorded. It is the
 	// agent's own name rather than a project-specific one: claude and opencode
@@ -112,7 +145,7 @@ type scenario struct {
 // missing, and that is the only way a contributor learns what one more login
 // would cover.
 func scenarios() []scenario {
-	return []scenario{
+	base := []scenario{
 		{
 			name: "claude-subscription", cli: "claude",
 			auth:  "a Claude Pro/Max subscription on this host",
@@ -196,6 +229,67 @@ func scenarios() []scenario {
 			vcrProvider: "anthropic", vcrUpstream: "https://api.anthropic.com",
 		},
 	}
+	// The fault tier joins the matrix rather than standing beside it, so a
+	// fault scenario is recorded, replayed, profile-checked and run in CI by
+	// the same machinery as every other one. A tier with its own harness is a
+	// tier that rots on its own.
+	return append(base, faultScenarios()...)
+}
+
+// faultScenarios are the fault tier: the same fleet as a recorded scenario,
+// carried to its verdict while the provider refuses its worker.
+//
+// One per condition rather than one per family, because the condition is what
+// the protocol answers and the family is what the driver reads. A family's own
+// reading of a refusal is covered per pinned CLI version by the driver
+// fixtures in sandbox, which is the cheaper place to cover it.
+//
+// Codex is the family here because it is the one that fails soonest and most
+// often under a throttle, and because its driver was the last to learn to name
+// a refusal.
+func faultScenarios() []scenario {
+	base := func(name string, f *faultSpec, outcome string) scenario {
+		sc := scenario{
+			name: name, cli: "codex",
+			auth:  "an OpenAI API key in ~/.cs-keys/openai",
+			model: "gpt-5.6-sol", effort: "medium", keyProvider: "openai",
+			baseURLEnv:  "OPENAI_BASE_URL",
+			vcrProvider: "openai", vcrUpstream: "https://api.openai.com",
+		}
+		sc.fault, sc.wantOutcome = f, outcome
+		return sc
+	}
+	return []scenario{
+		// The condition the whole amendment exists for. The worker is refused
+		// long enough to outlast the agent's own retries, so the campaign sees
+		// a refused turn end and must wait it out rather than climb the ladder.
+		base("codex-fault-throttled", &faultSpec{
+			member: "dev", args: []string{"--status", "429", "--retry-after", "5", "--count", "30"},
+			wantStates: []string{"node-refused"},
+		}, "campaign-met"),
+		// The operator's repair. No instrument of the orchestrator's fixes a
+		// rejected credential, so the campaign must say so at once instead of
+		// spending a ladder discovering it cannot.
+		base("codex-fault-unauthorized", &faultSpec{
+			member: "dev", args: []string{"--status", "401", "--count", "30"},
+			wantStates: []string{"node-stuck"},
+		}, "campaign-blocked"),
+		// Nothing answers at all: the class that must be waited out rather
+		// than escalated, and the one that used to land in "other".
+		base("codex-fault-unreachable", &faultSpec{
+			member: "dev", args: []string{"--hang", "20s", "--count", "8"},
+			wantStates: []string{"node-refused"},
+		}, "campaign-met"),
+	}
+}
+
+// outcome is the verdict this scenario is held to, on both sides of the
+// cassette. A fault scenario can legitimately end blocked.
+func (s scenario) outcome() string {
+	if s.wantOutcome == "" {
+		return "campaign-met"
+	}
+	return s.wantOutcome
 }
 
 // lends reports whether this scenario's members hold a loan token rather than
@@ -510,6 +604,11 @@ type campaignRun struct {
 	archive   string
 	createOut string
 	proxy     *vcrProxy
+	// states is every state observe reported for any node during the run. The
+	// fault tier asserts on it, because an outcome alone can be right for the
+	// wrong reason: a campaign that never noticed the refusal and a campaign
+	// that waited it out both end met.
+	states map[string]bool
 }
 
 // runOptions is the half of a run that differs between the tiers.
@@ -831,6 +930,31 @@ func reclaimGroupForce(ctx context.Context, s sandboxCLI, group string) error {
 // driveToVerdict runs the steps an operator takes: create (which runs the
 // doctor, the readback as d001 and opens the mission as m1), observe until the
 // mission reply appears, archive, audit. The registered destroy closes it.
+// armFault makes the provider refuse one member's calls for the rest of the
+// run, through the lender that already stands between that member and cs-vcr.
+//
+// It is armed by reference, which is <sandbox>.<group>: the same name any
+// cs-sandbox command takes, and the reason a fault cannot stray into another
+// campaign running beside this one.
+func armFault(t *testing.T, a *app, campaign *model.Campaign, f *faultSpec) {
+	t.Helper()
+	ref := ""
+	for _, m := range campaign.Members {
+		if m.Name == f.member {
+			ref = m.Ref
+		}
+	}
+	if ref == "" {
+		t.Fatalf("no member %q in this fleet to arm a fault on", f.member)
+	}
+	args := append([]string{"lender", "fault", ref}, f.args...)
+	out, err := exec.Command(a.sandbox.Bin, args...).CombinedOutput()
+	if err != nil {
+		t.Fatalf("arming the fault on %s failed: %v\n%s", ref, err, out)
+	}
+	t.Logf("fault armed on %s: %s", ref, strings.Join(f.args, " "))
+}
+
 func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiveRoot, scratch string, opts runOptions) campaignRun {
 	t.Helper()
 
@@ -901,7 +1025,7 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 		close(abandoned)
 	}
 
-	run := campaignRun{name: name, createOut: out.String()}
+	run := campaignRun{name: name, createOut: out.String(), states: map[string]bool{}}
 	if launched != nil {
 		l := <-launched
 		switch {
@@ -935,6 +1059,14 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 	}
 	run.campaign = campaign
 
+	// The fault is armed here, between a fleet that is up and the work it is
+	// about to be given. Earlier would refuse the readback, which is create's
+	// own business and is covered by its own tests; later would race the turn
+	// it is meant to land on.
+	if sc.fault != nil {
+		armFault(t, a, campaign, sc.fault)
+	}
+
 	// The campaign runs itself; the host only observes. The mission reply is
 	// the completion signal — its existence, and nothing else.
 	//
@@ -952,7 +1084,12 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 			orchestratorStopped := false
 			for _, n := range obs.Derived {
 				t.Logf("%s %s %s %s", n.Name, n.State, n.Dispatch, n.Detail)
-				if n.State == string(protocol.StateStuck) {
+				run.states[n.State] = true
+				// A stuck node ends the run, except where the scenario is
+				// about a condition only the operator can repair. There the
+				// campaign is expected to reach a verdict that names it, and
+				// failing here would hide the very behaviour under test.
+				if n.State == string(protocol.StateStuck) && sc.outcome() == "campaign-met" {
 					keepEvidence(t, a, campaign, "stuck")
 					t.Fatalf("%s is stuck: %s", n.Name, n.Detail)
 				}

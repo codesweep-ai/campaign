@@ -9,7 +9,9 @@
   "resolved": "2026-09-20",
   "stint": null,
   "evidence": {
-    "commits": [],
+    "commits": [
+      "2514e63"
+    ],
     "integrated": [],
     "verified": "`./scripts/record-fixtures.sh --check` printed that every prerequisite was present and exited 1. After the fix the same command prints the same report and exits 0. The mechanism was reproduced in six lines of bash: a function whose last command is a false test, installed as an EXIT trap, turns `exit 0` into exit 1."
   },
