@@ -1,0 +1,20 @@
+{
+  "id": "SAC-041",
+  "title": "The count of failed looks lives inside one wait call, so a lost machine is never concluded at the defaults, and other numbers let one network fault condemn every node",
+  "type": "defect",
+  "severity": "high",
+  "status": "in-progress",
+  "foundBy": "session agent, maintainer of this repository, running the wait loop against a simulated fleet on a scripted clock",
+  "opened": "2026-09-20",
+  "resolved": null,
+  "stint": "reliability-2026-09",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "**The mechanism.** PROTOCOL.md §5 says a run of failed probes is the conclusion that a machine is gone, and that the threshold is the operator's number. The run is counted in a map that `cmdWait` creates when it starts and drops when it returns. `observe` creates a fresh one on every call. The count is kept for each node separately. Two faults follow from those two facts, and which one a campaign meets depends on its numbers.\n\n**At the defaults a lost machine is never concluded.** One `wait` lasts 240 seconds and looks every 30, so it makes eight or nine looks. The threshold, `blindProbes`, is 10. No single call reaches it, and the next call starts from zero. A machine that has been gone for hours reads `node-unreachable` for ever. It does not become `node-stuck`, so `wait` returns no judgment for it. The orchestrator is not told that the node's queue is unreachable. §5 warns that such a dispatcher *\"will wait out its whole clock on work that can never be delivered\"*.\n\n**With other numbers, a fault of the observer's own condemns every node at once.** Raise the wait chunk, as the manual advises for a replay, or shorten the poll, and ten looks fit inside one call. Now suppose the orchestrator loses its network for five minutes, or its host is slow enough that probes pass their bound. Every probe fails, every node's count rises together, and every node is declared gone in the same look. The orchestrator is woken to write off a healthy fleet. §5 says a failed probe is *\"a fact about the observation rather than about the node\"*. When every probe of one look fails, the observer has learned something about itself and nothing about any node.\n\n**How to reproduce the first.** In a campaign of two agents at the default policy, make one agent's machine unreachable and leave the other healthy. After two hours `observe` and `wait` still show `node-unreachable`. A scripted run shows exactly that.\n\n**How to reproduce the second.** Set the wait chunk to 840 seconds and block the orchestrator's route to every agent for six minutes. `wait` returns with every node stuck as *machine gone*.\n\n**What would fix it.** Conclude that a machine is gone from elapsed time since the last look that reached it, and not from a count of looks. That measure does not depend on the chunk, the poll or how slow a probe is. The time of the last good look is the observer's own knowledge and can sit beside the orchestrator's log, so it survives between calls. A look in which no node answered should move no node toward the conclusion. A scenario for each half belongs in the conformance suite, because the fix for the first must not bring back the second.",
+  "notes": [],
+  "links": []
+}
