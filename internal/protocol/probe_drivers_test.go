@@ -29,13 +29,12 @@ func TestTheProbeCountsTurnsAndNotStateQueries(t *testing.T) {
 	// A family name nothing else on this machine uses, so a real driver
 	// elsewhere cannot disturb the count.
 	const cli = "zzprobe"
-	fake := func(argv0 string) *exec.Cmd {
+	fake := func(argv0 string) {
 		cmd := exec.Command("bash", "-c", `exec -a "$0" sleep 30`, argv0)
 		if err := cmd.Start(); err != nil {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { _ = cmd.Process.Kill(); _, _ = cmd.Process.Wait() })
-		return cmd
 	}
 	fake("cs-" + cli + "-turn --tmux token --format text")
 	fake("cs-" + cli + "-turn --state")

@@ -172,7 +172,7 @@ func TestTheMissionIsOpenedAfterTheReadbackTurnEnds(t *testing.T) {
 	_ = a.openMissionWhenQuiet(context.Background(), io.Discard, orch, "the mission")
 
 	b, _ := os.ReadFile(calls)
-	first := strings.SplitN(string(b), "\n", 2)[0]
+	first, _, _ := strings.Cut(string(b), "\n")
 	if !strings.Contains(string(b), "m1.md") {
 		t.Fatalf("the mission was never delivered:\n%s", b)
 	}
