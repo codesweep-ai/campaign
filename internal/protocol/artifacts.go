@@ -100,12 +100,12 @@ func ParseReply(b []byte) (Reply, error) {
 // kind supersedes an earlier one; how the log is read is the reader's choice.
 type Entry struct {
 	At   time.Time `json:"at"`
-	Kind string    `json:"kind"` // "plan" | "accepted" | "assessment"
+	Kind string    `json:"kind"` // "plan" | "accepted" | "assessment" | "reported"
 	Text string    `json:"text"`
 }
 
 // LogKinds are the only kinds the log accepts.
-var LogKinds = map[string]bool{"plan": true, "accepted": true, "assessment": true}
+var LogKinds = map[string]bool{"plan": true, "accepted": true, "assessment": true, "reported": true}
 
 // AppendLogLocal appends one entry to this machine's own log. O_APPEND on one
 // line: a careless append is additive, and there is no rewrite path at all.
@@ -166,6 +166,35 @@ func AcceptedFor(entries []Entry, node string) map[string]bool {
 		}
 	}
 	return out
+}
+
+// ReportedFor is which of one node's dispatches `wait` has already reported as
+// stuck. A stuck node stays stuck, and nothing on its machine records that the
+// orchestrator was told, so without this every later wait returns at once and
+// the orchestrator can never block again. The entry sits in the log because
+// the log is what an orchestrator that lost its memory reads to recover
+// (PROTOCOL.md §7): it learns there what it was already told. A node that is
+// stuck with no dispatch, a machine that is gone, is keyed as "-".
+func ReportedFor(entries []Entry, node string) map[string]bool {
+	out := map[string]bool{}
+	prefix := node + "/"
+	for _, e := range entries {
+		if e.Kind != "reported" {
+			continue
+		}
+		if text := strings.TrimSpace(e.Text); strings.HasPrefix(text, prefix) {
+			out[strings.TrimPrefix(text, prefix)] = true
+		}
+	}
+	return out
+}
+
+// ReportedKey is the dispatch part of a reported entry.
+func ReportedKey(dispatch string) string {
+	if dispatch == "" {
+		return "-"
+	}
+	return dispatch
 }
 
 // AcceptanceText renders the node-qualified acceptance entry for a dispatch.

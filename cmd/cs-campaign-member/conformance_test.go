@@ -587,7 +587,6 @@ func TestConformanceLostMachineIsConcluded(t *testing.T) {
 // I10: a judgment ends a wait once. With one node stuck for good and another
 // still working, the orchestrator must still be able to block.
 func TestConformanceStuckNodeDoesNotEndEveryWait(t *testing.T) {
-	pending(t, "SAC-040")
 	dead := &simNode{name: "dead", script: func(int64) turnOutcome { return turnOutcome{runs: 30} }}
 	slow := &simNode{name: "slow", script: func(int64) turnOutcome { return turnOutcome{runs: 3 * 3600, reply: true} }}
 	w := newSimWorld(t, dead, slow)

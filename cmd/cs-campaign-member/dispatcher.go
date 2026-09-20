@@ -498,7 +498,7 @@ func cmdAccept(env *envState, args []string) error {
 }
 
 func cmdNote(env *envState, args []string) error {
-	if len(args) < 1 || !protocol.LogKinds[args[0]] || args[0] == "accepted" {
+	if len(args) < 1 || !protocol.LogKinds[args[0]] || args[0] == "accepted" || args[0] == "reported" {
 		return errors.New("note needs a kind: plan or assessment (acceptances come from `accept`)")
 	}
 	body, _, err := readBody(args[1:])
@@ -670,8 +670,9 @@ func cmdWait(env *envState, args []string) error {
 		// 4). Delivering into the snapshot's known-open dispatch is safe either
 		// way: a reply that raced us has closed it, and the reply check
 		// precedes everything on the next look.
-		var judgment, free []string
+		var judgment, free, known []string
 		resumed := false
+		entries := env.logEntries()
 		for _, n := range names {
 			o := obs[n].Obs
 			switch o.State {
@@ -711,8 +712,16 @@ func cmdWait(env *envState, args []string) error {
 						acted = append(acted, msg)
 					}
 				}
-			case protocol.StateReplied, protocol.StateStuck:
+			case protocol.StateReplied:
 				judgment = append(judgment, n)
+			case protocol.StateStuck:
+				// A judgment ends a wait once. A stuck node this orchestrator
+				// has been told about stays in every snapshot and ends no wait.
+				if protocol.ReportedFor(entries, n)[protocol.ReportedKey(o.Dispatch)] {
+					known = append(known, n)
+				} else {
+					judgment = append(judgment, n)
+				}
 			case protocol.StateFree:
 				// Named on the elapsed line, never a reason to return.
 				free = append(free, n)
@@ -730,7 +739,9 @@ func cmdWait(env *envState, args []string) error {
 				case protocol.StateReplied:
 					fmt.Printf("%s replied to %s: read it (`cs-campaign-member read %s`), then `accept %s` or send rework with `send %s --file <path>`.\n", n, obs[n].Obs.Dispatch, n, n, n)
 				case protocol.StateStuck:
-					fmt.Printf("%s is stuck (%s): it can take no further work — every item assigned to it is unreachable. Decide what becomes of its queue, and record an assessment.\n", n, obs[n].Obs.Detail)
+					fmt.Printf("%s is stuck (%s): it can take no further work — every item assigned to it is unreachable. Decide what becomes of its queue, and record an assessment. You are told this once: later waits show %s as stuck and do not return for it.\n", n, obs[n].Obs.Detail, n)
+					_ = protocol.AppendLogLocal(env.Home, protocol.Entry{At: clockNow().UTC(), Kind: "reported",
+						Text: protocol.AcceptanceText(n, protocol.ReportedKey(obs[n].Obs.Dispatch))})
 				}
 			}
 			return nil
@@ -746,6 +757,9 @@ func cmdWait(env *envState, args []string) error {
 			// actionable" reads as a fleet with nothing left to give. A free
 			// node is assignable — it is just not a judgment, because the
 			// orchestrator is what freed it. Name it here, do not return for it.
+			if len(known) > 0 {
+				what += fmt.Sprintf("; %s still stuck, as already reported", strings.Join(known, ", "))
+			}
 			if len(free) > 0 {
 				is := "is"
 				if len(free) > 1 {
