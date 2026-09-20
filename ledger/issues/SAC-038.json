@@ -3,15 +3,17 @@
   "title": "A replay of real work can cross the wait chunk on a slow host, and the documents only say how to shorten it",
   "type": "improvement",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, maintainer of this repository, after repeated replays of one recorded campaign on a shared host",
   "opened": "2026-09-20",
-  "resolved": null,
+  "resolved": "2026-09-20",
   "stint": null,
   "evidence": {
-    "commits": [],
+    "commits": [
+      "b7a128b"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`TestTheDocumentedWaitOverrideCanBeRaised` passes, and it fails when the sentence is taken out of MANUAL.md. It also holds that an override of 840 stands against the default and against a smaller `--for`. A full replay of a recorded three member campaign then ran with `CS_CAMPAIGN_WAIT_SECONDS=840`, which the pinned `create` forwarded to the members. It served every recorded call with no miss and delivered the recorded commit ids. The idea of making an elapsed chunk visible outside the model stays open as a design question, and it is not part of this closure."
   },
   "resolution": null,
   "details": "**What this is.** SAC-033 asks for `--record` and `--replay`, and lists what a replay has to hold still. A cassette fixes what the models say. It cannot fix how long an agent's real work takes, such as a package install. So the question is which timers in this harness turn elapsed time into control flow.\n\n**The wait chunk does.** `wait` returns when its chunk elapses, 240 seconds by default, whether or not a reply arrived, and it tells the model to call `wait` again. A live orchestrator does. A recorded orchestrator does whatever it did when recorded. Suppose a dispatch took under 240 seconds in the recording and takes longer in the replay. The proxy tolerates the changed tool result, and the recorded orchestrator then reads and accepts a reply that does not exist yet. The conversation replays with no miss, and the delivery is wrong. The other direction is harmless, and it was observed. A chunk that elapsed in the recording returned a judgment in the replay, the next recorded `wait` returned at once, and the delivery was identical.\n\n**The setting already exists.** `CS_CAMPAIGN_WAIT_SECONDS` overrides the chunk, `--for` included, and `create` forwards it to the members. The function `WaitChunk` accepts any value, so it can go above the default as well as below it. SPEC §6.1 and R126, and the manual, present it only as the way a replay tier shortens a wait. A replay of real work needs the opposite. The ceiling is the tool call timeout that the recorded model asked for, which is part of the recording and so is constant. In the recording studied it was 900 seconds, so a chunk of 840 seconds is safe and gives three and a half times the default.\n\n**What is asked for.** Say in the manual and in SPEC §6.1 that a replay whose agents do real work should raise the chunk. Say what bounds it, and add the doc claim test that keeps the sentence true. Consider making an elapsed chunk visible outside the model, so that a wrapper can fail a replay whose `wait` elapsed where the recorded one returned a judgment. Today only the model is shown that line.\n\n**How to reproduce.** Replay a recorded campaign on a host slow enough that one dispatch takes more than 240 seconds where the recording took less. The replay ends with no miss and a wrong delivery. Set `CS_CAMPAIGN_WAIT_SECONDS=840` and it passes.",

@@ -1,0 +1,24 @@
+{
+  "id": "SAC-039",
+  "title": "Every lent scenario of the smoke tier failed at create on Linux, because the lender had no binary to run",
+  "type": "defect",
+  "severity": "high",
+  "status": "closed",
+  "foundBy": "session agent, maintainer of this repository, running `make ci` before a push",
+  "opened": "2026-09-20",
+  "resolved": "2026-09-20",
+  "stint": null,
+  "evidence": {
+    "commits": [
+      "b83f35c"
+    ],
+    "integrated": [],
+    "verified": "Before the change, `make ci` on a Linux host reached `test-smoke` and failed. Five scenarios were reported as `create-failed`, and each one had `exec: \"cs-sandbox\": executable file not found in $PATH` from the lender container. After the change, `make test-smoke` on the same host passed all six scenarios of `TestSmokeReplay` with exit 0, and left no sandbox behind."
+  },
+  "resolution": null,
+  "details": "A lent scenario puts a credential lender on the campaign's network, and that container runs `cs-sandbox lender`. The slim image the test tiers boot carries no `cs-sandbox`. `cs-sandbox` copies one in only when `CS_SANDBOX_LENDER_BIN` names it, which is the change SBX-041 describes in the sandbox ledger.\n\nThe helper `ensureLiveLenderBinary` in `internal/cli/livecampaign_test.go` sets that variable, and it returned early on Linux. Its comment gave the reason: `cs-sandbox` mounted its own executable into the lender on Linux. That stopped being true when the pin moved onto the sandbox revision that holds SBX-041. From then on the lender container started and died at once on a Linux host, and the campaign reported only that create had failed.\n\nThe unit tier fakes `cs-sandbox`, so it could not see this. The smoke tier skips itself where a host cannot carry it, so a CI runner with no KVM could not see it either. It took a Linux host with KVM and a full `make ci`.\n\nThe helper now sets the variable on every host, and its comment says why.",
+  "notes": [],
+  "links": [
+    "SAC-033"
+  ]
+}
