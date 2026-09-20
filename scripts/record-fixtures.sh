@@ -5,10 +5,10 @@
 # Six scenarios, each a real campaign: two microVMs, a fabric, a dispatch ladder
 # and real model turns. This checks what they need before any of that starts, and
 # `make record-fixtures-strict` fails on a scenario it cannot sign in for rather than
-# skipping it. Recording five of six and reporting green is the outcome worth
+# skipping it. Recording all but one and reporting green is the outcome worth
 # refusing.
 #
-#   ./scripts/record-fixtures.sh          record all six
+#   ./scripts/record-fixtures.sh          record every scenario
 #   ./scripts/record-fixtures.sh --check  say what would run, record nothing
 #
 # The tests do the rest. Each one asks its agent for a single word against the
@@ -86,7 +86,11 @@ source_home=${CS_SANDBOX_AGENT_HOME:-$HOME}
 # Removed on exit. A SIGKILL is the one case that leaves anything behind, and
 # it is mode 600 inside a mode 700 directory when it does.
 creds_tree=
-cleanup_creds() { [[ -n $creds_tree ]] && rm -rf -- "$creds_tree"; }
+# The test is the last command, so without the return this function ends
+# false whenever there is no tree to remove — and an EXIT trap that ends
+# false takes the script's exit status with it. That is every --check run,
+# which builds no tree: it printed that all was well and exited 1.
+cleanup_creds() { [[ -n $creds_tree ]] && rm -rf -- "$creds_tree"; return 0; }
 trap cleanup_creds EXIT
 
 lend_tree() {
@@ -105,7 +109,7 @@ lend_tree() {
   export CS_SANDBOX_AGENT_HOME="$creds_tree"
 }
 
-# The image these six campaigns will boot. The slim one, because that is what
+# The image these campaigns will boot. The slim one, because that is what
 # `make test-smoke` and CI replay on, and a cassette is bound to the image that
 # recorded it: replay serves the model's tool calls from the cassette and then
 # runs them for real, so a turn that used a binary the other variant drops
@@ -177,7 +181,7 @@ if [[ -w /dev/kvm ]]; then ok "/dev/kvm is writable"; else bad "/dev/kvm is not 
 # only artifact these campaigns need. Every member is copied from a base rootfs
 # built FROM that image and kept beside it, one per image variant, and a host can
 # hold the image and be unable to boot a single member. That is not a guess: it
-# is how a recording run died on all six scenarios, each after taking a group, a
+# is how a recording run died on every scenario, each after taking a group, a
 # network and a gateway port.
 #
 # The image is named rather than asked for with `--slim`, and the two are the
@@ -231,7 +235,7 @@ skipping, so fix it before a campaign starts."
 fi
 
 if (( check_only )); then
-  echo "--check: everything the six scenarios need is present. Nothing recorded,"
+  echo "--check: everything every scenario needs is present. Nothing recorded,"
   echo "and no credential written: the scratch tree is built by a real run."
   echo "would run: go test -run '$fixture_tests'"
   exit 0
@@ -241,7 +245,7 @@ if (( ${#only[@]} )); then
   printf '\nThis runs %d real campaign(s) against real providers, and spends real money:\n' "${#only[@]}"
   printf '  %s\n' "${only[@]}"
 else
-  printf '\nThis runs all six real campaigns against real providers, and spends real money.\n'
+  printf '\nThis runs every real campaign against real providers, and spends real money.\n'
 fi
 cat <<'WARN'
 Re-recording REPLACES each cassette; it does not append.

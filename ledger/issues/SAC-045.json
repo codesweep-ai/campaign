@@ -1,0 +1,22 @@
+{
+  "id": "SAC-045",
+  "title": "The recording script's own check reports success and exits non-zero",
+  "type": "defect",
+  "severity": "low",
+  "status": "closed",
+  "foundBy": "session agent, maintainer of this repository, wiring a new tier into the recording script",
+  "opened": "2026-09-20",
+  "resolved": "2026-09-20",
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": "`./scripts/record-fixtures.sh --check` printed that every prerequisite was present and exited 1. After the fix the same command prints the same report and exits 0. The mechanism was reproduced in six lines of bash: a function whose last command is a false test, installed as an EXIT trap, turns `exit 0` into exit 1."
+  },
+  "resolution": null,
+  "details": "**What happened.** The recording script offers a `--check` mode that reports whether this host holds everything a recording needs, records nothing and spends nothing. It printed a clean report, said that all was present, and exited 1.\n\n**Why.** The script removes its scratch credential tree from an EXIT trap. The cleanup function's last command is a test of whether a tree was ever made. In `--check` mode none is, so that test fails. The function therefore ends unsuccessfully, and an EXIT trap carries such a status out as the script's own. The report above it was accurate; only the status lied.\n\n**Why it matters.** The status is the half a caller reads. Every rule about gates here says to capture output to a log and test the status rather than read words. This is a gate whose status was wrong in its success case. A wrapper that asked `--check` before recording would conclude the host was not ready, and the report explaining that it was would scroll past unread.\n\n**How to reproduce.** Install as an EXIT trap a function whose last command is a false test, and exit zero.\n\n**What would help.** End the cleanup function with an explicit success. A trap that cleans up has no verdict to carry.",
+  "notes": [],
+  "links": [
+    "SAC-044"
+  ]
+}
