@@ -3,19 +3,27 @@
   "title": "An orchestrator can finish the mission inside its readback turn, so the mission's own trigger arrives after the mission is closed",
   "type": "defect",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, maintainer of this repository, reading one unmatched request at the end of a smoke tier replay",
   "opened": "2026-09-20",
-  "resolved": null,
+  "resolved": "2026-09-20",
   "stint": null,
   "evidence": {
-    "commits": [],
+    "commits": [
+      "a9d30a0",
+      "27dc8cb"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`TestTheMissionIsOpenedAfterTheReadbackTurnEnds` passes, and with the wait removed it fails with `the mission was delivered while the readback turn was still running`. `TestTheMissionIsOpenedAnywayWhenTheTurnNeverEnds` holds the bound. Live, the scenario that showed the fault was recorded again with the fix in place. The mission's prompt is now message 21 of 80 in the orchestrator's conversation, where it was message 72 of 77. The replay serves 45 of 45 requests with no miss, where every replay of the earlier recording missed one."
   },
   "resolution": null,
   "details": "**What happens.** `create` sends every member a readback dispatch and waits for each reply. It then opens the mission on the orchestrator. It writes `m1.md` and starts a turn with a prompt that says to read it. The readback reply is an artifact, and writing it does not end the orchestrator's turn. Some models stop there. Others look at their inbox, find the mission already open, and carry on. They dispatch the work, wait, judge it and reply to the mission, all inside the turn that the readback started. The turn `create` started for the mission is queued behind that one. Its prompt is delivered when the long turn ends, which is after the mission has been closed.\n\n**What it costs.** One model turn at the end of the campaign, spent on a prompt about work that is finished. In the session read here the model answered *\"I already closed m1 with campaign-met last turn\"* and ran an inbox check. A less careful model could do more than check. `observe` also shows the orchestrator as working for that extra turn, after the campaign has a verdict.\n\n**What it does to a recording.** A recording ends when the mission is replied to, and the members are then destroyed. The orchestrator is by then inside the spare turn, so its last recorded answer can be a tool call whose next request was never made. In a replay the timing differs, that next request can get out before the machines go, and the proxy reports one miss at the very end. The smoke tier still passes, because it fails on a call that reaches a provider and not on a miss. One scenario of six did this in one full run of the tier.\n\n**It depends on the run.** Among twelve recordings of six scenarios, the mission's prompt is near message 21 of the orchestrator's conversation in most. That is the expected place, straight after the readback. In three it is within six messages of the end, at message 75 of 80, 63 of 65 and 69 of 71. Those three come from two different agent families and from recordings made weeks apart.\n\n**How to reproduce.** Record any smoke scenario several times and find the index of the message that says to read `m1.md` in the orchestrator's last recorded request. When it is near the end, the mission was done in the readback turn.\n\n**What would fix it.** The rule `send` already follows for a continuation would fit here. A message delivered while a turn is running starts no second one, because the running one or the ladder picks it up. Opening the mission could apply the same test. The readback brief could also tell the orchestrator to end its turn after it confirms the briefing.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-20",
+      "text": "Fixed by waiting and not by skipping the mission's turn when one is already running. The host does not recover the orchestrator during a campaign. A mission left for a running turn to find would never start if that turn ended without finding it. The wait is bounded at two minutes, and past it the mission is opened as before, with a line that says so. The sentence for the readback brief was left out, because it would change the bytes of every recorded session for a gain that depends on the model."
+    }
+  ],
   "links": [
     "SAC-008",
     "SAC-033"

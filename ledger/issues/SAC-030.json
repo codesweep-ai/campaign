@@ -3,15 +3,18 @@
   "title": "An agent the kernel kills for memory still reads as node-working",
   "type": "defect",
   "severity": "high",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent working in the simple-tools-demo repository, which runs a three member campaign at the pinned build of 2026-09-17, while reading a member's session after an unexplained five minute stall",
   "opened": "2026-09-19",
-  "resolved": null,
-  "stint": "reliability-2026-09",
+  "resolved": "2026-09-20",
+  "stint": null,
   "evidence": {
-    "commits": [],
+    "commits": [
+      "8772e63",
+      "886b2a6"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`TestConformanceAKilledAgentIsRecoveredAtTheNextLook` passes. Before the change it failed with `the agent died at +100s and its next turn started at +316s`. `TestTheProbeCountsTurnsAndNotStateQueries` passes against real processes, and with the old probe line it counts 2 drivers where there is 1. Live, in a two member campaign, an opencode agent's server was killed with SIGKILL while it ran a four minute command. Five seconds later `observe` read `node-stopped`, `continue next`, `last turn ended`, `exit 5` and quoted `turn failed (opencode run exit 1)`. The continue was delivered 11 seconds after the kill. The member finished its work, and the campaign ended `campaign-met` with one continue and no restart."
   },
   "resolution": null,
   "details": "A member whose agent process is killed keeps reporting `node-working`, and nothing says the agent is gone.\n\nThe demo gave each member 2048 MiB. The agent was killed by the guest kernel during `npm install`. `sudo dmesg` inside the member printed `Out of memory: Killed process 7898 (opencode)`. The opencode session stopped with a tool call left in status `running`, and no error was recorded anywhere.\n\n`cs-campaign observe` went on showing the member as `node-working` with `0 cont, 0 restarts`. One member showed `open 360s` while its agent had been dead for minutes. About five minutes after the kill, `wait` prodded the member with a `d002.001.md` input, and a new session redid the work. It happened to two members in one run.\n\nRecovery was sound, so the campaign still had the outcome `campaign-met`. The cost is that the operator cannot tell a dead agent from a slow model. The stall was first taken for a slow provider. It was found only by opening the member and reading its kernel log.\n\nThe probe already visits the member on every poll. It could report that no agent process is running while a dispatch is open, which is a fact about the node and needs no guess about the cause.\n\nTo reproduce, create an opencode member with `resources: {memoryMiB: 2048}` and dispatch a task that runs `npm install` for a Vite application.",
@@ -19,6 +22,10 @@
     {
       "date": "2026-09-20",
       "text": "Part of this is done in 8772e63, and the record stays open. The probe now asks the agent's turn driver whether the agent is in a turn. A node whose driver is alive while no agent session exists reads `node-working` with the words `a driver is alive and no agent session exists`, once the settling window has passed. That is the fact this record asked for. What is not done is the move: the state stays `node-working` until the driver gives up by itself. It has not been checked against a real agent killed for memory."
+    },
+    {
+      "date": "2026-09-20",
+      "text": "Measured before the fix, on a real agent. The turn driver reports a killed agent within a second: it exits 5 and writes the turn's end to its log on the member. The agent's own answer to `--state` is `absent` within five seconds. So the five silent minutes this record describes were not the driver's. They were the settling window, which held the ladder for 300 seconds after the newest message although the turn had already recorded its end. A turn that has recorded its end now skips the window. The earlier note here prepared for a driver that outlives its agent. On this agent that does not happen, and the wording for it stays in place for an agent where it does. One false lead is worth recording. A loop that polled `--state` matched the probe's own process pattern and counted itself as a live driver for three minutes. The probe now leaves such a call out of its count."
     }
   ],
   "links": []
