@@ -291,6 +291,13 @@ observe its own death and you can.
 | `node-stuck` | The ladder is spent, the elapsed bound tripped, or the machine is gone. |
 | `node-unreachable` | This look failed. An overlay on every state, not a state. |
 
+A `node-stopped` line also says when the node's own session record last changed, as in
+`0 cont, 0 restarts · continue next · session record changed 40s ago`. A turn driver wraps only a
+turn that the host started. An agent CLI can start a turn of its own, when a background task it
+left running finishes, and no driver wraps that turn. Such a node reads `node-stopped` while it
+works, and a record that changed seconds ago is how you can tell. The age is evidence beside the
+state. It changes no state and no ladder move.
+
 **CLAIMED** is the orchestrator's own append-only log. A claim beside the facts: "orchestrator says
 qa is working" next to "qa is unreachable" is the line this command exists for. `observe` also
 mirrors the log beside the campaign record, so the claim survives a lost orchestrator machine.

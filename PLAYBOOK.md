@@ -527,7 +527,7 @@ ask and is never a stale reading from an hour ago.
 |---|---|---|
 | `node-free` | No dispatch is open, or the open one was replied to and accepted. | Nothing. |
 | `node-working` | A dispatch is open and the turn driver is alive. | Nothing. |
-| `node-stopped` | A dispatch is open, no driver is alive, the ladder has a move left. | Nothing. The ladder runs. |
+| `node-stopped` | A dispatch is open, no driver is alive, the ladder has a move left. | Nothing. The ladder runs. For the orchestrator, read the record age on the line before you think of a nudge. |
 | `node-replied` | The reply exists and the orchestrator has not accepted it. | Nothing. Judging it is the orchestrator's job. |
 | `node-stuck` | The ladder is spent, the bound tripped, or the machine is gone. | Read the transcript, and decide. |
 | `node-unreachable` | This look failed. It overlays a state rather than replacing one. | Look again before concluding anything. |
@@ -569,7 +569,10 @@ Agent recovery belongs to the orchestrator's ladder, and a host-to-agent repair 
 claim this product makes about autonomy.
 
 The one failure only you can see is the orchestrator stopping, because it cannot observe its own
-death:
+death. You should read the `node-stopped` line first. It says when the orchestrator's own session record
+last changed. A record that changed seconds ago means the orchestrator is working in a turn it
+started itself, and a nudge would interrupt it. A record that has been still for many minutes
+means it has stopped:
 
 ```sh
 cs-campaign send acme --file nudge.md    # continues m1 if open, opens a dispatch if past it

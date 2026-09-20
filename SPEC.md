@@ -437,6 +437,12 @@ verdict.
 family's turn driver. *That is the right measure for silent work: the process is there whether or
 not anything is being emitted.*
 
+A `node-stopped` observation **SHOULD** also report when the node's own session record last
+changed. That report **MUST NOT** decide a state or a ladder move. *A driver wraps only a turn the
+host started, and an agent CLI can start one of its own, so a node can read `node-stopped` while it
+works. The record's age lets an operator see that. It is output, and output is the wrong measure of
+silent work, which is why it stays beside the state and never enters it.*
+
 **R65.** A failed probe **MUST** be treated as a fact about the observation rather than about the
 node. Only a run of consecutive failures past the operator's threshold **MAY** become the
 conclusion that the machine is gone. A probe **MUST** be bounded. *An unbounded one defeats this

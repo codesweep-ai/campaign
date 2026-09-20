@@ -29,6 +29,22 @@ type Facts struct {
 	Msgs    []Msg
 	Replies map[string]bool // dispatch ID -> reply file exists
 	Drivers int             // turn-driver processes alive for this node's family
+	// Record is when the family's own session record last changed, in epoch
+	// seconds, or 0 when the node has none. It is reported and never decides a
+	// state: see recordNote.
+	Record int64
+}
+
+// recordGlob names, for one CLI family, where its session record lives inside
+// a member and which files are the record. The directories are the profiles
+// cs-sandbox's wrappers keep (cs-claude, cs-codex, cs-opencode).
+//
+// internal/cli's fleet audit names the same places for the same reason, and
+// TestTheProbeAndTheAuditAgreeOnWhereARecordLives keeps the two together.
+var recordGlob = map[string][2]string{
+	"claude":   {".cs-claude/projects", "*.jsonl"},
+	"codex":    {".cs-codex/sessions", "*.jsonl"},
+	"opencode": {".cs-opencode", "opencode.db*"},
 }
 
 // ProbeScript is the single shell command a dispatcher runs inside a node to
@@ -36,14 +52,20 @@ type Facts struct {
 // matches only that family's turn driver; the [b]racket keeps the pattern
 // from matching the probe's own command line.
 //
-// Output lines: "MSG <mtime> <name>", "REPLY <id>", "DRIVERS <n>", or
-// "NOCHANNELS" when the channel root does not exist yet.
+// Output lines: "MSG <mtime> <name>", "REPLY <id>", "DRIVERS <n>",
+// "RECORD <mtime>", or "NOCHANNELS" when the channel root does not exist yet.
+// RECORD is left out for a family with no known record, and it reads 0 when the
+// member has written none, so an older probe and a newer parser agree.
 func ProbeScript(cli string) string {
 	pattern := "cs-[" + cli[:1] + "]" + cli[1:] + "-turn"
-	return `cd "$HOME/` + ChannelsDir + `" 2>/dev/null || { echo NOCHANNELS; exit 0; }; ` +
+	script := `cd "$HOME/` + ChannelsDir + `" 2>/dev/null || { echo NOCHANNELS; exit 0; }; ` +
 		`for f in input/*.md; do [ -e "$f" ] || continue; printf 'MSG %s %s\n' "$(stat -c %Y "$f" 2>/dev/null || echo 0)" "${f#input/}"; done; ` +
 		`for r in output/replies/*.json; do [ -e "$r" ] || continue; b="${r#output/replies/}"; printf 'REPLY %s\n' "${b%.json}"; done; ` +
 		`printf 'DRIVERS %s\n' "$(pgrep -fc '` + pattern + ` ' 2>/dev/null || echo 0)"`
+	if g, ok := recordGlob[cli]; ok {
+		script += `; printf 'RECORD %s\n' "$(find "$HOME/` + g[0] + `" -type f -name '` + g[1] + `' -printf '%T@\n' 2>/dev/null | sort -n | tail -1 | cut -d. -f1 | grep . || echo 0)"`
+	}
+	return script
 }
 
 // ParseProbe turns ProbeScript output into Facts. Unrecognized lines are
@@ -63,6 +85,8 @@ func ParseProbe(out string) Facts {
 			f.Replies[fields[1]] = true
 		case len(fields) == 2 && fields[0] == "DRIVERS":
 			f.Drivers, _ = strconv.Atoi(fields[1])
+		case len(fields) == 2 && fields[0] == "RECORD":
+			f.Record, _ = strconv.ParseInt(fields[1], 10, 64)
 		}
 	}
 	return f
@@ -138,7 +162,42 @@ func Compute(f Facts, probeFailed bool, blindRun int, accepted map[string]bool, 
 		move = "restart"
 	}
 	return Observation{State: StateStopped, Dispatch: d.ID, NextMove: move,
-		Detail: fmt.Sprintf("%d cont, %d restarts · %s next", d.Continues, d.Restarts, move)}
+		Detail: fmt.Sprintf("%d cont, %d restarts · %s next", d.Continues, d.Restarts, move) + recordNote(f, now)}
+}
+
+// RecordDir is where one CLI family keeps its session record, relative to a
+// member's home, and "" for a family with no known record.
+func RecordDir(cli string) string { return recordGlob[cli][0] }
+
+// recordNote says when a stopped node's own session record last changed.
+//
+// node-stopped means no turn driver is alive, and a driver wraps only a turn
+// the host started. An agent CLI can start a turn of its own: a background
+// task it left running finishes, and its runtime hands the result to the
+// session as a new turn. No driver wraps that turn, so the node reads stopped
+// for as long as it works. Seen live, for the last forty minutes of a campaign.
+//
+// The note is evidence beside the state and never part of it. A record that
+// changed seconds ago tells an operator not to nudge, and it changes no state
+// and no ladder move, because a record is output, and output is a poor measure
+// of silent work (R64).
+func recordNote(f Facts, now int64) string {
+	if f.Record <= 0 {
+		return ""
+	}
+	return " · session record changed " + shortAge(clampAge(now-f.Record)) + " ago"
+}
+
+// shortAge prints an age the way an operator reads one: 40s, 12m, 3h.
+func shortAge(secs int64) string {
+	switch {
+	case secs < 120:
+		return fmt.Sprintf("%ds", secs)
+	case secs < 7200:
+		return fmt.Sprintf("%dm", secs/60)
+	default:
+		return fmt.Sprintf("%dh", secs/3600)
+	}
 }
 
 // clampAge keeps displayed ages non-negative: message mtimes come from the

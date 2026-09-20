@@ -278,3 +278,57 @@ func TestTheDocumentedDestroyPreviewExists(t *testing.T) {
 		t.Errorf("destroy --dry-run describes itself as %q", flag.Usage)
 	}
 }
+
+// MANUAL.md and PLAYBOOK.md tell an operator to read the record age on a
+// `node-stopped` line before nudging an orchestrator. The operator acts on
+// that: a nudge sent to a working orchestrator is the most expensive kind of
+// intervention. So the documents have to keep the sentence, and the line has
+// to keep carrying the age, without the age ever moving the state.
+func TestTheDocumentedRecordAgeIsOnAStoppedLine(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for doc, want := range map[string]string{
+		"MANUAL.md":   "session record changed 40s ago",
+		"PLAYBOOK.md": "It says when the orchestrator's own session record",
+		"SPEC.md":     "That report **MUST NOT** decide a state or a ladder move",
+	} {
+		body, err := os.ReadFile(filepath.Join(root, doc))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), want) {
+			t.Errorf("%s no longer carries %q", doc, want)
+		}
+	}
+	now := int64(1_700_000_000)
+	facts := protocol.Facts{
+		Msgs:    []protocol.Msg{{ID: "m1", MTime: now - 5000, Name: "m1.md"}},
+		Replies: map[string]bool{},
+		Record:  now - 40,
+	}
+	o := protocol.Compute(facts, false, 0, map[string]bool{}, protocol.Policy{}, now)
+	if o.State != protocol.StateStopped {
+		t.Fatalf("a record that changed 40s ago must not move the state: %+v", o)
+	}
+	if !strings.HasSuffix(o.Detail, "session record changed 40s ago") {
+		t.Errorf("the stopped line reads %q, and the documents promise the record's age on it", o.Detail)
+	}
+}
+
+// The probe and the fleet audit each name where a CLI family keeps its session
+// record inside a member. They are one fact written twice, in two packages, and
+// a family added to one and not the other would leave its stopped line silent.
+func TestTheProbeAndTheAuditAgreeOnWhereARecordLives(t *testing.T) {
+	for cli, audited := range evidenceGlob {
+		dir := protocol.RecordDir(cli)
+		if dir == "" {
+			t.Errorf("the audit knows where %s keeps its record and the probe does not", cli)
+			continue
+		}
+		if audited != dir && filepath.Dir(audited) != dir {
+			t.Errorf("%s: the audit reads %q and the probe reads under %q", cli, audited, dir)
+		}
+	}
+}

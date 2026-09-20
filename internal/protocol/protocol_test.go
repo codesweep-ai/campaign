@@ -380,3 +380,93 @@ func TestDefaultWaitSecondsFitsAnAgentToolCall(t *testing.T) {
 		t.Fatalf("a chunk of %ds cannot complete under a %ds tool-call cap", DefaultWaitSeconds, tightestToolCallCap)
 	}
 }
+
+// The probe is a shell command that runs inside a member, so it is run here,
+// against a scratch home, and not only read. It has to find the newest change
+// to each family's own session record and ignore everything beside it.
+func TestProbeReportsWhenTheSessionRecordLastChanged(t *testing.T) {
+	if _, err := exec.LookPath("pgrep"); err != nil {
+		t.Skip("the probe needs pgrep, as a member has")
+	}
+	if out, err := exec.Command("find", os.TempDir(), "-maxdepth", "0", "-printf", "%T@").CombinedOutput(); err != nil {
+		t.Skipf("the probe needs GNU find, as a member has: %v %s", err, out)
+	}
+	for _, tc := range []struct{ cli, record, beside string }{
+		{"claude", ".cs-claude/projects/-home-me-work/0f3c.jsonl", ".cs-claude/settings.json"},
+		{"codex", ".cs-codex/sessions/2026/09/20/rollout-1-0f3c.jsonl", ".cs-codex/auth.json"},
+		{"opencode", ".cs-opencode/opencode.db-wal", ".cs-opencode/opencode.json"},
+	} {
+		home := t.TempDir()
+		touch := func(rel string, at time.Time) {
+			p := filepath.Join(home, rel)
+			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(p, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chtimes(p, at, at); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := os.MkdirAll(filepath.Join(home, ChannelsDir, "input"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		run := func() Facts {
+			cmd := exec.Command("sh", "-c", ProbeScript(tc.cli))
+			cmd.Env = append(os.Environ(), "HOME="+home)
+			out, err := cmd.Output()
+			if err != nil {
+				t.Fatalf("%s: the probe failed: %v", tc.cli, err)
+			}
+			return ParseProbe(string(out))
+		}
+		if f := run(); f.Record != 0 {
+			t.Errorf("%s: a member with no session record must report 0, got %d", tc.cli, f.Record)
+		}
+		changed := time.Unix(1_700_000_000, 0)
+		touch(tc.record, changed)
+		touch(tc.beside, changed.Add(time.Hour)) // newer, and not the record
+		if f := run(); f.Record != changed.Unix() {
+			t.Errorf("%s: the record changed at %d and the probe reported %d", tc.cli, changed.Unix(), f.Record)
+		}
+	}
+	// A family with no known record is probed as before, and parses as before.
+	if s := ProbeScript("gemini"); strings.Contains(s, "RECORD") {
+		t.Errorf("an unknown family has no record to look for: %s", s)
+	}
+}
+
+// A stopped node says when its own session record last changed. The age is
+// evidence beside the state: it must never move the state or the ladder, so a
+// node whose record changed a second ago is still stopped, with the same move.
+func TestAStoppedNodeSaysWhenItsRecordLastChanged(t *testing.T) {
+	pol := Policy{ContinueAttempts: 2, Restarts: 1, ElapsedSeconds: 1000000, BlindProbes: 3, SettlingSeconds: 100}
+	now := int64(1_700_000_000)
+	open := msgs("d001.md@1699990000")
+	for _, tc := range []struct {
+		record int64
+		want   string
+	}{
+		{0, ""},
+		{now - 1, " · session record changed 1s ago"},
+		{now - 45, " · session record changed 45s ago"},
+		{now - 12*60, " · session record changed 12m ago"},
+		{now - 5*3600, " · session record changed 5h ago"},
+		{now + 3, " · session record changed 0s ago"}, // the member's clock runs ahead
+	} {
+		o := Compute(Facts{Msgs: open, Replies: map[string]bool{}, Record: tc.record}, false, 0, map[string]bool{}, pol, now)
+		if o.State != StateStopped || o.NextMove != "continue" {
+			t.Fatalf("record %d moved the state or the move: %+v", tc.record, o)
+		}
+		if want := "0 cont, 0 restarts · continue next" + tc.want; o.Detail != want {
+			t.Errorf("record %d: detail %q, want %q", tc.record, o.Detail, want)
+		}
+	}
+	// It is said of a stopped node only. A working node has a driver, which is
+	// the better evidence, and its line stays as it was.
+	o := Compute(Facts{Msgs: open, Replies: map[string]bool{}, Drivers: 1, Record: now - 1}, false, 0, map[string]bool{}, pol, now)
+	if o.State != StateWorking || strings.Contains(o.Detail, "session record") {
+		t.Errorf("a working node's line must not change: %+v", o)
+	}
+}
