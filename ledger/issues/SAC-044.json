@@ -1,0 +1,22 @@
+{
+  "id": "SAC-044",
+  "title": "One malformed readback fails the whole create, where asking the member once more would recover it",
+  "type": "improvement",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "session agent, maintainer of this repository, creating a two member campaign for a live test",
+  "opened": "2026-09-20",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "**What happened.** `create` provisioned two members and sent each its readback dispatch. The orchestrator's answer was there within a minute. Its reply file was complete and was valid JSON. The readback inside it, which the model writes as a JSON object in the reply's note, had no closing brace. `create` reported `replied but readback is not valid JSON (unexpected end of JSON input)`, marked the campaign `create-failed` and stopped. Everything else in the readback was right: the member, the role, the branch, the goal and the obligations.\n\n**Why it matters.** The check is right to refuse the readback, because it is the one proof that a member read its briefing. What is costly is the response. Two machines were up, keys were lent, and the team was ready. All of that was ended by one character a model left out. The operator's only move is to destroy and create again, which takes minutes and spends the readback turns a second time. The same profile, created again at once, passed. So the failure was a slip and not a member that had misread its brief.\n\n**It is the kind of fault the protocol already has an answer for.** A reply that is not good enough gets rework: the dispatcher says what is wrong and the worker answers again. The readback is the one dispatch whose dispatcher is the host, and the host has no such move. It judges the reply once.\n\n**How to reproduce.** Whether it happens is up to the model. It can be forced with a member whose model is served from a recording in which the readback object is cut short.\n\n**What would help.** When a readback reply exists and does not parse, or parses with a field missing, send the member one rework message. The message should quote the parser's error and ask for the readback again. Fail as now if the second one is wrong too. One retry keeps the check as strict as it is, and it turns a formatting slip into thirty seconds of delay.",
+  "notes": [],
+  "links": [
+    "SAC-035"
+  ]
+}
