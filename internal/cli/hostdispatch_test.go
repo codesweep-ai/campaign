@@ -132,3 +132,73 @@ func TestAwaitReplyWaitsOutARefusalAndSaysSo(t *testing.T) {
 		t.Fatalf("the host sent something into a wait the provider asked for:\n%s", b)
 	}
 }
+
+// turnThenQuietApp fakes an orchestrator whose readback turn is still running
+// for the first busyLooks probes, and records every other command the host
+// runs with the number of probes made before it.
+func turnThenQuietApp(t *testing.T, busyLooks int) (*app, string) {
+	t.Helper()
+	dir := t.TempDir()
+	calls, count := filepath.Join(dir, "calls"), filepath.Join(dir, "count")
+	tool := filepath.Join(dir, "fake-sandbox")
+	body := fmt.Sprintf(`#!/bin/sh
+n=$(cat %[1]s 2>/dev/null || echo 0)
+case "$5" in
+  *DRIVERS*)
+    n=$((n+1)); echo $n > %[1]s
+    if [ $n -le %[3]d ]; then printf 'MSG 100 d001.md\nREPLY d001\nDRIVERS 1\nAGENT busy\n'
+    else printf 'MSG 100 d001.md\nREPLY d001\nDRIVERS 0\nAGENT idle\n'; fi ;;
+  *) echo "after $n probes: $5" | cut -c1-120 >> %[2]s ;;
+esac
+`, count, calls, busyLooks)
+	if err := os.WriteFile(tool, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return &app{store: store.Store{Dir: filepath.Join(dir, "state")}, sandbox: sandboxCLI{Bin: tool}}, calls
+}
+
+// The readback reply is an artifact, and writing it does not end the
+// orchestrator's turn. A mission opened the moment the reply appears lands in
+// the inbox of a turn that is still running. A model that keeps going finds it,
+// does the whole mission there, and the mission's own prompt, queued behind
+// that turn, arrives after the mission is closed. So the mission is opened
+// only once the readback turn has ended.
+func TestTheMissionIsOpenedAfterTheReadbackTurnEnds(t *testing.T) {
+	restore := missionQuietForTest(30*time.Second, 10*time.Millisecond)
+	defer restore()
+	a, calls := turnThenQuietApp(t, 3)
+	orch := model.Member{Name: "orchestrator", Role: "orchestrator", CLI: "codex", Sandbox: "box", Ref: "orch.g"}
+
+	_ = a.openMissionWhenQuiet(context.Background(), io.Discard, orch, "the mission")
+
+	b, _ := os.ReadFile(calls)
+	first := strings.SplitN(string(b), "\n", 2)[0]
+	if !strings.Contains(string(b), "m1.md") {
+		t.Fatalf("the mission was never delivered:\n%s", b)
+	}
+	if !strings.HasPrefix(first, "after 4 probes") && !strings.HasPrefix(first, "after 5 probes") {
+		t.Fatalf("the mission was delivered while the readback turn was still running (three busy looks were scripted): %q", first)
+	}
+}
+
+// A turn that never ends must not hold the campaign up for ever: past the
+// bound the mission is opened anyway, which is what happened before.
+func TestTheMissionIsOpenedAnywayWhenTheTurnNeverEnds(t *testing.T) {
+	restore := missionQuietForTest(300*time.Millisecond, 10*time.Millisecond)
+	defer restore()
+	a, calls := turnThenQuietApp(t, 1_000_000)
+	orch := model.Member{Name: "orchestrator", Role: "orchestrator", CLI: "codex", Sandbox: "box", Ref: "orch.g"}
+
+	var out strings.Builder
+	start := time.Now()
+	_ = a.openMissionWhenQuiet(context.Background(), &out, orch, "the mission")
+	if time.Since(start) > 5*time.Second {
+		t.Fatalf("the wait ran for %s, past its bound", time.Since(start))
+	}
+	if b, _ := os.ReadFile(calls); !strings.Contains(string(b), "m1.md") {
+		t.Fatalf("the mission was never opened behind a turn that did not end:\n%s", b)
+	}
+	if !strings.Contains(out.String(), "still in a turn") {
+		t.Fatalf("opening the mission over a running turn must be said: %q", out.String())
+	}
+}

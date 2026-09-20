@@ -430,7 +430,7 @@ func (a *app) executeCreate(ctx context.Context, out io.Writer, campaign *model.
 			orchestrator = &campaign.Members[i]
 		}
 	}
-	if err = a.openMission(ctx, *orchestrator, missionDispatchBody(inputs)); err != nil {
+	if err = a.openMissionWhenQuiet(ctx, out, *orchestrator, missionDispatchBody(inputs)); err != nil {
 		campaign.Provisioning = "create-failed"
 		campaign.UpdatedAt = time.Now().UTC()
 		_ = a.store.Save(campaign)

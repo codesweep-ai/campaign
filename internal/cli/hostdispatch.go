@@ -70,6 +70,49 @@ func (a *app) openMission(ctx context.Context, member model.Member, body string)
 	return a.deliver(ctx, member, facts, protocol.MissionID, body, false)
 }
 
+// missionQuietBound is how long create waits for the orchestrator's readback
+// turn to end before it opens the mission, and missionQuietPoll how often it
+// looks. A healthy turn ends within seconds of writing its reply.
+var (
+	missionQuietBound = 2 * time.Minute
+	missionQuietPoll  = 2 * time.Second
+)
+
+func missionQuietForTest(bound, poll time.Duration) func() {
+	pb, pp := missionQuietBound, missionQuietPoll
+	missionQuietBound, missionQuietPoll = bound, poll
+	return func() { missionQuietBound, missionQuietPoll = pb, pp }
+}
+
+// openMissionWhenQuiet opens the mission once the orchestrator is in no turn.
+//
+// The readback's reply is an artifact, and writing it does not end the turn
+// that wrote it. Opened at once, the mission lands in the inbox of a turn that
+// is still running. A model that keeps going finds it there and does the whole
+// mission inside the readback turn, and the turn started for the mission,
+// queued behind that one, delivers its prompt after the mission is closed. With
+// no mission in its inbox, the readback turn has nothing to carry on with, and
+// ends. Past the bound the mission is opened anyway, as it always was.
+func (a *app) openMissionWhenQuiet(ctx context.Context, out io.Writer, member model.Member, body string) error {
+	deadline := time.Now().Add(missionQuietBound)
+	for {
+		facts, failed := a.sandbox.probeMember(ctx, member)
+		if !failed && facts.Drivers == 0 && !strings.HasPrefix(facts.Agent, "busy") {
+			break
+		}
+		if time.Now().After(deadline) {
+			fmt.Fprintf(out, "…  %s is still in a turn after %s — opening the mission behind it\n", member.Name, missionQuietBound)
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(missionQuietPoll):
+		}
+	}
+	return a.openMission(ctx, member, body)
+}
+
 func (a *app) deliver(ctx context.Context, member model.Member, facts protocol.Facts, id, body string, restart bool) error {
 	return a.deliverNamed(ctx, member, protocol.NextMsgName(facts.Msgs, id, restart), id, body)
 }
