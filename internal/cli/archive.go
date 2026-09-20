@@ -348,6 +348,10 @@ func (a *app) archiveTranscripts(ctx context.Context, base string, member model.
 			// reads as "no limit".
 			strconv.FormatFloat(bound.Seconds(), 'f', -1, 64))
 	}
+	// The member's turn log: how each of its turns ended, and why, in the turn
+	// driver's words. It is the one record of a provider's refusal that does not
+	// need the CLI's own session format to read, and it holds no credential.
+	allow += " .cs-turns/" + member.CLI + ".log"
 	command := fmt.Sprintf("cd \"$HOME\" && %sfiles=; for f in %s; do [ -e \"$f\" ] && files=\"$files $f\"; done; [ -n \"$files\" ] && tar -czf - $files || tar -czf - --files-from /dev/null", pre, allow)
 	target := filepath.Join(base, "transcript", "cli-evidence.tgz")
 	marker := filepath.Join(base, "transcript", "INCOMPLETE.txt")
