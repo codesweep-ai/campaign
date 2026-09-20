@@ -93,6 +93,13 @@ func (a *app) destroyCmd() *cobra.Command {
 		if len(remaining) > 0 {
 			return fmt.Errorf("members still present (%s); campaign state preserved — re-run with --force to destroy", strings.Join(remaining, ", "))
 		}
+		// The members are gone, and with them every agent session. What the host
+		// remembers of those sessions has to go too: a campaign made again from
+		// the same profile gets the same session names, and would otherwise
+		// resume sessions its new machines have never held.
+		for i := range campaign.Members {
+			a.sandbox.forgetSession(c.Context(), campaign.Members[i])
+		}
 		// Only now that no member survives: the group owns host-global
 		// artifacts the members do not — its network, its SSH trust and its
 		// gateway. Unforced on purpose: a second, independent check that the

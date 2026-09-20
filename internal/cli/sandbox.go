@@ -210,6 +210,21 @@ func (s sandboxCLI) forgetSession(ctx context.Context, member model.Member) {
 	_ = exec.CommandContext(ctx, tool, member.Session.Name).Run()
 }
 
+// forgetEarlierLife drops the host's record of a session that a brand new
+// member cannot have. It proves the result by looking again, because the forget
+// tool is tolerant by design and says nothing when it changed nothing.
+func (a *app) forgetEarlierLife(ctx context.Context, member model.Member) error {
+	if hostSessionFresh(member) {
+		return nil
+	}
+	a.sandbox.forgetSession(ctx, member)
+	if !hostSessionFresh(member) {
+		return fmt.Errorf("the host still records an agent session named %s from an earlier campaign, and %s is a new machine that cannot hold it: run `cs-%s-remote-forget %s` and create again",
+			member.Session.Name, member.Name, member.CLI, member.Session.Name)
+	}
+	return nil
+}
+
 // sessionLog streams the member's raw session transcript — human forensics
 // only, never a state input.
 func (s sandboxCLI) sessionLog(ctx context.Context, w io.Writer, member model.Member) error {

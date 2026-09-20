@@ -533,6 +533,14 @@ func (a *app) provisionMember(ctx context.Context, campaign *model.Campaign, mem
 		if err := a.sandbox.run(ctx, createArgs(campaign, *member)...); err != nil {
 			return a.failCreate(campaign, err)
 		}
+		// A machine that did not exist a moment ago holds no agent session. A
+		// session the host still remembers under this member's name belongs to
+		// an earlier campaign made from the same profile, which gets the same
+		// names. Resuming it would drive an id the new machine has never heard
+		// of, and every turn would fail with a message about ports and startup.
+		if err := a.forgetEarlierLife(ctx, *member); err != nil {
+			return a.failCreate(campaign, err)
+		}
 	} else if liveStatus != "running" {
 		if err := a.sandbox.run(ctx, "start", member.Ref); err != nil {
 			return a.failCreate(campaign, fmt.Errorf("restart existing member %s: %w", member.Name, err))
