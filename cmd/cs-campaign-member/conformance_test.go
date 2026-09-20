@@ -487,7 +487,7 @@ func TestConformanceRejectedCredentialStopsAtOnce(t *testing.T) {
 // minutes. Messages land, no turn runs, and the node must not be written off
 // for turns it was never given.
 func TestConformanceRungsAreOnlyChargedForTurnsThatStarted(t *testing.T) {
-	pending(t, "RUNGS")
+	pending(t, "SAC-042")
 	dev := &simNode{name: "dev", script: func(now int64) turnOutcome { return turnOutcome{runs: 60} }}
 	w := newSimWorld(t, dev)
 	outage := w.now + 1
@@ -537,7 +537,7 @@ func TestConformanceObserverOutageCondemnsNoNode(t *testing.T) {
 // policy, while its neighbour stays reachable. The conclusion must not depend
 // on how many looks happen to fit inside one wait.
 func TestConformanceLostMachineIsConcluded(t *testing.T) {
-	pending(t, "BLINDRUN")
+	pending(t, "SAC-041")
 	gone := &simNode{name: "gone", script: func(int64) turnOutcome { return turnOutcome{runs: 9 * 3600, reply: true} }}
 	fine := &simNode{name: "fine", script: func(int64) turnOutcome { return turnOutcome{runs: 9 * 3600, reply: true} }}
 	w := newSimWorld(t, fine, gone)
@@ -558,7 +558,7 @@ func TestConformanceLostMachineIsConcluded(t *testing.T) {
 // I10: a judgment ends a wait once. With one node stuck for good and another
 // still working, the orchestrator must still be able to block.
 func TestConformanceStuckNodeDoesNotEndEveryWait(t *testing.T) {
-	pending(t, "STUCKWAIT")
+	pending(t, "SAC-040")
 	dead := &simNode{name: "dead", script: func(int64) turnOutcome { return turnOutcome{runs: 30} }}
 	slow := &simNode{name: "slow", script: func(int64) turnOutcome { return turnOutcome{runs: 3 * 3600, reply: true} }}
 	w := newSimWorld(t, dead, slow)
