@@ -359,6 +359,10 @@ tools:
 	@mkdir -p $(TOOLSDIR)
 	@GOBIN=$(TOOLSDIR) go install github.com/codesweep-ai/sandbox/cmd/cs-sandbox
 	@CGO_ENABLED=0 GOBIN=$(TOOLSDIR) go install github.com/codesweep-ai/vcr/cmd/cs-vcr
+	@# cs-sandbox doctor compares every cs- tool on PATH with its own pins, and fails the
+	@# host on one that differs. go.mod pins the same versions, so the tiers get those too,
+	@# and a developer's older copy elsewhere on PATH cannot fail a tier that never runs it.
+	@GOBIN=$(TOOLSDIR) go install github.com/codesweep-ai/lint/cmd/cs-lint github.com/codesweep-ai/ledger/cmd/cs-ledger github.com/codesweep-ai/tracer/cmd/cs-tracer
 	@out="$$($(WITH_TOOLS) $(SANDBOX) install-agent-tools $(TOOLSDIR))" && printf '%s\n' "$$out" | head -1
 
 ## SMOKE_IMAGE / SBX_IMAGE: the two image variants, and which tier boots which.

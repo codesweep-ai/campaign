@@ -197,8 +197,10 @@ elif CS_SANDBOX_IMAGE="$image" cs-sandbox doctor --engine firecracker >/dev/null
   ok "this host is ready to boot $image"
 else
   ok "this host cannot boot $image yet — setup-smoke will build what is missing:"
+  # `|| true`: doctor exits non-zero here by definition, and under pipefail that
+  # would end this script on the one check that says it only reports.
   CS_SANDBOX_IMAGE="$image" cs-sandbox doctor --engine firecracker 2>&1 |
-    sed -e 's/\x1b\[[0-9;]*m//g' -n -e 's/^  NO  /        /p'
+    sed -e 's/\x1b\[[0-9;]*m//g' -n -e 's/^  NO  /        /p' || true
 fi
 
 # A deviating surface stops `create` on the first member, after the proxy is up
