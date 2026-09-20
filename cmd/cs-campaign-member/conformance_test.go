@@ -67,6 +67,9 @@ type simNode struct {
 	startFails func(now int64) bool
 	// gen invalidates a running turn's scheduled end when the session is killed.
 	gen int
+	// oldTools is a node whose image predates the turn log and --state: its
+	// probe says nothing about either.
+	oldTools bool
 }
 
 type simEvent struct {
@@ -201,11 +204,15 @@ func (w *simWorld) probeOutput(n *simNode) string {
 		fmt.Fprintf(&b, "REPLY %s\n", id)
 	}
 	fmt.Fprintf(&b, "DRIVERS %d\n", n.drivers)
+	if n.oldTools {
+		fmt.Fprintf(&b, "AGENT \n")
+		return b.String()
+	}
 	state := "idle"
 	if n.busy {
 		state = "busy"
 	}
-	fmt.Fprintf(&b, "STATE %s\n", state)
+	fmt.Fprintf(&b, "AGENT %s\n", state)
 	from := max(0, len(n.ends)-8)
 	for _, e := range n.ends[from:] {
 		class, ra := e.class, "-"
@@ -632,5 +639,109 @@ func TestConformanceGeneratedWorlds(t *testing.T) {
 			t.Logf("first failing seed: %d", seed)
 			return
 		}
+	}
+}
+
+// I8: a provider that never relents does not hold a node for ever. The wait
+// ends in node-stuck within the policy bound, the reason is named, and even
+// then no rung was spent and no session was restarted into the refusal.
+func TestConformanceProviderWaitIsBounded(t *testing.T) {
+	dev := &simNode{name: "dev", script: func(int64) turnOutcome {
+		return turnOutcome{runs: 120, class: classCapacity}
+	}}
+	w := newSimWorld(t, dev)
+	start := w.now
+	env := w.env()
+	final := w.campaign(env, 6*3600)
+
+	if final["dev"] != protocol.StateStuck {
+		t.Fatalf("I8: a node refused for six hours ended %s", final["dev"])
+	}
+	var stuckAt int64
+	for _, l := range w.looks {
+		if l.node == "dev" && l.state == protocol.StateStuck {
+			stuckAt = l.at - start
+			break
+		}
+	}
+	bound := int64(protocol.DefaultPolicy().ProviderWaitSeconds)
+	if stuckAt < bound || stuckAt > bound+900 {
+		t.Errorf("I8: the provider wait bound is %ds and the node was given up at +%ds", bound, stuckAt)
+	}
+	if obs := snapshot(env)["dev"].Obs; !strings.Contains(obs.Detail, classCapacity) {
+		t.Errorf("I8: a node given up on a provider's refusal must say so; detail: %q", obs.Detail)
+	}
+	w.checkNoRungForRefusal(dev)
+	w.checkWaitsHonoured(dev)
+}
+
+// A context the model cannot take is not cured by a continue, which sends the
+// same context again. The restart is the only rung that shortens it, so it is
+// the first rung spent.
+func TestConformanceContextTooLongGoesStraightToRestart(t *testing.T) {
+	turns := 0
+	dev := &simNode{name: "dev", script: func(int64) turnOutcome {
+		turns++
+		if turns == 1 {
+			return turnOutcome{runs: 60, class: classContext}
+		}
+		return turnOutcome{runs: 300, reply: true}
+	}}
+	w := newSimWorld(t, dev)
+	final := w.campaign(w.env(), 3*3600)
+
+	d := w.current(dev)
+	if d.Continues != 0 || d.Restarts != 1 {
+		t.Errorf("a context that is too long cost %d continues and %d restarts; want none and one", d.Continues, d.Restarts)
+	}
+	if final["dev"] != protocol.StateFree {
+		t.Errorf("the restarted node delivered, and ended %s", final["dev"])
+	}
+}
+
+// An agent can start a turn of its own, which no driver wraps, and an agent can
+// be killed while its driver lives. The agent's own word decides both: a busy
+// agent is working whoever started the turn, and is never nudged.
+func TestConformanceTheAgentsOwnWordDecidesWorking(t *testing.T) {
+	dev := &simNode{name: "dev", script: func(int64) turnOutcome { return turnOutcome{runs: 60} }}
+	w := newSimWorld(t, dev)
+	env := w.env()
+	if _, err := sendBody(env, "dev", "do the work"); err != nil {
+		t.Fatal(err)
+	}
+	// The host's turn ends with no reply. Ten minutes on, a background task
+	// the agent left running hands it a turn of its own, for two hours.
+	w.advance(90)
+	w.at(w.now+600, func() { dev.busy = true })
+	w.at(w.now+600+7200, func() { dev.busy = false; dev.replies["d001"] = true })
+	w.advance(660)
+
+	sent := len(w.deliveries)
+	for w.now < 1_800_000_000+7000 {
+		if _, err := captureStdout(t, func() error { return cmdWait(env, nil) }); err != nil {
+			t.Fatal(err)
+		}
+		if o := snapshot(env)["dev"].Obs; dev.busy && o.State != protocol.StateWorking {
+			t.Fatalf("an agent in a turn of its own read %s (%s)", o.State, o.Detail)
+		}
+	}
+	if len(w.deliveries) != sent {
+		t.Errorf("%d message(s) were sent into a turn the agent had started itself", len(w.deliveries)-sent)
+	}
+}
+
+// I9: a node whose tools predate the turn log is computed exactly as before.
+// The ladder runs, rungs are counted from the messages, and nothing about the
+// new facts is assumed from their absence.
+func TestConformanceOldToolsKeepTheOldLadder(t *testing.T) {
+	dev := &simNode{name: "dev", oldTools: true, script: func(int64) turnOutcome { return turnOutcome{runs: 60} }}
+	w := newSimWorld(t, dev)
+	final := w.campaign(w.env(), 4*3600)
+
+	d := w.current(dev)
+	pol := protocol.DefaultPolicy()
+	if final["dev"] != protocol.StateStuck || d.Continues != pol.ContinueAttempts || d.Restarts != pol.Restarts || d.Resumes != 0 {
+		t.Errorf("a node with old tools that never replies must spend the ladder as before; ended %s with %d continues, %d restarts, %d resumes",
+			final["dev"], d.Continues, d.Restarts, d.Resumes)
 	}
 }
