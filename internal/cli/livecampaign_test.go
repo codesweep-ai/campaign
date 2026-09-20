@@ -260,11 +260,24 @@ func faultScenarios() []scenario {
 		return sc
 	}
 	return []scenario{
-		// The condition the whole amendment exists for. The worker is refused
-		// long enough to outlast the agent's own retries, so the campaign sees
-		// a refused turn end and must wait it out rather than climb the ladder.
+		// The condition the whole amendment exists for.
+		//
+		// The count is the one number that matters, and it was measured rather
+		// than guessed: codex does not retry past a 429, so it ends its turn
+		// on the first one and each refused call costs one turn. Two refusals
+		// therefore end two turns and the resume after them flows.
+		//
+		// Larger is not stricter, only slower, because each refusal in a row
+		// doubles the wait before the next resume. Thirty of them held a run
+		// for twenty minutes, most of it asleep at the ten-minute bound, to
+		// prove what two prove in ninety seconds. How the wait grows is Layer
+		// 1's to assert, against a scripted clock, for nothing.
+		//
+		// Two rather than one so that a codex that learns to retry a 429 still
+		// meets a refusal at the end of its retries, and this scenario goes on
+		// testing what it says it tests.
 		base("codex-fault-throttled", &faultSpec{
-			member: "dev", args: []string{"--status", "429", "--retry-after", "5", "--count", "30"},
+			member: "dev", args: []string{"--status", "429", "--retry-after", "5", "--count", "2"},
 			wantStates: []string{"node-refused"},
 		}, "campaign-met"),
 		// The operator's repair. No instrument of the orchestrator's fixes a
@@ -274,12 +287,13 @@ func faultScenarios() []scenario {
 			member: "dev", args: []string{"--status", "401", "--count", "30"},
 			wantStates: []string{"node-stuck"},
 		}, "campaign-blocked"),
-		// Nothing answers at all: the class that must be waited out rather
-		// than escalated, and the one that used to land in "other".
-		base("codex-fault-unreachable", &faultSpec{
-			member: "dev", args: []string{"--hang", "20s", "--count", "8"},
-			wantStates: []string{"node-refused"},
-		}, "campaign-met"),
+		// A third condition, "nothing answered at all", is deliberately not
+		// here. Codex rode out sixty dropped connections by itself and
+		// finished its turn, so ending one that way takes about five minutes
+		// of continuous drops — five minutes of CI, per run, to reach a class
+		// the driver fixtures in sandbox already pin per CLI version, and that
+		// the conformance suite already reasons about for nothing. It is the
+		// one condition whose cost in this tier is not worth its evidence.
 	}
 }
 
