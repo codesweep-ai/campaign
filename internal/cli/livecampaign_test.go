@@ -1327,22 +1327,21 @@ func ensureLiveGuestBinary(t *testing.T) {
 // ensureLiveLenderBinary hands the group's lender a cs-sandbox it can run.
 //
 // A lent scenario puts a lender container on the campaign's network, and that
-// container runs `cs-sandbox lender`. cs-sandbox mounts its OWN executable in
-// where it can — this host's, on Linux, so the lender under test is the build
-// the run is testing — and otherwise leaves the image to supply one. The slim
-// image carries no cs-sandbox at all, so on a Mac the container starts and dies
-// as "executable file `cs-sandbox` not found in $PATH", with the campaign
-// reporting only that create failed.
+// container runs `cs-sandbox lender`. cs-sandbox leaves the image to supply
+// that binary unless CS_SANDBOX_LENDER_BIN names one to copy in. The slim
+// image these tiers boot carries no cs-sandbox at all, so without the variable
+// the container starts and dies as "executable file `cs-sandbox` not found in
+// $PATH", with the campaign reporting only that create failed.
 //
-// CS_SANDBOX_LENDER_BIN is the documented way in, and a cross build is what it
-// is documented for. Set here for the same reason the two binaries above are:
-// it is a property of running these tiers on a Mac, not of this repository's
-// CI, and a developer's machine hits it identically.
+// That holds on every host. cs-sandbox once mounted its own executable in on
+// Linux, and this helper skipped Linux for that reason. It stopped doing so,
+// and every lent scenario then failed at create on a Linux host.
+//
+// CS_SANDBOX_LENDER_BIN is the documented way in. Set here for the same reason
+// the two binaries above are: it is a property of running these tiers on the
+// slim image, and a developer's machine hits it as CI does.
 func ensureLiveLenderBinary(t *testing.T) {
 	t.Helper()
-	if runtime.GOOS == "linux" {
-		return
-	}
 	path, err := liveLenderBinary()
 	if err != nil {
 		t.Fatalf("cannot build the cs-sandbox this campaign's lender will run: %v", err)
