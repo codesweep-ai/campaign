@@ -20,8 +20,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math/rand"
-	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -154,16 +154,6 @@ func (w *simWorld) advance(secs int64) {
 	w.now = target
 }
 
-func (w *simWorld) byName(name string) *simNode {
-	for _, n := range w.nodes {
-		if n.name == name {
-			return n
-		}
-	}
-	w.t.Fatalf("no node %q", name)
-	return nil
-}
-
 func (w *simWorld) sshOut(host, command, payload string) ([]byte, error) {
 	n, ok := w.nodes[host]
 	if !ok {
@@ -220,7 +210,7 @@ func (w *simWorld) probeOutput(n *simNode) string {
 			class = "-"
 		}
 		if e.retryAfter > 0 {
-			ra = fmt.Sprint(e.retryAfter)
+			ra = strconv.FormatInt(e.retryAfter, 10)
 		}
 		fmt.Fprintf(&b, "TURNEND %d %d %s %s\n", e.at, e.exit, class, ra)
 	}
@@ -419,17 +409,6 @@ func (w *simWorld) checkRungsAreTurns(n *simNode) {
 	// The opening turn is not a rung.
 	if rungs := continues + restarts; rungs > max(0, started-1) {
 		w.t.Errorf("I5: %s was charged %d rungs and only %d recovery turns ever started", n.name, rungs, max(0, started-1))
-	}
-}
-
-// pending marks a scenario that is red on purpose: it states a rule the code
-// does not keep yet, and names the ledger record that will make it pass. The
-// suite stays in `make ci` and the debt stays visible as a skip. Run them all
-// with CS_CONFORMANCE_ALL=1. Deleting the pending line is part of the fix.
-func pending(t *testing.T, record string) {
-	t.Helper()
-	if os.Getenv("CS_CONFORMANCE_ALL") == "" {
-		t.Skipf("pending %s: red until that record is fixed (CS_CONFORMANCE_ALL=1 runs it)", record)
 	}
 }
 
