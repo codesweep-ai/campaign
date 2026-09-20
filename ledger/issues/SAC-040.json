@@ -3,15 +3,17 @@
   "title": "Once one node is stuck, every later wait returns at once, so the orchestrator can no longer block",
   "type": "defect",
   "severity": "high",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, maintainer of this repository, running the wait loop against a simulated fleet on a scripted clock",
   "opened": "2026-09-20",
-  "resolved": null,
-  "stint": "reliability-2026-09",
+  "resolved": "2026-09-20",
+  "stint": null,
   "evidence": {
-    "commits": [],
+    "commits": [
+      "b5baae0"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`go test ./cmd/cs-campaign-member/ -run Conformance -count=1`: 14 of 14 scenarios PASS. `TestConformanceStuckNodeDoesNotEndEveryWait` failed before the change with `wait returned 51 times without the clock moving`. Live, a campaign whose agent was stuck on a rejected credential showed one `reported dev/d002` entry in the orchestrator's log, followed by its assessment and its verdict."
   },
   "resolution": null,
   "details": "**What happens.** `wait` returns when a judgment is due, and `node-stuck` is a judgment. A stuck node stays stuck for the rest of the campaign, and nothing the orchestrator can do acknowledges it. So from the moment one node is stuck, every call to `wait` returns on its first look, before it sleeps once. The other nodes may have hours of work left.\n\n**Why it matters.** PROTOCOL.md §8 puts the polling where no tokens are spent. After the first stuck node that stops being true. The orchestrator's model pays a full turn for every look at the fleet. A model that notices this does the reasonable thing: it starts a poller in the background and ends its turn. Nothing can wake it, and the host then reads the orchestrator as `node-stopped`, which is the failure in SAC-036. One lost member therefore degrades the whole campaign, and how it degrades depends on the model.\n\n**This defect was fixed once already, for another state.** The comment above `cmdWait` describes the same fault for `node-free`. It says the state *\"could not be waited out\"* and that `wait` *\"returned on its first snapshot, before sleeping once, for the rest of the campaign\"*. `node-free` was taken out of the judgments for that reason (SPEC R125). `node-stuck` has the same property and is still a judgment on every look.\n\n**How to reproduce.** Run a campaign of two agents. Let one spend its ladder and become `node-stuck` while the other has a long dispatch open. Call `wait` repeatedly. Every call returns at once with the same judgment. A scripted run counted 51 consecutive returns with no time passing before the test gave up.\n\n**What would fix it.** A judgment should end a wait once. The orchestrator already owes an assessment when it writes a node off, and that assessment is in its own log, which `wait` can read. A stuck node that the log has acknowledged since it became stuck would then be shown in the snapshot and would no longer end the wait. The rule has to stay computed from what is on the machines, as §6 requires, and must not become a flag that `wait` keeps for itself.",

@@ -3,15 +3,17 @@
   "title": "destroy leaves each member's recorded agent session on the host",
   "type": "defect",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent working in the simple-tools-demo repository, which runs a three member campaign at the pinned build of 2026-09-17, after the previous session in that repository lost a day to the failure this causes",
   "opened": "2026-09-19",
-  "resolved": null,
-  "stint": "reliability-2026-09",
+  "resolved": "2026-09-20",
+  "stint": null,
   "evidence": {
-    "commits": [],
+    "commits": [
+      "1e5b683"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`TestANewMemberForgetsTheSessionOfAnEarlierLife` passes: stale markers read as a session to resume, create fails by name when they cannot be dropped, and a new member is fresh once they are. Live, a two member campaign was destroyed and the host then held 0 session markers for it. The same profile was created again under the same campaign id, every readback passed on a new session, and the campaign ran to its verdict."
   },
   "resolution": null,
   "details": "`cs-campaign destroy` removes the members and the campaign record. It leaves the host's record of each member's agent session under `~/.cs-<cli>-remote-sessions`. After destroying a three member opencode campaign called `hello`, nine files named `hello-<id>-<member>` were still there, and three of them were `.token` files.\n\nThe leftovers change what the next create does. `hostSessionFresh` in `internal/cli/sandbox.go` treats a present marker as a session to resume. The campaign id is the profile digest, so creating the same profile again produces the same session names. The turn driver then drives the old session id against a brand new member.\n\nThe previous session in the demo repository reported what follows. Every turn failed with `TUI server does not know session`, and that surfaced as `opencode TUI exited during startup (port NNNNN in use, or launch failure)`. The message blames ports and startup, so three runs were spent there. This session did not reproduce that failure, because the demo now deletes the markers before each create. It did confirm the leftovers and the code path.\n\nThe sandbox tools already ship `cs-<cli>-remote-forget`. `destroy` could call it for each member, and the startup error could name a stale session as a cause.\n\nTo reproduce, create and destroy any opencode campaign, then run `ls ~/.cs-opencode-remote-sessions | grep <campaign-name>`.",

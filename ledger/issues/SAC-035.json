@@ -3,19 +3,28 @@
   "title": "A turn's end carries no reason, so a throttle, an outage and a rejected credential all read as a member that stopped",
   "type": "improvement",
   "severity": "high",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent operating two eight-member campaigns side by side on one host, reading every member's own CLI session records after both campaigns had ended",
   "opened": "2026-09-20",
-  "resolved": null,
-  "stint": "reliability-2026-09",
+  "resolved": "2026-09-20",
+  "stint": null,
   "evidence": {
-    "commits": [],
+    "commits": [
+      "8772e63",
+      "8401224",
+      "c1e5e66"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`go test ./cmd/cs-campaign-member/ -run Conformance -count=1`: 14 of 14 scenarios PASS. `TestConformanceRejectedCredentialStopsAtOnce` failed before the change with `4 turns were started against a credential the provider rejects`. `TestAwaitReplyNamesARejectedCredentialAtOnce` and `TestAwaitReplyWaitsOutARefusalAndSaysSo` pass for the readback at create. Live, a 401 was injected on an agent. Sixteen seconds after the dispatch `observe` read `node-stuck` with `the provider rejected this node's credential` and quoted the turn driver's words. The mission ended `campaign-blocked` 40 seconds after the dispatch, and the agent's input channel held only the opening message. An archive of a live campaign held `.cs-turns/codex.log` for both members."
   },
   "resolution": null,
   "details": "**What is missing.** The protocol's facts about a node are its messages, its replies and a count of live turn drivers. When a turn ends without a reply, nothing anywhere says why. The CLI knew: its own session record held the provider's error, word for word. The turn driver could have known. The harness never finds out, so `observe` shows `node-stopped` and the ladder runs (SAC-034). An operator learns the cause only by opening a member's session store after the campaign is over.\n\n**Why it matters beyond rate limits.** The same silence covers every provider-side failure, and each wants a different answer:\n\n| why the turn ended | what it looks like today | what it should cost |\n|---|---|---|\n| provider throttled the key | `node-stopped`, then `node-stuck` | a wait with backoff; no rung of the ladder |\n| provider at capacity, or down | the same | pause the dispatch clock and say so on the host, loudly; a campaign that waits out an outage has learned nothing |\n| credential rejected or expired | at create, `readback FAILED`, which the manual already says *\"looks like silence\"* and is indistinguishable from a bad brief | stop at once and name the credential |\n| context too long for the model | the same as a stop | a finding for the orchestrator, not a retry |\n| the model finished its turn without replying | `node-stopped` | the ladder, as now |\n\nOnly the last is what the ladder was built for. An operator watching two campaigns saw three healthy members marked stuck. Nothing the tool printed could tell them whether a machine had died, a model had wedged or a provider was refusing calls. The next outage at any provider will look exactly the same.\n\n**What is asked for.** A typed reason on every turn end, written by whatever is closest to the CLI and knows it. The turn drivers are the sandbox repository's, and the matching record there is SBX-044. The reason should be carried in the node's facts and shown by `observe` beside the state, for example `throttled 4m, provider asked for 12s`. It should be kept by `archive`, and be available to the orchestrator's `wait`, so that it can choose a wait over a rung. A reason the driver cannot classify should be recorded as unclassified with the CLI's own text, never dropped.\n\n**How to reproduce the gap.** Make any model call fail at the provider for a member with an open dispatch, by any of the means in the table. Every one of them produces the same `observe` line.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-20",
+      "text": "The sandbox half is SBX-060 in the sandbox ledger: each turn driver now appends how a turn ended to a log on the agent's own machine. The probe reads its tail as `TURNEND` lines in the same round trip as everything else. The outage row of this record's table is handled as a wait and not by pausing the dispatch clock. One absolute backstop, the elapsed bound, stays in force, and a separate number, `providerWaitSeconds`, bounds the wait itself."
+    }
+  ],
   "links": [
     "SAC-034"
   ]

@@ -3,15 +3,18 @@
   "title": "A recovery message whose turn failed to launch still spends a rung, so a connection fault can exhaust the ladder without one turn running",
   "type": "defect",
   "severity": "high",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, maintainer of this repository, running the wait loop against a simulated fleet on a scripted clock",
   "opened": "2026-09-20",
-  "resolved": null,
-  "stint": "reliability-2026-09",
+  "resolved": "2026-09-20",
+  "stint": null,
   "evidence": {
-    "commits": [],
+    "commits": [
+      "8772e63",
+      "b54a730"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`go test ./cmd/cs-campaign-member/ -run Conformance -count=1`: 14 of 14 scenarios PASS. `TestConformanceRungsAreOnlyChargedForTurnsThatStarted` failed before the change with `dev was charged 3 rungs and only 0 recovery turns ever started`. `TestStartTurnGivesUpOnALauncherThatHangs` ends a launcher that sleeps for 60 seconds after 4 seconds, under a bound of 2. Not run on real machines."
   },
   "resolution": null,
   "details": "**The mechanism.** The ladder's budget is counted from the node's input channel. `protocol.Current` counts every continuation file as a continue and every restart file as a restart. A recovery move is two steps: write the message into the node, then launch the turn that reads it. The rung is spent by the first step. If the second step fails, the message stays, the count has risen, and no turn ran.\n\n**When the second step fails.** Launching a turn is a longer path than writing a file. It crosses the network again, starts a terminal session, and waits for the agent's CLI to become ready. It fails under the conditions this harness most needs to survive. A network drops for a moment. A slow host makes the CLI miss its readiness deadline. A sign-in check at the provider times out. `wait` reports the failure as a line under *recovery performed while waiting*, and the next look sees a stopped node with one rung fewer.\n\n**What it costs.** Three failed launches in a row, a few minutes apart, leave the node `node-stuck` with *2 continues and 1 restarts spent*. Its machine was healthy and its session was never given a turn. The orchestrator is told the node is unrecoverable and writes off its queue. In a scripted run where the launcher failed for thirty minutes, the node was charged three rungs and zero recovery turns started.\n\n**A second gap on the same path.** The orchestrator's `startTurn` runs the launcher with no time bound, while every other route to a teammate's machine is bounded at 90 seconds for a stated reason. A launcher that hangs therefore hangs `wait` and every node behind it in the loop.\n\n**How to reproduce.** Let an agent's first turn end without a reply. Make the turn launcher fail for that agent while file delivery still works, for example by making the launcher's tool exit non-zero. Call `wait` until the ladder is spent. `observe` shows the node stuck, and its session record shows no turn after the first.\n\n**What would fix it.** Charge a rung only for a turn that started. A delivered message whose launch failed is still in the input channel, so the next look can launch a turn for it without writing another. The launch needs the same bound as the other routes. The count stays computed from the node's machine, as §6 requires, if a started turn leaves its own evidence there.",
