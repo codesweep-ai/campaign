@@ -821,7 +821,12 @@ How long one `wait` blocks is the same class of number, and is kept out of the p
 same reason. It is 240 seconds unless the caller asks otherwise with `--for`, sized to sit inside
 every agent CLI's cap on a single tool call. The environment can override both, `--for`
 included, through `CS_CAMPAIGN_WAIT_SECONDS`. A replay serves a recorded model that asked for the campaign's number, so an override that
-argument could beat would bound nothing.
+argument could beat would bound nothing. The override works in both directions. A replay tier whose turns answer in
+milliseconds lowers it. A replay whose agents do real work, such as a package install, should
+raise it. A recorded orchestrator calls `wait` exactly as often as it did when it was recorded. So
+a chunk that elapses in the replay, where the recorded one returned a reply, leaves it acting on
+work that is not there yet. The ceiling is the timeout that the recorded model gave its `wait`
+command, which the cassette holds.
 
 `defaults.deadline` is the campaign wall clock as a duration from create, such as `90m` or `6h`. It
 stops nothing by itself. The orchestrator's judgement enforces the deadline, and the machine uses

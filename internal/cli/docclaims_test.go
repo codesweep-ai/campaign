@@ -16,6 +16,7 @@ import (
 	"github.com/codesweep-ai/campaign"
 	"github.com/codesweep-ai/campaign/internal/covmap"
 	"github.com/codesweep-ai/campaign/internal/model"
+	"github.com/codesweep-ai/campaign/internal/protocol"
 	"github.com/codesweep-ai/campaign/internal/store"
 )
 
@@ -214,5 +215,34 @@ func TestTheExampleCampaignValidatesAsTheSpecShows(t *testing.T) {
 		if !strings.Contains(string(spec), claim) {
 			t.Errorf("SPEC.md no longer states %q; this test names the sentence it keeps true", claim)
 		}
+	}
+}
+
+// MANUAL.md and SPEC.md §6.1 tell the author of a replay that the wait chunk can
+// be raised as well as lowered, and that a replay of real work should raise it.
+// The author acts on that sentence: a chunk that elapses where the recorded one
+// returned a reply leaves a recorded orchestrator accepting work that is not
+// there, with no miss to show for it. So the sentence has to stay, and the
+// override has to keep beating a smaller number from either direction.
+func TestTheDocumentedWaitOverrideCanBeRaised(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, doc := range []string{"MANUAL.md", "SPEC.md"} {
+		body, err := os.ReadFile(filepath.Join(root, doc))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), "The override works in both directions") {
+			t.Errorf("%s no longer says that CS_CAMPAIGN_WAIT_SECONDS can be raised as well as lowered", doc)
+		}
+	}
+	t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", "840")
+	if got := protocol.WaitChunk(protocol.DefaultWaitSeconds); got != 840 {
+		t.Errorf("an override above the default must stand, got %d", got)
+	}
+	if got := protocol.WaitChunk(60); got != 840 {
+		t.Errorf("an override must beat a smaller --for, got %d", got)
 	}
 }

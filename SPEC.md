@@ -910,6 +910,13 @@ call (PROTOCOL.md §8). The caller may ask for another with `--for`. The environ
 `--for` included, through `CS_CAMPAIGN_WAIT_SECONDS`. What a replay tier replays is a recorded model that asked for the
 campaign's number, so an override the argument could beat would bound nothing (R126).
 
+The override works in both directions, and a replay needs one or the other. A tier whose turns
+answer in milliseconds lowers the chunk. A replay whose agents do real work raises it, because a
+recorded orchestrator calls `wait` only as often as it did when it was recorded. A chunk that
+elapses where the recorded one returned a reply leaves that orchestrator acting on work that is not
+there yet, and no request misses. The ceiling is the timeout that the recorded model gave its
+`wait` command.
+
 `defaults.deadline` is the campaign wall clock as a duration from create, such as `90m` or `6h`. It
 stops nothing by itself: the orchestrator's judgement enforces the deadline, and the machine uses it
 only as the `elapsedSeconds` default.
