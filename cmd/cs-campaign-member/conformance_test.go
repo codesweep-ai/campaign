@@ -802,3 +802,37 @@ func TestConformanceAnUnreachableProviderIsWaitedOut(t *testing.T) {
 		t.Errorf("a session was restarted while its provider could not be reached")
 	}
 }
+
+// An agent killed mid-turn, as a kernel kills one for memory, is reported by
+// its driver within a second: the turn ended, with an exit code and no reply.
+// Measured on a real agent. The settling window exists for a turn that is
+// still starting, and a turn that has recorded its own end is not starting.
+// Recovery must begin at the next look and not after the window: five silent
+// minutes is what made a dead agent look like a slow model.
+func TestConformanceAKilledAgentIsRecoveredAtTheNextLook(t *testing.T) {
+	turns := 0
+	dev := &simNode{name: "dev", script: func(int64) turnOutcome {
+		turns++
+		if turns == 1 {
+			return turnOutcome{runs: 100, class: "other"} // killed 100s in: exit 5, no reply
+		}
+		return turnOutcome{runs: 200, reply: true}
+	}}
+	w := newSimWorld(t, dev)
+	start := w.now
+	env := w.env()
+	final := w.campaign(env, 2*3600)
+
+	if len(w.starts) < 2 {
+		t.Fatalf("the killed agent was never given another turn; it ended %s", final["dev"])
+	}
+	recovered := w.starts[1].at - start
+	poll := int64(protocol.DefaultPolicy().PollSeconds)
+	if limit := 100 + 3*poll; recovered > limit {
+		t.Errorf("the agent died at +100s and its next turn started at +%ds; want within %ds, which is a look or two and not the %ds settling window",
+			recovered, limit, protocol.DefaultPolicy().SettlingSeconds)
+	}
+	if final["dev"] != protocol.StateFree {
+		t.Errorf("the recovered agent delivered, and ended %s", final["dev"])
+	}
+}

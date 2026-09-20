@@ -121,7 +121,10 @@ func ProbeScript(cli string) string {
 	script := `cd "$HOME/` + ChannelsDir + `" 2>/dev/null || { echo NOCHANNELS; exit 0; }; ` +
 		`for f in input/*.md; do [ -e "$f" ] || continue; printf 'MSG %s %s\n' "$(stat -c %Y "$f" 2>/dev/null || echo 0)" "${f#input/}"; done; ` +
 		`for r in output/replies/*.json; do [ -e "$r" ] || continue; b="${r#output/replies/}"; printf 'REPLY %s\n' "${b%.json}"; done; ` +
-		`printf 'DRIVERS %s\n' "$(pgrep -fc '` + pattern + ` ' 2>/dev/null || echo 0)"`
+		// A driver asked for --state is a question and not a turn. It matches the
+		// pattern, and a second observer's probe can be running one at this moment,
+		// so it is left out of the count.
+		`printf 'DRIVERS %s\n' "$(pgrep -fa '` + pattern + ` ' 2>/dev/null | grep -vc -- ' --state' || true)"`
 	if g, ok := recordGlob[cli]; ok {
 		script += `; printf 'RECORD %s\n' "$(find "$HOME/` + g[0] + `" -type f -name '` + g[1] + `' -printf '%T@\n' 2>/dev/null | sort -n | tail -1 | cut -d. -f1 | grep . || echo 0)"`
 	}
@@ -298,7 +301,13 @@ func Compute(f Facts, probeFailed bool, blind Blind, accepted map[string]bool, p
 	// on arrival — the re-anchor incremented the restart count and the next poll
 	// read node-stuck while the restarted session was still booting
 	// (adversarial review, finding 1).
-	if now-d.NewestMsg < int64(pol.SettlingSeconds) {
+	//
+	// The window is for a turn that may still be starting. A turn that has
+	// recorded its own end since the newest message is not starting: it ran, and
+	// it is over. Holding the ladder for the rest of the window then hides a
+	// dead agent behind "turn starting" for minutes, which is how an agent the
+	// kernel killed for memory came to look like a slow model.
+	if f.endSince(d.NewestMsg) == nil && now-d.NewestMsg < int64(pol.SettlingSeconds) {
 		return Observation{State: StateWorking, Dispatch: d.ID,
 			Detail: fmt.Sprintf("turn starting (%ds into the %ds settling window)", clampAge(now-d.NewestMsg), pol.SettlingSeconds)}
 	}
