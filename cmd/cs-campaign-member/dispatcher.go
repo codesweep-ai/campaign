@@ -370,13 +370,29 @@ var startTurn = func(home string, rec protocol.AgentRecord, msgPath, id string) 
 		args = append(args, "--resume", rec.Session)
 	}
 	args = append(args, protocol.Trigger(msgPath, id, fresh))
-	cmd := exec.Command("setsid", args...)
+	// Bounded like every other route to a teammate's machine. The launcher
+	// crosses the network and waits for a CLI to come up, and one that hangs
+	// would hang wait, and with it every node behind this one in the loop. A
+	// launch that fails costs the node nothing: no turn ran, so no rung is
+	// spent, and the next look carries the dispatch on (protocol.Charged).
+	ctx, cancel := context.WithTimeout(context.Background(), turnStartBound)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "setsid", args...)
+	cmd.WaitDelay = 2 * time.Second
 	out, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		return fmt.Errorf("start turn on %s: gave up after %s", rec.Sandbox, turnStartBound)
+	}
 	if err != nil {
 		return fmt.Errorf("start turn on %s: %v: %s", rec.Sandbox, err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
+
+// turnStartBound is how long starting one turn may take. The launcher returns
+// once the turn is running in the background, which takes seconds on a healthy
+// member and up to a cold CLI start on a slow one.
+var turnStartBound = 3 * time.Minute
 
 // lockSession takes an exclusive cross-process lock for one session's turn
 // starts. The lock file lives under the campaign's own channels root (like
