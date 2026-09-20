@@ -2,7 +2,7 @@
   "id": "SAC-036",
   "title": "observe reads an orchestrator that is working as node-stopped once its turn driver has exited",
   "type": "defect",
-  "severity": "med",
+  "severity": "low",
   "status": "open",
   "foundBy": "session agent operating two eight-member campaigns side by side on one host, reading every member's own CLI session records after both campaigns had ended",
   "opened": "2026-09-20",
@@ -15,6 +15,13 @@
   },
   "resolution": null,
   "details": "**What happened.** For the last forty minutes of a campaign `observe` showed the orchestrator as `node-stopped · m1 · 0 cont, 0 restarts · continue next`. In those forty minutes it accepted a member's reply, wrote and committed the campaign's report, dispatched the final job, merged it and replied to its mission. Nothing was wrong with the campaign. An operator who believed the line would have sent a nudge to an orchestrator that was mid-task, which the playbook rightly calls the most expensive kind of intervention.\n\n**The mechanism.** `protocol.Compute` returns `node-working` only while `Facts.Drivers > 0`, that is, while a turn-driver process is alive for the node's CLI family. A turn driver wraps a turn the host started. The orchestrator here ran on the claude CLI, and it did what its briefing invites. It started a background shell loop that polls `cs-campaign-member observe` until a member is no longer working. Then it said it would wait, and ended its turn. The driver saw the turn end and exited. Minutes later the loop finished, the CLI's own runtime delivered the completion to the session as a new turn, and the session went on working. No driver wraps that turn, because the host did not start it. `Drivers` stays at zero for the rest of the campaign while the session works.\n\n**What follows from it.** Any consumer of \"no node is working\" is wrong about a live campaign from that moment. A watcher that waits for the campaign to leave `node-working` fires early. The PROTOCOL says that *\"the orchestrator cannot observe its own death, so the host is the only party that can see it has stopped\"*. That statement still holds, but the host's view of that one node is now a false positive. An orchestrator that stopped and one that continued itself print the same line.\n\n**How to reproduce.** Run a campaign whose orchestrator is on the claude CLI. Have its brief tell it to wait for a member by starting a long-running command in the background and ending its turn. After the driver exits, watch the orchestrator's branch: commits keep arriving while `observe` reports `node-stopped · continue next`.\n\n**What would fix it.** Liveness for a node should not rest on the driver alone. The session's own record growing, or the CLI process holding an active turn, is evidence of work that a driver count cannot see. Alternatively the orchestrator's waiting should be something the harness provides and a driver stays alive across. An orchestrator would then never have a reason to end a turn to wait.",
-  "notes": [],
-  "links": []
+  "notes": [
+    {
+      "date": "2026-09-20",
+      "text": "Half of this is done in 41fec1d, and the record stays open for the other half. A `node-stopped` line now says when the node's own session record last changed, as in `continue next · session record changed 40s ago`. An operator reading that line would not have nudged the orchestrator in the case above. The state itself still reads `node-stopped`, on purpose. The record's age was tried as a second measure of liveness and rejected. A node blocked in one long tool call writes nothing. A probe run inside a live three member campaign showed exactly that. The orchestrator had a live driver and a record 27 seconds old, because it was blocked in `wait`. A state that rested on the record would also delay the ladder for a member that had truly stopped. The proper measure is whether the agent is in a turn, whoever started it. The sandbox's turn drivers already know how to tell, and SBX-056 in the sandbox ledger asks for that as a command a probe can run. When it exists, `Compute` should use it beside the driver count, and this record can close. The severity is lowered to low because the misleading line now carries the evidence that corrects it."
+    }
+  ],
+  "links": [
+    "SAC-035"
+  ]
 }
