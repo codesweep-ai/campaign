@@ -675,7 +675,7 @@ jobs:
           set -euo pipefail
           cs-sandbox doctor --engine firecracker
 
-      # All six scenarios. opencode-fireworks was left out here for a member
+      # Every scenario. opencode-fireworks was left out here for a member
       # that never got its turn started on a two-core runner: it sat out the
       # whole 300s settling window and took the run to 1250s before the tier
       # gave up. The cause it is back on is cs-sandbox SBX-023 — a turn used to
@@ -732,7 +732,7 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-  # The same six campaigns, run as containers instead of microVMs.
+  # The same campaigns, run as containers instead of microVMs.
   #
   # `defaults.engine` takes firecracker or podman, both are documented, and only
   # one of them was ever run. This job is the other half. It is not a second
@@ -986,8 +986,10 @@ jobs:
   # that machine. The bound is written down rather than left to the pool: the
   # machine also carries the sibling project's runners, all of them sharing one
   # podman machine and one 16 GB box, and a campaign is two members plus a
-  # lender plus a recorder. Six legs at once is not a thing this hardware should
-  # be asked for, and max-parallel says so where a reader can see it.
+  # lender plus a recorder. A leg per scenario at once is not a thing this
+  # hardware should be asked for, and max-parallel says so where a reader can
+  # see it. It bounds the legs rather than counting them, so a scenario added
+  # to the matrix costs queue time here and never memory.
   smoke-macos-arm64:
     name: smoke podman (macos-arm64 / ${{ matrix.scenario }})
     needs: [build-test, image-macos-arm64]

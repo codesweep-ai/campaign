@@ -2,7 +2,7 @@
 # Re-record every cassette the smoke tier replays, from this machine's own
 # credentials.
 #
-# Six scenarios, each a real campaign: two microVMs, a fabric, a dispatch ladder
+# Each scenario is a real campaign: two microVMs, a fabric, a dispatch ladder
 # and real model turns. This checks what they need before any of that starts, and
 # `make record-fixtures-strict` fails on a scenario it cannot sign in for rather than
 # skipping it. Recording all but one and reporting green is the outcome worth

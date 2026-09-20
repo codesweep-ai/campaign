@@ -426,7 +426,7 @@ func TestWorkflowRunsEveryScenario(t *testing.T) {
 //
 // Cheap on purpose. The tier below this one costs two microVMs and real model
 // turns per scenario, and a matrix that names a provider cs-sandbox does not
-// lend is a refusal six campaigns into a recording run.
+// lend is a refusal partway into a recording run.
 func TestScenarioProfilesSpellTheirCredential(t *testing.T) {
 	for _, sc := range scenarios() {
 		t.Run(sc.name, func(t *testing.T) {

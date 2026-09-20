@@ -71,8 +71,15 @@ for scenario in "${scenarios[@]}"; do
     continue
   fi
   outcome=$(sed -n 's/.*"outcome"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$claim" | head -1)
+  # Which verdict a scenario is held to is the scenario's to say, not this
+  # script's: the fault tier records a campaign that ends blocked on purpose,
+  # and a rejected credential is the one condition where meeting the mission
+  # would be the surprise. Go asserts that pairing on both sides of the
+  # cassette — at record time against the scenario, and again before a replay.
+  # What is left here is the half no Go test can see once the run is over:
+  # whether the recording finished at all.
   case "$outcome" in
-    campaign-met) ;;
+    campaign-met|campaign-blocked|campaign-converged|campaign-exhausted) ;;
     in-progress)
       # The claim was never settled: the run started and did not finish.
       echo "$name: the recording that produced this never finished" >&2
@@ -81,10 +88,7 @@ for scenario in "${scenarios[@]}"; do
       status=1
       ;;
     *)
-      # Settled, but on a verdict the smoke tier asserts against. Recording one
-      # of these commits a fixture whose replay is required to fail.
-      echo "$name: recorded a campaign that was not met (outcome: ${outcome:-unreadable})" >&2
-      echo "  the smoke tier asserts campaign-met, so this cassette can only replay red" >&2
+      echo "$name: recorded no verdict this tier knows (outcome: ${outcome:-unreadable})" >&2
       echo "  re-record with: ./scripts/record-fixtures.sh $name" >&2
       status=1
       ;;
