@@ -34,6 +34,24 @@ Do not perform any of the work yet. Your reply closes this dispatch.`,
 		guestMemberJSON, member.Name, member.Role)
 }
 
+// readbackReworkPrompt asks for the readback again, in the host's words and
+// with the parser's. It repeats the whole form: the session still holds the
+// first asking, and a member told only "again" tends to explain itself.
+func readbackReworkPrompt(member model.Member, why string) string {
+	return fmt.Sprintf(`Your readback could not be used: %s
+
+Nothing else is wrong, and no work has been assigned. Write the file again, holding EXACTLY this
+JSON on a single line, with every brace and quote closed:
+
+{"member":"%s","role":"%s","branch":"<your branch, from member.json>","missing":[<output of check-inputs, as strings, else empty>],"goal":"<one sentence, in your own words: what this campaign is asking you to accomplish>","scope":"<one sentence: what you own and what you must not touch>","obligations":"<one sentence: what this campaign requires of you, and what happens to your work if you do not do it>"}
+
+Check it parses, for example with: python3 -m json.tool /tmp/readback.json
+Then reply with it: cs-campaign-member reply --file /tmp/readback.json
+
+Do not perform any of the work yet. Your reply closes this dispatch.`,
+		why, member.Name, member.Role)
+}
+
 // parseReadback extracts the restatement from a reply's note. Tolerant of a
 // model that wrapped the JSON in prose or a code fence: the outermost braces
 // are the object.

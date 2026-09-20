@@ -382,6 +382,15 @@ rather than inferred later from a vague answer.*
 operator meant, which the product cannot know, and a product that graded prose would fail healthy
 teams on phrasing.*
 
+**R135.** A readback whose form is wrong **MUST** be asked for once more before the member is
+failed. Wrong form is a reply that does not parse, or one that leaves a required sentence out. The second asking
+is a new dispatch that quotes what was wrong. A second failure **MUST** fail the member, and the
+check **MUST NOT** be loosened for it. A readback that says something true about the fleet **MUST
+NOT** be asked for again. That is a member that answers under another name, reports seeded files
+absent, or names the wrong branch. *A model that drops a brace has not misread its briefing. Failing the
+create for it throws away a team that is up with its keys lent, and the chance of one such slip
+grows with every member. Rework is the move every other dispatcher already has (PROTOCOL.md §3).*
+
 **R51.** Skipping the readback **MUST** be recorded on the campaign. *A team nobody verified must
 not be indistinguishable afterwards from one that passed.*
 

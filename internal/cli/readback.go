@@ -31,7 +31,7 @@ import (
 // figure on purpose: the cost of waiting is a slow pre-flight, the cost of
 // failing early is aborting a campaign whose member was merely slow — and the
 // ladder inside the bound is what actually recovers a stopped one.
-const readbackBound = 15 * time.Minute
+var readbackBound = 15 * time.Minute
 
 // runReadback sends dispatch d001 to every member concurrently, awaits the
 // replies (ladder on silence), verifies each restatement mechanically, and
@@ -101,31 +101,60 @@ func (a *app) runReadback(ctx context.Context, out io.Writer, campaign *model.Ca
 
 // readbackOne opens d001 on one member and awaits its reply. Returns "" on
 // success, else the reason it failed.
+//
+// A readback whose FORM is wrong is asked for once more. The reply closed its
+// dispatch, so the second asking is a new dispatch, which is what rework is
+// (PROTOCOL.md §3), and the host is the dispatcher here. A model that drops a
+// brace has not misread its briefing, and failing the create for it throws
+// away a team that is up with its keys lent. What a second try cannot cure is
+// never retried: a member that answers as someone else, reports its seeded
+// files absent or names the wrong branch has told the host something true.
 func (a *app) readbackOne(ctx context.Context, out io.Writer, campaign *model.Campaign, member model.Member) (string, model.Readback) {
 	briefed := len(member.SeededInputs) > 0
-	id, _, err := a.hostSend(ctx, member, readbackPrompt(member), false)
-	if err != nil {
-		return "dispatch failed: " + err.Error(), model.Readback{}
+	prompt := readbackPrompt(member)
+	for attempt := 1; ; attempt++ {
+		id, _, err := a.hostSend(ctx, member, prompt, false)
+		if err != nil {
+			return "dispatch failed: " + err.Error(), model.Readback{}
+		}
+		reply, err := a.awaitReply(ctx, out, member, id, campaign.Policy, readbackBound)
+		if err != nil {
+			return err.Error(), model.Readback{}
+		}
+		report, perr := parseReadback(reply.Note)
+		var detail string
+		switch {
+		case perr != nil:
+			// The member answered — it is alive; it just did not comply. A
+			// different diagnosis from a dead member.
+			detail = "replied but " + perr.Error() + ": " + truncate(reply.Note, 300)
+		default:
+			detail = verifyReadback(member, report, briefed)
+		}
+		if detail == "" {
+			// The turn that just answered is the only place a model declaration
+			// can be checked, so the assertion rides the turn the readback spent.
+			return a.assertDeclaredTurnConfig(ctx, member), report
+		}
+		formOnly := perr != nil || readbackIncomplete(report, briefed)
+		if !formOnly {
+			return detail, report
+		}
+		if attempt == 2 {
+			return detail + " — asked twice, and wrong both times", report
+		}
+		fmt.Fprintf(out, "…  %s: its readback could not be used (%s) — asked once more\n", member.Name, truncate(detail, 160))
+		prompt = readbackReworkPrompt(member, detail)
 	}
-	reply, err := a.awaitReply(ctx, out, member, id, campaign.Policy, readbackBound)
-	if err != nil {
-		return err.Error(), model.Readback{}
+}
+
+// readbackIncomplete says a readback parsed and left a required sentence out:
+// a fault of form, which asking again can cure.
+func readbackIncomplete(r readbackReport, briefed bool) bool {
+	if strings.TrimSpace(r.Obligations) == "" {
+		return true
 	}
-	report, perr := parseReadback(reply.Note)
-	if perr != nil {
-		// The member answered — it is alive; it just did not comply. A
-		// different diagnosis from a dead member.
-		return "replied but " + perr.Error() + ": " + truncate(reply.Note, 300), model.Readback{}
-	}
-	if detail := verifyReadback(member, report, briefed); detail != "" {
-		return detail, report
-	}
-	// The turn that just answered is the only place a model declaration can
-	// be checked, so the assertion rides the turn the readback already spent.
-	if detail := a.assertDeclaredTurnConfig(ctx, member); detail != "" {
-		return detail, report
-	}
-	return "", report
+	return briefed && (strings.TrimSpace(r.Goal) == "" || strings.TrimSpace(r.Scope) == "")
 }
 
 type lockedWriter struct {

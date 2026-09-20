@@ -251,6 +251,12 @@ ok  readback qa (codex) read its briefing
 campaign acme created — mission m1 opened on the orchestrator (group acme-56aa4ee0)
 ```
 
+A readback that cannot be read is asked for once more. When a member's answer does not parse as
+JSON, or leaves out a required sentence, `create` sends that member one more dispatch that quotes
+what was wrong, and prints `its readback could not be used (…) — asked once more`. A second bad
+answer fails the member as before. A member that answers under another name, reports its seeded
+files absent or names the wrong branch is not asked again, because that answer is information.
+
 A readback is bounded at 15 minutes per member. That is generous for a healthy team, and under
 heavy host load a member's first turn can miss it. The failure names the member and is not a dead
 end: `create` is checkpoint-resumable, so running the same `create` again continues the still-open
