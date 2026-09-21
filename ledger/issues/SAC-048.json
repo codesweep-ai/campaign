@@ -1,0 +1,22 @@
+{
+  "id": "SAC-048",
+  "title": "cs-campaign needs the agent tools on the host PATH instead of carrying what it drives members with",
+  "type": "improvement",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "user report (host): \"cs-campaign should be self contained instead of depending on the agent tools to be on the path, without the CLIs on top of that, which btw is a bit confusing since the agent tools normally require the CLIs to be useful\"",
+  "opened": "2026-09-21",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "**What happens.** `cs-campaign` runs `cs-<cli>-remote` from the host's PATH. `create` uses it to send each member its readback and to open the mission. The host-side restart and `send --log` use it too. A host therefore needs `cs-sandbox install-agent-tools` before any campaign can start, and `cs-campaign doctor` fails without them.\n\n**Why it is confusing.** The same host needs none of the agent CLIs (`claude`, `codex`, `opencode`). The tools only drive agents that run inside the members, so nothing on the host runs a CLI. Everywhere else an agent tool is useless without its CLI: `cs-claude`, for one, launches `claude`. So the doctor marks the tools required and the CLIs optional, which is accurate and still reads as a contradiction.\n\n**Why it matters.** It is a second install step, and a second build to keep in step with `cs-sandbox`. A stale host copy also reaches the members, because `cs-<cli>-remote` copies its own `cs-<cli>-turn` into the member it drives. The tools also have host prerequisites of their own. The macOS failure filed as SAC-022, where the driver needed `flock` and `setsid`, came from this path.\n\n**Where it is.** The calls are in `internal/cli/sandbox.go` (`startTurn`, `killSession`, `forgetSession`, `sessionLog`). `internal/cli/hostdispatch.go` calls this the one host-to-agent exception. Section 3 of INSTALL.md documents the install step.\n\n**What would help.** cs-campaign could carry the host-side drivers itself, the way it carries `cs-campaign-member` for the guests, or run those steps inside the VMs. The host would then need only `cs-sandbox`, and the agent tools and CLIs would be optional there, as they are for `cs-sandbox`.",
+  "notes": [],
+  "links": [
+    "SAC-022"
+  ]
+}
