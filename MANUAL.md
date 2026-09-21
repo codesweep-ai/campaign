@@ -493,27 +493,30 @@ one reports a smaller, healthier team than exists.
 cs-campaign doctor [<campaign>]
 ```
 
-With no argument, checks the host surface: the `cs-sandbox` build, each CLI's remote tool family,
-the sibling `cs-` tools, and the state directory.
+With no argument, checks the host. It holds the `cs-sandbox` build to this build's pin, and the agent
+tools to what that `cs-sandbox` ships. It also lists the agent CLIs here, checks the developer tools
+against their pins, and names the state directory. These groups read as they do in
+`cs-sandbox doctor`. Only the agent tools are required here, because `cs-campaign` drives its agents
+with them.
 
 ```console
 $ cs-campaign doctor
 cs-campaign doctor
 
 cs-sandbox (required):
-  ok  cs-sandbox version v0.0.0-20260827001716-910b73da3b6c
+  ok  cs-sandbox on PATH matches the pin (v0.0.0-20260827001716-910b73da3b6c)
   ok  cs-sandbox supports ls --json
   ok  cs-sandbox supports sandbox groups
 
-agent tooling (required — one family per CLI):
-  ok  claude remote tool family
-  ok  codex remote tool family
-  ok  opencode remote tool family
+agent tools (required — cs-campaign drives its agents with them):
+  ok  the 24 on PATH match cs-sandbox v0.0.0-20260827001716-910b73da3b6c
 
-upstream (checked against this build's go.mod):
-  ok  cs-sandbox on PATH is the one this build names: v0.0.0-20260827001716-910b73da3b6c
-  ok  cs-vcr on PATH matches this build (v0.0.0-20260826160252-bd9e6f2b8ab6)
-  ok  not on PATH (fine — a campaign needs none of them): cs-lint cs-ledger cs-tracer
+agent CLIs (optional — only to sign in on this host):
+  ok  on PATH: claude codex opencode
+
+developer tools (optional — checked against this build's go.mod):
+  ok  cs-vcr on PATH matches the pin (v0.0.0-20260826160252-bd9e6f2b8ab6)
+  ok  not on PATH (fine — nothing here needs them): cs-lint cs-ledger cs-tracer cs-npmrevs
 
 state:
   ok  state directory: /home/user/.config/cs-campaign/campaigns
@@ -965,9 +968,10 @@ the host's value without the value passing through campaign state.
 The installed `cs-sandbox` predates group addressing. Campaign isolation is a group, so there is no
 fallback. Install a group-aware build.
 
-**`required agent tool <name> not found on PATH`**
+**`missing from PATH: <tools>`** or **`on PATH but not the ones cs-sandbox <version> ships`**
 
-A CLI family's remote tools are missing. Run `cs-sandbox install-agent-tools`.
+The agent tools on your `PATH` are incomplete, or come from another `cs-sandbox` build. Run
+`cs-sandbox install-agent-tools`.
 
 **`upstream surface is not the one this cs-campaign was built against`**
 

@@ -14,6 +14,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,24 +50,33 @@ esac
 // path of the fake binary, so a test can move the surface underneath a running
 // check.
 //
-// The agent tools are installed too, not just the sandbox. Doctor checks them
-// before it reaches the upstream report, so a helper that left them out would
-// pass on a developer's machine — where a real ~/.local/bin is on PATH — and
-// fail in CI, which is exactly what it did.
+// The agent tools are installed too, not just the sandbox, and they are the
+// bytes the fake says it ships: doctor compares the two. A helper that left
+// them out would pass on a developer's machine — where a real ~/.local/bin is
+// on PATH — and fail in CI, which is exactly what it did.
 func installUpstream(t *testing.T, sandboxVersion string) (*app, string) {
 	t.Helper()
-	for _, cli := range []string{"claude", "codex", "opencode"} {
-		for _, suffix := range []string{"-remote", "-remote-output", "-turn"} {
-			installFakeTool(t, "cs"+"-"+cli+suffix, `exit 0`)
-		}
-	}
-	dir := installFakeTool(t, "fake-sandbox", fakeSandbox(sandboxVersion, map[string]string{"cs-claude": strings.Repeat("a", 64)}))
+	tools := t.TempDir()
+	installShippedTools(t, tools)
+	t.Setenv("PATH", tools+string(os.PathListSeparator)+os.Getenv("PATH"))
+	dir := installFakeTool(t, "fake-sandbox", fakeSandbox(sandboxVersion, shippedTools()))
 	bin := filepath.Join(dir, "fake-sandbox")
 	return &app{store: store.Store{Dir: t.TempDir()}, sandbox: sandboxCLI{Bin: bin}}, bin
 }
 
 // pinnedSandbox is the version a host must report to be the one this build
 // names.
+// installShippedTools writes every agent tool the fake cs-sandbox ships into
+// dir, as a faithful install would.
+func installShippedTools(t *testing.T, dir string) {
+	t.Helper()
+	for _, name := range shippedToolNames() {
+		if err := os.WriteFile(filepath.Join(dir, name), fakeToolBytes(), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func pinnedSandbox(t *testing.T) string {
 	t.Helper()
 	v := toolPins()[sandboxModule]
@@ -100,6 +110,17 @@ func TestTheEmbeddedManifestNamesTheUpstream(t *testing.T) {
 			t.Errorf("%s is checked against go.mod but go.mod pins no version for it", tool.bin)
 		}
 	}
+	// The other direction: a pin with no entry is a tool on PATH that doctor
+	// never compares, which reads exactly like one that matched.
+	listed := map[string]bool{sandboxModule: true}
+	for _, tool := range siblingTools {
+		listed[tool.module] = true
+	}
+	for module := range pins {
+		if !listed[module] {
+			t.Errorf("go.mod pins %s but siblingTools does not name it, so doctor never checks its pin", module)
+		}
+	}
 	// Nothing outside the family: a require line for cobra is not an upstream
 	// pin, and letting one in would have doctor hunt for a `cobra` on PATH.
 	for module := range pins {
@@ -116,8 +137,59 @@ func TestDoctorReportsAMatchingUpstream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("doctor on a matching surface: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "cs-sandbox on PATH is the one this build names: "+pinnedSandbox(t)) {
+	if !strings.Contains(out, "cs-sandbox on PATH matches the pin ("+pinnedSandbox(t)+")") {
 		t.Fatalf("doctor must name the version it matched, got:\n%s", out)
+	}
+	if want := fmt.Sprintf("the %d on PATH match cs-sandbox %s", len(shippedToolNames()), pinnedSandbox(t)); !strings.Contains(out, want) {
+		t.Fatalf("doctor must say the agent tools are the ones cs-sandbox ships (%q), got:\n%s", want, out)
+	}
+}
+
+// The agent tools are required here: cs-campaign starts every turn through
+// them, and a host-driven dispatch copies the host's cs-<cli>-turn into the
+// member. So a missing one or a stale one fails doctor, naming which.
+func TestDoctorFailsOnAgentToolsTheSandboxDoesNotShip(t *testing.T) {
+	a, _ := installUpstream(t, pinnedSandbox(t))
+	// Only these tools and the fake: a developer's own ~/.local/bin would
+	// otherwise answer for the one removed below.
+	tools := t.TempDir()
+	installShippedTools(t, tools)
+	t.Setenv("PATH", tools+string(os.PathListSeparator)+filepath.Dir(a.sandbox.Bin))
+	if err := os.WriteFile(filepath.Join(tools, "cs-claude-turn"), []byte("#!/bin/sh\n# an older driver\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(tools, "cs-codex-remote")); err != nil {
+		t.Fatal(err)
+	}
+	out, err := runDoctor(t, a)
+	if err == nil {
+		t.Fatalf("doctor must fail on agent tools cs-sandbox does not ship:\n%s", out)
+	}
+	for _, want := range []string{
+		"missing from PATH: cs-codex-remote",
+		"on PATH but not the ones cs-sandbox " + pinnedSandbox(t) + " ships",
+		"cs-claude-turn differs",
+		"cs-sandbox install-agent-tools",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("report missing %q:\n%s", want, out)
+		}
+	}
+}
+
+// The agent CLIs are optional in both doctors: nothing on the host runs them,
+// and a host without any of them is complete.
+func TestDoctorReportsAbsentAgentCLIsAsFine(t *testing.T) {
+	a, _ := installUpstream(t, pinnedSandbox(t))
+	tools := t.TempDir()
+	installShippedTools(t, tools)
+	t.Setenv("PATH", tools+string(os.PathListSeparator)+filepath.Dir(a.sandbox.Bin))
+	out, err := runDoctor(t, a)
+	if err != nil {
+		t.Fatalf("doctor must pass on a host without agent CLIs: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "not on PATH (fine — nothing here needs them): claude codex opencode") {
+		t.Fatalf("absent agent CLIs must be reported as fine:\n%s", out)
 	}
 }
 
@@ -131,7 +203,7 @@ func TestDoctorFailsLoudlyOnVersionDrift(t *testing.T) {
 	// Asserted on the report rather than the error: doctor prints its findings
 	// and returns a terse sentinel, so the report is what an operator reads.
 	for _, want := range []string{
-		"this build was made against",
+		"this build pins",
 		"v0.0.0-20990101000000-ffffffffffff",
 		pinnedSandbox(t),
 		"go install " + sandboxModule + "/cmd/cs-sandbox@",
@@ -225,13 +297,7 @@ func TestSiblingToolsAreReportedButNeverGate(t *testing.T) {
 	// nothing else: every sibling is absent, and the checks BEFORE this one
 	// still pass so a failure here can only be about siblings.
 	bare := t.TempDir()
-	for _, cli := range []string{"claude", "codex", "opencode"} {
-		for _, suffix := range []string{"-remote", "-remote-output", "-turn"} {
-			if err := os.WriteFile(filepath.Join(bare, "cs"+"-"+cli+suffix), []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
+	installShippedTools(t, bare)
 	t.Setenv("PATH", bare+string(os.PathListSeparator)+filepath.Dir(a.sandbox.Bin))
 
 	report := a.verifyUpstream(context.Background())
@@ -286,7 +352,7 @@ func TestAMatchingSiblingIsReportedByName(t *testing.T) {
 	if len(report.Warnings) != 0 {
 		t.Fatalf("a matching sibling is not a finding: %v", report.Warnings)
 	}
-	if !strings.Contains(strings.Join(report.Notes, "\n"), "cs-vcr on PATH matches this build ("+pinned+")") {
+	if !strings.Contains(strings.Join(report.Notes, "\n"), "cs-vcr on PATH matches the pin ("+pinned+")") {
 		t.Fatalf("a matching sibling must be named with its version: %v", report.Notes)
 	}
 }
