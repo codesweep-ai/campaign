@@ -192,7 +192,13 @@ build-go: $(VIEWERPAGE)
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(VIEWERLDFLAGS)' -o $(VIEWERBIN) $(VIEWERPKG)
 	@echo placeholder-guest > $(FLAVOUR) # after the build, so it is newer than $(BIN); see $(FLAVOUR) above
 
+VIEWER_DIR := dispatch-viewer/app
+# The npm command, and the script every install runs through. That script puts
+# cs-npmrevs in front of npmjs.com: @codesweep-ai/ui publishes an image of every
+# build it makes, and a version that has not been released reaches npm only that
+# way. The script says how it picks the registry.
 NPM ?= npm
+WITH_NPMREVS := $(abspath scripts/with-npmrevs.sh)
 
 ## viewer: rebuild the embedded dispatch-viewer page from dispatch-viewer/app
 ##
@@ -233,7 +239,8 @@ viewer-check:
 
 ## viewer-build: the viewer rebuild itself, for when npm is known present
 viewer-build:
-	cd dispatch-viewer/app && $(NPM) ci && $(NPM) run build
+	cd $(VIEWER_DIR) && $(WITH_NPMREVS) $(NPM) ci
+	cd $(VIEWER_DIR) && $(NPM) run build
 
 ## fixtures: the dispatch viewer's behavioural oracle (needs a browser)
 ##
@@ -244,7 +251,7 @@ viewer-build:
 ## FIXTURE_ARGS passes them through: make fixtures FIXTURE_ARGS=--strict
 FIXTURE_ARGS ?=
 fixtures:
-	cd dispatch-viewer/app && $(NPM) run fixtures -- $(FIXTURE_ARGS)
+	cd $(VIEWER_DIR) && $(NPM) run fixtures -- $(FIXTURE_ARGS)
 
 ## versions: what this build is made of — this repo's binary, every pinned tool,
 ## the Go toolchain, and whether a workspace is overriding the go.mod pins. The

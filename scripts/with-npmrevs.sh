@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# Run a command with cs-npmrevs in front of npmjs.com, so a @codesweep-ai
+# version that exists only as a container image installs like any other package.
+#
+#   scripts/with-npmrevs.sh npm ci
+#   scripts/with-npmrevs.sh npm install --save-exact @codesweep-ai/ui@VERSION
+#
+# @codesweep-ai/ui publishes an image of every build it makes,
+# ghcr.io/codesweep-ai/npm/ui:<version>. cs-npmrevs
+# (https://github.com/codesweep-ai/npmrevs) reads those images and answers npm
+# with the versions they hold, and passes every other package through from
+# npmjs.com. The images are public, so nothing here needs a credential.
+#
+# `npm ci` installs from the URLs the lockfile names, so an entry naming this
+# address comes from an image and every other entry still comes from npmjs.com.
+# The npmrc this writes lives in a temporary directory and is passed with
+# NPM_CONFIG_USERCONFIG, so ~/.npmrc is untouched.
+#
+# A registry already listening on the port is used as it stands, which is what
+# lets `npm run registry:npmrevs` in a ui checkout serve an unpushed build to a
+# rebuild here. Otherwise this starts one and stops it on the way out.
+#
+# The same file is in tracer, campaign and ledger, so a fix made in one is
+# copied to the others rather than rewritten there.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+PORT="${CS_NPMREVS_PORT:-4873}"
+URL="http://127.0.0.1:$PORT"
+# The registry holding the images, and the scope whose packages are looked up
+# there. Every other package comes from the upstream cs-npmrevs passes through to.
+IMAGES="${CS_NPMREVS_IMAGES:-ghcr.io}"
+SCOPE="${CS_NPMREVS_SCOPE:-@codesweep-ai}"
+# The command that runs cs-npmrevs: the version go.mod pins, unless told
+# otherwise. Every install here is part of a build this repository's Makefile
+# drives, so a Go toolchain is present; saying so beats the error `go` leaves.
+if [ -z "${NPMREVS:-}" ]; then
+  NPMREVS="$( (cd "$ROOT" && go tool -n cs-npmrevs) 2>/dev/null || true)"
+  [ -n "$NPMREVS" ] || {
+    echo "with-npmrevs.sh: cs-npmrevs is the version go.mod pins, and \`go tool -n cs-npmrevs\` did not produce it." >&2
+    echo "Install Go, or set NPMREVS to the command that runs cs-npmrevs." >&2
+    exit 1
+  }
+fi
+
+[ "$#" -gt 0 ] || { echo "usage: with-npmrevs.sh COMMAND [ARG]..." >&2; exit 2; }
+
+command -v node >/dev/null || {
+  echo "with-npmrevs.sh: node is not installed, and it is how the registry is asked whether it is up." >&2
+  echo "It is also what the packages being installed are for." >&2
+  exit 1
+}
+
+# The registry is asked over HTTP with node, which a machine running this has
+# anyway: it is here to install the packages a Node build needs.
+http() { # URL: print what it answers, or fail
+  # shellcheck disable=SC2016 # the script is node's to read, not the shell's
+  node -e '
+const [url] = process.argv.slice(1);
+fetch(url, { signal: AbortSignal.timeout(1500) })
+  .then((response) => (response.ok ? response.text() : Promise.reject(new Error(`${response.status}`))))
+  .then((body) => process.stdout.write(body))
+  .catch(() => process.exit(1));
+' "$1" 2>/dev/null
+}
+
+# What a cs-npmrevs on the port answers with, and nothing when the port is free
+# or something else holds it.
+status() { http "$URL/-/npmrevs"; }
+
+work="$(mktemp -d)"
+server=""
+cleanup() {
+  [ -n "$server" ] && kill "$server" 2>/dev/null
+  rm -rf "$work"
+  return 0
+}
+trap cleanup EXIT
+
+if status >/dev/null; then
+  echo "with-npmrevs: installing through the registry already on $URL"
+  # One serving no images answers only what it holds locally and what npmjs.com
+  # has, so a version that exists only as an image would not resolve there. That
+  # is a fine registry to install through, and a confusing one to debug.
+  status | grep -q '"images"' ||
+    echo "with-npmrevs: it serves no images, so only npmjs.com versions and its own resolve" >&2
+else
+  if http "$URL/" >/dev/null; then
+    echo "with-npmrevs: $URL answers and is not cs-npmrevs." >&2
+    echo "Stop it, or set CS_NPMREVS_PORT to a free port." >&2
+    exit 1
+  fi
+  # A data directory of its own, and empty: this serves images, and a stray
+  # tarball in a shared directory would take precedence over one.
+  mkdir -p "$work/data"
+  # shellcheck disable=SC2086 # NPMREVS may be a command with arguments
+  $NPMREVS serve --data "$work/data" --images "$IMAGES" --images-scope "$SCOPE" \
+    --listen "127.0.0.1:$PORT" > "$work/serve.log" 2>&1 &
+  server=$!
+  for _ in $(seq 1 50); do
+    status >/dev/null && break
+    sleep 0.1
+  done
+  status >/dev/null || {
+    echo "with-npmrevs.sh: the registry did not come up on $URL" >&2
+    cat "$work/serve.log" >&2
+    exit 1
+  }
+fi
+
+printf 'registry=%s/\n' "$URL" > "$work/npmrc"
+NPM_CONFIG_USERCONFIG="$work/npmrc" "$@"

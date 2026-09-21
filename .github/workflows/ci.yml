@@ -398,6 +398,13 @@ jobs:
           node-version: "22.13" # dispatch-viewer/app says >=22.13; the floor is what CI proves
           cache: npm
           cache-dependency-path: dispatch-viewer/app/package-lock.json
+      # The install runs through scripts/with-npmrevs.sh, which runs the
+      # cs-npmrevs go.mod pins, so this job needs a Go toolchain even though
+      # what it builds is the viewer.
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
       - run: make viewer-check
 
   # The whole dispatch protocol on real machines, with the model's answers
