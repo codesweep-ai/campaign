@@ -1,0 +1,20 @@
+{
+  "id": "SAC-047",
+  "title": "Destroy relays advice to remove a group that it then removes itself",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, maintainer of this repository, following the advice after destroying two campaigns",
+  "opened": "2026-09-21",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "**What happened.** `cs-campaign destroy --force` printed a line saying the campaign's group held no sandbox, and that its network and gateway were still up. The line advised `cs-sandbox group rm` with the group's name. When the operator ran that command, the answer was `no such group`. This was seen twice in one day.\n\n**Why.** The line belongs to the sandbox tool. It prints it after destroying a group's last sandbox, and for a person who typed that command it is correct. Campaign's destroy streams the sandbox tool's output to the operator, then reclaims the group itself. By the time the operator reads the advice, the group is gone.\n\n**Why it matters.** The last thing a teardown says should be true. An operator who follows the advice gets an error and cannot tell whether the teardown finished. The honest line, that the group was reclaimed, is never printed.\n\n**How to reproduce.** Create any campaign and destroy it with `--force`. Read the line before the final one, then run the command it names.\n\n**What would help.** Campaign should say that it reclaimed the group, and should not pass on advice it is about to make false. Dropping that one relayed line is enough. The sandbox tool's message needs no change.",
+  "notes": [],
+  "links": []
+}

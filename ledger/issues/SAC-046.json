@@ -1,0 +1,22 @@
+{
+  "id": "SAC-046",
+  "title": "An acceptance could match a dispatch from a node's earlier life",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, maintainer of this repository, tracing how dispatch ids are minted while fixing stale sessions",
+  "opened": "2026-09-21",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "**What could happen.** A member given a fresh disk inside a live campaign mints its dispatch ids again from `d001`. The orchestrator's log still holds `accepted` entries for that node's earlier ids. A new reply under a reused id would then read as already accepted. The node would show `free` while its reply was never judged.\n\n**Why.** The next dispatch id is minted from the messages the node's input channel holds, so an empty disk starts the sequence over. The acceptance lookup matches a log entry by node name and dispatch id alone. Nothing in an entry says which life of the node it belongs to.\n\n**How likely.** It has not been seen. No campaign command replaces one member today, so it would take an operator rebuilding a machine by hand under the same name. Recreating a whole campaign is already safe. The stale-session fix in SAC-032 made `destroy` forget every session, and a new campaign starts a new log.\n\n**Why it matters.** The acceptance record is the one input to node state that does not come from the node. A wrong match frees a node silently, and the unjudged work is counted as done.\n\n**What would help.** Write the conformance scenario first: replace a node's disk after one accepted dispatch, and assert that its next reply reads `replied`. Then tie an acceptance to something a rebuilt node cannot repeat, such as the dispatch's opening time. Refusing to mint at or below the highest id the log holds for that node would also do.",
+  "notes": [],
+  "links": [
+    "SAC-032"
+  ]
+}
