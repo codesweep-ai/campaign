@@ -12,7 +12,7 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/codesweep-ai/ledger v0.0.0-20260915220605-312c48564629 // indirect
 	github.com/codesweep-ai/lint v0.0.0-20260915220605-2381ff44d94a // indirect
-	github.com/codesweep-ai/sandbox v0.0.0-20260920195633-1f798edb0963 // indirect
+	github.com/codesweep-ai/sandbox v0.0.0-20260921004423-3d3fbb666359 // indirect
 	github.com/codesweep-ai/tracer v0.0.0-20260910230853-d5ff8c2d052c // indirect
 	github.com/codesweep-ai/vcr v0.0.0-20260920060905-918c50515233 // indirect
 	github.com/fatih/color v1.19.0 // indirect
