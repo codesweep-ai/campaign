@@ -3,15 +3,17 @@
   "title": "A red smoke tier is not yet evidence, because the tier inherits the create race",
   "type": "improvement",
   "severity": "med",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, after chasing a smoke failure to host timing rather than to the change under test",
   "opened": "2026-09-06",
-  "resolved": null,
+  "resolved": "2026-09-21",
   "stint": null,
   "evidence": {
-    "commits": [],
+    "commits": [
+      "3ac5613"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "On `3ac5613`, which pins the sandbox carrying the last fix below, every smoke leg that ran was green on its first attempt, 112 of 112. That was one run on push and four fresh runs dispatched one after another. Each of the first three passed all 24 legs across the microVM, container and macOS matrices. The fourth passed its 16 non-macOS legs, and its 8 macOS legs never started because the self-hosted runners went offline, so none of them failed. Across every run of the day on main, 153 of 154 legs were green on the first attempt. The one red leg was not noise: its evidence showed a turn driver giving up after ten seconds on a slow runner, which was fixed as SBX-063."
   },
   "resolution": null,
   "details": "`make ci` fails intermittently for reasons unrelated to the change being tested. Its smoke tier boots real machines, so it inherits the race recorded in SAC-007.\n\nThe tier is the last gate `make ci` runs. A red result therefore arrives after every cheap check has passed, and the natural reading is that the change broke something. It usually has not.\n\nReproducing the failure is the trap. The race is decided by how fast a guest boots, which depends on host load and on the storage the working tree sits on. Comparing two commits across that difference measures the storage rather than the commits.\n\nThese numbers come from diagnosing SAC-007. Four of six runs on an ext4 tree failed at least one scenario. Three consecutive runs on a tmpfs tree failed none, and a later run on a second tmpfs tree failed two. Storage therefore shifts the odds without deciding the outcome, which is what makes a two-commit comparison so easy to misread.\n\nFixing SAC-007 removes most of this. What remains is worth a sentence in CONTRIBUTING. A red smoke tier is first a reason to run the tier again on the same tree. Suspecting the diff comes after that.",
@@ -23,6 +25,10 @@
     {
       "date": "2026-09-20",
       "text": "A fourth cause, and this one is inside the tier. The tier shortens the wait chunk to 4 seconds through `CS_CAMPAIGN_WAIT_SECONDS`. A recorded orchestrator calls `wait` only as often as it did when it was recorded. In one run a member answered more slowly than it had when recorded. The orchestrator's waits then elapsed where the recorded ones had returned a judgment. It went on to read and accept replies that had not arrived, and 50 of its commands failed. The proxy counted no miss, because every request matched. The driver reported the orchestrator as stalled after 404 seconds, where a good run of that scenario takes 58. The tier passed when run again on the same tree. SAC-038 describes the same mechanism from the other side, where a replay of real work needs a longer chunk. The tier could fail fast here and name the cause. The proxy log already shows a live `wait chunk elapsed` against a recorded `wait returned`."
+    },
+    {
+      "date": "2026-09-21",
+      "text": "Closed, and its advice is withdrawn along with it. Every cause this record names has been removed: the create race by SAC-007, and the squatted recorder port by SAC-009 together with isolated groups that publish no port. The recorded wait chunk was fixed by SAC-038, and the turn that died on a slow machine by SBX-063. The advice was to run a red tier again before suspecting the change. The day this closed, that advice would have hidden a real defect. A red leg that passed on its second attempt was a driver that waits too little, three ladder rungs from where it surfaced. A red smoke leg is evidence to read before it is noise to retry. The evidence artifact the tier keeps is where to read it."
     }
   ],
   "links": [
