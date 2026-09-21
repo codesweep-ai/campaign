@@ -943,16 +943,28 @@ jobs:
 
       # launchd does not order jobs relative to each other and `podman machine
       # start` takes 20-30s, so after a reboot a runner can pick up a job before
-      # the VM is ready. Guard on state rather than calling start blindly: start
-      # exits 125 when the machine is already running.
+      # the VM is ready. Guard rather than calling start blindly: start exits 125
+      # when the machine is already running.
       - name: ensure the podman machine is up
         run: |
           set -euo pipefail
-          if [ "$(podman machine inspect --format '{{.State}}' podman-machine-default)" != "running" ]; then
-            echo "machine was down; starting it"
-            podman machine start
+          # Asked of the socket, not of the machine: after a reboot the machine
+          # has called itself running while its socket refused every connection,
+          # and that needs a stop before the start. Runners share the machine, so
+          # a start may lose a race; the wait, then the next command, decide.
+          if ! podman info >/dev/null 2>&1; then
+            echo "podman does not answer; machine says: $(podman machine inspect --format '{{.State}}' podman-machine-default || true)"
+            podman machine stop || true
+            podman machine start || true
+            for _ in $(seq 1 24); do
+              if podman info >/dev/null 2>&1; then break; fi
+              sleep 5
+            done
           fi
           podman info --format '{{.Version.Version}} | {{.Host.Arch}} | rootless={{.Host.Security.Rootless}}'
+          # What the machine was given. A machine that was recreated comes back at
+          # podman's defaults, and a smoke leg boots several sandboxes at once.
+          podman machine inspect --format 'machine: cpus={{.Resources.CPUs}} memory={{.Resources.Memory}}MiB disk={{.Resources.DiskSize}}GiB' podman-machine-default || true
 
       - name: install cs-sandbox and cs-vcr
         run: |
@@ -1051,10 +1063,23 @@ jobs:
         if: steps.cassette.outputs.present == 'true'
         run: |
           set -euo pipefail
-          if [ "$(podman machine inspect --format '{{.State}}' podman-machine-default)" != "running" ]; then
-            echo "machine was down; starting it"
-            podman machine start
+          # Asked of the socket, not of the machine: after a reboot the machine
+          # has called itself running while its socket refused every connection,
+          # and that needs a stop before the start. Runners share the machine, so
+          # a start may lose a race; the wait, then the next command, decide.
+          if ! podman info >/dev/null 2>&1; then
+            echo "podman does not answer; machine says: $(podman machine inspect --format '{{.State}}' podman-machine-default || true)"
+            podman machine stop || true
+            podman machine start || true
+            for _ in $(seq 1 24); do
+              if podman info >/dev/null 2>&1; then break; fi
+              sleep 5
+            done
           fi
+          podman info --format '{{.Version.Version}} | {{.Host.Arch}}'
+          # What the machine was given. A machine that was recreated comes back at
+          # podman's defaults, and a smoke leg boots several sandboxes at once.
+          podman machine inspect --format 'machine: cpus={{.Resources.CPUs}} memory={{.Resources.Memory}}MiB disk={{.Resources.DiskSize}}GiB' podman-machine-default || true
 
       - name: install cs-sandbox and cs-vcr
         if: steps.cassette.outputs.present == 'true'
