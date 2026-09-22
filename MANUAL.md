@@ -765,7 +765,7 @@ Severity reflects the kind of problem.
 | `continues-exceed-policy` / `restarts-exceed-policy` | warning | recovery spent more rungs than the policy allows |
 | `accept-before-reply` | warning | an acceptance logged before the reply it judges: clock skew, or judgement of unanswered work |
 | `readback-absent` | warning | a member never restated its briefing |
-| `accept-of-readback` | info | the log accepts `d001`, a host-issued and host-judged dispatch |
+| `accept-of-readback` | info | the log accepts a create-time readback, a host-issued and host-judged dispatch: `d001`, or a later one a resumed `create` opened |
 | `accept-of-own-channel` | info | the log accepts a dispatch on the orchestrator's own channel, which the host judges |
 | `accept-ambiguous` | info | a bare accept matches several nodes' dispatches; shown attached to all of them |
 | `accepted-twice` | info | the same dispatch accepted twice; the later entry is shown |
