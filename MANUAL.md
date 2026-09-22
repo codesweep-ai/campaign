@@ -598,6 +598,7 @@ help.
 | `observe` | Every agent's state, computed now, in one snapshot. |
 | `send <agent> --file F\|- [--continue]` | Opens a new dispatch. With `--continue`, adds to the open one instead. |
 | `read <agent> [path]` | The agent's reply to its current dispatch, or a file from its output channel. |
+| `read <agent> --list [dir]` | Every file in the agent's output channel, or in one directory of it, with its size, as the paths `read` takes. |
 | `restart <agent>` | Drops its session and re-anchors it against its open dispatch. |
 | `accept <agent>` | Records its current reply as accepted, which frees the agent. |
 | `note plan\|assessment --file F\|-` | Appends to the log. Re-planning is another `plan` entry. |

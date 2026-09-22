@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -502,6 +503,9 @@ func cmdRead(env *envState, args []string) error {
 	if err != nil {
 		return err
 	}
+	if len(args) > 1 && args[1] == "--list" {
+		return listOutput(rec, args[0], args[2:])
+	}
 	var path string
 	if len(args) > 1 {
 		// The path is model-supplied and reaches a remote login shell: it must
@@ -668,6 +672,83 @@ func deliverPrepared(env *envState, rec protocol.AgentRecord, _ protocol.Facts, 
 		return "", false, err
 	}
 	return id, false, nil
+}
+
+// listCap is the most files one listing prints. An output channel holds
+// reports and handoffs, and one that has grown past this is listed a
+// directory at a time.
+const listCap = 500
+
+// listOutput prints every file in an agent's output channel, or in one
+// directory of it, as the paths `read` takes. Without it the orchestrator could
+// fetch only a name it already knew, so seats pasted whole files into replies
+// instead: the largest single cost two campaigns measured.
+func listOutput(rec protocol.AgentRecord, name string, args []string) error {
+	if len(args) > 1 {
+		return errors.New("read --list takes at most one directory")
+	}
+	dir, sub := protocol.OutputDir, ""
+	if len(args) == 1 {
+		sub = strings.TrimSuffix(args[0], "/")
+		if !safeReadPath(sub) {
+			return errors.New("directory may contain only letters, digits, . _ / - and no \"..\" segment — it must stay inside the output channel")
+		}
+		dir += "/" + sub
+	}
+	out, err := sshOut(rec.Sandbox, listScript(dir), "")
+	if err != nil {
+		return fmt.Errorf("list ~/%s on %s: %v", dir, name, err)
+	}
+	type file struct {
+		size int64
+		path string
+	}
+	var files []file
+	for line := range strings.SplitSeq(string(out), "\n") {
+		if strings.TrimSpace(line) == "NODIR" {
+			return fmt.Errorf("%s has no directory ~/%s", name, dir)
+		}
+		rest, ok := strings.CutPrefix(line, "FILE ")
+		if !ok {
+			continue
+		}
+		size, path, ok := strings.Cut(rest, " ")
+		if !ok {
+			continue
+		}
+		n, _ := strconv.ParseInt(size, 10, 64)
+		if sub != "" {
+			path = sub + "/" + path
+		}
+		files = append(files, file{n, path})
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].path < files[j].path })
+	noun := "files"
+	if len(files) == 1 {
+		noun = "file"
+	}
+	fmt.Printf("%s: %d %s in ~/%s — fetch one with `read %s <path>`\n", name, len(files), noun, dir, name)
+	for i, f := range files {
+		if i == listCap {
+			fmt.Printf("… and %d more: list a directory with `read %s --list <dir>`\n", len(files)-listCap, name)
+			break
+		}
+		note := ""
+		if !safeReadPath(f.path) {
+			note = "  (read cannot fetch this name)"
+		}
+		fmt.Printf("%10d  %s%s\n", f.size, f.path, note)
+	}
+	return nil
+}
+
+// listScript lists the regular files under dir, one FILE line each, relative
+// to dir. Its output shares a stream with whatever the transport prints, so
+// only its own lines are read back. POSIX rather than find's -printf, so the
+// tests run it on a macOS runner too.
+func listScript(dir string) string {
+	return `cd "$HOME/` + dir + `" 2>/dev/null || { echo NODIR; exit 0; }; ` +
+		`find . -type f | while IFS= read -r f; do printf 'FILE %s %s\n' "$(($(wc -c < "$f")))" "${f#./}"; done`
 }
 
 // safeReadPath admits only inert path characters: the read path is

@@ -185,6 +185,7 @@ func TestOrchestratorOrientationCoversDispatchSafetyAndImpossibleMissions(t *tes
 		"--file -",             // and the stdin form
 		"$(",                   // it must name the construct that corrupts a dispatch
 		"pass `--continue`",    // and how to add to an open dispatch, which a plain send refuses
+		"--list` names every file in its output channel", // so a teammate's file is fetched, not pasted
 	} {
 		if !strings.Contains(orch, want) {
 			t.Errorf("orchestrator orientation missing %q:\n%s", want, orch)
