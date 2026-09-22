@@ -63,14 +63,15 @@ eleven commits is not evidence.
 
 **The dispatch viewer needs Node only to change it.** The page is a React app in
 `dispatch-viewer/app/`, built on `@codesweep-ai/ui` and committed as the single file
-`dispatch-viewer/internal/cli/shell/viewer.html` that the binary embeds. Every Go gate above runs
-in any clone, and the binary builds with Go alone. Rebuilding the page with `make viewer` needs
-Node 22.13 or newer and npm, the floor `@codesweep-ai/ui` sets. The install runs through
-`scripts/with-npmrevs.sh`, which puts cs-npmrevs in front of npmjs.com. `@codesweep-ai/ui`
-publishes an image of every build, and a version that has not been released reaches npm only
-that way. The tool is pinned in `go.mod`, the images are public, and every other package still
-comes from npmjs.com. Without them the target prints
-SKIP and the committed page stands.
+`dispatch-viewer/internal/cli/shell/viewer.html` that the binary embeds. Every Go gate above runs in
+any clone, and the binary builds with Go alone. Rebuilding the page with `make viewer` needs Node
+22.13 or newer and npm, the floor `@codesweep-ai/ui` sets. The install runs through
+`scripts/with-npmrevs.sh`, which puts cs-npmrevs in front of npmjs.com. `@codesweep-ai/ui` publishes
+an image of every build, and a version that has not been released reaches npm only that way. The
+tool is pinned in `go.mod`, the images are public, and every other package still comes from
+npmjs.com. It also serves cs-npmrevs's shared data directory on port 4875, so a build packed on this
+machine (`make npm-pack` in npmrevs, lint or ledger, `npm run registry:pack` in ui) installs without
+being pushed. Without them the target prints SKIP and the committed page stands.
 
 This repository keeps a **ledger** of open issues in `ledger/`. Read
 [`ledger/AGENTS.md`](ledger/AGENTS.md) before you start work, and follow it as you go. A commit

@@ -11,6 +11,10 @@
 # with the versions they hold, and passes every other package through from
 # npmjs.com. The images are public, so nothing here needs a credential.
 #
+# It also serves its own data directory, which every project's build packs its
+# npm packages into (`make npm-pack` here, `npm run registry:pack` in ui), so a
+# build made earlier on this machine installs without being pushed anywhere.
+#
 # `npm ci` installs from the URLs the lockfile names, so an entry naming this
 # address comes from an image and every other entry still comes from npmjs.com.
 # The npmrc this writes lives in a temporary directory and is passed with
@@ -20,14 +24,16 @@
 # lets `npm run registry:npmrevs` in a ui checkout serve an unpushed build to a
 # rebuild here. Otherwise this starts one and stops it on the way out.
 #
-# The same file is in tracer, campaign and ledger, so a fix made in one is
-# copied to the others rather than rewritten there.
+# The same file is in tracer, campaign, ledger and dashboards, so a fix made in
+# one is copied to the others rather than rewritten there.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-PORT="${CS_NPMREVS_PORT:-4873}"
+PORT="${CS_NPMREVS_PORT:-4875}"
 URL="http://127.0.0.1:$PORT"
+# The directory cs-npmrevs serves when given none, resolved as it resolves it.
+DATA="${CS_NPMREVS_DATA:-${XDG_DATA_HOME:-$HOME/.local/share}/cs-npmrevs/data}"
 # The registry holding the images, and the scope whose packages are looked up
 # there. Every other package comes from the upstream cs-npmrevs passes through to.
 IMAGES="${CS_NPMREVS_IMAGES:-ghcr.io}"
@@ -91,11 +97,11 @@ else
     echo "Stop it, or set CS_NPMREVS_PORT to a free port." >&2
     exit 1
   fi
-  # A data directory of its own, and empty: this serves images, and a stray
-  # tarball in a shared directory would take precedence over one.
-  mkdir -p "$work/data"
+  # A version packed into the data directory takes the place of the image of
+  # the same version, so a build made here wins over the one CI pushed.
+  mkdir -p "$DATA"
   # shellcheck disable=SC2086 # NPMREVS may be a command with arguments
-  $NPMREVS serve --data "$work/data" --images "$IMAGES" --images-scope "$SCOPE" \
+  $NPMREVS serve --data "$DATA" --images "$IMAGES" --images-scope "$SCOPE" \
     --listen "127.0.0.1:$PORT" > "$work/serve.log" 2>&1 &
   server=$!
   for _ in $(seq 1 50); do
