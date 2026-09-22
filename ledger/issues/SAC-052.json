@@ -17,7 +17,12 @@
   },
   "resolution": "A segmented control in the timeline's header chooses protocol or member traces, and shows only when the page has traces. Protocol is the run as the channels and the log show it: the log row first, always drawn, every box with its marks, and no trace rows. Member traces hides the marks and the log's claims, keeps the log row empty, and frames each traced member's steps with its box on one row. Errors only and the legend follow the view, and a step address switches to traces. The manual's Timeline paragraph says so.",
   "details": "Every member had a protocol row of boxes and marks and, under it, a steps row of the tracer's columns inside the same boxes. The orchestrator's log claims sat on a row at the bottom, hidden until a checkbox showed them. Read together the two vocabularies fought: dots and labels above, columns below, links between. The owner's reading: the run view with only the log shown is the page that gives the run's shape. The traces are a second page rather than a second row. Wanted: two views. Protocol, the default, is the run as the channels and the log show it, with the log row on top of the orchestrator. Traces empties the log row, drops the marks, and shows the steps inside the boxes. Errors only is a traces control.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-22",
+      "text": "The owner's review of the first cut: the rows moved between views. A protocol row was 24 px and a steps row 34, and the fork rows came and went. In de13eed both rows are 34 px with one hidden, and the fork rows stay in both views. A probe reads the same label top and height for every row in either view. The same commit puts the view in the address, as a leading `traces/`, and renames the option to traces."
+    }
+  ],
   "links": [
     "SAC-050"
   ]
