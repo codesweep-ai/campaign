@@ -35,6 +35,7 @@ export default function App() {
   // member did inside its boxes: the log row empties, the marks go, and the
   // steps appear. A page with no traces has only the first.
   const [view, setView] = useState<View>("protocol");
+  const viewRef = useRef<View>("protocol");
   const showLog = view === "protocol";
   const showDetail = traced && view === "traces";
   const [errorsOnly, setErrorsOnly] = useState(false);
@@ -90,9 +91,19 @@ export default function App() {
       selRef.current = i;
       setSel(i);
       setLogSel(null);
-      writeHash(address(i, events, shownRef.current), true);
+      writeHash(address(i, events, shownRef.current, viewRef.current), true);
     },
     [events],
+  );
+
+  // The view the timeline is in, mirrored into the address.
+  const applyView = useCallback(
+    (next: View) => {
+      viewRef.current = next;
+      showLogRef.current = next === "protocol";
+      setView(next);
+    },
+    [],
   );
 
   // The view follows the selection into the address, rewritten in place and
@@ -108,7 +119,7 @@ export default function App() {
         // pixel of scroll can move it, is left as written.
         const named = readHash(location.hash, events)?.view;
         if (named && named !== "run" && Math.abs(named.start - shown.start) <= 2 && Math.abs(named.end - shown.end) <= 2) return;
-        writeHash(address(selRef.current, events, shown), false);
+        writeHash(address(selRef.current, events, shown, viewRef.current), false);
       }, 300);
     },
     [events],
@@ -117,9 +128,10 @@ export default function App() {
   // The address names the selection, so a view can be handed to someone:
   // #m/<member> is the member's first dispatch, #m/<member>/<dNNN> is that
   // dispatch's opening, zoomed to, and #e/<n> is any event or step by the
-  // index this page gives it. Each selection is a history entry, so the
-  // browser's back and forward walk the selections made, and an address
-  // typed or pasted applies without a reload.
+  // index this page gives it. A leading traces/ is the traces view. Each
+  // selection is a history entry, so the browser's back and forward walk
+  // the selections made, and an address typed or pasted applies without a
+  // reload.
   useEffect(() => {
     if (!run) return;
     const apply = (fromHistory: boolean) => {
@@ -135,15 +147,13 @@ export default function App() {
         }
         return;
       }
+      // The address says which view, and a step, which is on the timeline
+      // only in the traces view, says it too.
+      if (traced) applyView(target.traces || (target.i !== undefined && target.i >= events.length) ? "traces" : "protocol");
       if (target.i !== undefined) {
         selRef.current = target.i;
         setSel(target.i);
         setLogSel(null);
-        // A step is on the timeline only in the traces view.
-        if (target.i >= events.length && traced) {
-          showLogRef.current = false;
-          setView("traces");
-        }
       } else if (fromHistory) {
         // An entry with no selection had none.
         selRef.current = -1;
@@ -168,7 +178,7 @@ export default function App() {
     const onPop = () => apply(true);
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [run, events, traced]);
+  }, [run, events, traced, applyView]);
 
   const selectLog = useCallback((l: LogEntry) => {
     selRef.current = -1;
@@ -179,10 +189,10 @@ export default function App() {
   const onView = useCallback(
     (v: string) => {
       const next: View = v === "traces" && traced ? "traces" : "protocol";
-      showLogRef.current = next === "protocol";
-      setView(next);
+      applyView(next);
+      writeHash(address(selRef.current, events, shownRef.current, next), true);
     },
-    [traced],
+    [traced, events, applyView],
   );
 
   // Arrow keys step through visible events (blind mode drops the log kinds —
@@ -289,7 +299,7 @@ export default function App() {
                         aria-label="Timeline view"
                         options={[
                           { value: "protocol", label: "protocol" },
-                          { value: "traces", label: "member traces" },
+                          { value: "traces", label: "traces" },
                         ]}
                         value={view}
                         onChange={onView}
@@ -356,14 +366,17 @@ export default function App() {
   );
 }
 
-/** What an address names: a selection, the dispatch to zoom to when the
- *  selection is one, and a view as "@start-end" in elapsed h:mm:ss, or
- *  "@run" for the whole run. */
+/** What an address names: the traces view when it opens with "traces", a
+ *  selection, the dispatch to zoom to when the selection is one, and a view
+ *  as "@start-end" in elapsed h:mm:ss, or "@run" for the whole run. */
 function readHash(
   hash: string,
   events: IndexedEvent[],
-): { i?: number; zoom?: string; view?: { start: number; end: number } | "run" } | null {
-  const [head, ...rest] = decodeURIComponent(hash.replace(/^#/, "")).split("@");
+): { i?: number; zoom?: string; view?: { start: number; end: number } | "run"; traces?: boolean } | null {
+  let raw = decodeURIComponent(hash.replace(/^#/, ""));
+  const traces = raw === "traces" || raw.startsWith("traces/") || raw.startsWith("traces@");
+  if (traces) raw = raw.replace(/^traces\/?/, "");
+  const [head, ...rest] = raw.split("@");
   // A view that does not parse is dropped, and the selection kept.
   let view: { start: number; end: number } | "run" | undefined;
   if (rest.length === 1 && rest[0] === "run") view = "run";
@@ -372,29 +385,31 @@ function readHash(
     if (a != null && b != null && b > a) view = { start: a, end: b };
   }
   const parts = head.split("/");
-  if (head === "") return view ? { view } : null;
+  if (head === "") return view || traces ? { view, traces } : null;
   if (parts[0] === "e" && parts.length === 2) {
     const i = Number(parts[1]);
-    return Number.isInteger(i) && i >= 0 ? { i, view } : null;
+    return Number.isInteger(i) && i >= 0 ? { i, view, traces } : null;
   }
   if (parts[0] === "m" && (parts.length === 2 || parts.length === 3)) {
     const [, member, dispatch] = parts;
     const open = events.find((e) => e.node === member && e.type === "open" && (!dispatch || e.dispatch === dispatch));
     if (!open) return null;
-    return dispatch ? { i: open.i, zoom: member + "/" + dispatch, view } : { i: open.i, view };
+    return dispatch ? { i: open.i, zoom: member + "/" + dispatch, view, traces } : { i: open.i, view, traces };
   }
   return null;
 }
 
-/** The address for a selection and the view shown. The whole run is the
- *  view an address without one means, so it is written as nothing, except
- *  after a dispatch, where no view means the dispatch's box. */
-function address(i: number, events: IndexedEvent[], shown: ShownView | null): string {
+/** The address for a selection, the view shown and the timeline's view.
+ *  The whole run is the view an address without one means, so it is written
+ *  as nothing, except after a dispatch, where no view means the dispatch's
+ *  box. Protocol is the timeline view an address without one means. */
+function address(i: number, events: IndexedEvent[], shown: ShownView | null, mode: View): string {
   const e = i >= 0 ? events[i] : undefined;
   const dispatch = !!(e && e.type === "open" && e.dispatch);
   const selection = i < 0 ? "" : dispatch ? `m/${e!.node}/${e!.dispatch}` : `e/${i}`;
   const view = !shown ? "" : shown.whole ? (dispatch ? "@run" : "") : `@${fmtClock(shown.start)}-${fmtClock(shown.end)}`;
-  return selection || view ? "#" + selection + view : "";
+  const prefix = mode === "traces" ? "traces" + (selection ? "/" : "") : "";
+  return prefix || selection || view ? "#" + prefix + selection + view : "";
 }
 
 /** Writes the address: as a new history entry for a selection, so back

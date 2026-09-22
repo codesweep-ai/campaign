@@ -175,12 +175,14 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
     }
     for (const [k, n] of run.nodes.entries()) {
       const isOrch = n.role === "orchestrator";
-      // In the traces view a traced member's box frames its steps row and
-      // its protocol row is hidden: the box's edges are the opening and the
-      // reply, so the marks only restated them. In the protocol view there
-      // are no trace rows at all.
-      const rows = showDetail && traced.has(n.name);
-      const boxes = rows;
+      // A traced member has a protocol row and a steps row of one height,
+      // and one of the two is hidden: the protocol row in the traces view,
+      // where the box frames the steps instead and the marks go, since the
+      // box's edges are the opening and the reply; the steps row in the
+      // protocol view. Its fork rows stay in both, empty in protocol. So the
+      // views switch what a row holds and never where a row is.
+      const rows = traced.has(n.name);
+      const boxes = showDetail && rows;
       // Members alternate a shade across the whole timeline, so their rows
       // read as one band each, with a gap between members; the selected
       // member's band is the accent.
@@ -193,8 +195,8 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
         description: `${n.role} (${n.cli})`,
         className: isOrch ? "orch" : "name",
         group: n.name,
-        height: 24,
-        hidden: rows,
+        height: 34,
+        hidden: boxes,
         gapBefore: 8,
         shade,
         // The protocol marks are sized by their own gaps: a step follows each
@@ -211,6 +213,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
           group: n.name,
           bars: "up",
           height: 34,
+          hidden: !boxes,
           gapBefore: 8,
           shade,
         });
@@ -235,7 +238,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
         const to = s.repliedAt ? pos(s.repliedAt) : last;
         extent = Math.max(extent, to);
         spans.push({
-          lane: rows ? stepLane(n.name) : n.name,
+          lane: boxes ? stepLane(n.name) : n.name,
           from: pos(s.openedAt),
           to: Math.max(to, pos(s.openedAt)),
           id: n.name + "/" + s.id,

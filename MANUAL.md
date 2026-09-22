@@ -620,9 +620,10 @@ event in the trace, and the tracer's index at `tracer/index.html` lists the sess
 **Timeline.** Each node gets one row, with the orchestrator first, on one axis of
 elapsed time since the campaign was created. The timeline has two views, chosen by the control in
 its header. **Protocol**, the default, is the run as the channels and the orchestrator's log
-show it: every dispatch as a box with its marks, and the log's claims on the first row. **Member
-traces** is what each member did inside its boxes: the marks and the claims go, the log row
-stays and empties, and the steps appear. A page rendered without traces has only the first. A mark sits at its real time, so a column is a span
+show it: every dispatch as a box with its marks, and the log's claims on the first row.
+**Traces** is what each member did inside its boxes: the marks and the claims go, the log row
+stays and empties, and the steps appear. No row moves between the two: each holds one thing or
+the other. A page rendered without traces has only the first. A mark sits at its real time, so a column is a span
 of time and not an event. Zoom is by preset: the run, an hour, fifteen minutes or five, and a
 selected dispatch can be zoomed to. A horizontal swipe scrolls the lanes sideways, and the
 vertical wheel scrolls the page. The overview above the lanes, under the zoom row, shows the whole
@@ -670,9 +671,10 @@ row and in the panel, and never on a member's row.
 `#m/<member>` picks the member's first dispatch. `#m/<member>/<dNNN>` picks that dispatch's
 opening and zooms to it. `#e/<n>` picks any event or step by the index this page gives it, the
 number the tracer links carry. `@start-end` after any of these, in elapsed h:mm:ss, names the
-view, and `@run` the whole run; a dispatch with no view means its box. The page writes the most
-specific form back as the selection moves, each one a history entry, and the view in place as it
-changes. Escape drops what is selected. A trace page is addressed the tracer's way,
+view, and `@run` the whole run; a dispatch with no view means its box. `traces/` before any of
+these, or `#traces` alone, is the traces view; without it the address opens the protocol view,
+unless it names a step. The page writes the most specific form back as the selection or the
+timeline view moves, each one a history entry, and the zoomed view in place as it changes. Escape drops what is selected. A trace page is addressed the tracer's way,
 `tracer/traces/<session>.html#ev-<n>`.
 
 **Selection.** Click any mark to inspect it. Reply notes render as markdown, evidence blocks as

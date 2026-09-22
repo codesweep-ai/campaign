@@ -39,7 +39,7 @@ export async function setLog(page, on) {
       const want = on ? "protocol" : "traces";
       const opts = __fx.$$(SEL.viewOption);
       if (!opts.length) return on;
-      const opt = opts.find((o) => __fx.txt(o).startsWith(want === "traces" ? "member traces" : "protocol"));
+      const opt = opts.find((o) => __fx.txt(o).startsWith(want));
       if (!opt) return false;
       if (opt.getAttribute("aria-checked") !== "true") opt.click();
       return true;

@@ -85,7 +85,7 @@ export function Inspector({ run, event, mark, marks, logEntry, docMode, onDocMod
             <DocBlock kind="md" content={logEntry.text || ""} docMode={docMode} />
           </>
         ) : (
-          <div className="none">Select a square on the timeline.</div>
+          <div className="none">Select a mark on the timeline.</div>
         )}
       </div>
     </Card>
