@@ -1,0 +1,42 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfK3hjr1DKvMxwLA8iHqh","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":227,"cache_read_input_tokens":48378,"cache_creation":{"ephemeral_5m_input_tokens":227,"ephemeral_1h_input_tokens":0},"output_tokens":3,"service_tier":"standard","inference_geo":"global"},"context_management":null} }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}     }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Now I"}             }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"'ll write"}   }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" the mission dispatch for"}            }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" dev and record my"}               }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" plan."}  }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0  }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01TVf9UmVGQ1bQPRwepEoMS2","name":"Write","input":{},"caller":{"type":"direct"}}            }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/tmp/plan-note.md\", \"content\": \"Plan for mission \\\"greet, tested\\\":\\n\\n1. Send dev a single dispatch (d002) asking it to implement, in ~/subject on its own branch:\\n   - src/greet.py with greet(name) returning \\\"Hello, \u003cname\u003e!\\\"\\n   - tests/test_greet.py with unittest tests covering a normal name and the empty string\\n   - Verify locally with: python3 -m unittest discover -s tests (must exit 0)\\n   - Commit to its own branch, then reply truthfully.\\n2. Wait for dev's reply.\\n3. Judge: fetch dev's branch (`cs-campaign-member fetch dev subject`), inspect the actual\\n   diff/files (not just the reply), and independently run\\n   `python3 -m unittest discover -s tests` against the fetched tree to confirm exit 0,\\n   greet() behavior matches spec, and both required test cases exist.\\n4. Accept only if all three criteria are met exactly. Otherwise send precise rework\\n   dispatches naming exactly what's wrong.\\n5. Once accepted and verified, reply to m1 with --outcome campaign-met (or the\\n   appropriate alternative outcome if something blocks completion).\\n\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1 }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":227,"cache_read_input_tokens":48378,"output_tokens":481,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}   }
+
+event: message_stop
+data: {"type":"message_stop"           }
+

@@ -1,0 +1,51 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfK3jRqq53RYFTQqVHshz","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":210,"cache_read_input_tokens":42352,"cache_creation":{"ephemeral_5m_input_tokens":210,"ephemeral_1h_input_tokens":0},"output_tokens":4,"service_tier":"standard","inference_geo":"global"},"context_management":null}             }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}         }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Good, on"} }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" the right branch with"}            }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" a clean tree. Now"}     }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" I"}              }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"'ll create the two files."}  }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0               }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01DAUFdo6qoKDD1Ei26bDFWc","name":"Write","input":{},"caller":{"type":"direct"}}            }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/home/<USER:1>/subject/src/greet.py\", \"content\": \"def greet(name):\\n    return f\\\"Hello, {name}!\\\"\\n\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1            }
+
+event: content_block_start
+data: {"type":"content_block_start","index":2,"content_block":{"type":"tool_use","id":"toolu_01LTWTf73kREA3e6zzFKmhkK","name":"Write","input":{},"caller":{"type":"direct"}}               }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/home/<USER:1>/subject/tests/test_greet.py\", \"content\": \"import sys\\nimport unittest\\nfrom pathlib import Path\\n\\nsys.path.insert(0, str(Path(__file__).resolve().parent.parent / \\\"src\\\"))\\n\\nfrom greet import greet\\n\\n\\nclass TestGreet(unittest.TestCase):\\n    def test_normal_name(self):\\n        self.assertEqual(greet(\\\"World\\\"), \\\"Hello, World!\\\")\\n\\n    def test_empty_string(self):\\n        self.assertEqual(greet(\\\"\\\"), \\\"Hello, !\\\")\\n\\n\\nif __name__ == \\\"__main__\\\":\\n    unittest.main()\\n\"}","type":"input_json_delta"},"index":2,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":2            }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":210,"cache_read_input_tokens":42352,"output_tokens":379,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}}
+
+event: message_stop
+data: {"type":"message_stop"          }
+

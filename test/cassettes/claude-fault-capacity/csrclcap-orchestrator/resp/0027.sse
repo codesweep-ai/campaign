@@ -1,0 +1,21 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfK3nEkfDRqw3ELKapaFZ","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":215,"cache_read_input_tokens":52665,"cache_creation":{"ephemeral_5m_input_tokens":215,"ephemeral_1h_input_tokens":0},"output_tokens":16,"service_tier":"standard","inference_geo":"global"},"context_management":null}          }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01EYvn7yTYQraDx9WD6zFSUx","name":"Write","input":{},"caller":{"type":"direct"}}        }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/home/<USER:1>/.local/share/cs-campaign/output/mission-summary.md\", \"content\": \"# Mission summary: greet, tested\\n\\n**Outcome: campaign-met**\\n\\n## What was delivered\\n\\ndev implemented, on branch `cs-sandbox/<DEV:1>.<GROUP:1>`\\n(commit `162d728`, on top of base `2ee2657`):\\n\\n- `src/greet.py` — `greet(name)` returns `f\\\"Hello, {name}!\\\"`.\\n- `tests/test_greet.py` — unittest cases for a normal name (`\\\"World\\\"`) and the\\n  empty string (`\\\"\\\"`).\\n\\n## Verification (independent, not taken from dev's report)\\n\\n- Fetched `refs/remotes/campaign/dev/subject` and diffed it against base\\n  `2ee2657c66d2c47ae0eea4779f028fe59102d511`: only the two expected files were\\n  added, contents match the spec exactly.\\n- Checked out the fetched commit into a scratch worktree and ran\\n  `python3 -m unittest discover -s tests` myself: `OK`, 2 tests run, exit\\n  code 0.\\n\\nAll three mission criteria (greet.py behavior, both required test cases,\\nclean unittest discover run) are satisfied. dev's d002 reply was accepted\\nafter this verification.\\n\\n## Process notes\\n\\n- d001 (briefing confirmation) and d002 (implementation) were both accepted\\n  from dev on first attempt — no rework was needed.\\n- Orchestrator's own branch carries no commits, as expected: the orchestrator\\n  role writes no code and only judges/dispatches.\\n\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0    }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":215,"cache_read_input_tokens":52665,"output_tokens":590,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}       }
+
+event: message_stop
+data: {"type":"message_stop"               }
+

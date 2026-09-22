@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfK3mkEvpMmP325TmMCKv","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":217,"cache_read_input_tokens":51999,"cache_creation":{"ephemeral_5m_input_tokens":217,"ephemeral_1h_input_tokens":0},"output_tokens":9,"service_tier":"standard","inference_geo":"global"},"context_management":null}      }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}         }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"Er8ICqgBCBIYAipAR/nv7QmDWqFovIOEuMLKNhcVdUccJ7ulmEcfIsPmtgvICeYfuyRTvW1npervR1t0N96V61pE5jl0MiTj6eMY7jIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhOWMzNWJhZS1mNGRkLTRmOGYtYTIyNy0yNTI0MzBjYTBjNDdyEPGiuqBZAXhOBAXO2OhqW5iIAQGoAae0y9UGsAECEgw1sB2oOPiQN6YcJcgaDIKeUfEZbBaS0UDb8iIwXIArb6ymUYIR6JtFKssFoAGiHfEb/kGVHMiWkvqq1/qEUt+VfcNt7xmzWtwKOU2cKsMGid0H2MbRXXGsQw/xNPMGVbZ7if3GM0me9T00E51j40IRje5lBBOwVEQvGWQbWdRW2rxIb7tx5yh/EsxnMgPPhK++cN1mJhbvNaOjBpsU3D8aauWNYg9hN1fszzEmqrTWANRVPvzw361pa/ujBnaQFJloTm4IOqU4HvUcb10HwmeD72/wSv08QrVW8ySc1Vmd0XX/6zvpLZWUgN9hv48zLG6hMDgMJ9A+FZ87DUZe7n44/FYcjtusUv9XLf/PO/fQ5F/gY+n3ocSmeVmac2nD/6E0LRS/q0+Ju0y+SvRZWMkuyeKR6hGlmOZ3nO/HnE1o9ODhCW8lE+k46FjBC6V5Yx2BfyjZ7eXPomVFiaT+YU8tDTzmyupHtsutvHr4Lb3s5gGAKpqDgQ1AKcGPGiSU1OQbTTV24cet8rH+em7V93x/5QN3AY+eL4NHRnb3imbuqLznjvsaK42fxZqBAwqKZoQrresfIL1Wbis1Zi14bvfASno9cPmpPA04hwoh1NKomhnhUY8h+/C3eY8hX5Mbli4kKLgW60CcFHePRFmkzdH7gJQnGPhkqypFWgDMdGvJSo5ZJZoEhn6JzbHejAaXsIKfICpRddwwFko/KtQsGz7LEwLCa8hwjKRRvLBcG9gNNe9kDhHYpvp0OVnU1XwxjlXMBlObxE9TFY2lXAKhnuOPpw/Q1QsxnMrWBGESmZlqu7GJFlcFbu7oqQodaO02Z1EbESYEPB6TWLR69PdA21YuopG4uRZ/TGvDyeXL85jCwga4q7rHSydm/wrsHf//0Lul42KsJm5Qg7oRTS5XkIKkSHqiMOu0+iYREsZWsm8ZuTkueGzbDHEHfov18w1gGD+v+XHLXgfA3tS/QsVzhphjUX7vBZIJF7excc5RQwCpHE8zbpNwTFRP5qRq1ORx/M3psYPd6S/LZbXfjNMVP9bf8NfEHoTJhhWu5l8t+5pvDe3qGJ2Gg3CPa8YQ4EHQh+GnNV4BMWGxF7NYoqtyk8YSjdF5EOwolvJBMOXs61J37TEx5w0bKmnK6K9DXTSDHagk2zXZE+3vRLp/ayiWMM5+BPa74hiJci5MZN28e+sJlp7SSGE3l6MauIm7dGvA+wKbyhgB"}      }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0           }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01EqkrMWc72Nxp7QWS2ZZKVM","name":"Bash","input":{},"caller":{"type":"direct"}}  }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git branch --show-current \u0026\u0026 git status --short \u0026\u0026 git log --oneline -3\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":217,"cache_read_input_tokens":51999,"output_tokens":361,"output_tokens_details":{"thinking_tokens":285}},"context_management":{"applied_edits":[]}        }
+
+event: message_stop
+data: {"type":"message_stop"  }
+

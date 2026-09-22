@@ -1,0 +1,21 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfK3iDTAp9r2nWxenPMGR","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":131,"cache_read_input_tokens":49166,"cache_creation":{"ephemeral_5m_input_tokens":131,"ephemeral_1h_input_tokens":0},"output_tokens":17,"service_tier":"standard","inference_geo":"global"},"context_management":null}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_012Yy6u9ByfH8w6T9niCew5h","name":"Write","input":{},"caller":{"type":"direct"}}              }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/tmp/dispatch-dev-002.md\", \"content\": \"This is dispatch d002: implement the mission in your subject repo clone.\\n\\nDeliver, on your own branch, in the subject repository:\\n\\n1. `src/greet.py` containing a function `greet(name)` that returns the string\\n   `\\\"Hello, \u003cname\u003e!\\\"` (i.e. `greet(\\\"World\\\")` returns `\\\"Hello, World!\\\"`).\\n\\n2. `tests/test_greet.py` containing unittest tests that cover:\\n   - a normal name (e.g. `greet(\\\"World\\\")` == `\\\"Hello, World!\\\"`)\\n   - the empty string (`greet(\\\"\\\")` == `\\\"Hello, !\\\"`)\\n\\n3. Run `python3 -m unittest discover -s tests` yourself from the repo root and\\n   confirm it exits 0 (all tests pass). Fix anything that fails before replying.\\n\\n4. Commit all of this to your own branch (do not leave it uncommitted).\\n\\n5. Reply truthfully with what you did, including the exact test command you ran\\n   and its result (pass/fail, exit code). If anything didn't work, say so plainly\\n   rather than reporting success.\\n\\nDo not add anything beyond exactly this scope (no extra files, no extra features,\\nno README, no packaging).\\n\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0       }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":131,"cache_read_input_tokens":49166,"output_tokens":458,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}              }
+
+event: message_stop
+data: {"type":"message_stop"   }
+

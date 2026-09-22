@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfK3h1CCoSg6iXBTcCv7D","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":884,"cache_read_input_tokens":44401,"cache_creation":{"ephemeral_5m_input_tokens":884,"ephemeral_1h_input_tokens":0},"output_tokens":2,"service_tier":"standard","inference_geo":"global"},"context_management":null}            }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}               }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":null,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EuoCCqgBCBIYAipA7Y0JKvdcb6jy7OlbqcI290ZMdfoC5hvZRvNGa/K8uHREyvJdjbfoFMo+8C0k4Pe8Ye67P0wDqFXLIDtdw5lsUjIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhOWMzNWJhZS1mNGRkLTRmOGYtYTIyNy0yNTI0MzBjYTBjNDdyEPGiuqBZAXhOBAXO2OhqW5iIAQGoAeSzy9UGsAECEgxEHwoOb86j6OqAAaEaDO9YP5O0kRNDSJwLdCIwqSRcGv9K2yVLnuB1Fiit8HtEynBpfzcLMCTREZcYhz9YThO+XP2afgB/nlQs0tZBKm+urZy7XdJdndB+691xwLIxJW9zt4Rja0FImfYO/r2cgzwoKtXIB6EKI95iIIpynkzgACpc0yRFN1nmA7TxV6OHcyLQBFRnc8tgfjqnrm0WWDOSMo4SZrZx1PbzNE1vvMlNT7mblBpLReN0d9mMouwYAQ=="}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0    }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01Frw8wz9brn9fL5Xopzay4x","name":"Bash","input":{},"caller":{"type":"direct"}}               }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cd ~ \u0026\u0026 echo \\\"=== member.json ===\\\" \u0026\u0026 cat ~/.config/cs-campaign/member.json \u0026\u0026 echo \\\"=== check-inputs ===\\\" \u0026\u0026 cs-campaign-member check-inputs \u0026\u0026 echo \\\"=== inbox ===\\\" \u0026\u0026 cs-campaign-member inbox 2\u003e\u00261 | head -100\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1              }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":884,"cache_read_input_tokens":44401,"output_tokens":178,"output_tokens_details":{"thinking_tokens":33}},"context_management":{"applied_edits":[]}              }
+
+event: message_stop
+data: {"type":"message_stop"  }
+
