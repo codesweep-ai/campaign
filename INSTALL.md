@@ -104,10 +104,12 @@ cs-sandbox install-agent-tools
 
 That places the agent tools on your `PATH`: for each family, `cs-<cli>`, `cs-<cli>-remote`,
 `cs-<cli>-remote-forget`, `cs-<cli>-remote-output`, `cs-<cli>-remote-sessions`,
-`cs-<cli>-remote-status` and `cs-<cli>-turn`. A missing one fails at create with
-`required agent tool <name> not found on PATH`.
+`cs-<cli>-remote-status` and `cs-<cli>-turn`. `cs-campaign doctor` names any that are missing, or
+that are not the ones your `cs-sandbox` ships. Without them `create` fails at the readback, the
+first time it starts a turn.
 
-You also need the coding agents themselves, and a way for each to authenticate. A member signs in
+Each agent also needs a way to authenticate. The agents themselves run inside the members, which
+carry them: an agent's CLI is only needed on this host to sign in here for a login. A member signs in
 with a host login for its family, with a provider key this host holds, or with an API key named by
 environment variable. Sign in on the host for every family a profile names, and put each key a
 profile names in `~/.cs-keys/<provider>`, holding the key and nothing else:
@@ -135,9 +137,9 @@ right one:
 ```console
 $ cs-campaign doctor
 ...
-upstream (checked against this build's go.mod):
-  NO  cs-sandbox on PATH is v0.0.0-20260801120000-aaaaaaaaaaaa, this build was made against
-      v0.0.0-20260827001716-910b73da3b6c — install the one this build names:
+cs-sandbox (required):
+  NO  cs-sandbox on PATH is v0.0.0-20260801120000-aaaaaaaaaaaa, this build pins
+      v0.0.0-20260827001716-910b73da3b6c — install the pinned one:
       go install github.com/codesweep-ai/sandbox/cmd/cs-sandbox@v0.0.0-20260827001716-910b73da3b6c
 
 1 issue(s) to fix above.
@@ -155,19 +157,19 @@ $ cs-campaign doctor
 cs-campaign doctor
 
 cs-sandbox (required):
-  ok  cs-sandbox version v0.0.0-20260827001716-910b73da3b6c
+  ok  cs-sandbox on PATH matches the pin (v0.0.0-20260827001716-910b73da3b6c)
   ok  cs-sandbox supports ls --json
   ok  cs-sandbox supports sandbox groups
 
-agent tooling (required — one family per CLI):
-  ok  claude remote tool family
-  ok  codex remote tool family
-  ok  opencode remote tool family
+agent tools (required — cs-campaign drives its agents with them):
+  ok  the 24 on PATH match cs-sandbox v0.0.0-20260827001716-910b73da3b6c
 
-upstream (checked against this build's go.mod):
-  ok  cs-sandbox on PATH is the one this build names: v0.0.0-20260827001716-910b73da3b6c
-  ok  cs-vcr on PATH matches this build (v0.0.0-20260826160252-bd9e6f2b8ab6)
-  ok  not on PATH (fine — a campaign needs none of them): cs-lint cs-ledger cs-tracer
+agent CLIs (optional — only to sign in on this host):
+  ok  on PATH: claude codex opencode
+
+developer tools (optional — checked against this build's go.mod):
+  ok  cs-vcr on PATH matches the pin (v0.0.0-20260826160252-bd9e6f2b8ab6)
+  ok  not on PATH (fine — nothing here needs them): cs-lint cs-ledger cs-tracer cs-npmrevs
 
 state:
   ok  state directory: /home/user/.config/cs-campaign/campaigns

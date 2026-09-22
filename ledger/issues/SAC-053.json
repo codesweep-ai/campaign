@@ -1,0 +1,28 @@
+{
+  "id": "SAC-053",
+  "title": "The viewer writes a site when traces are wanted, and nothing on record says so",
+  "type": "improvement",
+  "severity": "med",
+  "status": "closed",
+  "foundBy": "repository owner, deciding to keep the folder form after a week of using it: \"agreed on keeping the folder\"",
+  "opened": "2026-09-22",
+  "resolved": "2026-09-22",
+  "stint": "2026-09-22 site mode on record",
+  "evidence": {
+    "commits": [
+      "976c8ec",
+      "83896c0"
+    ],
+    "integrated": [],
+    "verified": "Rendered run14-1 with `-o site/ --tracer` from the tracer's head. The site holds `index.html`, `tracer/index.html` and 16 trace pages, one per session the page names, with none missing on disk. A failed step was selected on the page in headless Chromium, and its inspector link, `tracer/traces/<session>.html#ev-345`, was followed. The tracer's page has an element with that id. The option for event 345 carries `aria-selected`, and the listbox's active descendant names it. The page's data names 77 anchors, and the earlier probe in `~/.tmp/dispatch-viewer/session3/probe.cjs` found the run view fitted and the bands in place. `make prose` passes on the spec and this record."
+  },
+  "resolution": "`SPEC.md` section 3.3 now says the viewer writes a site when traces are wanted, chosen by giving `-o` a directory. It also says why the folder beat baking the traces in: size, the tracer's ownership of its pages, and links that need pages to land on. This record holds the decision. The folder form itself landed with the traces branch.",
+  "details": "**What exists.** Since the traces branch, `cs-dispatch-viewer` draws each member's trace inside its dispatch boxes. Every step and anchor on the timeline is meant to link to its event in the trace, and a link needs a page to land on. So when `-o` names a directory, the viewer writes a site: the dispatch page as `index.html`, and the tracer's own export of every session under `tracer/`, one page per trace. A single-file render still carries the trace data, and has no links.\n\n**What was missing.** `SPEC.md` said the viewer writes one file, and no record said the folder form exists or why it was chosen over baking the traces into the page. The owner held both back until they had used it.\n\n**Why the folder.** On run14-1 the page is about 1 MB and the tracer's export about 7 MB across 16 traces; baked in, the page would parse all of it before showing anything. The trace pages are the tracer's, made by `cs-tracer` at render time from the archive's raw evidence. So the viewer learns nothing CLI-specific, and a newer tracer can re-read an old archive. And the links need real pages. The cost is that a folder is passed around by zipping or serving it, which suits a tool whose readers are the owner and the agents.\n\n**What to do.** Say so in `SPEC.md`, and keep this record as the decision.",
+  "notes": [
+    {
+      "date": "2026-09-22",
+      "text": "Filed as SAC-048 on the traces branch while main gained a different SAC-048; renumbered at the merge, since main's record was on the remote first. The commits it cites still say SAC-048 in their messages."
+    }
+  ],
+  "links": []
+}

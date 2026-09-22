@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"os"
 	"path/filepath"
@@ -243,16 +244,13 @@ func TestDoctorChecksVersionJSONAndRemoteFamilies(t *testing.T) {
 	pinned := toolPins()[sandboxModule]
 	dir := installFakeTool(t, "fake-sandbox", `
 case "$1" in
-  version) echo 'cs-sandbox `+pinned+` (linux/amd64, go1.27.0)';;
-  ls) echo '[]';;
+`+upstreamCases()+`  ls) echo '[]';;
   group) echo '[]';;
 esac
 `)
-	for _, cli := range []string{"claude", "codex", "opencode"} {
-		for _, suffix := range []string{"-remote", "-remote-output", "-remote-status", "-turn"} {
-			installFakeTool(t, "cs-"+cli+suffix, `exit 0`)
-		}
-	}
+	tools := t.TempDir()
+	installShippedTools(t, tools)
+	t.Setenv("PATH", tools+string(os.PathListSeparator)+os.Getenv("PATH"))
 	a := &app{store: store.Store{Dir: t.TempDir()}, sandbox: sandboxCLI{Bin: filepath.Join(dir, "fake-sandbox")}}
 	var out strings.Builder
 	cmd := a.doctorCmd()
@@ -260,7 +258,12 @@ esac
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"cs-sandbox version " + pinned, "supports ls --json", "supports sandbox groups", "claude remote tool family", "codex remote tool family", "opencode remote tool family"} {
+	for _, want := range []string{
+		"cs-sandbox on PATH matches the pin (" + pinned + ")",
+		"supports ls --json",
+		"supports sandbox groups",
+		fmt.Sprintf("the %d on PATH match cs-sandbox %s", len(shippedToolNames()), pinned),
+	} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("doctor output missing %q:\n%s", want, out.String())
 		}

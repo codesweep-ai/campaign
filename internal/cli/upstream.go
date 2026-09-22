@@ -17,13 +17,19 @@ package cli
 //     cs-campaign knows, because only cs-campaign holds the pin. Fatal: a
 //     campaign is built by that binary, and running on an unnamed one is the
 //     state `create` exists to refuse.
-//  2. Are the agent tools the right ones? cs-sandbox answers that, for its own
-//     PATH, in its own `doctor`. It ships them, so it is the only thing that
-//     can. cs-campaign asks it for the hashes (`agent-tools --json`) and uses
-//     them for the plane sandbox cannot see: the inside of a member.
-//  3. Are the sibling cs- tools the ones this build names? Reported, never
-//     fatal. cs-vcr records and replays cassettes, and the rest are developer
-//     gates; a host that runs real campaigns has none of them and is complete.
+//  2. Are the agent tools the right ones? cs-sandbox ships them, so it is the
+//     only thing that can say what they should hash to. cs-campaign asks it
+//     (`agent-tools --json`) and holds both planes to that one answer: this
+//     host's PATH in `doctor`, since cs-campaign drives its members through
+//     those tools, and the inside of each member in `doctor <campaign>`.
+//  3. Are the developer tools the ones this build names? Reported, never
+//     fatal. cs-vcr records and replays cassettes, cs-npmrevs serves the
+//     viewer's npm packages, and the rest are the gates `make check` runs; a
+//     host that runs real campaigns has none of them and is complete.
+//
+// `doctor` prints these in the groups `cs-sandbox doctor` prints, in the same
+// words: the cs-sandbox pin under "cs-sandbox", then "agent tools", "agent
+// CLIs" and "developer tools".
 //
 // The guest image id is NOT covered: its tag is a per-build counter with no
 // stable reference to resolve, so pinning it needs engine-specific plumbing,
@@ -31,6 +37,7 @@ package cli
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -49,16 +56,18 @@ import (
 // sandboxModule is the one pin whose absence from PATH stops a campaign.
 const sandboxModule = "github.com/codesweep-ai/sandbox"
 
-// siblingTools are the other cs- tools this repository pins. cs-vcr is the
-// replay surface; the rest are the gates `make check` runs. None is needed to
-// run a campaign, so none of them is fatal here — but a copy on PATH at a
-// version this build does not name will disagree with `go tool` about
-// something, and nothing else would say so.
+// siblingTools are the other cs- tools this repository pins, which doctor
+// reports as "developer tools". cs-vcr is the replay surface, cs-npmrevs
+// serves the viewer's npm packages, and the rest are the gates `make check`
+// runs. None is needed to run a campaign, so none of them is fatal here — but a
+// copy on PATH at a version this build does not name will disagree with `go
+// tool` about something, and nothing else would say so.
 var siblingTools = []struct{ bin, module string }{
 	{"cs-vcr", "github.com/codesweep-ai/vcr"},
 	{"cs-lint", "github.com/codesweep-ai/lint"},
 	{"cs-ledger", "github.com/codesweep-ai/ledger"},
 	{"cs-tracer", "github.com/codesweep-ai/tracer"},
+	{"cs-npmrevs", "github.com/codesweep-ai/npmrevs"},
 }
 
 // toolPins reads the cs- versions out of the embedded manifest, as module path
@@ -141,13 +150,13 @@ func (a *app) verifyUpstream(ctx context.Context) upstreamReport {
 	switch reported, err := a.sandbox.version(ctx); {
 	case err != nil:
 		report.Deviations = append(report.Deviations,
-			fmt.Sprintf("cs-sandbox version probe failed: %v (this build was made against %s)", err, want))
+			fmt.Sprintf("cs-sandbox version probe failed: %v (this build pins %s)", err, want))
 	default:
 		got := toolVersion(reported)
 		switch {
 		case got == "":
 			report.Deviations = append(report.Deviations,
-				fmt.Sprintf("unrecognized cs-sandbox version output %q (this build was made against %s)", strings.TrimSpace(reported), want))
+				fmt.Sprintf("unrecognized cs-sandbox version output %q (this build pins %s)", strings.TrimSpace(reported), want))
 		case want == "":
 			// Unreachable through a built binary, which always carries the
 			// manifest that required cs-sandbox. Reported rather than ignored
@@ -155,11 +164,11 @@ func (a *app) verifyUpstream(ctx context.Context) upstreamReport {
 			// host a match.
 			report.SandboxVersion = got
 			report.Deviations = append(report.Deviations,
-				"this build's go.mod names no cs-sandbox version to check against")
+				"this build's go.mod pins no cs-sandbox version to check against")
 		case got != want:
 			report.SandboxVersion = got
 			report.Deviations = append(report.Deviations,
-				fmt.Sprintf("cs-sandbox on PATH is %s, this build was made against %s — install the one this build names:  go install %s/cmd/cs-sandbox@%s",
+				fmt.Sprintf("cs-sandbox on PATH is %s, this build pins %s — install the pinned one:  go install %s/cmd/cs-sandbox@%s",
 					got, want, sandboxModule, want))
 		default:
 			report.SandboxVersion = got
@@ -176,21 +185,21 @@ func (a *app) verifyUpstream(ctx context.Context) upstreamReport {
 		got := probeVersion(ctx, t.bin)
 		switch {
 		case want == "":
-			report.Warnings = append(report.Warnings, t.bin+" is on PATH but this build's go.mod pins no version for it")
+			report.Warnings = append(report.Warnings, t.bin+" is on PATH but this build's go.mod pins no version for it — run:  go get -tool "+t.module+"/cmd/"+t.bin+"@main")
 		case got == "":
-			report.Warnings = append(report.Warnings, t.bin+" is on PATH but did not answer `"+t.bin+" version`, so it cannot be identified")
+			report.Warnings = append(report.Warnings, t.bin+" is on PATH but did not answer `"+t.bin+" version` — it cannot be identified")
 		case got != want:
-			report.Warnings = append(report.Warnings, fmt.Sprintf("%s on PATH is %s, this build names %s — `go install %s/cmd/%s@%s` to agree with it",
+			report.Warnings = append(report.Warnings, fmt.Sprintf("%s on PATH is %s, this build pins %s — install the pinned one:  go install %s/cmd/%s@%s",
 				t.bin, got, want, t.module, t.bin, want))
 		default:
 			// Said out loud, not passed over in silence. A check that prints
 			// nothing when it matches leaves "compared, and they agree"
 			// indistinguishable from "never compared".
-			report.Notes = append(report.Notes, t.bin+" on PATH matches this build ("+want+")")
+			report.Notes = append(report.Notes, t.bin+" on PATH matches the pin ("+want+")")
 		}
 	}
 	if len(absent) > 0 {
-		report.Notes = append(report.Notes, "not on PATH (fine — a campaign needs none of them): "+strings.Join(absent, " "))
+		report.Notes = append(report.Notes, "not on PATH (fine — nothing here needs them): "+strings.Join(absent, " "))
 	}
 	return report
 }
@@ -221,12 +230,12 @@ func (a *app) agentToolHashes(ctx context.Context) (map[string]string, error) {
 	return answer.Tools, nil
 }
 
-// reportUpstream writes the upstream verdict into a doctor report. A deviation
-// is a failed check, which is what makes doctor exit non-zero.
-func (a *app) reportUpstream(ctx context.Context, p *doctorPrinter) {
-	report := a.verifyUpstream(ctx)
+// reportSandboxPin writes the cs-sandbox half of the upstream verdict into the
+// doctor's "cs-sandbox" group. A deviation is a failed check, which is what
+// makes doctor exit non-zero.
+func reportSandboxPin(p *doctorPrinter, report upstreamReport) {
 	if len(report.Deviations) == 0 {
-		p.ok("cs-sandbox on PATH is the one this build names: %s", report.SandboxVersion)
+		p.ok("cs-sandbox on PATH matches the pin (%s)", report.SandboxVersion)
 	}
 	for _, deviation := range report.Deviations {
 		// The deviation already ends in the command that fixes it. A second
@@ -234,6 +243,11 @@ func (a *app) reportUpstream(ctx context.Context, p *doctorPrinter) {
 		// and a NO in a doctor report already says not to proceed.
 		p.bad("%s", deviation)
 	}
+}
+
+// reportDeveloperTools writes the sibling half into the "developer tools"
+// group. Nothing in it fails doctor: a campaign runs none of these tools.
+func reportDeveloperTools(p *doctorPrinter, report upstreamReport) {
 	for _, note := range report.Notes {
 		p.ok("%s", note)
 	}
@@ -241,6 +255,87 @@ func (a *app) reportUpstream(ctx context.Context, p *doctorPrinter) {
 	// the ones nearest the summary.
 	for _, warning := range report.Warnings {
 		p.warn("%s", warning)
+	}
+}
+
+// reportAgentTools holds the agent tools on this host's PATH to what the
+// cs-sandbox on PATH says it ships, in the words `cs-sandbox doctor` uses for
+// the same check. Required here, where sandbox calls them optional: cs-campaign
+// starts every member's turns through them, and cs-<cli>-remote copies its own
+// cs-<cli>-turn into the member it drives, so a stale host copy reaches the
+// guests too.
+//
+// A cs-sandbox that cannot answer leaves presence as the only check. That
+// cs-sandbox is already a failure in the group above, so the reason is a
+// warning here rather than a second failure for one cause.
+func (a *app) reportAgentTools(ctx context.Context, p *doctorPrinter, sandboxVersion string) {
+	const install = "cs-sandbox install-agent-tools"
+	shipped, err := a.agentToolHashes(ctx)
+	if err != nil {
+		var missing []string
+		for _, cli := range []string{"claude", "codex", "opencode"} {
+			for _, suffix := range []string{"-remote", "-remote-output", "-turn"} {
+				if _, err := exec.LookPath("cs-" + cli + suffix); err != nil {
+					missing = append(missing, "cs-"+cli+suffix)
+				}
+			}
+		}
+		if len(missing) > 0 {
+			p.bad("missing from PATH: %s — install them:  %s", strings.Join(missing, " "), install)
+		}
+		p.warn("cannot compare them with what cs-sandbox ships: %v", err)
+		return
+	}
+	var missing, differing []string
+	for _, name := range sortedToolNames(shipped) {
+		path, err := exec.LookPath(name)
+		if err != nil {
+			missing = append(missing, name)
+			continue
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			differing = append(differing, fmt.Sprintf("%s unreadable at %s", name, path))
+			continue
+		}
+		if got := fmt.Sprintf("%x", sha256.Sum256(content)); got != shipped[name] {
+			differing = append(differing, fmt.Sprintf("%s differs (ships %.12s…, on PATH %.12s…)", name, shipped[name], got))
+		}
+	}
+	switch {
+	case len(missing) == len(shipped):
+		p.bad("not on PATH — install them:  %s", install)
+		return
+	case len(missing) == 0 && len(differing) == 0:
+		p.ok("the %d on PATH match cs-sandbox %s", len(shipped), sandboxVersion)
+		return
+	}
+	if len(missing) > 0 {
+		p.bad("missing from PATH: %s — install them:  %s", strings.Join(missing, " "), install)
+	}
+	if len(differing) > 0 {
+		p.bad("on PATH but not the ones cs-sandbox %s ships:\n      %s\n      reinstall them:  %s",
+			sandboxVersion, strings.Join(differing, "\n      "), install)
+	}
+}
+
+// reportAgentCLIs names which agent CLIs this host has. Nothing here runs
+// them: they are how you sign in on this host, which is where a login a member
+// borrows or copies comes from. Every line is ok, as in `cs-sandbox doctor`.
+func reportAgentCLIs(p *doctorPrinter) {
+	var present, absent []string
+	for _, cli := range []string{"claude", "codex", "opencode"} {
+		if _, err := exec.LookPath(cli); err != nil {
+			absent = append(absent, cli)
+		} else {
+			present = append(present, cli)
+		}
+	}
+	if len(present) > 0 {
+		p.ok("on PATH: %s", strings.Join(present, " "))
+	}
+	if len(absent) > 0 {
+		p.ok("not on PATH (fine — nothing here needs them): %s", strings.Join(absent, " "))
 	}
 }
 

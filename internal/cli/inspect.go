@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -67,25 +66,16 @@ func (a *app) doctorCmd() *cobra.Command {
 		// Every check is measured and reported, and only the summary decides the
 		// exit status. Stopping at the first failure told an operator to install
 		// one thing, and told them about the next only after they had.
+		//
+		// The groups are the ones `cs-sandbox doctor` prints for the same things,
+		// in the same words, so the two reports read as one.
+		upstream := a.verifyUpstream(ctx)
 		p.section("cs-sandbox (required)")
+		// One line for the binary, and it is the pin: a bare version line read
+		// "ok" about the same cs-sandbox a later group failed as the wrong build.
+		// The capability probes below still gate on what it can do.
+		reportSandboxPin(p, upstream)
 		var live []model.Sandbox
-		switch reported, err := a.sandbox.version(ctx); {
-		case err != nil:
-			p.bad("cs-sandbox version probe failed: %v", err)
-		default:
-			// The version cannot gate compatibility: an untagged build reports a
-			// bare commit, and development builds never ordered against anything
-			// anyway. The authoritative gates are the capability probes below.
-			//
-			// The same reading the upstream check uses, rather than a second copy
-			// of it: doctor and the manifest check must agree on what a version
-			// even is, or a surface reads as named here and unrecognized there.
-			if match := toolVersion(reported); match == "" {
-				p.bad("unrecognized cs-sandbox version output %q (need a group-aware build with ls --json support)", reported)
-			} else {
-				p.ok("cs-sandbox version %s", match)
-			}
-		}
 		if listed, err := a.sandbox.list(ctx); err != nil {
 			p.bad("cs-sandbox ls --json unavailable: %v", err)
 		} else {
@@ -136,27 +126,16 @@ func (a *app) doctorCmd() *cobra.Command {
 			}
 		}
 
-		p.section("agent tooling (required — one family per CLI)")
-		for _, cli := range []string{"claude", "codex", "opencode"} {
-			missing := ""
-			for _, suffix := range []string{"-remote", "-remote-output", "-turn"} {
-				tool := "cs-" + cli + suffix
-				if _, err := exec.LookPath(tool); err != nil {
-					missing = tool
-					break
-				}
-			}
-			if missing != "" {
-				p.bad("required agent tool %s not found on PATH (run cs-sandbox install-agent-tools)", missing)
-				continue
-			}
-			p.ok("%s remote tool family", cli)
-		}
+		// Identity, not presence — a passing doctor must mean "the surface this
+		// build names", not "a surface that answers".
+		p.section("agent tools (required — cs-campaign drives its agents with them)")
+		a.reportAgentTools(ctx, p, upstream.SandboxVersion)
 
-		// Presence above, identity here — a passing doctor must mean
-		// "the surface this build names", not "a surface that answers".
-		p.section("upstream (checked against this build's go.mod)")
-		a.reportUpstream(ctx, p)
+		p.section("agent CLIs (optional — only to sign in on this host)")
+		reportAgentCLIs(p)
+
+		p.section("developer tools (optional — checked against this build's go.mod)")
+		reportDeveloperTools(p, upstream)
 
 		p.section("state")
 		p.ok("state directory: %s", a.store.Dir)
