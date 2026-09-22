@@ -3,17 +3,19 @@
   "title": "The wait row draws a wait call before it happened, and repeats the gap between boxes",
   "type": "defect",
   "severity": "high",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "repository owner, reading the served page at `#e/423@0:01:03-0:16:03`: \"in the orchestrator we seem to have a 'wait' continuing below the strip where there are bars on top that shows it active\", and of the members: \"if it's just calling out empty space, that's redundant\"",
   "opened": "2026-09-22",
-  "resolved": null,
+  "resolved": "2026-09-22",
   "stint": "2026-09-22 waiting on the steps row",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "3203648"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "The run14-1 site was rendered from the tracer's head and opened in headless Chromium at `#e/423@0:01:03-0:16:03`. The page draws 48 hatched spans, the orchestrator's 48 wait calls, and none for any member. The selected wait call's span begins after the last column of the turn that issued it, near 0:06 on the axis, and ends near 0:10, where the next columns begin. Before the change the same span ran from 0:02 to 0:06, under that turn's columns. The inspector names it `wait call · Bash · #178`, 3m48s. The toggles are show orchestrator log, member traces and errors only. The fixture suite passes 20 of 20 rows and 9 of 9 targets, and `make check` is green."
   },
-  "resolution": null,
+  "resolution": "Waiting is drawn on the steps row. A wait call is a hatched span at full height, from its stamp for as long as it took. It is pinned at its real time, and so is the step after it. The columns before it therefore sit before it, and the columns after it start where it returned. Idle is drawn only when the turn ended inside a box, and then as far as the box goes. The wait row, its toggle and the one-hour ceiling are gone. The legend says `waiting`, the tooltip says `wait call` or `idle between turns`, and the inspector's model queue reads `queued`. The manual's traces paragraph says how a column is placed and what a hatched span is.",
   "details": "The page drew waiting in a row of its own under each member's steps, off by default. It held the orchestrator's wait calls and every idle interval after a turn, as hatched bands.\n\nTwo things were wrong with it.\n\n**A wait call's band was drawn backwards.** The page took every step's interval to end at its timestamp. That holds for a thinking or assistant step, since Claude Code stamps a block when it finishes. A tool call is stamped when it is issued, and the tracer's rule R70 measures it forward from the previous step's end to its result. On run14-1 the orchestrator's wait call at step 178 was issued at 05:57:03 and returned at 06:00:49. The page drew its band from 05:53:15 to 05:57:03, under the columns of the turn before it. That is what the owner saw: a wait under bars that show the agent at work. Checked against the raw trace, 253 of the orchestrator's 255 tool calls have `workMs` equal to the result's timestamp less the previous step's end, within 50 ms. The other two are sub-second.\n\n**A member's idle band repeated the gap between its boxes.** Idle (rule R68) is the time from a turn's end to the next turn's start. For a member that is the time between one dispatch's reply and the next dispatch's opening, which the boxes already show. Measured on run14-1: checker idled 194 minutes, surveyor-interface 107, surveyor-behaviour 69 and modeller 6. In every case under a tenth of a minute of it fell inside a box.\n\nTwo smaller confusions came with these. The columns inside a box are placed by order between the steps pinned at their real time. The steps after a wait call were therefore spread back across the wait, and the row above the band showed work where there was none. And the inspector's \"of which waited\" is a model step's queueing time, a different fact under the same word.\n\nThe previous session recorded two tracer findings for filing: a model step ending after its tool call began, and a batched call inheriting a wait's length. Both are the same misreading of the timestamp, and neither occurs in the trace. Nothing is filed against the tracer.",
   "notes": [],
   "links": [
