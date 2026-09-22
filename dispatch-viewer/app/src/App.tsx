@@ -285,7 +285,7 @@ export default function App() {
                             checked={showDetail}
                             onChange={(e) => setShowDetail(e.target.checked)}
                           />{" "}
-                          trace steps
+                          member traces
                         </label>
                         <label className="toggle">
                           <input
