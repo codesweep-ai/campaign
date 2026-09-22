@@ -124,9 +124,17 @@ Invoked under a `cs-<cli>-remote` name, the same binary is the family guard.
 
 ### 3.3 The viewer
 
-`cs-dispatch-viewer` renders one archive as a single self-contained HTML page: every node's
-dispatch and reply record on a timeline, the orchestrator's log beside it, and a findings list.
-It reads an archive and writes one file.
+`cs-dispatch-viewer` renders one archive as a self-contained HTML page: every node's dispatch
+and reply record on a timeline, the orchestrator's log beside it, and a findings list. It reads
+an archive and writes one file.
+
+When traces are wanted it writes a site instead. The page is `index.html`, and beside it sits
+the tracer's own export of every member's session under `tracer/`, one page per trace. Each step
+and anchor on the timeline then links to its event. The site is chosen by giving `-o` a
+directory. The trace pages stay the tracer's: `cs-tracer` produces them at render time from the
+archive's raw evidence. The viewer therefore carries no CLI-specific code, and a newer tracer can
+re-read an old archive. A single file with traces would carry the trace data but no pages to
+link to, and on a small run it would be eight times the page's size. So the folder is the form.
 
 ### 3.4 What a campaign runs on
 
