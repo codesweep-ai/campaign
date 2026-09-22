@@ -52,7 +52,8 @@ import (
 // replays under the same fault for nothing.
 type faultSpec struct {
 	// member is the fleet member whose calls are refused, by name. The worker
-	// rather than the orchestrator, so the refusal lands on dispatched work.
+	// for a refusal the orchestrator answers, so it lands on dispatched work;
+	// the orchestrator for the one refusal the host answers (PROTOCOL.md §9).
 	member string
 	// args are the flags `cs-sandbox lender fault` is armed with.
 	args []string
@@ -60,6 +61,10 @@ type faultSpec struct {
 	// This is the assertion that fails when a driver stops naming its failure:
 	// the outcome alone can be right for the wrong reason.
 	wantStates []string
+	// wantHostResume says the driver, tending as a host does, must have
+	// resumed the orchestrator at least once: the refusal landed on it, and
+	// the host's move carried the campaign to its verdict.
+	wantHostResume bool
 	// Nothing here asserts that a refusal spent no rung, though that is the
 	// protocol's sharpest claim about one. It is asserted where it can be
 	// asserted exactly: the conformance suite drives the real Compute and the
@@ -287,6 +292,33 @@ func faultScenarios() []scenario {
 			member: "dev", args: []string{"--status", "401", "--count", "30"},
 			wantStates: []string{"node-stuck"},
 		}, "campaign-blocked"),
+		// The one refusal the orchestrator cannot answer, because it is the
+		// node refused (SAC-054). The host performs the resume, so the driver
+		// here tends as a host does, and the scenario proves the whole path
+		// with the real claude driver: the CLI's own retries, the refusal it
+		// names when they run out, the host's resume, the same session
+		// carrying on.
+		//
+		// Claude, because it was the family refused in the field, and because
+		// its CLI retries an overload ten times by itself before the driver
+		// ever sees a refusal. The count has to outlast those retries: twelve
+		// refused calls end the first turn refused whether the CLI makes ten
+		// attempts or eleven, and the resumed turn rides out what is left on
+		// the CLI's own retries. Those retries are live time, about four
+		// minutes per run, and they are the point: a count small enough to be
+		// absorbed would prove nothing about the refusal.
+		{
+			name: "claude-fault-capacity", cli: "claude",
+			auth:  "an Anthropic API key in ~/.cs-keys/anthropic",
+			model: "claude-sonnet-5", keyProvider: "anthropic",
+			baseURLEnv:  "ANTHROPIC_BASE_URL",
+			vcrProvider: "anthropic", vcrUpstream: "https://api.anthropic.com",
+			fault: &faultSpec{
+				member: "orchestrator", args: []string{"--status", "529", "--count", "12"},
+				wantStates: []string{"node-refused"}, wantHostResume: true,
+			},
+			wantOutcome: "campaign-met",
+		},
 		// A third condition, "nothing answered at all", is deliberately not
 		// here. Codex rode out sixty dropped connections by itself and
 		// finished its turn, so ending one that way takes about five minutes
@@ -492,6 +524,8 @@ func replayName(sc scenario) string {
 		return "csrocfw"
 	case "claude-inherit":
 		return "csrclinh"
+	case "claude-fault-capacity":
+		return "csrclcap"
 	}
 	return "csr" + sc.cli
 }
@@ -618,6 +652,9 @@ type campaignRun struct {
 	archive   string
 	createOut string
 	proxy     *vcrProxy
+	// hostResumes counts the resumes the driver sent the orchestrator, as a
+	// tending host would, when observe derived that move for it.
+	hostResumes int
 	// states is every state observe reported for any node during the run. The
 	// fault tier asserts on it, because an outcome alone can be right for the
 	// wrong reason: a campaign that never noticed the refusal and a campaign
@@ -1081,8 +1118,10 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 		armFault(t, a, campaign, sc.fault)
 	}
 
-	// The campaign runs itself; the host only observes. The mission reply is
-	// the completion signal — its existence, and nothing else.
+	// The campaign runs itself; the host observes, and makes the one move
+	// that is the host's (PROTOCOL.md §9): a resume of the orchestrator when
+	// observe derives it, as a tending loop would. The mission reply is the
+	// completion signal — its existence, and nothing else.
 	//
 	// Two things end the wait early, and both keep the evidence first. A stuck
 	// node is terminal by definition. A stopped orchestrator is the operator's
@@ -1106,6 +1145,16 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 				if n.State == string(protocol.StateStuck) && sc.outcome() == "campaign-met" {
 					keepEvidence(t, a, campaign, "stuck")
 					t.Fatalf("%s is stuck: %s", n.Name, n.Detail)
+				}
+				if n.Role == "orchestrator" && strings.Contains(n.Detail, "resume next") {
+					said, rerr := a.hostResumeOrchestrator(context.Background(), fleetMember(campaign, n.Name), campaign.Policy)
+					if rerr != nil {
+						t.Logf("resume of the orchestrator refused: %v", rerr)
+					} else {
+						run.hostResumes++
+						t.Logf("host: %s", said)
+						continue
+					}
 				}
 				if n.Role == "orchestrator" && n.State == string(protocol.StateStopped) {
 					orchestratorStopped = true
@@ -1174,6 +1223,16 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 		t.Fatalf("audit: %+v", findings)
 	}
 	return run
+}
+
+// fleetMember returns the campaign's member of that name, or a zero member.
+func fleetMember(campaign *model.Campaign, name string) model.Member {
+	for _, m := range campaign.Members {
+		if m.Name == name {
+			return m
+		}
+	}
+	return model.Member{}
 }
 
 // forgetHostSessions drops the host's session records for a campaign's members,

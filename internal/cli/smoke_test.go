@@ -117,6 +117,10 @@ func assertFaultAnswered(t *testing.T, sc scenario, run campaignRun) {
 				sc.name, want, slices.Sorted(maps.Keys(run.states)))
 		}
 	}
+	if sc.fault.wantHostResume && run.hostResumes == 0 {
+		t.Errorf("a %s fault was armed on the orchestrator, and the host never resumed it.\n"+
+			"The campaign reached its verdict some other way, which is not the path this scenario proves.", sc.name)
+	}
 }
 
 // assertSpentNothing is the assertion that makes this tier worth running. A

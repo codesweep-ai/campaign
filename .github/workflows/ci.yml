@@ -462,6 +462,7 @@ jobs:
           # replayed from a cassette recorded with that fault armed.
           - codex-fault-throttled
           - codex-fault-unauthorized
+          - claude-fault-capacity
     env:
       # CS_SANDBOX_IMAGE is NOT set here. cs-sandbox names each image variant
       # after the version that built it, so the reference is derived rather than
@@ -780,6 +781,7 @@ jobs:
           # replayed from a cassette recorded with that fault armed.
           - codex-fault-throttled
           - codex-fault-unauthorized
+          - claude-fault-capacity
     env:
       # The one line that makes this job the other engine. It reaches the
       # profile the tier renders (CS_CAMPAIGN_ENGINE), the doctor `make
@@ -1037,6 +1039,7 @@ jobs:
           # replayed from a cassette recorded with that fault armed.
           - codex-fault-throttled
           - codex-fault-unauthorized
+          - claude-fault-capacity
     env:
       SMOKE_ENGINE: podman
       # The arm64 image the job above built, not the published amd64 leaf.
