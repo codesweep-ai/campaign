@@ -17,6 +17,11 @@
   },
   "resolution": "The address names the selection. `#m/<member>` picks the member's first dispatch. `#m/<member>/<dNNN>` picks that dispatch's opening and zooms to it. `#e/<n>` names any event or step by the index this page gives it. The page reads it on load and on every change, and writes the most specific form back with `replaceState` as the selection moves, so no history entries pile up. The manual's Addresses paragraph says so.",
   "details": "The page held its selection and its view in React state and nothing else. There was no way to hand someone a member, a dispatch or a step: every address opened the run view with nothing selected. The tracer's pages already answer to `#ev-<n>`, and the inspector links into them that way, so the dispatch page was the one place a reader could not point at.\n\nWanted: a form for a member, one for a dispatch, and one for any event or step. The page should read it on load and whenever it changes, and write it back as the selection moves, so the address bar is always worth copying.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-22",
+      "text": "The address also names the view: `@start-end` in elapsed h:mm:ss after the selection, or `@run`. It is written in place, a little after the last change, since a scroll reports a view every frame and a browser may refuse frequent address writes. A view the address already names, within two seconds, is left as written, so a pasted address is not rewritten. A dispatch with no view still means its box, so the page writes `@run` after a dispatch at the whole run."
+    }
+  ],
   "links": []
 }

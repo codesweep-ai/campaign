@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell, Card, Footer, Header, PulseBadge, StatusBadge, ThemeToggle } from "@codesweep-ai/ui";
 import type { IndexedEvent, LogEntry, Run } from "./types";
-import { dur, fmtT } from "./format";
+import { dur, fmtClock, fmtT, parseClock } from "./format";
 import { LOGKINDS, kindOf, stepMarks, type StepMark } from "./model";
-import { Timeline, Legend } from "./Timeline";
+import { Timeline, Legend, type ViewRequest, type ShownView } from "./Timeline";
 import { Issues } from "./Issues";
 import { LogPane } from "./LogPane";
 import { Inspector, type DocMode } from "./Inspector";
@@ -33,6 +33,10 @@ export default function App() {
   const [errorsOnly, setErrorsOnly] = useState(false);
   // A dispatch the timeline should zoom to, as its span id "<member>/<dNNN>".
   const [zoomSpan, setZoomSpan] = useState<string | null>(null);
+  // A view the address asks for, applied whenever a new one is set.
+  const [viewRequest, setViewRequest] = useState<ViewRequest>(null);
+  // The view the timeline shows, kept for the address.
+  const shownRef = useRef<ShownView | null>(null);
 
   const events: IndexedEvent[] = useMemo(
     () => (run ? run.events.map((e, i) => ({ ...e, i })) : []),
@@ -79,7 +83,26 @@ export default function App() {
       selRef.current = i;
       setSel(i);
       setLogSel(null);
-      writeHash(i, events);
+      writeHash(address(i, events, shownRef.current), true);
+    },
+    [events],
+  );
+
+  // The view follows the selection into the address, rewritten in place and
+  // a little after the last change: a scroll reports a view every frame, and
+  // a browser may refuse more than a hundred address writes in half a minute.
+  const viewTimer = useRef<number | undefined>(undefined);
+  const onViewShown = useCallback(
+    (shown: ShownView) => {
+      shownRef.current = shown;
+      window.clearTimeout(viewTimer.current);
+      viewTimer.current = window.setTimeout(() => {
+        // A view the address already names, give or take the second a whole
+        // pixel of scroll can move it, is left as written.
+        const named = readHash(location.hash, events)?.view;
+        if (named && named !== "run" && Math.abs(named.start - shown.start) <= 2 && Math.abs(named.end - shown.end) <= 2) return;
+        writeHash(address(selRef.current, events, shown), false);
+      }, 300);
     },
     [events],
   );
@@ -95,19 +118,39 @@ export default function App() {
     const apply = (fromHistory: boolean) => {
       const target = readHash(location.hash, events);
       if (!target) {
-        // Back to an entry with no selection clears it; a bad address on
-        // first load is left alone.
+        // Back to an entry with no selection clears it, and an entry with no
+        // view is the run view; a bad address on first load is left alone.
         if (fromHistory && location.hash === "") {
           selRef.current = -1;
           setSel(-1);
           setLogSel(null);
+          setViewRequest("run");
         }
         return;
       }
-      selRef.current = target.i;
-      setSel(target.i);
-      setLogSel(null);
-      setZoomSpan(target.zoom ?? null);
+      if (target.i !== undefined) {
+        selRef.current = target.i;
+        setSel(target.i);
+        setLogSel(null);
+      } else if (fromHistory) {
+        // An entry with no selection had none.
+        selRef.current = -1;
+        setSel(-1);
+        setLogSel(null);
+      }
+      // An explicit view outranks the zoom a dispatch implies. With neither,
+      // an entry reached through history is the run view.
+      if (target.view === "run") {
+        setZoomSpan(null);
+        setViewRequest("run");
+      } else if (target.view) {
+        setZoomSpan(null);
+        setViewRequest({ ...target.view });
+      } else if (target.zoom) {
+        setZoomSpan(target.zoom);
+      } else if (fromHistory) {
+        setViewRequest("run");
+      }
     };
     apply(false);
     const onPop = () => apply(true);
@@ -280,6 +323,8 @@ export default function App() {
                     showWaits={showWaits}
                     errorsOnly={errorsOnly}
                     zoomSpan={zoomSpan}
+                    viewRequest={viewRequest}
+                    onViewShown={onViewShown}
                     onSelect={select}
                   />
                 ) : (
@@ -315,27 +360,52 @@ export default function App() {
   );
 }
 
-/** The selection an address names, and the dispatch to zoom to when it names one. */
-function readHash(hash: string, events: IndexedEvent[]): { i: number; zoom?: string } | null {
-  const parts = decodeURIComponent(hash.replace(/^#/, "")).split("/");
+/** What an address names: a selection, the dispatch to zoom to when the
+ *  selection is one, and a view as "@start-end" in elapsed h:mm:ss, or
+ *  "@run" for the whole run. */
+function readHash(
+  hash: string,
+  events: IndexedEvent[],
+): { i?: number; zoom?: string; view?: { start: number; end: number } | "run" } | null {
+  const [head, ...rest] = decodeURIComponent(hash.replace(/^#/, "")).split("@");
+  // A view that does not parse is dropped, and the selection kept.
+  let view: { start: number; end: number } | "run" | undefined;
+  if (rest.length === 1 && rest[0] === "run") view = "run";
+  else if (rest.length === 1) {
+    const [a, b] = rest[0].split("-").map(parseClock);
+    if (a != null && b != null && b > a) view = { start: a, end: b };
+  }
+  const parts = head.split("/");
+  if (head === "") return view ? { view } : null;
   if (parts[0] === "e" && parts.length === 2) {
     const i = Number(parts[1]);
-    return Number.isInteger(i) && i >= 0 ? { i } : null;
+    return Number.isInteger(i) && i >= 0 ? { i, view } : null;
   }
   if (parts[0] === "m" && (parts.length === 2 || parts.length === 3)) {
     const [, member, dispatch] = parts;
     const open = events.find((e) => e.node === member && e.type === "open" && (!dispatch || e.dispatch === dispatch));
     if (!open) return null;
-    return dispatch ? { i: open.i, zoom: member + "/" + dispatch } : { i: open.i };
+    return dispatch ? { i: open.i, zoom: member + "/" + dispatch, view } : { i: open.i, view };
   }
   return null;
 }
 
-/** Writes the address for a selection as a history entry, so back returns
- *  to the one before. */
-function writeHash(i: number, events: IndexedEvent[]) {
+/** The address for a selection and the view shown. The whole run is the
+ *  view an address without one means, so it is written as nothing, except
+ *  after a dispatch, where no view means the dispatch's box. */
+function address(i: number, events: IndexedEvent[], shown: ShownView | null): string {
   const e = i >= 0 ? events[i] : undefined;
-  const hash = i < 0 ? "" : e && e.type === "open" && e.dispatch ? `#m/${e.node}/${e.dispatch}` : `#e/${i}`;
+  const dispatch = !!(e && e.type === "open" && e.dispatch);
+  const selection = i < 0 ? "" : dispatch ? `m/${e!.node}/${e!.dispatch}` : `e/${i}`;
+  const view = !shown ? "" : shown.whole ? (dispatch ? "@run" : "") : `@${fmtClock(shown.start)}-${fmtClock(shown.end)}`;
+  return selection || view ? "#" + selection + view : "";
+}
+
+/** Writes the address: as a new history entry for a selection, so back
+ *  returns to the one before, and in place for a view. */
+function writeHash(hash: string, entry: boolean) {
+  if (location.hash === hash) return;
   const url = location.pathname + location.search + hash;
-  if (location.hash !== hash) history.pushState(null, "", url);
+  if (entry) history.pushState(null, "", url);
+  else history.replaceState(null, "", url);
 }

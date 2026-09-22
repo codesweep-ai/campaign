@@ -35,6 +35,18 @@ export const fmtHM = (sec: number): string => {
   return Math.floor(s / 3600) + ":" + String(Math.floor((s % 3600) / 60)).padStart(2, "0");
 };
 
+/** Elapsed seconds as h:mm:ss, the form an address carries. */
+export const fmtClock = (sec: number): string => {
+  const s = Math.max(0, Math.round(sec));
+  return Math.floor(s / 3600) + ":" + String(Math.floor((s % 3600) / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+};
+
+/** h:mm:ss, m:ss or plain seconds back to seconds, or null. */
+export const parseClock = (text: string): number | null => {
+  if (!/^\d+(:\d{1,2}){0,2}$/.test(text)) return null;
+  return text.split(":").reduce((acc, part) => acc * 60 + Number(part), 0);
+};
+
 /** A duration in ms as 1h02m, 4m30s, 12s or 350ms. */
 export const fmtMs = (ms: number): string => {
   if (ms < 1000) return Math.round(ms) + "ms";

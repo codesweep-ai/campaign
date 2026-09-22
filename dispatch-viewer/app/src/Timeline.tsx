@@ -31,6 +31,16 @@ import {
 } from "./model";
 import { fmtElapsed, fmtHM, fmtMs, fmtT } from "./format";
 
+/** A view the page asks for: a range, the run, or nothing. */
+export type ViewRequest = EventLanesView | "run" | null;
+
+/** The view the timeline shows, and whether it is the whole run. */
+export interface ShownView {
+  start: number;
+  end: number;
+  whole: boolean;
+}
+
 interface TimelineProps {
   run: Run;
   events: IndexedEvent[];
@@ -43,6 +53,10 @@ interface TimelineProps {
   errorsOnly: boolean;
   /** A dispatch to zoom to, as its span id "<member>/<dNNN>", applied when it changes. */
   zoomSpan?: string | null;
+  /** A view to show, applied when it changes. */
+  viewRequest?: ViewRequest;
+  /** The view shown, whenever it changes. */
+  onViewShown?: (shown: ShownView) => void;
   onSelect: (i: number) => void;
 }
 
@@ -83,7 +97,7 @@ const PRESETS: { value: string; label: string; span?: number }[] = [
   { value: "300", label: "5m", span: 300 },
 ];
 
-export function Timeline({ run, events, marks, sel, link, showLog, showDetail, showWaits, errorsOnly, zoomSpan, onSelect }: TimelineProps) {
+export function Timeline({ run, events, marks, sel, link, showLog, showDetail, showWaits, errorsOnly, zoomSpan, viewRequest, onViewShown, onSelect }: TimelineProps) {
   const origin = +new Date(run.campaign.createdAt);
   const pos = (iso: string | undefined): number => (+new Date(iso as string) - origin) / 1000;
 
@@ -426,6 +440,28 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
     const s = spans.find((s) => s.id === zoomSpan);
     if (s) zoomToSpan(s);
   }, [zoomSpan, spans, zoomToSpan]);
+
+  // An address naming a view shows it, outranking the dispatch's zoom.
+  useEffect(() => {
+    if (!viewRequest) return;
+    if (viewRequest === "run") applyPreset("run");
+    else {
+      setPreset("");
+      setView({ start: viewRequest.start, end: viewRequest.end });
+    }
+    // applyPreset is stable enough here: "run" reads only the extent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewRequest]);
+
+  // The page keeps the view shown for its address. The whole run is the
+  // view from the first position to the last, give or take a second or two
+  // of rounding at either end.
+  const firstPos = useMemo(() => Math.min(...allEvents.map((e) => e.position ?? Infinity), Infinity), [allEvents]);
+  useEffect(() => {
+    if (!shown || !onViewShown) return;
+    const whole = shown.start <= firstPos + 2 && shown.end >= extent - 2;
+    onViewShown({ start: shown.start, end: shown.end, whole });
+  }, [shown, extent, firstPos, onViewShown]);
 
   return (
     <div>

@@ -659,8 +659,10 @@ only with the log shown.
 **Addresses.** The page's address names the selection, so a view can be handed to someone.
 `#m/<member>` picks the member's first dispatch. `#m/<member>/<dNNN>` picks that dispatch's
 opening and zooms to it. `#e/<n>` picks any event or step by the index this page gives it, the
-number the tracer links carry. The page writes the most specific form back as the
-selection moves, and Escape clears it. A trace page is addressed the tracer's way,
+number the tracer links carry. `@start-end` after any of these, in elapsed h:mm:ss, names the
+view, and `@run` the whole run; a dispatch with no view means its box. The page writes the most
+specific form back as the selection moves, each one a history entry, and the view in place as it
+changes. Escape drops what is selected. A trace page is addressed the tracer's way,
 `tracer/traces/<session>.html#ev-<n>`.
 
 **Selection.** Click any mark to inspect it. Reply notes render as markdown, evidence blocks as
