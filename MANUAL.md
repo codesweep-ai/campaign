@@ -620,8 +620,9 @@ event in the trace, and the tracer's index at `tracer/index.html` lists the sess
 **Timeline.** Each node gets one band of lanes, with the orchestrator first, on one axis of
 elapsed time since the campaign was created. A mark sits at its real time, so a column is a span
 of time and not an event. Zoom is by preset: the run, an hour, fifteen minutes or five, and a
-selected dispatch can be zoomed to. The plain wheel scrolls sideways, and the overview above the
-lanes, under the zoom row, shows the whole run and moves the view. Each dispatch is a box from
+selected dispatch can be zoomed to. A horizontal swipe scrolls the lanes sideways, and the
+vertical wheel scrolls the page. The overview above the lanes, under the zoom row, shows the whole
+run and moves the view. Each dispatch is a box from
 its opening to its reply. Squares are channel artifacts:
 the facts any observer can verify from the files alone. Every mark's colour is a design token
 from one palette map (`dispatch-viewer/app/src/model.ts`):

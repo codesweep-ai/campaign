@@ -471,6 +471,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
         view={view}
         onViewChange={setShown}
         wheelZoom={false}
+        wheelScroll={false}
         overview
         overviewContent="both"
         overviewPlacement="above"
