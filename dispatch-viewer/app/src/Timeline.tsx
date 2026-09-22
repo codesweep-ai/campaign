@@ -170,7 +170,9 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
         title: "orchestrator log",
         description: "orchestrator log claims (log.jsonl)",
         className: "loglane",
-        height: 18,
+        // Tall enough for a selected mark's halo, and a gap below the axis.
+        height: 24,
+        gapBefore: 8,
       });
     }
     for (const [k, n] of run.nodes.entries()) {
