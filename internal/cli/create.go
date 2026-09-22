@@ -378,9 +378,11 @@ func (a *app) executeCreate(ctx context.Context, out io.Writer, campaign *model.
 	if err = initializeRepos(profile); err != nil {
 		return err
 	}
+	planned := campaign
 	if campaign, err = a.adoptResumableCreate(campaign); err != nil {
 		return err
 	}
+	resumed := campaign != planned
 	live, err := a.sandbox.list(ctx)
 	if err != nil {
 		return fmt.Errorf("cs-sandbox compatibility check failed (requires ls --json): %w", err)
@@ -430,7 +432,7 @@ func (a *app) executeCreate(ctx context.Context, out io.Writer, campaign *model.
 			orchestrator = &campaign.Members[i]
 		}
 	}
-	if err = a.openMissionWhenQuiet(ctx, out, *orchestrator, missionDispatchBody(inputs)); err != nil {
+	if err = a.openMissionWhenQuiet(ctx, out, *orchestrator, missionDispatchBody(inputs, campaign.Deadline, resumed)); err != nil {
 		campaign.Provisioning = "create-failed"
 		campaign.UpdatedAt = time.Now().UTC()
 		_ = a.store.Save(campaign)
@@ -449,14 +451,26 @@ func (a *app) executeCreate(ctx context.Context, out io.Writer, campaign *model.
 // the operator's mission text (seeded beside it) and carries the reply
 // obligation and the outcome vocabulary — the one place judgment's vocabulary
 // is stated where the judge will read it every campaign.
-func missionDispatchBody(inputs campaignInputs) string {
+//
+// It also states the deadline, because the orchestrator enforces it by
+// judgement and a resumed create moves it. Seen live: an orchestrator read
+// member.json during the first of three creates, kept that clock, and told the
+// team the planning box was spent when the harness's clock had barely started.
+func missionDispatchBody(inputs campaignInputs, deadline time.Time, resumed bool) string {
 	missionRef := "your input channel"
 	if inputs.Mission.Name != "" {
 		missionRef = "~/" + guestInputDir + "/" + inputs.Mission.Name
 	}
+	var clock string
+	if !deadline.IsZero() {
+		clock = fmt.Sprintf("\n\nThe campaign's deadline is %s.", deadline.UTC().Format(time.RFC3339))
+		if resumed {
+			clock += " `create` was resumed after an earlier attempt failed, and the deadline moved to this attempt. A deadline you or a teammate read before this dispatch is out of date: this one counts."
+		}
+	}
 	return fmt.Sprintf(`This dispatch is the campaign's mission, and it stays open until you reply to it.
 
-The mission itself is stated in %s — read it with your brief and your teammates' briefs, plan, and run the campaign per your orientation: dispatch work with `+"`cs-campaign-member send`"+`, block in `+"`cs-campaign-member wait`"+` between judgments, judge every reply (fetch the branch — the reply carries measured tree-vs-base evidence), and record plan, acceptances and assessments with `+"`accept`"+` and `+"`note`"+`.
+The mission itself is stated in %s — read it with your brief and your teammates' briefs, plan, and run the campaign per your orientation: dispatch work with `+"`cs-campaign-member send`"+`, block in `+"`cs-campaign-member wait`"+` between judgments, judge every reply (fetch the branch — the reply carries measured tree-vs-base evidence), and record plan, acceptances and assessments with `+"`accept`"+` and `+"`note`"+`.%s
 
 Reply ONLY when the campaign is concluded — your reply ends it. It must carry exactly one outcome:
 
@@ -476,7 +490,7 @@ ends with the campaign still open and your verdict unsent, which from the
 outside cannot be told apart from a judge who never reached one. Verify first,
 in as many commands as you like; then reply in one of its own.
 
-Do not end your turn without either calling wait or replying.`, missionRef)
+Do not end your turn without either calling wait or replying.`, missionRef, clock)
 }
 
 // adoptResumableCreate returns the saved record when a prior create attempt

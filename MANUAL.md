@@ -982,6 +982,10 @@ command, which the cassette holds.
 stops nothing by itself. The orchestrator's judgement enforces the deadline, and the machine uses
 the value only as the `elapsedSeconds` default.
 
+The mission dispatch states the deadline as an instant. A resumed `create` measures it from the
+attempt that succeeds, so it moves under members briefed by an earlier attempt. The mission then
+says so, and tells the orchestrator that a deadline read before it is out of date.
+
 ### Overriding at create
 
 The profile is the configuration. `--set PATH=VALUE` overrides one resolved path for this run

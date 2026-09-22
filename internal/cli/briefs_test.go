@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/codesweep-ai/campaign/internal/model"
 	"github.com/codesweep-ai/campaign/internal/protocol"
@@ -192,7 +193,7 @@ func TestOrchestratorOrientationCoversDispatchSafetyAndImpossibleMissions(t *tes
 	// mission dispatch itself — stated at the exact decision site, every
 	// campaign — with the impossible-mission cell named so an orchestrator
 	// never infers it under pressure at the end of a run, which an earlier one did.
-	mission := missionDispatchBody(in)
+	mission := missionDispatchBody(in, time.Time{}, false)
 	for _, want := range []string{
 		"campaign-met", "campaign-converged", "campaign-exhausted", "campaign-blocked",
 		"impossible as written",
@@ -201,6 +202,27 @@ func TestOrchestratorOrientationCoversDispatchSafetyAndImpossibleMissions(t *tes
 		if !strings.Contains(mission, want) {
 			t.Errorf("mission dispatch body missing %q:\n%s", want, mission)
 		}
+	}
+}
+
+// The orchestrator enforces the deadline by judgement, so the mission states
+// the live one. A resumed create moves it, and an orchestrator briefed by an
+// earlier attempt kept the old clock for a whole run, 45 minutes ahead of the
+// harness's.
+func TestTheMissionStatesTheLiveDeadline(t *testing.T) {
+	in := completeInputs(t)
+	deadline := time.Date(2026, 9, 22, 15, 32, 51, 0, time.UTC)
+	if first := missionDispatchBody(in, deadline, false); !strings.Contains(first, "The campaign's deadline is 2026-09-22T15:32:51Z.") || strings.Contains(first, "resumed") {
+		t.Errorf("a first create's mission must state the deadline and no resume:\n%s", first)
+	}
+	resumed := missionDispatchBody(in, deadline, true)
+	for _, want := range []string{"The campaign's deadline is 2026-09-22T15:32:51Z.", "`create` was resumed", "is out of date: this one counts"} {
+		if !strings.Contains(resumed, want) {
+			t.Errorf("a resumed create's mission must carry %q:\n%s", want, resumed)
+		}
+	}
+	if none := missionDispatchBody(in, time.Time{}, true); strings.Contains(none, "deadline") {
+		t.Errorf("a campaign with no deadline must not be told of one:\n%s", none)
 	}
 }
 

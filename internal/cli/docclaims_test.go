@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/codesweep-ai/campaign"
 	"github.com/codesweep-ai/campaign/internal/covmap"
@@ -349,5 +350,21 @@ func TestTheDocumentedResumedReadbackLineIsWhatCreatePrints(t *testing.T) {
 	var out strings.Builder
 	if detail, _ := a.readbackOne(t.Context(), &out, run, member); detail != "" || !strings.Contains(out.String(), claim) {
 		t.Errorf("a resumed create printed %q (detail %q); MANUAL.md promises %q", out.String(), detail, claim)
+	}
+}
+
+// MANUAL.md: "The mission dispatch states the deadline as an instant", and on a
+// resumed create "tells the orchestrator that a deadline read before it is out
+// of date". The orchestrator is the one enforcing the deadline, so this is the
+// sentence an operator relies on after resuming a create.
+func TestTheDocumentedMissionDeadlineIsWhatTheMissionSays(t *testing.T) {
+	for _, claim := range []string{"The mission dispatch states the deadline as an instant.", "a deadline read before it is out of date"} {
+		if !strings.Contains(campaign.ManualMD, claim) {
+			t.Errorf("MANUAL.md no longer states %q; this test names the sentence it keeps true", claim)
+		}
+	}
+	mission := missionDispatchBody(completeInputs(t), time.Date(2026, 9, 22, 15, 32, 51, 0, time.UTC), true)
+	if !strings.Contains(mission, "deadline is 2026-09-22T15:32:51Z") || !strings.Contains(mission, "is out of date") {
+		t.Errorf("a resumed create's mission does not say what MANUAL.md promises:\n%s", mission)
 	}
 }
