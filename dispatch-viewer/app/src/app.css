@@ -67,8 +67,10 @@
 #tl.cs-component-event-lanes-root { --event-lanes-gutter: 11rem; display: flex; flex-direction: column; }
 #tl .cs-component-event-lanes-overview-row { order: -1; margin: 0 0 var(--space-1); }
 #tl [data-event-lane-label].member, #tl [data-event-lane-label].gaplane { border-bottom: 0; }
-#tl [data-event-lane-label].member.odd { background: var(--color-bg-muted); }
-#tl .cs-component-event-lanes-scroller { background-image: var(--tl-bands); background-repeat: no-repeat; background-size: 100% 100%; }
+/* The bands are painted once, on the grid that holds both the gutter and the
+   lanes, so a member's shade is continuous from its name to the axis end,
+   through the margin before the axis. */
+#tl .cs-component-event-lanes-main { background-image: var(--tl-bands); background-repeat: no-repeat; background-size: 100% 100%; }
 /* No rule between the gutter and the lanes: a member's band runs from its name
    to the end of the axis in one piece. */
 /* The gutter sits on the card's surface, as the lanes do: the band tokens are
@@ -76,12 +78,10 @@
 #tl .cs-component-event-lanes-labels { border-top: 0; border-bottom: 0; border-left: 0; background: transparent; }
 /* Breathing room before the axis: a margin, not a padding, and the same on
    the overview, so the two keep one zero and one width. */
-#tl .cs-component-event-lanes-scroller { border-left: 0; border-top: 0; border-bottom: 0; margin-left: var(--space-3); }
+#tl .cs-component-event-lanes-scroller { border-left: 0; border-top: 0; border-bottom: 0; margin-left: var(--space-3); width: calc(100% - var(--space-3)); }
 #tl .cs-component-event-lanes-overview { margin-left: var(--space-3); }
 #tl .cs-component-event-lanes-ruler-label { border-bottom: 0; }
-#tl [data-event-lane-label].member.even { background: transparent; }
-/* The selected member's band, last so it wins over the alternating shades. */
-#tl [data-event-lane-label].member.selnode { background: var(--color-accent-bg); }
+
 
 .ruler { position: relative; height: 100%; }
 .ruler .tick { position: absolute; top: var(--space-0-5); width: var(--space-0-5); height: var(--space-2); background: var(--muted); opacity: .6; }

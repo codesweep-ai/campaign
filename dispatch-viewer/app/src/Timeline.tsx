@@ -484,9 +484,9 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
     const el = wrap.current;
     if (!el) return;
     const measure = () => {
-      const labels = el.querySelector<HTMLElement>("[data-event-lanes-labels]");
-      if (!labels) return;
-      const top = labels.getBoundingClientRect().top;
+      const main = el.querySelector<HTMLElement>(".cs-component-event-lanes-main");
+      if (!main) return;
+      const top = main.getBoundingClientRect().top;
       const stops: string[] = [];
       for (const row of el.querySelectorAll<HTMLElement>("[data-event-lane-label]")) {
         const r = row.getBoundingClientRect();

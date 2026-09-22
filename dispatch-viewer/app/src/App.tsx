@@ -29,7 +29,7 @@ export default function App() {
   const [showLog, setShowLog] = useState(false);
   const traced = !!(run && run.traces && run.traces.sessions.length);
   const [showDetail, setShowDetail] = useState(true);
-  const [showWaits, setShowWaits] = useState(true);
+  const [showWaits, setShowWaits] = useState(false);
   const [errorsOnly, setErrorsOnly] = useState(false);
 
   const events: IndexedEvent[] = useMemo(
