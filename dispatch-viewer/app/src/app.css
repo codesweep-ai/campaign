@@ -59,27 +59,21 @@
 [data-event-lane-label].forklane { color: var(--muted); font-size: var(--font-size-xs); padding-left: var(--space-3); }
 #tl [data-event-lane-label] { font-size: var(--font-size-sm); }
 
-/* The gutter: wide enough for a member's name, one band per member with an
-   alternating shade instead of a line under every row, and the selected
-   member's band in the accent shade. The overview sits above the lanes, under
-   the zoom row, so the thing that moves the view is next to the controls
-   that set it. */
-#tl.cs-component-event-lanes-root { --event-lanes-gutter: 11rem; display: flex; flex-direction: column; }
-#tl .cs-component-event-lanes-overview-row { order: -1; margin: 0 0 var(--space-1); }
-#tl [data-event-lane-label].member, #tl [data-event-lane-label].gaplane { border-bottom: 0; }
-/* The bands are painted once, on the grid that holds both the gutter and the
-   lanes, so a member's shade is continuous from its name to the axis end,
-   through the margin before the axis. */
-#tl .cs-component-event-lanes-main { background-image: var(--tl-bands); background-repeat: no-repeat; background-size: 100% 100%; }
-/* No rule between the gutter and the lanes: a member's band runs from its name
-   to the end of the axis in one piece. */
-/* The gutter sits on the card's surface, as the lanes do: the band tokens are
-   translucent, so the two sides match only over the same ground. */
-#tl .cs-component-event-lanes-labels { border-top: 0; border-bottom: 0; border-left: 0; background: transparent; }
-/* Breathing room before the axis: a margin, not a padding, and the same on
-   the overview, so the two keep one zero and one width. */
-#tl .cs-component-event-lanes-scroller { border-left: 0; border-top: 0; border-bottom: 0; margin-left: var(--space-3); width: calc(100% - var(--space-3)); }
-#tl .cs-component-event-lanes-overview { margin-left: var(--space-3); }
+/* The gutter: wide enough for a member's name, with the members' bands
+   instead of a line under every row. The bands, the gap between members and
+   the overview's place above the lanes are the component's. */
+#tl.cs-component-event-lanes-root { --event-lanes-gutter: 11rem; }
+#tl [data-event-lane-label] { border-bottom: 0; }
+/* No rule around the gutter or the lanes: a member's band runs from its name
+   to the end of the axis in one piece. With no top border, the bands start at
+   the rows' top edge. */
+#tl .cs-component-event-lanes-labels { border-top: 0; border-bottom: 0; border-left: 0; }
+#tl .cs-component-event-lanes-main { --event-lanes-band-inset: 0rem; }
+/* Breathing room before the axis. The component fits the axis and the
+   overview to the space inside the padding, and the overview drops the left
+   border the scroller has no longer, so the two share one zero. */
+#tl .cs-component-event-lanes-scroller { border-left: 0; border-top: 0; border-bottom: 0; padding-left: var(--space-3); }
+#tl .cs-component-event-lanes-overview { border-left: 0; }
 #tl .cs-component-event-lanes-ruler-label { border-bottom: 0; }
 
 
@@ -92,7 +86,6 @@
 .zoomlabel { text-transform: uppercase; letter-spacing: var(--letter-spacing-wide); font-weight: var(--font-weight-semibold); }
 .zoomhint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kv .who { color: var(--muted); }
-[data-pointer] .cs-component-event-lanes-scroller:focus-visible { box-shadow: none; }
 .linkish { background: none; border: 0; padding: 0; color: var(--color-link); cursor: pointer; font: inherit; text-decoration: underline; }
 .ruler .lab {
   position: absolute; top: var(--space-3); font-size: var(--font-size-chart-axis); color: var(--muted);

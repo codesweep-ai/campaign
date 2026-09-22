@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   EventLanes,
   Legend as UiLegend,
@@ -45,18 +45,20 @@ interface TimelineProps {
 }
 
 /* The axis is elapsed time: seconds since the campaign was created. Across
-   the axis, x is time: every dispatch box, its trail and every link sit at
-   real moments. Inside a box, x is order and height is time: each step gets
+   the axis, x is time: every dispatch box and every link sit at real
+   moments. Inside a box, x is order and height is time: each step gets
    a column of its own, and its bar rises by the log of the time it took, on
    the tracer's scale. The steps that anchor a link, and every turn start and
    turn end, are pinned to their real time; the steps between two pins share
    that interval evenly.
 
    Each member is one timeline of three rows, one per vocabulary. The protocol
-   row carries what the channel proves: the dispatch box, its marks and the
-   acceptance trail. The steps row carries what the agent did, in the
-   tracer's columns, with a forked session on a row of its own. The wait row
-   carries idle after a turn, and the orchestrator's wait calls. The box
+   row carries what the channel proves: the dispatch box and its marks. The
+   steps row carries what the agent did, in the tracer's columns, with a
+   forked session on a row of its own. The wait row carries idle after a
+   turn, and the orchestrator's wait calls, as hatched bands. Each member's
+   rows share a band, alternating from member to member, with a gap before
+   the next; the selected member's band is the accent. The box
    frames every row of the timeline, so inside a zoomed box the open and
    reply marks are its edges and are not drawn again. */
 
@@ -92,7 +94,6 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
 
   const markOf = useMemo(() => new Map(marks.map((m) => [m.i, m])), [marks]);
 
-
   // The orchestrator log's claims, in time order, each pushed right until it
   // clears the one before by a mark's width at the current scale. They are
   // meant to be clicked, so they are spread rather than squeezed.
@@ -122,59 +123,6 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
   }, [run, events, scaleKey, origin]);
 
 
-  // Wheel zoom is continuous; the page zooms by preset instead. The
-  // component binds the wheel on its scroller, so a capturing listener on the
-  // wrapper stops a Ctrl or Cmd wheel before it gets there. A plain wheel
-  // still scrolls sideways.
-  // A plain wheel that pushes past either end is dropped too: the component
-  // extends its scrolling content past the data when pushed, which is how a
-  // four-hour run scrolled on to nineteen hours. The axis edges come from the
-  // ruler's context, kept in a ref for the listener.
-  const wrap = useRef<HTMLDivElement>(null);
-  const axis = useRef<{ origin: number; end: number; start: number; end2: number; xEnd: number } | null>(null);
-  useEffect(() => {
-    const el = wrap.current;
-    if (!el) return;
-    // Whatever moved the scroller, it never shows past the data's end: the
-    // pixel of the last position, plus room for a halo, is the farthest left
-    // edge the viewport may reach.
-    const scroller = el.querySelector<HTMLElement>("[data-event-lanes-scroller]");
-    const clamp = () => {
-      const a = axis.current;
-      if (!a || !scroller) return;
-      const max = Math.max(0, a.xEnd + 16 - scroller.clientWidth);
-      if (scroller.scrollLeft > max) scroller.scrollLeft = max;
-    };
-    scroller?.addEventListener("scroll", clamp, { passive: true });
-    const stop = (ev: WheelEvent) => {
-      if (ev.ctrlKey || ev.metaKey) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        return;
-      }
-      const a = axis.current;
-      if (!a) return;
-      const delta = ev.deltaX !== 0 ? ev.deltaX : ev.deltaY;
-      const atEnd = a.end2 >= a.end - 1 && delta > 0;
-      const atStart = a.start <= a.origin + 1 && delta < 0;
-      if (atEnd || atStart) ev.stopPropagation();
-    };
-    el.addEventListener("wheel", stop, { capture: true, passive: false });
-    // The listbox is focused by script on a click, which the browser then
-    // treats as keyboard focus and rings. Remember what the last interaction
-    // was, so the ring shows for the keyboard and not for the pointer.
-    const byPointer = () => el.setAttribute("data-pointer", "");
-    const byKey = () => el.removeAttribute("data-pointer");
-    el.addEventListener("pointerdown", byPointer, true);
-    el.addEventListener("keydown", byKey, true);
-    return () => {
-      el.removeEventListener("wheel", stop, { capture: true });
-      scroller?.removeEventListener("scroll", clamp);
-      el.removeEventListener("pointerdown", byPointer, true);
-      el.removeEventListener("keydown", byKey, true);
-    };
-  }, []);
-
   const anchorSet = useMemo(() => {
     const s = new Set<string>();
     for (const a of run.traces?.anchors || []) s.add(a.session + ":" + a.i);
@@ -200,18 +148,20 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
       const isOrch = n.role === "orchestrator";
       const boxes = showDetail && traced.has(n.name);
       // Members alternate a shade across the whole timeline, so their rows
-      // read as one band each, with a gap between members.
-      const zebra = " member " + (k % 2 ? "odd" : "even") + (selectedNode === n.name ? " selnode" : "");
-      if (k > 0) lanes.push({ id: "gap/" + n.name, label: "", className: "gaplane", height: 8, overview: false });
+      // read as one band each, with a gap between members; the selected
+      // member's band is the accent.
+      const shade = selectedNode === n.name ? "--color-accent-bg" : k % 2 ? "--color-bg-muted" : undefined;
       // The protocol row: the box and the channel's marks.
       lanes.push({
         id: n.name,
         label: n.name,
         title: n.name,
         description: `${n.role} (${n.cli})`,
-        className: (isOrch ? "orch" : "name") + zebra,
+        className: isOrch ? "orch" : "name",
         group: n.name,
         height: boxes ? 18 : 24,
+        gapBefore: k > 0 ? 8 : undefined,
+        shade,
       });
       if (boxes) {
         lanes.push({
@@ -219,10 +169,11 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
           label: "",
           title: n.name + ": steps",
           description: `${n.name}: what the agent did, one column per step`,
-          className: "steplane" + zebra,
+          className: "steplane",
           group: n.name,
           bars: "up",
           height: 34,
+          shade,
         });
         for (const f of (run.traces?.sessions || []).filter((f) => f.node === n.name && f.parent)) {
           lanes.push({
@@ -230,10 +181,11 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
             label: "↳ fork",
             title: n.name + ": forked session " + f.id,
             description: `${n.name}: a session it forked`,
-            className: "forklane" + zebra,
+            className: "forklane",
             group: n.name,
             bars: "up",
             height: 22,
+            shade,
           });
         }
       }
@@ -243,12 +195,13 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
           label: "",
           title: n.name + " waiting",
           description: `${n.name}: time spent waiting`,
-          className: "waitlane" + zebra,
+          className: "waitlane",
           group: n.name,
           bars: "down",
           height: 10,
           overview: false,
           hidden: !showWaits,
+          shade,
         });
       }
       // Each dispatch is a box from its opening to its reply; one never
@@ -271,7 +224,6 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
     // when it is. It is a timeline of its own: the accept anchor a link
     // reaches is the orchestrator's accept call, not the log's claim.
     if (orch) {
-      lanes.push({ id: "gap/log", label: "", className: "gaplane", height: 8, overview: false });
       lanes.push({
         id: "log",
         label: "orchestrator log",
@@ -279,6 +231,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
         description: "orchestrator log claims (log.jsonl)",
         className: "loglane",
         height: 18,
+        gapBefore: 8,
       });
     }
     const laneEvents: EventLaneEvent<Kind>[] = events
@@ -311,8 +264,9 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
       for (const [session, list] of bySession) {
         const positions = columns(list, (m) => pos(m.step.ts), (m) => isPin(m.step, anchorSet.has(session.id + ":" + m.step.i)));
         // The wait row is time-shaped: a wait call or an idle interval is a
-        // band from where it began to where it ended, at one fixed height,
-        // so a blank on the steps row has a band under it of the same width.
+        // hatched band from where it began to where it ended, at one fixed
+        // height, so a blank on the steps row has a band under it of the same
+        // width, and the hatch reads as absence rather than as work.
         list.forEach((m, k) => {
           const kind = stepKindOf(m);
           const ms = m.step.workMs ?? 0;
@@ -324,7 +278,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
               i: m.i,
               lane: waitLane(session.node),
               kind,
-              shape: "square",
+              shape: "hatched",
               label: stepLabel(m),
               at: fmtT(m.step.ts),
               position: end - ms / 1000,
@@ -341,11 +295,12 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
               at: fmtT(m.step.ts),
               position: positions[k],
               // With "errors only" on, a failed step is a full bar with a
-              // marker on top, so it is found at any zoom; otherwise it keeps
-              // its own height in the error colour.
+              // marker on top in the error colour, so it is found at any
+              // zoom; otherwise it keeps its own height in the error colour.
               magnitude: kind === "error" && errorsOnly ? 1 : ms > 0 ? logFraction(ms, WORK_CEILING_MS) : undefined,
               clipped: ms > WORK_CEILING_MS || undefined,
               marker: kind === "error" && errorsOnly ? "error" : m.step.subtask && m.step.childSessionId ? "spawn" : undefined,
+              markerToken: kind === "error" && errorsOnly ? "--color-error" : undefined,
             });
           }
         });
@@ -358,7 +313,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
             i: m.i,
             lane: waitLane(session.node),
             kind: "idle",
-            shape: "square",
+            shape: "hatched",
             label: stepLabel(m),
             at: fmtT(m.step.ts),
             position: pos(m.step.ts),
@@ -396,20 +351,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
 
   const allEvents = useMemo(() => laneEvents.concat(logEvents), [laneEvents, logEvents]);
 
-  const ruler = useMemo(
-    () => (ctx: EventLanesRulerContext) => {
-      if (ctx.position)
-        axis.current = {
-          origin: ctx.position.origin,
-          end: ctx.position.end,
-          start: ctx.position.visibleStart,
-          end2: ctx.position.visibleEnd,
-          xEnd: ctx.position.xForPosition(ctx.position.end),
-        };
-      return <Ruler ctx={ctx} />;
-    },
-    [],
-  );
+  const ruler = useMemo(() => (ctx: EventLanesRulerContext) => <Ruler ctx={ctx} />, []);
 
   // Opening the page is the run preset.
   useEffect(() => {
@@ -475,41 +417,8 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
     setView({ start: s.from - pad, end: end + pad });
   }, []);
 
-  // One band per member across the whole axis, behind the canvas: a vertical
-  // gradient with a stop at each row edge, read from the rows the gutter
-  // renders, so the bands land on the rows they shade whatever height the
-  // component gave them.
-  const [bands, setBands] = useState("none");
-  useEffect(() => {
-    const el = wrap.current;
-    if (!el) return;
-    const measure = () => {
-      const main = el.querySelector<HTMLElement>(".cs-component-event-lanes-main");
-      if (!main) return;
-      const top = main.getBoundingClientRect().top;
-      const stops: string[] = [];
-      for (const row of el.querySelectorAll<HTMLElement>("[data-event-lane-label]")) {
-        const r = row.getBoundingClientRect();
-        if (r.height === 0) continue;
-        const cls = row.className;
-        const color = cls.includes("selnode")
-          ? "var(--color-accent-bg)"
-          : cls.includes("member odd")
-            ? "var(--color-bg-muted)"
-            : "transparent";
-        if (color === "transparent") continue;
-        stops.push(`transparent ${r.top - top}px, ${color} ${r.top - top}px, ${color} ${r.bottom - top}px, transparent ${r.bottom - top}px`);
-      }
-      setBands(stops.length ? `linear-gradient(to bottom, ${stops.join(", ")})` : "none");
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [lanes]);
-
   return (
-    <div ref={wrap} style={{ ["--tl-bands" as string]: bands }}>
+    <div>
       <div className="zoombar">
         <span className="zoomlabel">zoom</span>
         <SegmentedControl
@@ -551,8 +460,10 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
         cellWidth={10}
         view={view}
         onViewChange={setShown}
+        wheelZoom={false}
         overview
         overviewContent="both"
+        overviewPlacement="above"
         scrollbar="overview"
         ruler={ruler}
         rulerLabel="elapsed"
@@ -582,10 +493,9 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
   );
 }
 
-/** The run view's end: the last position plus two percent, so the last mark,
- *  which draws at the mark size to the right of its position, stays inside
- *  the viewport instead of hanging over its edge. */
-const runEnd = (extent: number): number => extent * 1.02;
+/** The run view: from the campaign's creation to the last position. The
+ *  component keeps the last mark and its halo inside the viewport. */
+const runEnd = (extent: number): number => extent;
 
 /** A step that sits at its real time: an anchor, a turn start or a turn end. */
 function isPin(s: Step, anchored: boolean): boolean {
