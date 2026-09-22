@@ -87,21 +87,32 @@ export default function App() {
   // The address names the selection, so a view can be handed to someone:
   // #m/<member> is the member's first dispatch, #m/<member>/<dNNN> is that
   // dispatch's opening, zoomed to, and #e/<n> is any event or step by the
-  // index this page gives it. The page writes the most specific form back
-  // as the selection moves, and reads a new one when the address changes.
+  // index this page gives it. Each selection is a history entry, so the
+  // browser's back and forward walk the selections made, and an address
+  // typed or pasted applies without a reload.
   useEffect(() => {
     if (!run) return;
-    const apply = () => {
+    const apply = (fromHistory: boolean) => {
       const target = readHash(location.hash, events);
-      if (!target) return;
+      if (!target) {
+        // Back to an entry with no selection clears it; a bad address on
+        // first load is left alone.
+        if (fromHistory && location.hash === "") {
+          selRef.current = -1;
+          setSel(-1);
+          setLogSel(null);
+        }
+        return;
+      }
       selRef.current = target.i;
       setSel(target.i);
       setLogSel(null);
       setZoomSpan(target.zoom ?? null);
     };
-    apply();
-    window.addEventListener("hashchange", apply);
-    return () => window.removeEventListener("hashchange", apply);
+    apply(false);
+    const onPop = () => apply(true);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, [run, events]);
 
   const selectLog = useCallback((l: LogEntry) => {
@@ -320,10 +331,11 @@ function readHash(hash: string, events: IndexedEvent[]): { i: number; zoom?: str
   return null;
 }
 
-/** Writes the address for a selection, without adding a history entry. */
+/** Writes the address for a selection as a history entry, so back returns
+ *  to the one before. */
 function writeHash(i: number, events: IndexedEvent[]) {
   const e = i >= 0 ? events[i] : undefined;
   const hash = i < 0 ? "" : e && e.type === "open" && e.dispatch ? `#m/${e.node}/${e.dispatch}` : `#e/${i}`;
   const url = location.pathname + location.search + hash;
-  if (location.hash !== hash) history.replaceState(null, "", url);
+  if (location.hash !== hash) history.pushState(null, "", url);
 }
