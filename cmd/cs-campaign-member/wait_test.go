@@ -274,10 +274,11 @@ func TestWaitReplyRaceMintsNoNewDispatch(t *testing.T) {
 }
 
 // The ID-mint TOCTOU: two concurrent sends both mint d001. The loser's
-// delivery hits the noclobber refusal, re-probes — the winner's opener is in
-// the listing now — and lands as an ordinary continuation of the winner's
-// dispatch. No message is overwritten, no ID is double-assigned.
-func TestSendRetriesOnceOnMintCollision(t *testing.T) {
+// delivery hits the noclobber refusal and re-probes, and the winner's opener is
+// in the listing now. The loser meant to open a dispatch, so it is refused
+// rather than merged into the winner's: nothing is overwritten, and no step
+// lands under another step's id.
+func TestALostMintRaceIsRefusedNotMerged(t *testing.T) {
 	a := settledAgent() // node-free: this send will mint d001
 	w := &fakeWorld{
 		agents:  map[string]*fakeAgent{"dev-box": a},
@@ -286,15 +287,36 @@ func TestSendRetriesOnceOnMintCollision(t *testing.T) {
 	installFakeWorld(t, w)
 	env := waitEnv(t, w)
 
-	res, err := sendBody(env, "dev", "the loser's task\n")
+	_, err := sendBody(env, "dev", "the loser's task\n", false)
+	if err == nil || !strings.Contains(err.Error(), "a concurrent send opened d001 on dev first") ||
+		!strings.Contains(err.Error(), "Nothing was delivered") {
+		t.Fatalf("a lost mint race must be refused, naming the winner's dispatch: %v", err)
+	}
+	if len(w.delivered) != 0 || len(w.started) != 0 {
+		t.Fatalf("a refused send must deliver nothing and start nothing: %+v %v", w.delivered, w.started)
+	}
+}
+
+// A continuation that loses its message name to a concurrent one re-probes and
+// takes the next name. No message is overwritten.
+func TestAContinuationRetriesOnceOnNameCollision(t *testing.T) {
+	a := settledAgent("d001.md")
+	w := &fakeWorld{
+		agents:  map[string]*fakeAgent{"dev-box": a},
+		collide: map[string]bool{"d001.001.md": true},
+	}
+	installFakeWorld(t, w)
+	env := waitEnv(t, w)
+
+	res, err := sendBody(env, "dev", "the loser's note\n", true)
 	if err != nil {
-		t.Fatalf("a lost mint race must be retried, not failed: %v", err)
+		t.Fatalf("a lost name race must be retried, not failed: %v", err)
 	}
 	if res.ID != "d001" || res.Opened || !res.Raced {
-		t.Fatalf("the retry must reclassify into the winner's open dispatch and record the race: %+v", res)
+		t.Fatalf("the retry must stay in d001 and record the race: %+v", res)
 	}
-	if len(w.delivered) != 1 || w.delivered[0].name != "d001.001.md" || w.delivered[0].body != "the loser's task\n" {
-		t.Fatalf("the loser's body must land as a continuation: %+v", w.delivered)
+	if len(w.delivered) != 1 || w.delivered[0].name != "d001.002.md" || w.delivered[0].body != "the loser's note\n" {
+		t.Fatalf("the loser's body must land as the next continuation: %+v", w.delivered)
 	}
 	if len(w.started) != 1 || !strings.HasSuffix(w.started[0], " d001") {
 		t.Fatalf("the turn must start on the dispatch actually delivered into: %v", w.started)
@@ -313,7 +335,7 @@ func TestSendSkipsTurnStartWhenTurnIsRunning(t *testing.T) {
 	installFakeWorld(t, w)
 	env := waitEnv(t, w)
 
-	res, err := sendBody(env, "dev", "midstream note\n")
+	res, err := sendBody(env, "dev", "midstream note\n", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,7 +352,7 @@ func TestSendSkipsTurnStartWhenTurnIsRunning(t *testing.T) {
 	// A NEW dispatch always starts its turn, even if a stale driver lingers
 	// from the previous one — fresh work must not strand behind the ladder.
 	a.replies["d001"] = true
-	res, err = sendBody(env, "dev", "next task\n")
+	res, err = sendBody(env, "dev", "next task\n", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,21 +364,21 @@ func TestSendSkipsTurnStartWhenTurnIsRunning(t *testing.T) {
 // The send output must name both repairs so an audit can tell them from a
 // deliberate continuation.
 func TestSendOutputNamesRaceAndSkippedStart(t *testing.T) {
-	a := settledAgent()
-	a.drivers = 1 // the winner's turn is running by the time the loser retries
+	a := settledAgent("d001.md")
+	a.drivers = 1 // the turn is running while the continuation lands
 	w := &fakeWorld{
 		agents:  map[string]*fakeAgent{"dev-box": a},
-		collide: map[string]bool{"d001.md": true},
+		collide: map[string]bool{"d001.001.md": true},
 	}
 	installFakeWorld(t, w)
 	env := waitEnv(t, w)
 
-	out, err := captureStdout(t, func() error { return cmdSend(env, []string{"dev", "the losing task"}) })
+	out, err := captureStdout(t, func() error { return cmdSend(env, []string{"dev", "--continue", "the losing note"}) })
 	if err != nil {
 		t.Fatalf("send: %v\n%s", err, out)
 	}
 	if !strings.Contains(out, "dev/d001 continued") ||
-		!strings.Contains(out, "lost a mint race") ||
+		!strings.Contains(out, "took the message name first") ||
 		!strings.Contains(out, "a turn is already running") {
 		t.Fatalf("the output must name the race and the skipped start:\n%s", out)
 	}
@@ -368,17 +390,70 @@ func TestSendOutputNamesRaceAndSkippedStart(t *testing.T) {
 // A second collision in a row is not retried — one retry closes the two-
 // parallel-tool-calls race; anything past it is a real fault to surface.
 func TestSendGivesUpAfterOneCollisionRetry(t *testing.T) {
-	a := settledAgent()
+	a := settledAgent("d001.md")
 	w := &fakeWorld{
 		agents:  map[string]*fakeAgent{"dev-box": a},
-		collide: map[string]bool{"d001.md": true, "d001.001.md": true},
+		collide: map[string]bool{"d001.001.md": true, "d001.002.md": true},
 	}
 	installFakeWorld(t, w)
 	env := waitEnv(t, w)
 
-	if _, err := sendBody(env, "dev", "task\n"); err == nil ||
-		!strings.Contains(err.Error(), "deliver d001.001.md") {
+	if _, err := sendBody(env, "dev", "note\n", true); err == nil ||
+		!strings.Contains(err.Error(), "deliver d001.002.md") {
 		t.Fatalf("a second collision must surface as an error: %v", err)
+	}
+}
+
+// A send to a seat whose dispatch is still open is refused unless it says
+// --continue. Seen live: a task meant as a new dispatch joined the one the seat
+// was working on, and carried that dispatch's id from then on.
+func TestSendRefusesToContinueAnOpenDispatchUnasked(t *testing.T) {
+	a := settledAgent("d001.md")
+	a.drivers = 1
+	w := &fakeWorld{agents: map[string]*fakeAgent{"dev-box": a}}
+	installFakeWorld(t, w)
+	env := waitEnv(t, w)
+
+	out, err := captureStdout(t, func() error { return cmdSend(env, []string{"dev", "approved: record it"}) })
+	if err == nil {
+		t.Fatalf("a send into an open dispatch without --continue must be refused:\n%s", out)
+	}
+	for _, want := range []string{"dev is node-working on d001, which is still open", "would continue d001", "Nothing was delivered", "--continue"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal must say %q: %v", want, err)
+		}
+	}
+	if len(w.delivered) != 0 || len(w.started) != 0 {
+		t.Fatalf("a refused send must deliver nothing and start nothing: %+v %v", w.delivered, w.started)
+	}
+}
+
+// --continue is refused once the seat has replied, because the message would
+// open a new dispatch. Seen live: a ruling meant for qa's d005 opened d006, qa
+// having replied 106 seconds earlier, and d006 was then read as unanswered.
+func TestSendRefusesToOpenWhenAskedToContinue(t *testing.T) {
+	a := settledAgent("d001.md")
+	a.replies["d001"] = true
+	w := &fakeWorld{agents: map[string]*fakeAgent{"dev-box": a}}
+	installFakeWorld(t, w)
+	env := waitEnv(t, w)
+
+	_, err := captureStdout(t, func() error { return cmdSend(env, []string{"dev", "--continue", "one more thing"}) })
+	if err == nil {
+		t.Fatal("a --continue into a closed dispatch must be refused")
+	}
+	for _, want := range []string{"dev replied to d001", "would open d002, not continue d001", "Nothing was delivered", "read dev"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal must say %q: %v", want, err)
+		}
+	}
+	if len(w.delivered) != 0 {
+		t.Fatalf("a refused send must deliver nothing: %+v", w.delivered)
+	}
+
+	w.agents["dev-box"] = settledAgent()
+	if _, err := sendBody(env, "dev", "one more thing", true); err == nil || !strings.Contains(err.Error(), "has no dispatch to continue") {
+		t.Fatalf("a --continue to a seat with no dispatch must be refused: %v", err)
 	}
 }
 

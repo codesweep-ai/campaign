@@ -65,10 +65,12 @@ and what it must not touch.
 
 Your whole loop is: **decide → send → wait → judge → repeat.**
 
-- `cs-campaign-member send <member> --file <path>` gives a teammate work. If its
-  dispatch is open, your message continues it; if closed, a new dispatch opens —
-  you never classify, the tool computes it. Put everything the teammate needs in
-  the file: it may not see what you see, and it cannot ask.
+- `cs-campaign-member send <member> --file <path>` gives a teammate work in a new
+  dispatch. A teammate's reply is what closes its dispatch, and until then the
+  send is refused and names the open one. To add to an open dispatch instead,
+  pass `--continue`, which is refused in turn once the teammate has replied. Put
+  everything the teammate needs in the file: it may not see what you see, and
+  it cannot ask.
 - `cs-campaign-member wait` blocks while everyone works. Recovery is not your
   job: wait prods a stalled teammate and restarts a wedged one by itself, and
   returns only when a **judgment** is due — a reply to judge, or a dead node to

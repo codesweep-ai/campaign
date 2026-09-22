@@ -596,7 +596,7 @@ help.
 |---|---|
 | `list` | The roster: every teammate, its CLI, its repositories. |
 | `observe` | Every agent's state, computed now, in one snapshot. |
-| `send <agent> --file F\|-` | Dispatch or continue. Opens if closed, continues if open. |
+| `send <agent> --file F\|- [--continue]` | Opens a new dispatch. With `--continue`, adds to the open one instead. |
 | `read <agent> [path]` | The agent's reply to its current dispatch, or a file from its output channel. |
 | `restart <agent>` | Drops its session and re-anchors it against its open dispatch. |
 | `accept <agent>` | Records its current reply as accepted, which frees the agent. |
@@ -604,6 +604,12 @@ help.
 | `wait [--for SECS]` | Blocks. Recovery runs itself. Returns when a judgement is due — a reply to judge, or a node gone stuck — or when the chunk elapses: `--for` seconds, 240 by default. A free teammate is not a judgement; it is named on the elapsed line instead. |
 | `fetch <agent> [repo]` | Fetches its branch to `refs/remotes/campaign/<agent>/<repo>`. |
 | `push <agent> [repo]` | Pushes HEAD to it at `refs/campaign/orchestrator`. |
+
+`send` computes where the message lands, and refuses a send that would land somewhere its sender
+did not say. Without `--continue`, a send to an agent whose dispatch is open is refused, naming the
+dispatch and the agent's state. With it, a send to an agent that has replied is refused, naming the
+reply that closed the dispatch. Nothing is delivered on a refusal, and the exit status is 1. An
+approval therefore always travels under the dispatch its sender meant.
 
 A dispatcher verb run on an agent is refused, naming the role. Invoked under a `cs-<cli>-remote`
 name, the same binary is the family guard: a wrong-family call against a member is refused with the

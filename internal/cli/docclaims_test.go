@@ -368,3 +368,20 @@ func TestTheDocumentedMissionDeadlineIsWhatTheMissionSays(t *testing.T) {
 		t.Errorf("a resumed create's mission does not say what MANUAL.md promises:\n%s", mission)
 	}
 }
+
+// MANUAL.md: "Without `--continue`, a send to an agent whose dispatch is open
+// is refused", and "Nothing is delivered on a refusal". The guest binary's own
+// tests, TestSendRefusesToContinueAnOpenDispatchUnasked and
+// TestSendRefusesToOpenWhenAskedToContinue, hold the behaviour. This holds the
+// sentences, so neither side moves without the other being looked at.
+func TestTheDocumentedSendRefusalNamesTheFlag(t *testing.T) {
+	for _, claim := range []string{
+		"Without `--continue`, a send to an agent whose dispatch is open is refused",
+		"With it, a send to an agent that has replied is refused",
+		"Nothing is delivered on a refusal",
+	} {
+		if !strings.Contains(campaign.ManualMD, claim) {
+			t.Errorf("MANUAL.md no longer states %q; this test names the sentence it keeps true", claim)
+		}
+	}
+}

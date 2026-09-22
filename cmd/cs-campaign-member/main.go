@@ -107,7 +107,8 @@ Every member:
 Orchestrator only:
   list                          the roster: every teammate, its CLI, repos
   observe                       every agent's state, computed now, in one snapshot
-  send <agent> --file F|-       dispatch or continue: opens if closed, continues if open — you never classify
+  send <agent> --file F|-       open a new dispatch; refused while the agent's dispatch is open
+      --continue                add to the agent's open dispatch instead; refused once it has replied
   read <agent> [path]           the agent's reply to its current dispatch, or a file from its output channel
   restart <agent>               drop its session and re-anchor it against its open dispatch
   accept <agent>                record its current reply as accepted (frees the agent)

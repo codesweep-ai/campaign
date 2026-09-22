@@ -295,7 +295,15 @@ type sendResult struct {
 // sendBody delivers one message to one agent: opens if closed, continues if
 // open — the classification is computed, never chosen. A restart re-anchor is
 // not sent from here; deliverPrepared marks that one.
-func sendBody(env *envState, name, body string) (sendResult, error) {
+//
+// The sender says which of the two it expects, cont being a continuation, and
+// a send the computation would land on the other side is refused with nothing
+// delivered. Only the word "continued" or "opened", printed after delivery,
+// used to tell the two apart. Seen live: a task meant as a new dispatch joined
+// the one a seat was still working on, and a ruling meant for a dispatch
+// opened a new one because the seat had replied a minute before. The id is the
+// token an approval cites, so either way a step carried the wrong one.
+func sendBody(env *envState, name, body string, cont bool) (sendResult, error) {
 	var res sendResult
 	rec, err := agentRec(env, name)
 	if err != nil {
@@ -309,16 +317,11 @@ func sendBody(env *envState, name, body string) (sendResult, error) {
 		if failed {
 			return res, fmt.Errorf("cannot reach %s to deliver", name)
 		}
-		d := protocol.Current(facts.Msgs)
-		res.Opened = false
-		switch {
-		case d == nil || facts.Replies[d.ID]:
-			if res.ID, err = protocol.NextDispatchID(facts.Msgs); err != nil {
-				return res, err
-			}
-			res.Opened = true
-		default:
-			res.ID = d.ID
+		if res.ID, res.Opened, err = protocol.SendTarget(facts); err != nil {
+			return res, err
+		}
+		if res.Opened == cont {
+			return res, unexpectedSend(env, name, facts, res.ID, cont, res.Raced)
 		}
 		msgName := protocol.NextMsgName(facts.Msgs, res.ID, false)
 		msgPath := protocol.InputDir + "/" + msgName
@@ -327,9 +330,8 @@ func sendBody(env *envState, name, body string) (sendResult, error) {
 			// A collision means a concurrent send claimed the name between our
 			// listing and our write (the ID-mint TOCTOU). The winner's message
 			// is in the listing now, so one re-probe reclassifies this send the
-			// ordinary way — usually into a continuation of the winner's
-			// dispatch, which is exactly what the one rule says a send while
-			// open is.
+			// ordinary way. A continuation takes the next name; a send meant to
+			// open a dispatch finds the winner's open and is refused above.
 			if protocol.IsDeliveryCollision(out) && attempt == 0 {
 				res.Raced = true
 				continue
@@ -352,6 +354,25 @@ func sendBody(env *envState, name, body string) (sendResult, error) {
 		res.Started = true
 		return res, nil
 	}
+}
+
+// unexpectedSend refuses a send that would land on the other side of the one
+// rule from where its sender expects. Nothing has been delivered, and the
+// message says where the send would have gone and what to do instead.
+func unexpectedSend(env *envState, name string, facts protocol.Facts, id string, cont, raced bool) error {
+	if !cont {
+		why := fmt.Sprintf("a concurrent send opened %s on %s first", id, name)
+		if !raced {
+			o := protocol.Compute(facts, false, protocol.Blind{}, protocol.AcceptedFor(env.logEntries(), name), env.policy(), clockNow().Unix())
+			why = fmt.Sprintf("%s is %s on %s, which is still open", name, o.State, id)
+		}
+		return fmt.Errorf("%s: this message would continue %s, not open a new dispatch. Nothing was delivered. Wait for its reply, or pass --continue to add this message to %s", why, id, id)
+	}
+	d := protocol.Current(facts.Msgs)
+	if d == nil {
+		return fmt.Errorf("%s has no dispatch to continue: this message would open %s. Nothing was delivered. Send it without --continue to open %s", name, id, id)
+	}
+	return fmt.Errorf("%s replied to %s, which closed it: this message would open %s, not continue %s. Nothing was delivered. Read the reply with `read %s`, then send without --continue to open a new dispatch", name, d.ID, id, d.ID, name)
 }
 
 // startTurn starts (or resumes) the agent's turn on the delivered message.
@@ -433,9 +454,18 @@ func lockSession(home, session string) (func(), error) {
 }
 
 func cmdSend(env *envState, args []string) error {
-	body, rest, err := readBody(args)
+	body, flagged, err := readBody(args)
 	if err != nil {
 		return err
+	}
+	cont := false
+	var rest []string
+	for _, a := range flagged {
+		if a == "--continue" {
+			cont = true
+			continue
+		}
+		rest = append(rest, a)
 	}
 	if len(rest) < 1 {
 		return errors.New("send needs an agent name")
@@ -444,7 +474,7 @@ func cmdSend(env *envState, args []string) error {
 		body = strings.Join(rest[1:], " ") // one-liner convenience
 		rest = rest[:1]
 	}
-	res, err := sendBody(env, rest[0], body)
+	res, err := sendBody(env, rest[0], body, cont)
 	if err != nil {
 		return err
 	}
@@ -455,7 +485,7 @@ func cmdSend(env *envState, args []string) error {
 		line += " continued"
 	}
 	if res.Raced {
-		line += " (lost a mint race — delivered into the winner's open dispatch)"
+		line += " (a concurrent send took the message name first — delivered as the next message)"
 	}
 	if !res.Opened && !res.Started {
 		line += "; a turn is already running — it, or the wait ladder, picks this up"
