@@ -148,10 +148,11 @@ export function kindOf(e: IndexedEvent): Kind {
 
 /* Log-derived marks are circles; squares are reserved for channel artifacts.
    Accept is the hollow circle. */
+/** Every protocol and log mark is round, so it reads apart from the trace
+ *  steps, which are columns in the same colours. An accept is hollow. */
 export function shapeOf(e: IndexedEvent): EventShape {
   if (e.type === "accept") return "hollow-circle";
-  if (e.type === "plan" || e.type === "assessment") return "circle";
-  return "square";
+  return "circle";
 }
 
 // Blind mode ("show orchestrator log" off) removes every mark whose only

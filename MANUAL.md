@@ -623,21 +623,23 @@ of time and not an event. Zoom is by preset: the run, an hour, fifteen minutes o
 selected dispatch can be zoomed to. A horizontal swipe scrolls the lanes sideways, and the
 vertical wheel scrolls the page. The overview above the lanes, under the zoom row, shows the whole
 run and moves the view. Each dispatch is a box from
-its opening to its reply. Squares are channel artifacts:
-the facts any observer can verify from the files alone. Every mark's colour is a design token
-from one palette map (`dispatch-viewer/app/src/model.ts`):
+its opening to its reply, with the opening's dot just before it and the reply's just after. The
+protocol's marks and the log's claims are dots, so they read apart from the trace steps, which are
+columns in the same colours. Channel artifacts are the facts any observer can verify from the
+files alone. Every mark's colour is a design token from one palette map
+(`dispatch-viewer/app/src/model.ts`):
 
 | Mark | Token | Meaning |
 |---|---|---|
-| square | `--color-neutral` | dispatch open |
-| square | `--color-warning` | continue |
-| square | `--color-cat-8-mid` | restart re-anchor |
-| square | `--color-success` | reply, phase `done` |
-| square | `--color-error` | reply, phase `blocked` or `needs-input` |
-| square, haloed | `--color-link` with a `--color-accent-bg` halo | the mission verdict; `--color-severe` with a `--color-severe-bg` halo when the campaign was not met |
-| hollow circle | `--color-accent` | accept (log claim) |
-| circle | `--color-cat-1` | plan (log claim) |
-| circle | `--color-cat-4` | assessment (log claim) |
+| dot | `--color-neutral` | dispatch open |
+| dot | `--color-warning` | continue |
+| dot | `--color-cat-8-mid` | restart re-anchor |
+| dot | `--color-success` | reply, phase `done` |
+| dot | `--color-error` | reply, phase `blocked` or `needs-input` |
+| dot, haloed | `--color-link` with a `--color-accent-bg` halo | the mission verdict; `--color-severe` with a `--color-severe-bg` halo when the campaign was not met |
+| hollow dot | `--color-accent` | accept (log claim) |
+| dot | `--color-cat-1` | plan (log claim) |
+| dot | `--color-cat-4` | assessment (log claim) |
 
 With traces, each member's steps are drawn inside its boxes in the tracer's own colours. Inside
 a box every step is a column of one width, and its bar rises by the log of the time it took,

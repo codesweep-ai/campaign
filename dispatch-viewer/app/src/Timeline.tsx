@@ -265,6 +265,8 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
           label: typeLabel(e),
           at: fmtT(e.at),
           position: pos(e.at),
+          // An opening sits just before its box, as the reply sits just after.
+          anchor: e.type === "open" ? "end" : undefined,
           halo: kind === "verdict-ok" || kind === "verdict-bad" ? verdictHalo[kind] : undefined,
         };
       });
