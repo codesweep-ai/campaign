@@ -413,7 +413,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
 
   // Opening the page is the run preset.
   useEffect(() => {
-    setView({ start: 0, end: extent });
+    setView({ start: 0, end: runEnd(extent) });
   }, [extent]);
 
   const linked = useMemo(() => (link >= 0 ? new Set([link]) : new Set<number>()), [link]);
@@ -455,7 +455,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
       setPreset(value);
       const p = PRESETS.find((p) => p.value === value);
       if (!p || !p.span) {
-        setView({ start: 0, end: extent });
+        setView({ start: 0, end: runEnd(extent) });
         return;
       }
       const e = sel >= 0 ? events[sel] : undefined;
@@ -582,6 +582,11 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
   );
 }
 
+/** The run view's end: the last position plus two percent, so the last mark,
+ *  which draws at the mark size to the right of its position, stays inside
+ *  the viewport instead of hanging over its edge. */
+const runEnd = (extent: number): number => extent * 1.02;
+
 /** A step that sits at its real time: an anchor, a turn start or a turn end. */
 function isPin(s: Step, anchored: boolean): boolean {
   return anchored || s.kind === "user" || !!s.turnEnd;
@@ -620,9 +625,12 @@ function Ruler({ ctx }: { ctx: EventLanesRulerContext }) {
   const p = ctx.position;
   if (!p) return <div className="ruler" style={{ width: ctx.width + "px" }} />;
   const step = STEPS.find((s) => s * p.scale >= 80) ?? STEPS[STEPS.length - 1];
+  // Ticks stay inside the axis. A tick placed past its end widened the
+  // scroller's content, and every scroll into that room placed another, so
+  // a four-hour run once scrolled on to nineteen hours.
   const ticks: number[] = [];
   const first = Math.max(0, Math.floor(p.visibleStart / step) * step);
-  for (let t = first; t <= p.visibleEnd + step; t += step) ticks.push(t);
+  for (let t = first; t <= Math.min(p.visibleEnd + step, p.end); t += step) ticks.push(t);
   return (
     <div className="ruler" style={{ width: ctx.width + "px" }} data-axis-end={Math.round(p.end)} data-axis-origin={Math.round(p.origin)}>
       {ticks.map((t) => (
