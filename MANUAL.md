@@ -260,8 +260,12 @@ files absent or names the wrong branch is not asked again, because that answer i
 
 A readback is bounded at 15 minutes per member. That is generous for a healthy team, and under
 heavy host load a member's first turn can miss it. The failure names the member and is not a dead
-end: `create` is checkpoint-resumable, so running the same `create` again continues the still-open
-readback dispatch rather than starting over.
+end: `create` is checkpoint-resumable, so running the same `create` again carries on where it
+stopped. A member whose readback passed is not asked again, as long as its seeded files are
+unchanged, and `create` prints `confirmed its briefing in d001 on an earlier create`. A member that
+never answered has its readback continued. A member whose answer failed, or whose seeded files
+changed, is asked in a new dispatch. Either way the message names the real dispatch and says why
+it came again.
 
 `--accept-upstream-change` proceeds past an upstream deviation and records it on the campaign.
 
@@ -1074,7 +1078,7 @@ OpenCode signs in with a provider key rather than with a login of its own. Grant
 **`readback FAILED — N member(s) could not confirm their briefing; do not dispatch`**
 
 One or more members did not restate their job. The line names each one. Fix the brief, or re-run
-`create`, which continues the still-open readback dispatch. A member that cannot reach its model
+`create`, which asks again only the members that still owe a readback. A member that cannot reach its model
 fails here too. Check the credential its profile named: a stale host login and a missing
 `~/.cs-keys` entry both look like silence.
 

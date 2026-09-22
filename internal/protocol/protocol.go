@@ -152,6 +152,17 @@ func NextDispatchID(msgs []Msg) (string, error) {
 	return fmt.Sprintf("d%03d", max+1), nil
 }
 
+// SendTarget is the one rule of PROTOCOL.md §3, computed: the dispatch a send
+// lands in, and whether the send opens it. An open dispatch is continued; a
+// closed one, or none, means a new dispatch.
+func SendTarget(facts Facts) (id string, opens bool, err error) {
+	if d := Current(facts.Msgs); d != nil && !facts.Replies[d.ID] {
+		return d.ID, false, nil
+	}
+	id, err = NextDispatchID(facts.Msgs)
+	return id, true, err
+}
+
 // NextMsgName names the file the next message of dispatch id gets: the opener
 // when the dispatch has no messages, else the next continuation (or restart
 // re-anchor when restart is set).

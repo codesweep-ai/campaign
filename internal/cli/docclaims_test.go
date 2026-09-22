@@ -332,3 +332,22 @@ func TestTheProbeAndTheAuditAgreeOnWhereARecordLives(t *testing.T) {
 		}
 	}
 }
+
+// MANUAL.md: "A member whose readback passed is not asked again, as long as its
+// seeded files are unchanged, and `create` prints `confirmed its briefing in
+// d001 on an earlier create`." An operator resuming a create reads that line to
+// know nobody was briefed twice.
+func TestTheDocumentedResumedReadbackLineIsWhatCreatePrints(t *testing.T) {
+	claim := "confirmed its briefing in d001 on an earlier create"
+	if !strings.Contains(campaign.ManualMD, "A member whose readback passed is not asked again") || !strings.Contains(campaign.ManualMD, claim) {
+		t.Errorf("MANUAL.md no longer states what a resumed create does with a readback that passed")
+	}
+	a, state := readbackMemberApp(t, "unused")
+	run, member := readbackCampaign()
+	earlierReadback(t, state, true, goodReadback)
+	member.Readback = recorded(t, "")
+	var out strings.Builder
+	if detail, _ := a.readbackOne(t.Context(), &out, run, member); detail != "" || !strings.Contains(out.String(), claim) {
+		t.Errorf("a resumed create printed %q (detail %q); MANUAL.md promises %q", out.String(), detail, claim)
+	}
+}

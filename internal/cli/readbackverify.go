@@ -15,11 +15,17 @@ import (
 
 type readbackReport = model.Readback
 
-// readbackPrompt is dispatch d001, every member, every campaign. The answer
-// travels as an ordinary reply — the member's first use of the one verb its
-// whole campaign depends on, which is itself part of the check.
-func readbackPrompt(member model.Member) string {
-	return fmt.Sprintf(`This is dispatch d001: confirm your briefing before any work is assigned.
+// readbackPrompt is the readback, dispatch d001 on every member of a fresh
+// create. The answer travels as an ordinary reply — the member's first use of
+// the one verb its whole campaign depends on, which is itself part of the
+// check. id is the dispatch it lands in, and resumed, when set, says why a
+// resumed create is asking again.
+func readbackPrompt(member model.Member, id, resumed string) string {
+	head := fmt.Sprintf("This is dispatch %s: confirm your briefing before any work is assigned.", id)
+	if resumed != "" {
+		head += "\n\n" + resumed
+	}
+	return fmt.Sprintf(`%s
 
 1. Run: cs-campaign-member check-inputs
    It prints anything you were promised that is absent.
@@ -31,7 +37,7 @@ func readbackPrompt(member model.Member) string {
 4. Reply with it: cs-campaign-member reply --file /tmp/readback.json
 
 Do not perform any of the work yet. Your reply closes this dispatch.`,
-		guestMemberJSON, member.Name, member.Role)
+		head, guestMemberJSON, member.Name, member.Role)
 }
 
 // readbackReworkPrompt asks for the readback again, in the host's words and
