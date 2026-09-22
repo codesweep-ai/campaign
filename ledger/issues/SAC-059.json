@@ -1,0 +1,22 @@
+{
+  "id": "SAC-059",
+  "title": "The dispatch viewer treats only d001 as a readback, so a resumed create's later readback reads as orchestrator work",
+  "type": "defect",
+  "severity": "low",
+  "status": "in-progress",
+  "foundBy": "user report (host), after SAC-055's fix showed that a resumed create can put a member's readback past d001: \"fix the dispatch viewer (frames.go) so it no longer assumes the readback is always d001 when a create was resumed\"",
+  "opened": "2026-09-22",
+  "resolved": null,
+  "stint": "pilot2-tier1",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "**What happens.** `cs-dispatch-viewer` decides which dispatches are create-time readbacks partly by the literal id `d001`. A resumed create, or a readback asked for a second time, puts a member's readback at `d002` or later. That breaks two findings.\n\n- `accept-of-readback` fires only for `d001`. A log that accepts `dev/d002`, where `d002` is dev's readback, reports nothing.\n- `reply-not-accepted` falls back to `d001` alone when the archive's message times are clobbered. dev's `d002` readback is then reported as orchestrator work nobody accepted. It is a warning when later work followed and severe when it is the node's last dispatch, as in a failed create.\n\n**How to reproduce.** Build an archive in which dev's `d001` readback failed, a resumed create asked again in `d002`, and the mission then sent `d003`. Load it with `frames.Load`. With real message times, an accept of `dev/d002` yields no finding. With clobbered times, `dev/d002` yields `reply-not-accepted`.\n\n**Why it matters.** The viewer is how a run is audited afterwards. A readback shown as unjudged work sends a reader looking for a failure that did not happen. An acceptance of a readback shown as normal hides an orchestrator judging what the host judges.\n\n**Where it is.** The two checks are `buildEventsAndSpans` and `check`, in `dispatch-viewer/internal/frames/frames.go`. The finding's definition in `issueDefs` and MANUAL.md also names `d001`.",
+  "notes": [],
+  "links": [
+    "SAC-055"
+  ]
+}
