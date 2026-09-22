@@ -1,0 +1,22 @@
+{
+  "id": "SAC-049",
+  "title": "The dispatch page cannot be deep-linked",
+  "type": "improvement",
+  "severity": "med",
+  "status": "closed",
+  "foundBy": "repository owner, reading the served page: \"can we add hashtags of some sort so that we can deep link to the member, trace, element etc?\"",
+  "opened": "2026-09-22",
+  "resolved": "2026-09-22",
+  "stint": "2026-09-22 deep links",
+  "evidence": {
+    "commits": [
+      "75435ee"
+    ],
+    "integrated": [],
+    "verified": "The forms were driven in headless Chromium on the run14-1 site. Opened at `#m/checker/d003`, the inspector shows checker's open of d003 and the view is 1:47 to 2:07, the box zoomed to. At `#m/modeller` it shows modeller's open of d001 at the run view, and at `#e/12` the reply of surveyor-domain/d001. `#nonsense` selects nothing. From a clean load, Home writes `#m/orchestrator/d001`, ArrowRight writes `#m/checker/d001`, and Escape clears the address. Setting the hash to `#m/translator/d002` on the live page selects it and zooms to 2:11 to 3:20. The fixture suite passes 20 of 20 rows and 9 of 9 targets on the page."
+  },
+  "resolution": "The address names the selection. `#m/<member>` picks the member's first dispatch. `#m/<member>/<dNNN>` picks that dispatch's opening and zooms to it. `#e/<n>` names any event or step by the index this page gives it. The page reads it on load and on every change, and writes the most specific form back with `replaceState` as the selection moves, so no history entries pile up. The manual's Addresses paragraph says so.",
+  "details": "The page held its selection and its view in React state and nothing else. There was no way to hand someone a member, a dispatch or a step: every address opened the run view with nothing selected. The tracer's pages already answer to `#ev-<n>`, and the inspector links into them that way, so the dispatch page was the one place a reader could not point at.\n\nWanted: a form for a member, one for a dispatch, and one for any event or step. The page should read it on load and whenever it changes, and write it back as the selection moves, so the address bar is always worth copying.",
+  "notes": [],
+  "links": []
+}
