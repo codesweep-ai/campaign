@@ -55,9 +55,45 @@
    own className — never a cs-component-* class. */
 [data-event-lane-label].orch { color: var(--color-accent); font-weight: var(--font-weight-semibold); }
 [data-event-lane-label].loglane { color: var(--muted); font-style: italic; }
+[data-event-lane-label].waitlane { color: var(--muted); }
+[data-event-lane-label].forklane { color: var(--muted); font-size: var(--font-size-xs); padding-left: var(--space-3); }
+#tl [data-event-lane-label] { font-size: var(--font-size-sm); }
+
+/* The gutter: wide enough for a member's name, one band per member with an
+   alternating shade instead of a line under every row, and the selected
+   member's band in the accent shade. The overview sits above the lanes, under
+   the zoom row, so the thing that moves the view is next to the controls
+   that set it. */
+#tl.cs-component-event-lanes-root { --event-lanes-gutter: 11rem; display: flex; flex-direction: column; }
+#tl .cs-component-event-lanes-overview-row { order: -1; margin: 0 0 var(--space-1); }
+#tl [data-event-lane-label].member, #tl [data-event-lane-label].gaplane { border-bottom: 0; }
+#tl [data-event-lane-label].member.odd { background: var(--color-bg-muted); }
+#tl .cs-component-event-lanes-scroller { background-image: var(--tl-bands); background-repeat: no-repeat; background-size: 100% 100%; }
+/* No rule between the gutter and the lanes: a member's band runs from its name
+   to the end of the axis in one piece. */
+/* The gutter sits on the card's surface, as the lanes do: the band tokens are
+   translucent, so the two sides match only over the same ground. */
+#tl .cs-component-event-lanes-labels { border-top: 0; border-bottom: 0; border-left: 0; background: transparent; }
+/* Breathing room before the axis: a margin, not a padding, and the same on
+   the overview, so the two keep one zero and one width. */
+#tl .cs-component-event-lanes-scroller { border-left: 0; border-top: 0; border-bottom: 0; margin-left: var(--space-3); }
+#tl .cs-component-event-lanes-overview { margin-left: var(--space-3); }
+#tl .cs-component-event-lanes-ruler-label { border-bottom: 0; }
+#tl [data-event-lane-label].member.even { background: transparent; }
+/* The selected member's band, last so it wins over the alternating shades. */
+#tl [data-event-lane-label].member.selnode { background: var(--color-accent-bg); }
 
 .ruler { position: relative; height: 100%; }
 .ruler .tick { position: absolute; top: var(--space-0-5); width: var(--space-0-5); height: var(--space-2); background: var(--muted); opacity: .6; }
+.ruler .tickgrp { position: absolute; top: 0; height: 100%; }
+.ruler .tickgrp .lab { left: var(--space-1); right: auto; white-space: nowrap; }
+.kv.anchors { border-top: 1px dashed var(--border); padding-top: var(--space-2); }
+.zoombar { display: flex; align-items: center; gap: var(--space-2); padding: 0 0 var(--space-2); font-size: var(--font-size-xs); color: var(--muted); }
+.zoomlabel { text-transform: uppercase; letter-spacing: var(--letter-spacing-wide); font-weight: var(--font-weight-semibold); }
+.zoomhint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kv .who { color: var(--muted); }
+[data-pointer] .cs-component-event-lanes-scroller:focus-visible { box-shadow: none; }
+.linkish { background: none; border: 0; padding: 0; color: var(--color-link); cursor: pointer; font: inherit; text-decoration: underline; }
 .ruler .lab {
   position: absolute; top: var(--space-3); font-size: var(--font-size-chart-axis); color: var(--muted);
   font-family: var(--font-family-mono); white-space: nowrap;

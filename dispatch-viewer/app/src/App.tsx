@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell, Card, Footer, Header, PulseBadge, StatusBadge, ThemeToggle } from "@codesweep-ai/ui";
 import type { IndexedEvent, LogEntry, Run } from "./types";
 import { dur, fmtT } from "./format";
-import { LOGKINDS, kindOf } from "./model";
+import { LOGKINDS, kindOf, stepMarks, type StepMark } from "./model";
 import { Timeline, Legend } from "./Timeline";
 import { Issues } from "./Issues";
 import { LogPane } from "./LogPane";
@@ -27,11 +27,19 @@ export default function App() {
   const [logSel, setLogSel] = useState<LogEntry | null>(null);
   const [docMode, setDocMode] = useState<DocMode>("rendered");
   const [showLog, setShowLog] = useState(false);
+  const traced = !!(run && run.traces && run.traces.sessions.length);
+  const [showDetail, setShowDetail] = useState(true);
+  const [showWaits, setShowWaits] = useState(true);
+  const [errorsOnly, setErrorsOnly] = useState(false);
 
   const events: IndexedEvent[] = useMemo(
     () => (run ? run.events.map((e, i) => ({ ...e, i })) : []),
     [run],
   );
+  // Trace marks are numbered after the run's events, so one selection index
+  // names either an event or a step.
+  const marks: StepMark[] = useMemo(() => (run ? stepMarks(run, run.events.length) : []), [run]);
+  const markOf = useMemo(() => new Map(marks.map((m) => [m.i, m])), [marks]);
 
   useEffect(() => {
     document.body.classList.toggle("blind", !showLog);
@@ -94,6 +102,9 @@ export default function App() {
     const onKey = (ev: KeyboardEvent) => {
       if (ev.key === "Escape") {
         select(-1);
+        // The timeline's listbox keeps focus after a click, and with it the
+        // focus ring; Escape hands focus back to the page.
+        (document.activeElement as HTMLElement | null)?.blur?.();
         return;
       }
       if ((ev.target as HTMLElement | null)?.closest?.('[role="radiogroup"]')) return;
@@ -188,6 +199,38 @@ export default function App() {
                       />{" "}
                       show orchestrator log
                     </label>
+                    {traced ? (
+                      <>
+                        <label className="toggle">
+                          <input
+                            type="checkbox"
+                            id="showdetail"
+                            checked={showDetail}
+                            onChange={(e) => setShowDetail(e.target.checked)}
+                          />{" "}
+                          trace steps
+                        </label>
+                        <label className="toggle">
+                          <input
+                            type="checkbox"
+                            id="showwaits"
+                            checked={showWaits}
+                            disabled={!showDetail}
+                            onChange={(e) => setShowWaits(e.target.checked)}
+                          />{" "}
+                          waiting
+                        </label>
+                      </>
+                    ) : null}
+                    <label className="toggle">
+                      <input
+                        type="checkbox"
+                        id="errorsonly"
+                        checked={errorsOnly}
+                        onChange={(e) => setErrorsOnly(e.target.checked)}
+                      />{" "}
+                      errors only
+                    </label>
                   </span>
                 }
               >
@@ -195,9 +238,13 @@ export default function App() {
                   <Timeline
                     run={run}
                     events={events}
+                    marks={marks}
                     sel={sel}
                     link={link}
                     showLog={showLog}
+                    showDetail={traced && showDetail}
+                    showWaits={showWaits}
+                    errorsOnly={errorsOnly}
                     onSelect={select}
                   />
                 ) : (
@@ -206,18 +253,23 @@ export default function App() {
                     <div className="ruler" id="ruler"></div>
                   </>
                 )}
-                <Legend />
+                <Legend detail={traced && showDetail} />
               </Card>
               <Issues run={run} events={events} onSelect={select} />
-              <LogPane log={run.log} events={events} onSelect={select} onSelectLog={selectLog} />
+              {showLog ? (
+                <LogPane log={run.log} events={events} onSelect={select} onSelectLog={selectLog} />
+              ) : null}
             </div>
             <div className="col">
               <Inspector
                 run={run}
-                event={sel >= 0 ? events[sel] : null}
+                event={sel >= 0 && sel < events.length ? events[sel] : null}
+                mark={sel >= events.length ? markOf.get(sel) || null : null}
+                marks={marks}
                 logEntry={logSel}
                 docMode={docMode}
                 onDocMode={setDocMode}
+                onSelect={select}
               />
             </div>
           </div>

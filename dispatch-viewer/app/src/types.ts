@@ -86,4 +86,52 @@ export interface Run {
   issues: Issue[];
   timelineValid: boolean;
   issueDefs: Record<string, string>;
+  traces?: Traces;
+}
+
+// What cs-tracer read out of the members' transcripts (frames/traces.go).
+// A session is one trajectory; its strip is the tracer's own per-event shape.
+export interface Traces {
+  tool: string;
+  sessions: Session[];
+  anchors: Anchor[];
+}
+
+export interface Session {
+  id: string;
+  node: string;
+  source: string;
+  page?: string; // trace page path relative to this page, when a site was written
+  parent?: string;
+  parentEventIndex?: number;
+  startedAt?: string;
+  endedAt?: string;
+  model?: string;
+  events: number;
+  strip: Step[];
+}
+
+export interface Step {
+  i: number;
+  kind: string; // user|assistant|thinking|tool_call|system|meta|turn_end
+  ts?: string;
+  workMs?: number;
+  idleMs?: number;
+  activeMs?: number;
+  turnEnd?: boolean;
+  error?: boolean;
+  label?: string;
+  subtask?: boolean;
+  childSessionId?: string;
+  text?: string;
+  wait?: boolean;
+}
+
+// One dispatch joined to one event of one session. kind: sent|arrived|replied|accepted.
+export interface Anchor {
+  node: string;
+  dispatch: string;
+  kind: string;
+  session: string;
+  i: number;
 }

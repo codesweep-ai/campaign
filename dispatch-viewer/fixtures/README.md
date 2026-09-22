@@ -21,7 +21,7 @@ archive, drives a headless Chrome over each, and compares what it measured with
 | What | Where it comes from |
 |---|---|
 | Browser | `DISPATCH_FIXTURES_BROWSER`, then `CHROME_BIN`, then `PUPPETEER_EXECUTABLE_PATH`; else puppeteer's bundled Chrome. Relaunched with `--no-sandbox` when the host refuses the sandbox, and says so. |
-| Renderer | `--viewer <bin>` / `DISPATCH_FIXTURES_VIEWER`; else `go build ./dispatch-viewer/cmd/cs-dispatch-viewer`. |
+| Renderer | `--viewer <bin>` / `DISPATCH_FIXTURES_VIEWER`; else `go build ./dispatch-viewer/cmd/cs-dispatch-viewer`. Every render passes `--no-traces`, so a `cs-tracer` on the host's PATH changes nothing the suite measures. |
 | Synthetic archives | `archives.mjs` — `healthy`, `clobbered`, `name-mismatch`, `create-phase`, ported line for line from `dispatch-viewer/internal/frames/frames_test.go` (event times are file mtimes, stamped at write). |
 | Wide-finding archive | `archives.mjs` — the healthy fixture plus a `FLEET-ANOMALY.txt` whose body is one long unbroken token, which is what makes the Finding column unable to wrap. Rendered only by CF-60 so the per-archive rows gain no unit. |
 | Markdown archive | `archives.mjs` — one dispatch whose body carries a table and three links (`https:`, `javascript:`, `data:`). Rendered only by CF-61, for the same reason. |

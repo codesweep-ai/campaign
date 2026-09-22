@@ -1,5 +1,5 @@
 import type { EventShape, EventToken } from "@codesweep-ai/ui";
-import type { IndexedEvent, Run, Span } from "./types";
+import type { IndexedEvent, Run, Session, Span, Step } from "./types";
 
 // Timeline model: event-indexed columns over all events — the marks, kinds
 // and labels are the pre-React viewer's, now expressed as EventLanes data.
@@ -15,7 +15,22 @@ export type Kind =
   | "verdict-bad"
   | "accept"
   | "plan"
-  | "assessment";
+  | "assessment"
+  | StepKind;
+
+/** The tracer's event kinds, plus the two the page hangs below the line:
+ *  idle (the wait after a turn) and wait (the orchestrator's own wait calls). */
+export type StepKind =
+  | "user"
+  | "assistant"
+  | "thinking"
+  | "tool_call"
+  | "system"
+  | "meta"
+  | "turn_end"
+  | "idle"
+  | "wait"
+  | "error";
 
 // One map, token names only (CP-20): this replaces the old sqClass → .sq.*
 // CSS block → MANUAL colour table triplication. EventLanes resolves each name
@@ -31,6 +46,75 @@ export const palette: Record<Kind, EventToken> = {
   accept: "--color-accent",
   plan: "--color-cat-1",
   assessment: "--color-cat-4",
+  // The tracer's own kind colours (tracer palette.ts), so a step reads the
+  // same here and on its trace page.
+  user: "--color-cat-9",
+  assistant: "--color-cat-7",
+  thinking: "--color-cat-3",
+  tool_call: "--color-cat-5",
+  system: "--muted",
+  meta: "--color-structural",
+  turn_end: "--muted",
+  // Waiting is drawn in the rule colour, a tenth of black, so a band reads
+  // as a light shadow under the row rather than a dark rule.
+  idle: "--border",
+  wait: "--border",
+  // A step that errored is a column in the error colour rather than a cross:
+  // the cross draws at the mark size and dwarfs a thin column.
+  error: "--color-error",
+};
+
+export const STEPKINDS: ReadonlySet<Kind> = new Set<Kind>([
+  "user", "assistant", "thinking", "tool_call", "system", "meta", "turn_end", "idle", "wait", "error",
+]);
+export const WAITKINDS: ReadonlySet<Kind> = new Set<Kind>(["idle", "wait"]);
+
+// The tracer's bar scale (EventStrip.tsx): a step's bar is the log of its time
+// with a 2-minute ceiling, and waiting hangs below with a 1-hour ceiling.
+export const WORK_CEILING_MS = 2 * 60_000;
+export const IDLE_CEILING_MS = 60 * 60_000;
+export function logFraction(ms: number, ceiling: number): number {
+  return Math.log2(1 + Math.min(ms, ceiling) / 1000) / Math.log2(1 + ceiling / 1000);
+}
+
+/** One mark drawn from a trace: a step on the work lane, or its idle on the
+ *  wait lane. Marks are numbered after the run's events so `i` stays unique. */
+export interface StepMark {
+  i: number;
+  session: Session;
+  step: Step;
+  idle: boolean;
+}
+
+export const waitLane = (node: string): string => node + "/wait";
+
+/** Every trace mark, numbered from `base` upward: two slots per step, the
+ *  second used only when the step carries an idle interval. */
+export function stepMarks(run: Run, base: number): StepMark[] {
+  const out: StepMark[] = [];
+  if (!run.traces) return out;
+  let n = base;
+  for (const session of run.traces.sessions) {
+    for (const step of session.strip) {
+      if (!step.ts) {
+        n += 2;
+        continue;
+      }
+      out.push({ i: n, session, step, idle: false });
+      if (step.idleMs != null && step.idleMs > 0) out.push({ i: n + 1, session, step, idle: true });
+      n += 2;
+    }
+  }
+  return out;
+}
+
+export const stepKindOf = (m: StepMark): StepKind =>
+  m.idle ? "idle" : m.step.wait ? "wait" : m.step.error ? "error" : (m.step.kind as StepKind);
+
+export const stepLabel = (m: StepMark): string => {
+  if (m.idle) return "waited";
+  const k = m.step.kind === "tool_call" ? "tool" : m.step.kind.replace("_", " ");
+  return m.step.label ? k + " · " + m.step.label : k;
 };
 
 // The verdict carries a permanent halo (the old "blue, glowing" square);

@@ -226,11 +226,14 @@ if (viewer) {
 
 const archives = writeSyntheticArchives(path.join(out, "archives"));
 
+// Every render passes --no-traces: the synthetic archives carry no transcript,
+// and whether cs-tracer happens to be on this host's PATH must not change what
+// the suite measures.
 function render(name, dir) {
   const html = path.join(out, `${name}.html`);
-  const r = spawnSync(viewer, [dir, "-o", html], { encoding: "utf8" });
+  const r = spawnSync(viewer, [dir, "-o", html, "--no-traces"], { encoding: "utf8" });
   if (r.status !== 0) die(2, `render ${name} failed: ${r.stderr}`);
-  const m = r.stdout.match(/\((\d+) bytes, (\d+) events, (\d+) issues\)/);
+  const m = r.stdout.match(/\((\d+) bytes, (\d+) events, (\d+) issues/);
   return { html, events: +m[2], issues: +m[3] };
 }
 const pages = {};
@@ -386,7 +389,7 @@ set("CF-19", null, await withPage("corrupt", fileUrl(corruptHtml), (page, plog) 
 // dropped; page errors are asserted inside the value instead.
 {
   const wideHtml = path.join(out, "wide-finding.html");
-  const wr = spawnSync(viewer, [writeWideFindingArchive(path.join(out, "archives")), "-o", wideHtml], { encoding: "utf8" });
+  const wr = spawnSync(viewer, [writeWideFindingArchive(path.join(out, "archives")), "-o", wideHtml, "--no-traces"], { encoding: "utf8" });
   if (wr.status !== 0) die(2, `render wide-finding failed: ${wr.stderr}`);
   set("CF-60", null, await withPage("wide-finding", fileUrl(wideHtml), async (page, plog) => {
     await page.setViewport({ width: 600, height: 900 });
@@ -415,7 +418,7 @@ set("CF-19", null, await withPage("corrupt", fileUrl(corruptHtml), (page, plog) 
 // per-archive rows gain no unit from it either.
 {
   const mdHtml = path.join(out, "markdown.html");
-  const mr = spawnSync(viewer, [writeMarkdownArchive(path.join(out, "archives")), "-o", mdHtml], { encoding: "utf8" });
+  const mr = spawnSync(viewer, [writeMarkdownArchive(path.join(out, "archives")), "-o", mdHtml, "--no-traces"], { encoding: "utf8" });
   if (mr.status !== 0) die(2, `render markdown failed: ${mr.stderr}`);
   set("CF-61", null, await withPage("markdown", fileUrl(mdHtml), async (page, plog) => {
     const m = await P.markdownDoc(page);
