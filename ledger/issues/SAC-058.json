@@ -1,0 +1,20 @@
+{
+  "id": "SAC-058",
+  "title": "The orchestrator cannot list a teammate's output channel, so files reach other seats only by pasting",
+  "type": "improvement",
+  "severity": "med",
+  "status": "in-progress",
+  "foundBy": "session agent, from the deps-pilot2 orchestrator's findings (mechanism 3, the tracer baton) in campaign-workspaces/deps-maintenance/pilot2/archives/deps-pilot2-20260922T203209Z/orchestrator/output/findings.md",
+  "opened": "2026-09-22",
+  "resolved": null,
+  "stint": "pilot2-tier1",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "**What happens.** `cs-campaign-member read <agent> <path>` fetches one file from an agent's output channel, but only a file whose name the orchestrator already knows. Nothing lists what is there. A misspelt name and an absent file both fail the same way.\n\n**Seen live.** In deps-pilot2, ux wrote a 99-line pack specification into its output channel. It reached frontend only because the orchestrator pasted it into a dispatch verbatim. In the first deps pilot the orchestrator guessed five names in qa's channel, all wrong, before concluding the file was not there. The pilot2 review measured pasting as the largest single waste in both pilots: one paste at 11 actions, and the bottleneck at the 83 the full campaign plans.\n\n**Why it matters.** Seats write durable output to their channel as SPEC.md R39 asks, and the orchestrator is the only route between seats. A route that needs the exact filename in advance pushes seats to paste whole files into replies instead, which costs context on every hop.\n\n**Where it is.** `cmdRead`, in `cmd/cs-campaign-member/dispatcher.go`, reads only a path it is given.\n\n**What would help.** A listing verb, `read <agent> --list`, printing every file in the channel with its size, as paths `read` accepts.",
+  "notes": [],
+  "links": []
+}
