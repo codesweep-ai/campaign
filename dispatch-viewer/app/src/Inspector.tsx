@@ -274,9 +274,11 @@ function StepBody({ run, m }: { run: Run; m: StepMark }) {
     ["step", stepLabel(m) + " · #" + s.i],
     ["at", elapsedOf(run, s.ts) + " · " + fmtT(s.ts)],
   ];
-  if (ms != null && ms > 0) rows.push([m.idle ? "waited" : "took", fmtMs(ms)]);
+  if (ms != null && ms > 0) rows.push([m.idle ? "idle" : "took", fmtMs(ms)]);
+  // The round trip to the model less its generation is the queue for it
+  // (tracer rule R79): a different fact from waiting on the row.
   if (!m.idle && s.activeMs != null && s.workMs != null)
-    rows.push(["of which", "waited " + fmtMs(s.workMs - s.activeMs) + ", generated " + fmtMs(s.activeMs)]);
+    rows.push(["of which", "queued " + fmtMs(s.workMs - s.activeMs) + ", generated " + fmtMs(s.activeMs)]);
   if (s.error) rows.push(["result", <span className="bad">error</span>]);
   if (m.session.page)
     rows.push([

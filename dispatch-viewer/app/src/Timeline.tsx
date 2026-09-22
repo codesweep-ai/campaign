@@ -25,7 +25,6 @@ import {
   stepLabel,
   typeLabel,
   verdictHalo,
-  waitLane,
   type Kind,
   type StepMark,
 } from "./model";
@@ -49,7 +48,6 @@ interface TimelineProps {
   link: number;
   showLog: boolean;
   showDetail: boolean;
-  showWaits: boolean;
   errorsOnly: boolean;
   /** A dispatch to zoom to, as its span id "<member>/<dNNN>", applied when it changes. */
   zoomSpan?: string | null;
@@ -71,14 +69,17 @@ interface TimelineProps {
    Each member is one timeline of three rows, one per vocabulary. The protocol
    row carries what the channel proves: the dispatch box and its marks. The
    steps row carries what the agent did, in the tracer's columns, with a
-   forked session on a row of its own. The wait row carries idle after a
-   turn, and the orchestrator's wait calls, as hatched bands. Each member's
-   rows share a band, alternating from member to member, with a gap before
-   the next; the selected member's band is the accent. The box frames every
-   row of the timeline, and the open and reply marks sit at its ends at every
-   zoom. Rows keep their height at every zoom, so the run view is the same
-   picture with smaller boxes. With member traces off, a traced member keeps
-   its rows, empty, so nothing moves when they come back. */
+   forked session on a row of its own. Time the agent spent waiting is a
+   hatched span on that same row, at its real time and its full height: a
+   wait call of the orchestrator's, or a turn that ended inside a box before
+   the member replied. Idle between two boxes is the gap between them, and
+   is not drawn again. Each member's rows share a band, alternating from
+   member to member, with a gap before the next; the selected member's band
+   is the accent. The box frames every row of the timeline, and the open and
+   reply marks sit at its ends at every zoom. Rows keep their height at every
+   zoom, so the run view is the same picture with smaller boxes. With member
+   traces off, a traced member keeps its rows, empty, so nothing moves when
+   they come back. */
 
 /** Plumbing the tracer draws in muted ink; left out of the boxes here. A
  *  turn end is not drawn either, since the idle band below says where a turn
@@ -94,7 +95,7 @@ const PRESETS: { value: string; label: string; span?: number }[] = [
   { value: "300", label: "5m", span: 300 },
 ];
 
-export function Timeline({ run, events, marks, sel, link, showLog, showDetail, showWaits, errorsOnly, zoomSpan, viewRequest, onViewShown, onSelect }: TimelineProps) {
+export function Timeline({ run, events, marks, sel, link, showLog, showDetail, errorsOnly, zoomSpan, viewRequest, onViewShown, onSelect }: TimelineProps) {
   const origin = +new Date(run.campaign.createdAt);
   const pos = (iso: string | undefined): number => (+new Date(iso as string) - origin) / 1000;
 
@@ -206,21 +207,6 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
           });
         }
       }
-      if (rows) {
-        lanes.push({
-          id: waitLane(n.name),
-          label: "",
-          title: n.name + " waiting",
-          description: `${n.name}: time spent waiting`,
-          className: "waitlane",
-          group: n.name,
-          bars: "down",
-          height: 10,
-          overview: false,
-          hidden: !boxes || !showWaits,
-          shade,
-        });
-      }
       // Each dispatch is a box from its opening to its reply; one never
       // replied to runs to the last event. Acceptance is a log claim, so it
       // stays on the orchestrator log row and in the inspector.
@@ -281,26 +267,34 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
         bySession.get(m.session)!.push(m);
       }
       for (const [session, list] of bySession) {
-        const positions = columns(list, (m) => pos(m.step.ts), (m) => isPin(m.step, anchorSet.has(session.id + ":" + m.step.i)));
-        // The wait row is time-shaped: a wait call or an idle interval is a
-        // hatched band from where it began to where it ended, at one fixed
-        // height, so a blank on the steps row has a band under it of the same
-        // width, and the hatch reads as absence rather than as work.
+        // A wait call is pinned at its own time, and so is the step after
+        // it, which the tracer stamps at or after the result. The columns
+        // before the call then sit before it and the columns after it start
+        // where it returned, so the blank between them is the wait itself.
+        const positions = columns(
+          list,
+          (m) => pos(m.step.ts),
+          (m, k) => isPin(m.step, anchorSet.has(session.id + ":" + m.step.i)) || !!m.step.wait || (k > 0 && !!list[k - 1].step.wait),
+        );
         list.forEach((m, k) => {
           const kind = stepKindOf(m);
           const ms = m.step.workMs ?? 0;
           if (UNDRAWN.has(m.step.kind)) return;
           byAnchor.set(session.id + ":" + m.step.i, m.i);
           if (kind === "wait") {
-            const end = pos(m.step.ts);
+            // A tool call is stamped when it is issued, and its time runs
+            // forward from there to its result (tracer rule R70). The wait is
+            // a hatched span from the call for as long as it took, at the
+            // row's full height, so the blank it leaves in the columns reads
+            // as waiting rather than as sparse work.
             laneEvents.push({
               i: m.i,
-              lane: waitLane(session.node),
+              lane: stepLane(session.node, session),
               kind,
               shape: "hatched",
               label: stepLabel(m),
               at: fmtT(m.step.ts),
-              position: end - ms / 1000,
+              position: pos(m.step.ts),
               extent: ms / 1000,
               magnitude: 1,
             });
@@ -323,20 +317,27 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
             });
           }
         });
-        // Idle bands sit at the turn end's real time, whether or not the
-        // turn end itself is drawn.
+        // Idle is the time from a turn's end to the next turn's start
+        // (tracer rule R68). Between two boxes it is the gap the boxes
+        // already show, so it is drawn only when the turn ended inside a
+        // box, before the member replied, and then as far as the box goes.
+        const boxes = (run.spans || [])
+          .filter((s) => s.node === session.node && s.openedAt)
+          .map((s) => [pos(s.openedAt), s.repliedAt ? pos(s.repliedAt) : last] as const);
         for (const m of marks) {
           if (!m.idle || m.session !== session) continue;
-          const ims = m.step.idleMs ?? 0;
+          const from = pos(m.step.ts);
+          const box = boxes.find(([a, b]) => from >= a && from < b);
+          if (!box) continue;
           laneEvents.push({
             i: m.i,
-            lane: waitLane(session.node),
+            lane: stepLane(session.node, session),
             kind: "idle",
             shape: "hatched",
             label: stepLabel(m),
             at: fmtT(m.step.ts),
-            position: pos(m.step.ts),
-            extent: ims / 1000,
+            position: from,
+            extent: Math.min(from + (m.step.idleMs ?? 0) / 1000, box[1]) - from,
             magnitude: 1,
           });
         }
@@ -366,7 +367,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
       }
     }
     return { lanes, laneEvents, spans, linksFor, extent };
-  }, [run, events, marks, showDetail, showWaits, anchorSet, selectedNode, errorsOnly]);
+  }, [run, events, marks, showDetail, anchorSet, selectedNode, errorsOnly]);
 
   const allEvents = useMemo(() => laneEvents.concat(logEvents), [laneEvents, logEvents]);
 
@@ -553,11 +554,11 @@ function isPin(s: Step, anchored: boolean): boolean {
 /** Positions for a session's marks in order: pins at their time, the first
  *  and last mark always pinned, later pins never before earlier ones, and
  *  the marks between two pins spread evenly across their interval. */
-function columns<M>(list: M[], time: (m: M) => number, pin: (m: M) => boolean): number[] {
+function columns<M>(list: M[], time: (m: M) => number, pin: (m: M, k: number) => boolean): number[] {
   const n = list.length;
   const out = new Array<number>(n);
   if (n === 0) return out;
-  const pinned = list.map((m, k) => k === 0 || k === n - 1 || pin(m));
+  const pinned = list.map((m, k) => k === 0 || k === n - 1 || pin(m, k));
   let prev = -Infinity;
   const pinAt = new Array<number>(n);
   for (let k = 0; k < n; k++) {
@@ -636,8 +637,7 @@ export function Legend({ detail }: { detail: boolean }) {
             ["thinking", "thinking"],
             ["tool_call", "tool call"],
             ["error", "step failed"],
-            ["idle", "waited (below)"],
-            ["wait", "wait call (below)"],
+            ["wait", "waiting"],
           ])
         : null}
     </div>

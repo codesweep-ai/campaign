@@ -643,15 +643,18 @@ files alone. Every mark's colour is a design token from one palette map
 
 With traces, each member's steps are drawn inside its boxes in the tracer's own colours. Inside
 a box every step is a column of one width, and its bar rises by the log of the time it took,
-with a 2-minute ceiling. The wait after a turn, and the orchestrator's own wait calls, are
-hatched bands in the row beneath, each from where it began to where it ended. A failed step is a
+with a 2-minute ceiling. A column's place is its order between the steps that sit at their real
+time: an anchor, a turn's start and its end, and a wait call. Time the agent spent waiting is a
+hatched span on the same row, from where the wait began to where it ended. A blank in the
+columns is then never left to be guessed at. Two things are drawn that way: the orchestrator's
+wait calls, and a turn that ended inside a box before the member replied. Idle between two boxes
+is the gap between them, and is not drawn again. A failed step is a
 column in the error colour. With **errors only** on it becomes a full column with a marker in the
 same colour, and everything else is dimmed. The selected dispatch shows its links. A solid one runs from the
 orchestrator's send call to the member's turn that received it, and a dashed one from the
 member's reply call to the orchestrator's acceptance. The **member traces** box empties the
 trace rows and drops the links. The rows, the protocol row and its boxes stay where they are, so
-nothing moves when the traces come back. **Waiting**, off by default, shows the rows beneath without moving the bars above
-them.
+nothing moves when the traces come back.
 
 **show orchestrator log.** Off by default, so the bare timeline is the dispatch and reply protocol
 as the channels prove it. Checking the box overlays the orchestrator's claims as circles on the

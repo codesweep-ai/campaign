@@ -18,8 +18,9 @@ export type Kind =
   | "assessment"
   | StepKind;
 
-/** The tracer's event kinds, plus the two the page hangs below the line:
- *  idle (the wait after a turn) and wait (the orchestrator's own wait calls). */
+/** The tracer's event kinds, plus the two the page draws as hatched spans:
+ *  idle (a turn that ended inside a box) and wait (the orchestrator's own
+ *  wait calls). */
 export type StepKind =
   | "user"
   | "assistant"
@@ -55,8 +56,8 @@ export const palette: Record<Kind, EventToken> = {
   system: "--muted",
   meta: "--color-structural",
   turn_end: "--muted",
-  // Waiting is drawn in the rule colour, a tenth of black, so a band reads
-  // as a light shadow under the row rather than a dark rule.
+  // Waiting is drawn in the rule colour, a tenth of black, so a hatched span
+  // reads as a light absence beside the columns rather than as a dark bar.
   idle: "--border",
   wait: "--border",
   // A step that errored is a column in the error colour rather than a cross:
@@ -67,26 +68,22 @@ export const palette: Record<Kind, EventToken> = {
 export const STEPKINDS: ReadonlySet<Kind> = new Set<Kind>([
   "user", "assistant", "thinking", "tool_call", "system", "meta", "turn_end", "idle", "wait", "error",
 ]);
-export const WAITKINDS: ReadonlySet<Kind> = new Set<Kind>(["idle", "wait"]);
 
 // The tracer's bar scale (EventStrip.tsx): a step's bar is the log of its time
-// with a 2-minute ceiling, and waiting hangs below with a 1-hour ceiling.
+// with a 2-minute ceiling.
 export const WORK_CEILING_MS = 2 * 60_000;
-export const IDLE_CEILING_MS = 60 * 60_000;
 export function logFraction(ms: number, ceiling: number): number {
   return Math.log2(1 + Math.min(ms, ceiling) / 1000) / Math.log2(1 + ceiling / 1000);
 }
 
-/** One mark drawn from a trace: a step on the work lane, or its idle on the
- *  wait lane. Marks are numbered after the run's events so `i` stays unique. */
+/** One mark drawn from a trace: a step, or the idle after it. Marks are
+ *  numbered after the run's events so `i` stays unique. */
 export interface StepMark {
   i: number;
   session: Session;
   step: Step;
   idle: boolean;
 }
-
-export const waitLane = (node: string): string => node + "/wait";
 
 /** Every trace mark, numbered from `base` upward: two slots per step, the
  *  second used only when the step carries an idle interval. */
@@ -112,8 +109,8 @@ export const stepKindOf = (m: StepMark): StepKind =>
   m.idle ? "idle" : m.step.wait ? "wait" : m.step.error ? "error" : (m.step.kind as StepKind);
 
 export const stepLabel = (m: StepMark): string => {
-  if (m.idle) return "waited";
-  const k = m.step.kind === "tool_call" ? "tool" : m.step.kind.replace("_", " ");
+  if (m.idle) return "idle between turns";
+  const k = m.step.wait ? "wait call" : m.step.kind === "tool_call" ? "tool" : m.step.kind.replace("_", " ");
   return m.step.label ? k + " · " + m.step.label : k;
 };
 

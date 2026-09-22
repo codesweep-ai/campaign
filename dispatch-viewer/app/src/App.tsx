@@ -29,7 +29,6 @@ export default function App() {
   const [showLog, setShowLog] = useState(false);
   const traced = !!(run && run.traces && run.traces.sessions.length);
   const [showDetail, setShowDetail] = useState(true);
-  const [showWaits, setShowWaits] = useState(false);
   const [errorsOnly, setErrorsOnly] = useState(false);
   // A dispatch the timeline should zoom to, as its span id "<member>/<dNNN>".
   const [zoomSpan, setZoomSpan] = useState<string | null>(null);
@@ -277,27 +276,15 @@ export default function App() {
                       show orchestrator log
                     </label>
                     {traced ? (
-                      <>
-                        <label className="toggle">
-                          <input
-                            type="checkbox"
-                            id="showdetail"
-                            checked={showDetail}
-                            onChange={(e) => setShowDetail(e.target.checked)}
-                          />{" "}
-                          member traces
-                        </label>
-                        <label className="toggle">
-                          <input
-                            type="checkbox"
-                            id="showwaits"
-                            checked={showWaits}
-                            disabled={!showDetail}
-                            onChange={(e) => setShowWaits(e.target.checked)}
-                          />{" "}
-                          waiting
-                        </label>
-                      </>
+                      <label className="toggle">
+                        <input
+                          type="checkbox"
+                          id="showdetail"
+                          checked={showDetail}
+                          onChange={(e) => setShowDetail(e.target.checked)}
+                        />{" "}
+                        member traces
+                      </label>
                     ) : null}
                     <label className="toggle">
                       <input
@@ -320,7 +307,6 @@ export default function App() {
                     link={link}
                     showLog={showLog}
                     showDetail={traced && showDetail}
-                    showWaits={showWaits}
                     errorsOnly={errorsOnly}
                     zoomSpan={zoomSpan}
                     viewRequest={viewRequest}
