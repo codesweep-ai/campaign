@@ -77,7 +77,8 @@ func TestJoinAnchorsFindsTheFourAnchors(t *testing.T) {
 
 func TestJoinAnchorsReportsWhatItCannotFind(t *testing.T) {
 	run := &Run{
-		Nodes: []Node{{Name: "orch", Role: "orchestrator"}, {Name: "dev", Role: "agent"}},
+		Nodes:  []Node{{Name: "orch", Role: "orchestrator"}, {Name: "dev", Role: "agent"}},
+		Events: []Event{{Node: "orch", Type: "open", Dispatch: "m1", At: "t0"}},
 		Spans: []Span{
 			{ID: "d001", Node: "dev", OpenedAt: "t1", RepliedAt: "t2"},
 			{ID: "d002", Node: "dev", OpenedAt: "t1", RepliedAt: "t2", AcceptedAt: "t3"},
@@ -94,8 +95,8 @@ func TestJoinAnchorsReportsWhatItCannotFind(t *testing.T) {
 			missing = append(missing, i.Message)
 		}
 	}
-	// d001 is host-issued, so no send is owed; its reply receipt is. d002
-	// owes all three receipts.
+	// d001 is a readback the host issued, so no send is owed; its reply
+	// receipt is. d002 opened after the mission, and owes all three receipts.
 	want := []string{
 		"dev/d001: no replied anchor was found in the traces",
 		"dev/d002: no sent anchor was found in the traces",
@@ -104,6 +105,37 @@ func TestJoinAnchorsReportsWhatItCannotFind(t *testing.T) {
 	}
 	if strings.Join(missing, "\n") != strings.Join(want, "\n") {
 		t.Errorf("findings:\n%s\nwant:\n%s", strings.Join(missing, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// A resumed create asks dev again at d002, which the host writes as it wrote
+// d001, so neither owes a send. The work the orchestrator opened at d003 does.
+func TestJoinAnchorsOwesNoSendForALaterReadback(t *testing.T) {
+	run := &Run{
+		Nodes:    []Node{{Name: "orch", Role: "orchestrator"}, {Name: "dev", Role: "agent"}},
+		Events:   []Event{{Node: "orch", Type: "open", Dispatch: "m1", At: "t2"}},
+		Readback: []byte(`{"members":[{"member":"dev","readback":{"dispatch":"d002"}}]}`),
+		Spans: []Span{
+			{ID: "d001", Node: "dev", OpenedAt: "t0"},
+			{ID: "d002", Node: "dev", OpenedAt: "t1"},
+			{ID: "d003", Node: "dev", OpenedAt: "t3"},
+		},
+	}
+	tr := &Traces{Sessions: []Session{{ID: "s1", Node: "dev", events: []tracerEvent{
+		{I: 0, Kind: "user", Text: "Dispatch ID: d001."},
+		{I: 2, Kind: "user", Text: "Dispatch ID: d002."},
+		{I: 4, Kind: "user", Text: "Dispatch ID: d003."},
+	}}}}
+	joinAnchors(run, tr)
+	var missing []string
+	for _, i := range run.Issues {
+		if i.Code == "trace-unlinked" {
+			missing = append(missing, i.Message)
+		}
+	}
+	want := "dev/d003: no sent anchor was found in the traces"
+	if strings.Join(missing, "\n") != want {
+		t.Errorf("findings:\n%s\nwant:\n%s", strings.Join(missing, "\n"), want)
 	}
 }
 

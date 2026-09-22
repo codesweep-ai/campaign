@@ -474,14 +474,15 @@ func joinAnchors(run *Run, tr *Traces) {
 	// Anchors are owed only where the archive says the step happened: a
 	// dispatch that was opened has a sent and an arrived; one that was replied
 	// to has a replied; one that was accepted has an accepted. The host writes
-	// the orchestrator's own channel and every d001 readback, so neither has
-	// a send call to find.
+	// the orchestrator's own channel and every readback (createPhase), so
+	// neither has a send call to find.
+	readback := createPhase(run)
 	for _, sp := range run.Spans {
 		if sp.Node == orch {
 			continue
 		}
 		want := []string{"arrived"}
-		if sp.OpenedAt != "" && sp.ID != "d001" {
+		if sp.OpenedAt != "" && !readback(sp.Node, sp.ID, sp.OpenedAt) {
 			want = append(want, "sent")
 		}
 		if sp.RepliedAt != "" {
