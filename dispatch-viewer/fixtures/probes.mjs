@@ -43,9 +43,13 @@ export async function setLog(page, on) {
   );
 }
 
-/** Reach an event the contract's way: focus the listbox, Home, ArrowRight to
-    its position among the visible events, Enter. False when the event is not
-    visible (the census holds only visible events). */
+/** Reach an event by keyboard from the page, not from the listbox: Home, then
+    ArrowRight to its position among the visible events in global order. The
+    page's own handler walks that order whenever the listbox does not have
+    focus. Inside the listbox the arrow keys walk one timeline in the
+    positioned layout, so the position among all visible events would land
+    elsewhere. False when the event is not visible (the census holds only
+    visible events). */
 export async function selectEvent(page, i) {
   const pos = await ev(
     page,
@@ -53,10 +57,9 @@ export async function selectEvent(page, i) {
     i,
   );
   if (pos < 0) return false;
-  await page.focus(SEL.timelineListbox);
+  await page.evaluate(() => document.activeElement?.blur?.());
   await page.keyboard.press("Home");
   for (let k = 0; k < pos; k++) await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("Enter");
   return true;
 }
 
