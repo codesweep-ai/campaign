@@ -1,0 +1,22 @@
+{
+  "id": "SAC-052",
+  "title": "The protocol marks and the traces clash on one row set",
+  "type": "improvement",
+  "severity": "med",
+  "status": "in-progress",
+  "foundBy": "repository owner, reading the served page: \"the protocol and the traces seem to be clashing, making the diagram hard to read. like maybe we have a protocol view that has the protocol stuff and a trace view that has the traces\", and \"the default view could be what you see if you are on run and ONLY the show orchestrator log is selected\"",
+  "opened": "2026-09-22",
+  "resolved": null,
+  "stint": "2026-09-22 waiting on the steps row",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "Every member had a protocol row of boxes and marks and, under it, a steps row of the tracer's columns inside the same boxes. The orchestrator's log claims sat on a row at the bottom, hidden until a checkbox showed them. Read together the two vocabularies fought: dots and labels above, columns below, links between. The owner's reading: the run view with only the log shown is the page that gives the run's shape. The traces are a second page rather than a second row. Wanted: two views. Protocol, the default, is the run as the channels and the log show it, with the log row on top of the orchestrator. Traces empties the log row, drops the marks, and shows the steps inside the boxes. Errors only is a traces control.",
+  "notes": [],
+  "links": [
+    "SAC-050"
+  ]
+}

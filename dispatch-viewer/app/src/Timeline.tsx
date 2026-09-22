@@ -14,6 +14,7 @@ import {
 import type { IndexedEvent, Run, Session, Step } from "./types";
 import {
   LOGKINDS,
+  PROTOCOLKINDS,
   LOGTYPES,
   WORK_CEILING_MS,
   kindOf,
@@ -66,20 +67,21 @@ interface TimelineProps {
    turn end, are pinned to their real time; the steps between two pins share
    that interval evenly.
 
-   Each member is one timeline of three rows, one per vocabulary. The protocol
-   row carries what the channel proves: the dispatch box and its marks. The
-   steps row carries what the agent did, in the tracer's columns, with a
-   forked session on a row of its own. Time the agent spent waiting is a
+   The timeline has two views. In the protocol view each member is one row
+   of what the channel proves, the dispatch box and its marks, and the
+   orchestrator's log claims sit on the first row. In the traces view a
+   traced member's row is its steps instead, framed by the same box: what
+   the agent did, in the tracer's columns, with a forked session on a row of
+   its own, and the marks and the claims go. Time the agent spent waiting is a
    hatched span on that same row, at its real time and its full height: a
    wait call of the orchestrator's, or a turn that ended inside a box before
    the member replied. Idle between two boxes is the gap between them, and
    is not drawn again. Each member's rows share a band, alternating from
    member to member, with a gap before the next; the selected member's band
-   is the accent. The box frames every row of the timeline, and the open and
-   reply marks sit at its ends at every zoom. Rows keep their height at every
-   zoom, so the run view is the same picture with smaller boxes. With member
-   traces off, a traced member keeps its rows, empty, so nothing moves when
-   they come back. */
+   is the accent. The box frames every row of the timeline, and in the
+   protocol view the open and reply marks sit at its ends at every zoom. Rows
+   keep their height at every zoom, so the run view is the same picture with
+   smaller boxes. */
 
 /** Plumbing the tracer draws in muted ink; left out of the boxes here. A
  *  turn end is not drawn either, since the idle band below says where a turn
@@ -156,12 +158,29 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
     let extent = last;
     const stepLane = (node: string, session?: Session): string =>
       session && session.parent ? node + "/steps/" + session.id : node + "/steps";
+    // The orchestrator's log claims sit on the first row, under the axis
+    // and above the orchestrator, as a header to the row they are about. It
+    // stays in the traces view, empty. It is a timeline of its own: the
+    // accept anchor a link reaches is the orchestrator's accept call, not
+    // the log's claim.
+    if (orch) {
+      lanes.push({
+        id: "log",
+        label: "orchestrator log",
+        title: "orchestrator log",
+        description: "orchestrator log claims (log.jsonl)",
+        className: "loglane",
+        height: 18,
+      });
+    }
     for (const [k, n] of run.nodes.entries()) {
       const isOrch = n.role === "orchestrator";
-      // A traced member keeps its trace rows whether or not the traces are
-      // shown; the rows are empty when they are not.
-      const rows = traced.has(n.name);
-      const boxes = showDetail && rows;
+      // In the traces view a traced member's box frames its steps row and
+      // its protocol row is hidden: the box's edges are the opening and the
+      // reply, so the marks only restated them. In the protocol view there
+      // are no trace rows at all.
+      const rows = showDetail && traced.has(n.name);
+      const boxes = rows;
       // Members alternate a shade across the whole timeline, so their rows
       // read as one band each, with a gap between members; the selected
       // member's band is the accent.
@@ -175,7 +194,8 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
         className: isOrch ? "orch" : "name",
         group: n.name,
         height: 24,
-        gapBefore: k > 0 ? 8 : undefined,
+        hidden: rows,
+        gapBefore: 8,
         shade,
         // The protocol marks are sized by their own gaps: a step follows each
         // within seconds, which would make every one a sliver.
@@ -184,13 +204,14 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
       if (rows) {
         lanes.push({
           id: stepLane(n.name),
-          label: "",
+          label: n.name,
           title: n.name + ": steps",
           description: `${n.name}: what the agent did, one column per step`,
-          className: "steplane",
+          className: isOrch ? "orch" : "name",
           group: n.name,
           bars: "up",
           height: 34,
+          gapBefore: 8,
           shade,
         });
         for (const f of (run.traces?.sessions || []).filter((f) => f.node === n.name && f.parent)) {
@@ -214,28 +235,13 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
         const to = s.repliedAt ? pos(s.repliedAt) : last;
         extent = Math.max(extent, to);
         spans.push({
-          lane: n.name,
+          lane: rows ? stepLane(n.name) : n.name,
           from: pos(s.openedAt),
           to: Math.max(to, pos(s.openedAt)),
           id: n.name + "/" + s.id,
           label: s.id,
         });
       }
-    }
-    // The orchestrator's log claims sit on one row at the bottom, always
-    // present and empty until the log is shown, so nothing on the page moves
-    // when it is. It is a timeline of its own: the accept anchor a link
-    // reaches is the orchestrator's accept call, not the log's claim.
-    if (orch) {
-      lanes.push({
-        id: "log",
-        label: "orchestrator log",
-        title: "orchestrator log",
-        description: "orchestrator log claims (log.jsonl)",
-        className: "loglane",
-        height: 18,
-        gapBefore: 8,
-      });
     }
     const laneEvents: EventLaneEvent<Kind>[] = events
       // Log claims are drawn separately, spread by time so they never
@@ -405,8 +411,9 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
   const hidden = useMemo(() => {
     const h = new Set<Kind>();
     if (!showLog) for (const k of LOGKINDS) h.add(k);
+    if (showDetail) for (const k of PROTOCOLKINDS) h.add(k);
     return h.size ? h : undefined;
-  }, [showLog]);
+  }, [showLog, showDetail]);
 
   // Presets: the run, or a fixed span. With a selection the span is centred
   // on it; otherwise it starts where the current view starts, so run then 1h
@@ -606,10 +613,9 @@ function Ruler({ ctx }: { ctx: EventLanesRulerContext }) {
 }
 
 export function Legend({ detail }: { detail: boolean }) {
-  // Two fixed rows split by evidence source, so toggling the log never
-  // reflows the legend: channel artifacts survive "hide orchestrator log";
-  // the log row holds everything that exists only in log.jsonl — the
-  // orchestrator's claims, not channel traffic.
+  // The legend follows the view: the protocol view's two rows are split by
+  // evidence source, channel artifacts against the log's claims, which
+  // exist only in log.jsonl; the traces view has the steps row alone.
   const row = (label: string, cls: string, kinds: [Kind, string][]) => (
     <div className={"lrow " + cls}>
       <span className="lsrc">{label}</span>
@@ -620,7 +626,7 @@ export function Legend({ detail }: { detail: boolean }) {
   );
   return (
     <div className="legend" id="legend">
-      {row("channels", "chan", [
+      {detail ? null : row("channels", "chan", [
         ["open", "dispatch open"],
         ["continue", "continue"],
         ["restart", "restart"],
@@ -628,7 +634,7 @@ export function Legend({ detail }: { detail: boolean }) {
         ["reply-bad", "reply blocked/needs-input"],
         ["verdict-ok", "verdict"],
       ])}
-      {row("orchestrator log", "log", [
+      {detail ? null : row("orchestrator log", "log", [
         ["accept", "accept (log)"],
         ["plan", "plan"],
         ["assessment", "assessment"],

@@ -83,9 +83,8 @@ export function LogPane({ log, events, onSelect, onSelectLog }: LogPaneProps) {
         />
       </div>
       <div className="none" id="log-hidden">
-        Showing the file channels only — the dispatch/reply record any observer can verify. Check
-        "show orchestrator log" to overlay the orchestrator's recorded claims: plan, assessments,
-        accepts.
+        The traces view shows what each member did. Switch to protocol for the orchestrator's
+        recorded claims: plan, assessments, accepts.
       </div>
     </Card>
   );

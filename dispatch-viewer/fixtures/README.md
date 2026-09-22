@@ -81,7 +81,7 @@ archive and the first differing field.
 | Group | Ids | What is measured |
 |---|---|---|
 | A. Structure (both themes) | CF-01..06 | lanes in order with kind and per-lane event count; squares, kinds present, connectors; page head, banner, timeline hidden; issues count and `code:severity` rows; legend rows and section headers; dark theme yields the same structure |
-| B. Interaction | CF-10..19 | click every square → inspector rows, doc panels, accept↔reply link; ArrowRight/ArrowLeft sequences; hidden-square landings with the log off; issue row → selection; log toggle end states; rendered/raw segment; theme cycle + persistence; `?theme=`; corrupt payload |
+| B. Interaction | CF-10..19 | click every square → inspector rows, doc panels, accept↔reply link; ArrowRight/ArrowLeft sequences; hidden-square landings in the traces view; issue row → selection; view control end states; rendered/raw segment; theme cycle + persistence; `?theme=`; corrupt payload |
 | C. Accessibility | CF-20 | axe-core violations by rule, per theme × state (load; log shown + event selected) |
 | D. Keyboard | CF-30..35 | first 20 Tab stops; the timeline's single listbox stop; issue rows under the table's roving tab stop (arrows/Home/End reach every row); Escape; Home/End; focus follows a click |
 | E. Size | CF-40..41 | `viewer.html` bytes and gzip against a 300,000-byte budget; rendered page bytes, gzip, payload share |

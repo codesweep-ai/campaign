@@ -152,9 +152,12 @@ export function shapeOf(e: IndexedEvent): EventShape {
   return "circle";
 }
 
-// Blind mode ("show orchestrator log" off) removes every mark whose only
-// evidence is log.jsonl.
+// The traces view removes every mark whose only evidence is log.jsonl, and
+// the channel marks too: a box's edges are its opening and its reply.
 export const LOGKINDS: ReadonlySet<Kind> = new Set(["accept", "plan", "assessment"]);
+export const PROTOCOLKINDS: ReadonlySet<Kind> = new Set([
+  "open", "continue", "restart", "reply-done", "reply-bad", "verdict-ok", "verdict-bad",
+]);
 
 export const spanOf = (run: Run, e: IndexedEvent): Span | undefined =>
   (run.spans || []).find((s) => s.node === e.node && s.id === e.dispatch);

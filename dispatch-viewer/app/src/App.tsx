@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AppShell, Card, Footer, Header, PulseBadge, StatusBadge, ThemeToggle } from "@codesweep-ai/ui";
+import { AppShell, Card, Footer, Header, PulseBadge, SegmentedControl, StatusBadge, ThemeToggle } from "@codesweep-ai/ui";
 import type { IndexedEvent, LogEntry, Run } from "./types";
 import { dur, fmtClock, fmtT, parseClock } from "./format";
 import { LOGKINDS, kindOf, stepMarks, type StepMark } from "./model";
@@ -7,6 +7,9 @@ import { Timeline, Legend, type ViewRequest, type ShownView } from "./Timeline";
 import { Issues } from "./Issues";
 import { LogPane } from "./LogPane";
 import { Inspector, type DocMode } from "./Inspector";
+
+/** The timeline's two views. */
+export type View = "protocol" | "traces";
 
 // The payload arrives as a JSON script block the Go side splices in for the
 // <!--RUN-DATA--> marker at the top of <body> (cli.go assemble).
@@ -26,9 +29,14 @@ export default function App() {
   const [sel, setSel] = useState(-1);
   const [logSel, setLogSel] = useState<LogEntry | null>(null);
   const [docMode, setDocMode] = useState<DocMode>("rendered");
-  const [showLog, setShowLog] = useState(false);
   const traced = !!(run && run.traces && run.traces.sessions.length);
-  const [showDetail, setShowDetail] = useState(true);
+  // The timeline has two views. Protocol is the run as the channels and the
+  // orchestrator's log show it: boxes, marks and claims. Traces is what each
+  // member did inside its boxes: the log row empties, the marks go, and the
+  // steps appear. A page with no traces has only the first.
+  const [view, setView] = useState<View>("protocol");
+  const showLog = view === "protocol";
+  const showDetail = traced && view === "traces";
   const [errorsOnly, setErrorsOnly] = useState(false);
   // A dispatch the timeline should zoom to, as its span id "<member>/<dNNN>".
   const [zoomSpan, setZoomSpan] = useState<string | null>(null);
@@ -75,7 +83,7 @@ export default function App() {
   // deterministic no matter when a key arrives relative to React's commit and
   // passive effects (the fixture suite presses keys at synthetic speed).
   const selRef = useRef(-1);
-  const showLogRef = useRef(false);
+  const showLogRef = useRef(true);
 
   const select = useCallback(
     (i: number) => {
@@ -131,6 +139,11 @@ export default function App() {
         selRef.current = target.i;
         setSel(target.i);
         setLogSel(null);
+        // A step is on the timeline only in the traces view.
+        if (target.i >= events.length && traced) {
+          showLogRef.current = false;
+          setView("traces");
+        }
       } else if (fromHistory) {
         // An entry with no selection had none.
         selRef.current = -1;
@@ -155,7 +168,7 @@ export default function App() {
     const onPop = () => apply(true);
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [run, events]);
+  }, [run, events, traced]);
 
   const selectLog = useCallback((l: LogEntry) => {
     selRef.current = -1;
@@ -163,10 +176,14 @@ export default function App() {
     setLogSel(l);
   }, []);
 
-  const onShowLog = useCallback((checked: boolean) => {
-    showLogRef.current = checked;
-    setShowLog(checked);
-  }, []);
+  const onView = useCallback(
+    (v: string) => {
+      const next: View = v === "traces" && traced ? "traces" : "protocol";
+      showLogRef.current = next === "protocol";
+      setView(next);
+    },
+    [traced],
+  );
 
   // Arrow keys step through visible events (blind mode drops the log kinds —
   // the same set EventLanes' listbox walks), Home/End jump to the ends, and
@@ -266,31 +283,24 @@ export default function App() {
                   <span className="chead-row">
                     <span className="section-title">Timeline</span>
                     <span className="spacer"></span>
-                    <label className="toggle">
-                      <input
-                        type="checkbox"
-                        id="showlog"
-                        checked={showLog}
-                        onChange={(e) => onShowLog(e.target.checked)}
-                      />{" "}
-                      show orchestrator log
-                    </label>
                     {traced ? (
-                      <label className="toggle">
-                        <input
-                          type="checkbox"
-                          id="showdetail"
-                          checked={showDetail}
-                          onChange={(e) => setShowDetail(e.target.checked)}
-                        />{" "}
-                        member traces
-                      </label>
+                      <SegmentedControl
+                        id="view"
+                        aria-label="Timeline view"
+                        options={[
+                          { value: "protocol", label: "protocol" },
+                          { value: "traces", label: "member traces" },
+                        ]}
+                        value={view}
+                        onChange={onView}
+                      />
                     ) : null}
                     <label className="toggle">
                       <input
                         type="checkbox"
                         id="errorsonly"
                         checked={errorsOnly}
+                        disabled={!showDetail}
                         onChange={(e) => setErrorsOnly(e.target.checked)}
                       />{" "}
                       errors only
@@ -306,7 +316,7 @@ export default function App() {
                     sel={sel}
                     link={link}
                     showLog={showLog}
-                    showDetail={traced && showDetail}
+                    showDetail={showDetail}
                     errorsOnly={errorsOnly}
                     zoomSpan={zoomSpan}
                     viewRequest={viewRequest}
@@ -319,7 +329,7 @@ export default function App() {
                     <div className="ruler" id="ruler"></div>
                   </>
                 )}
-                <Legend detail={traced && showDetail} />
+                <Legend detail={showDetail} />
               </Card>
               <Issues run={run} events={events} onSelect={select} />
               {showLog ? (

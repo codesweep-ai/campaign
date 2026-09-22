@@ -617,8 +617,12 @@ An `-o` that names a directory, or ends in a slash, writes a site instead of one
 session, one page per trace. Every step and every anchor on the dispatch page then links to its
 event in the trace, and the tracer's index at `tracer/index.html` lists the sessions.
 
-**Timeline.** Each node gets one band of lanes, with the orchestrator first, on one axis of
-elapsed time since the campaign was created. A mark sits at its real time, so a column is a span
+**Timeline.** Each node gets one row, with the orchestrator first, on one axis of
+elapsed time since the campaign was created. The timeline has two views, chosen by the control in
+its header. **Protocol**, the default, is the run as the channels and the orchestrator's log
+show it: every dispatch as a box with its marks, and the log's claims on the first row. **Member
+traces** is what each member did inside its boxes: the marks and the claims go, the log row
+stays and empties, and the steps appear. A page rendered without traces has only the first. A mark sits at its real time, so a column is a span
 of time and not an event. Zoom is by preset: the run, an hour, fifteen minutes or five, and a
 selected dispatch can be zoomed to. A horizontal swipe scrolls the lanes sideways, and the
 vertical wheel scrolls the page. The overview above the lanes, under the zoom row, shows the whole
@@ -654,15 +658,13 @@ each to the other. A failed step is a
 column in the error colour. With **errors only** on it becomes a full column with a marker in the
 same colour, and everything else is dimmed. The selected dispatch shows its links. A solid one runs from the
 orchestrator's send call to the member's turn that received it, and a dashed one from the
-member's reply call to the orchestrator's acceptance. The **member traces** box empties the
-trace rows and drops the links. The rows, the protocol row and its boxes stay where they are, so
-nothing moves when the traces come back.
+member's reply call to the orchestrator's acceptance. **Errors only** is a
+traces-view control.
 
-**show orchestrator log.** Off by default, so the bare timeline is the dispatch and reply protocol
-as the channels prove it. Checking the box overlays the orchestrator's claims as circles on the
-`log` sub-lane, and reveals the verbatim log panel. Everything on the `log` sub-lane comes from the
-orchestrator's `log.jsonl`: claims, not channel traffic. Acceptance is a log claim, so it appears
-only with the log shown.
+**The orchestrator log row.** Everything on it comes from the orchestrator's `log.jsonl`: claims,
+not channel traffic, and the legend files it apart from the channels for that reason. The
+verbatim log panel under the timeline goes with it. Acceptance is a log claim, so it is on that
+row and in the panel, and never on a member's row.
 
 **Addresses.** The page's address names the selection, so a view can be handed to someone.
 `#m/<member>` picks the member's first dispatch. `#m/<member>/<dNNN>` picks that dispatch's

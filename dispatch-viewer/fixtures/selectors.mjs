@@ -64,8 +64,9 @@ export const SEL = {
   },
   connector: "#tl [data-span-lane]", // one census node per span
   legendRow: "#legend .lrow",
-  showLog: "#showlog", // the "show orchestrator log" checkbox
-  logHiddenClass: "blind", // class on <body> while the log is hidden
+  view: "#view", // the timeline view control, a radiogroup: protocol or member traces
+  viewOption: '#view [role="radio"]', // one per view, aria-checked on the current one
+  logHiddenClass: "blind", // class on <body> in the traces view, where the log is empty
 
   // Issues
   issuesWrap: "#issues", // the app's scroll wrapper around the issues Table

@@ -29,14 +29,19 @@ export async function install(page) {
 
 const ev = (page, fn, ...args) => page.evaluate(fn, SEL, ...args);
 
-/** Checks or unchecks "show orchestrator log"; false when the control is not visible. */
+/** Puts the timeline in the protocol view (log shown) or the traces view
+    (log empty). A page without traces has only the protocol view, and is in
+    it: asking for that is true, asking for traces is false. */
 export async function setLog(page, on) {
   return ev(
     page,
     (SEL, on) => {
-      const box = __fx.$(SEL.showLog);
-      if (!__fx.visible(box)) return false;
-      if (box.checked !== on) box.click();
+      const want = on ? "protocol" : "traces";
+      const opts = __fx.$$(SEL.viewOption);
+      if (!opts.length) return on;
+      const opt = opts.find((o) => __fx.txt(o).startsWith(want === "traces" ? "member traces" : "protocol"));
+      if (!opt) return false;
+      if (opt.getAttribute("aria-checked") !== "true") opt.click();
       return true;
     },
     on,
@@ -152,7 +157,8 @@ export async function arrowSequence(page, key, presses) {
   return seq;
 }
 
-/** ArrowRight from a fresh page with the log hidden until the selection stops moving. */
+/** ArrowRight from a fresh page in the traces view, where the page has one,
+    until the selection stops moving. */
 export async function arrowWalkHidden(page) {
   await setLog(page, false);
   const hidden = [];
@@ -193,32 +199,35 @@ export async function issueClicks(page) {
   return out;
 }
 
-/** The log toggle's end states on a fresh page (log hidden by default). */
+/** The view control's end states on a fresh page: the protocol view it opens
+    in, the traces view when the page has one, and the protocol view again. */
 export async function logToggle(page) {
   const state = () =>
     ev(page, (SEL) => {
       const { $, $$, visible } = __fx;
+      const checked = $$(SEL.viewOption).find((o) => o.getAttribute("aria-checked") === "true");
       return {
         logHidden: document.body.classList.contains(SEL.logHiddenClass),
-        checked: !!$(SEL.showLog)?.checked,
+        view: checked ? __fx.txt(checked) : "none",
         logListVisible: visible($(SEL.logList)),
         noticeVisible: visible($(SEL.logHiddenNotice)),
         logRows: $$(SEL.logRow).length,
         visibleSquares: $$(SEL.square).filter(visible).map((s) => +__fx.idx(s, SEL)),
       };
     });
-  const off = await state();
-  const toggled = await setLog(page, true);
-  if (!toggled) return "no-timeline";
-  const on = await state();
-  await setLog(page, false);
-  const offAgain = await state();
+  const hasTimeline = await ev(page, (SEL) => !!__fx.$(SEL.square));
+  if (!hasTimeline) return "no-timeline";
+  const protocol = await state();
   const pick = ({ visibleSquares, ...rest }) => ({ ...rest, visibleSquares: visibleSquares.length });
+  if (!(await setLog(page, false))) return { protocol: pick(protocol), traces: "no-traces" };
+  const traces = await state();
+  await setLog(page, true);
+  const back = await state();
   return {
-    off: pick(off),
-    on: pick(on),
-    offAgain: pick(offAgain),
-    revealedByLog: on.visibleSquares.filter((i) => !off.visibleSquares.includes(i)),
+    protocol: pick(protocol),
+    traces: pick(traces),
+    back: pick(back),
+    hiddenByTraces: protocol.visibleSquares.filter((i) => !traces.visibleSquares.includes(i)),
   };
 }
 

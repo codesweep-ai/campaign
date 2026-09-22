@@ -118,8 +118,8 @@ const CHECKS = [
     summary: perArchive((v) => (Array.isArray(v) ? `[${v.join(",")}]` : v)) },
   { id: "CF-14", title: "click issue row k → the timeline selection jumps to its evidence event", status: "keep", perArchive: true,
     summary: perArchive((v) => (Array.isArray(v) ? `${v.filter((s) => !s.endsWith("->null")).length}/${v.length} jump` : v)) },
-  { id: "CF-15", title: "show-orchestrator-log toggle: log list/notice visibility, log row count, squares revealed", status: "keep", perArchive: true,
-    summary: perArchive((v) => (v === "no-timeline" ? v : `${v.on.logRows} log rows, squares ${v.off.visibleSquares}→${v.on.visibleSquares}`)) },
+  { id: "CF-15", title: "view control: the protocol view shows the log list and its marks; the traces view, where there is one, empties them", status: "keep", perArchive: true,
+    summary: perArchive((v) => (v === "no-timeline" ? v : `${v.protocol.logRows} log rows, ${v.protocol.visibleSquares} marks; traces ${typeof v.traces === "string" ? v.traces : v.traces.visibleSquares + " marks"}`)) },
   { id: "CF-16", title: "rendered/raw segment: hidden until a selection; raw shows the artifact, rendered the doc panels", status: "keep", perArchive: true,
     summary: perArchive((v) => (v === "no-timeline" ? v : `ev ${v.event}: rendered ${v.rendered?.panels.join("+")} · raw ${v.raw?.panels.join("+")}`)) },
   { id: "CF-17", title: "theme toggle cycles and persists (localStorage dispatch-viewer-theme), OS light, empty storage", status: "keep",
@@ -568,17 +568,19 @@ for (const e of expected) {
 }
 
 function diffSummary(want, have) {
+  // A key on one side only stringifies to undefined, so the text goes through String.
+  const show = (x, n) => String(JSON.stringify(x)).slice(0, n);
   if (Array.isArray(want) && Array.isArray(have)) {
     if (want.length !== have.length) return `length ${want.length} → ${have.length}`;
     const k = want.findIndex((x, i) => stable(x) !== stable(have[i]));
-    return `[${k}] ${JSON.stringify(want[k]).slice(0, 50)} → ${JSON.stringify(have[k]).slice(0, 50)}`;
+    return `[${k}] ${show(want[k], 50)} → ${show(have[k], 50)}`;
   }
   if (want && have && typeof want === "object" && typeof have === "object") {
     for (const k of new Set([...Object.keys(want), ...Object.keys(have)])) {
-      if (stable(want[k]) !== stable(have[k])) return `${k}: ${JSON.stringify(want[k]).slice(0, 40)} → ${JSON.stringify(have[k]).slice(0, 40)}`;
+      if (stable(want[k]) !== stable(have[k])) return `${k}: ${show(want[k], 40)} → ${show(have[k], 40)}`;
     }
   }
-  return `${JSON.stringify(want).slice(0, 40)} → ${JSON.stringify(have).slice(0, 40)}`;
+  return `${show(want, 40)} → ${show(have, 40)}`;
 }
 
 // ---------------------------------------------------------------- report
