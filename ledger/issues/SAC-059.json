@@ -3,19 +3,31 @@
   "title": "The dispatch viewer treats only d001 as a readback, so a resumed create's later readback reads as orchestrator work",
   "type": "defect",
   "severity": "low",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "user report (host), after SAC-055's fix showed that a resumed create can put a member's readback past d001: \"fix the dispatch viewer (frames.go) so it no longer assumes the readback is always d001 when a create was resumed\"",
   "opened": "2026-09-22",
-  "resolved": null,
+  "resolved": "2026-09-22",
   "stint": "pilot2-tier1",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "639954e",
+      "ca8a7d6"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "At ca8a7d6, `go test ./dispatch-viewer/internal/frames/ -count=1` passes 16 tests. Two load an archive in which a resumed create put dev's readback at d002 and the mission then sent d003. An accept of `dev/d002` is reported once as `accept-of-readback`, naming `dev/d002`, with real message times and with clobbered ones. `dev/d002` yields no `reply-not-accepted` in either case, and neither does a failed create with clobbered times and no readback record. Against the code without the fix, both tests failed on 4 of those 5 cases, measured before the fix was replayed onto the traces work. In the traces view, `TestJoinAnchorsOwesNoSendForALaterReadback` owes a send anchor for d003 alone. Against the code at 639954e, it also reported `dev/d002: no sent anchor was found in the traces`. `make ci` at ca8a7d6 passed, and its smoke tier replayed all 9 scenarios."
   },
   "resolution": null,
   "details": "**What happens.** `cs-dispatch-viewer` decides which dispatches are create-time readbacks partly by the literal id `d001`. A resumed create, or a readback asked for a second time, puts a member's readback at `d002` or later. That breaks two findings.\n\n- `accept-of-readback` fires only for `d001`. A log that accepts `dev/d002`, where `d002` is dev's readback, reports nothing.\n- `reply-not-accepted` falls back to `d001` alone when the archive's message times are clobbered. dev's `d002` readback is then reported as orchestrator work nobody accepted. It is a warning when later work followed and severe when it is the node's last dispatch, as in a failed create.\n\n**How to reproduce.** Build an archive in which dev's `d001` readback failed, a resumed create asked again in `d002`, and the mission then sent `d003`. Load it with `frames.Load`. With real message times, an accept of `dev/d002` yields no finding. With clobbered times, `dev/d002` yields `reply-not-accepted`.\n\n**Why it matters.** The viewer is how a run is audited afterwards. A readback shown as unjudged work sends a reader looking for a failure that did not happen. An acceptance of a readback shown as normal hides an orchestrator judging what the host judges.\n\n**Where it is.** The two checks are `buildEventsAndSpans` and `check`, in `dispatch-viewer/internal/frames/frames.go`. The finding's definition in `issueDefs` and MANUAL.md also names `d001`.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-22",
+      "text": "A readback is now a dispatch create issued, found in one of three ways. The first is `d001`, or any dispatch when no mission ever opened. The second is any dispatch up to the one readback.json records for that member. The third is any dispatch opened before the mission, when message times are real. The readback.json record is the `dispatch` field SAC-055's fix added, so an archive from an older build with clobbered times still falls back to `d001` alone."
+    },
+    {
+      "date": "2026-09-22",
+      "text": "The traces view, which landed while this fix waited to be pushed, carried the same assumption. It listed the anchors a dispatch owes, and owed a send for every dispatch but `d001`, so a resumed create's readback at d002 was reported as a send nobody made. It now asks the same question as the rest of the viewer."
+    }
+  ],
   "links": [
     "SAC-055"
   ]
