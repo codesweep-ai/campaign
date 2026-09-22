@@ -94,6 +94,9 @@ type Run struct {
 	// IssueDefs maps every finding code to its one-line definition, so the
 	// page can explain its own findings (hover on an issue row).
 	IssueDefs map[string]string `json:"issueDefs"`
+	// Traces is what cs-tracer read out of the members' transcripts, when it
+	// ran (traces.go). Absent, the page draws dispatches alone.
+	Traces *Traces `json:"traces,omitempty"`
 }
 
 // issueDefs is the findings registry — one line per code, the same meanings

@@ -4,12 +4,14 @@
 package cli
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -44,17 +46,25 @@ func buildVersion() string {
 const usage = `cs-dispatch-viewer — render one campaign run archive as a self-contained HTML timeline
 
 usage:
-  cs-dispatch-viewer <run-dir> [-o out.html]
+  cs-dispatch-viewer <run-dir> [-o out.html | -o site-dir/] [--tracer <bin>] [--no-traces]
   cs-dispatch-viewer manual | version | help
 
 <run-dir> is a campaign archive directory (holding campaign.json) or a run
 directory holding archive/. Output defaults to viewer.html in the current
 directory.
+
+When cs-tracer is on PATH, or named by --tracer, every member's transcript is
+normalized and drawn inside its dispatches. An -o that names a directory, or
+ends in a slash, writes a site instead of one file: index.html beside a
+tracer/ directory holding the tracer's export, and every step on the page
+links to its event there. --no-traces skips the tracer altogether.
 `
 
 type options struct {
-	dir string
-	out string
+	dir      string
+	out      string
+	tracer   string
+	noTraces bool
 }
 
 var errHelp = errors.New("help")
@@ -78,6 +88,14 @@ func parseArgs(args []string) (options, error) {
 			}
 			i++
 			o.out = args[i]
+		case a == "--tracer":
+			if i+1 >= len(args) {
+				return o, fmt.Errorf("%s needs a path", a)
+			}
+			i++
+			o.tracer = args[i]
+		case a == "--no-traces":
+			o.noTraces = true
 		case strings.HasPrefix(a, "-"):
 			return o, fmt.Errorf("unknown flag %q", a)
 		case o.dir != "":
@@ -118,16 +136,39 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "cs-dispatch-viewer: %v\n", err)
 		return 1
 	}
+	// A site is a directory: an existing one, or a path given with a
+	// trailing slash. The page is its index.html and the traces sit beside it.
+	site := ""
+	out := o.out
+	if info, err := os.Stat(o.out); strings.HasSuffix(o.out, "/") || (err == nil && info.IsDir()) {
+		site = filepath.Clean(o.out)
+		out = filepath.Join(site, "index.html")
+		if err := os.MkdirAll(site, 0o755); err != nil {
+			fmt.Fprintf(stderr, "cs-dispatch-viewer: %v\n", err)
+			return 1
+		}
+	}
+	if !o.noTraces {
+		err := frames.AttachTraces(context.Background(), run, o.dir, frames.TraceOptions{Tracer: o.tracer, Site: site, Stderr: stderr})
+		if err != nil {
+			fmt.Fprintf(stderr, "cs-dispatch-viewer: %v\n", err)
+			return 1
+		}
+	}
 	page, err := assemble(run)
 	if err != nil {
 		fmt.Fprintf(stderr, "cs-dispatch-viewer: %v\n", err)
 		return 1
 	}
-	if err := os.WriteFile(o.out, page, 0o644); err != nil {
+	if err := os.WriteFile(out, page, 0o644); err != nil {
 		fmt.Fprintf(stderr, "cs-dispatch-viewer: %v\n", err)
 		return 1
 	}
-	fmt.Fprintf(stdout, "%s (%d bytes, %d events, %d issues)\n", o.out, len(page), len(run.Events), len(run.Issues))
+	traced := ""
+	if run.Traces != nil {
+		traced = fmt.Sprintf(", %d sessions, %d anchors", len(run.Traces.Sessions), len(run.Traces.Anchors))
+	}
+	fmt.Fprintf(stdout, "%s (%d bytes, %d events, %d issues%s)\n", out, len(page), len(run.Events), len(run.Issues), traced)
 	return 0
 }
 

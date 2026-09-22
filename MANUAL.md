@@ -32,7 +32,7 @@ cs-campaign doctor [<campaign>]
 cs-campaign playbook | manual | version
 
 cs-campaign-member <verb> [args]
-cs-dispatch-viewer <run-dir> [-o out.html]
+cs-dispatch-viewer <run-dir> [-o out.html | -o site-dir/] [--tracer <bin>] [--no-traces]
 ```
 
 ## Description
@@ -580,11 +580,11 @@ true diagnosis and exit 78.
 ## The archive viewer: cs-dispatch-viewer
 
 ```sh
-cs-dispatch-viewer <run-dir> [-o viewer.html]
+cs-dispatch-viewer <run-dir> [-o viewer.html | -o site-dir/] [--tracer <bin>] [--no-traces]
 cs-dispatch-viewer manual | version | help
 ```
 
-Renders one campaign run archive as a single self-contained HTML page. It opens straight from disk:
+Renders one campaign run archive as a self-contained HTML page. It opens straight from disk:
 no server, no network, no runtime dependencies. `<run-dir>` is an archive directory holding
 `campaign.json`, or a run directory holding `archive/`. Output defaults to `viewer.html` in the
 current directory.
@@ -596,11 +596,34 @@ It reads the archive and nothing else:
 - each `output/replies/*.json`, whose filename decides which dispatch it closes;
 - the orchestrator's `output/log.jsonl`;
 - `campaign.json`, `readback.json`, `fleet-verdict.json`, `FLEET-ANOMALY.txt`, and any
-  `INCOMPLETE-*` markers.
+  `INCOMPLETE-*` markers;
+- each member's `transcript/cli-evidence.tgz`, when `cs-tracer` is available to read it.
 
-**Timeline.** Each node gets one lane, with the orchestrator first. Squares are channel artifacts: the facts any
-observer can verify from the files alone. Every mark's colour is a design token from one palette
-map (`dispatch-viewer/app/src/model.ts`):
+**Traces.** When `cs-tracer` is on PATH, or named by `--tracer`, the viewer unpacks each member's
+transcript and runs `cs-tracer normalize` over it. The tracer turns the CLI's own session format
+into its trajectory documents, and the viewer reads only those. It takes the per-event strip,
+with each step's working and idle time, and the event text that joins dispatches to steps. The
+viewer therefore holds no knowledge of any CLI's format. `--no-traces` skips the tracer, and a
+missing tracer is a finding rather than a failure.
+
+The join reads text the harness itself wrote. A member's turn that carries a dispatch says
+`Dispatch ID: dNNN.` by construction. The other three anchors are receipts printed by the
+harness verbs: `<member>/dNNN opened` from `send`, `replied to dNNN` from `reply`, and
+`accepted dNNN from <member>` from `accept`. A receipt an agent suppressed is reported as
+`trace-unlinked`, and the link is left out rather than guessed.
+
+An `-o` that names a directory, or ends in a slash, writes a site instead of one file. Its
+`index.html` is the dispatch page, and `tracer/` beside it is the tracer's own export of every
+session, one page per trace. Every step and every anchor on the dispatch page then links to its
+event in the trace, and the tracer's index at `tracer/index.html` lists the sessions.
+
+**Timeline.** Each node gets one lane, with the orchestrator first, on one axis of elapsed time
+since the campaign was created. A mark sits at its real time, so a column is a span of time and
+not an event. Ctrl or Cmd with the wheel zooms about the pointer, the plain wheel scrolls
+sideways, and the overview under the lanes shows the whole run and moves the view. Each dispatch
+is a box from its opening to its reply, trailing to its acceptance. Squares are channel artifacts:
+the facts any observer can verify from the files alone. Every mark's colour is a design token
+from one palette map (`dispatch-viewer/app/src/model.ts`):
 
 | Mark | Token | Meaning |
 |---|---|---|
@@ -614,9 +637,13 @@ map (`dispatch-viewer/app/src/model.ts`):
 | circle | `--color-cat-1` | plan (log claim) |
 | circle | `--color-cat-4` | assessment (log claim) |
 
-A connector runs from a dispatch's open square to its reply, showing the span it was open. Columns
-are event-ordered so dense exchanges stay readable, and the ruler underneath shows the same events
-at true wall-clock spacing.
+With traces, each member's steps are drawn inside its boxes in the tracer's own colours. A
+step's bar rises by the log of the time it took, with a 2-minute ceiling. The wait after a turn
+hangs below the line in the lane beneath, with a 1-hour ceiling. The orchestrator's own wait
+calls hang below its line too. A solid link joins the orchestrator's send call to the member's
+turn that received the dispatch, and a dashed link joins the member's reply call to the
+orchestrator's acceptance. The **trace steps** box hides the steps and links, and **waiting**
+hides the lanes below the line without moving the bars above them.
 
 **show orchestrator log.** Off by default, so the bare timeline is the dispatch and reply protocol
 as the channels prove it. Checking the box overlays the orchestrator's claims as circles on the
@@ -626,7 +653,10 @@ only with the log shown.
 
 **Selection.** Click any mark to inspect it. Reply notes render as markdown, evidence blocks as
 JSON, and the `raw` toggle shows the artifact byte for byte as it sits in the archive. Selecting an
-accept circle outlines the reply it judged, and the reverse. Arrow keys step through events (with
+accept circle outlines the reply it judged, and the reverse. A dispatch's inspector lists its
+anchors in the traces, each a jump on the timeline and a link into the trace page. A step's
+inspector shows its session, when it ran, how long it took, and the same link. Clicking a
+dispatch's box selects its opening. Arrow keys step through events (with
 the timeline focused or anywhere on the page), Home and End jump to the first and last event, and
 Escape clears the selection.
 
@@ -675,6 +705,10 @@ Severity reflects the kind of problem.
 | `accept-ambiguous` | info | a bare accept matches several nodes' dispatches; shown attached to all of them |
 | `accepted-twice` | info | the same dispatch accepted twice; the later entry is shown |
 | `ambiguous-order` | info | lifecycle events share one second; the rendered order is arbitrary |
+| `trace-missing` | warning | a member's archive holds no transcript, so it has no trace |
+| `tracer-failed` | warning | `cs-tracer` could not read a member's store; that member has no trace |
+| `tracer-absent` | info | no `cs-tracer` was found, so the page draws dispatches without their traces |
+| `trace-unlinked` | info | a dispatch anchor was not found in any trace; the link is left out rather than guessed |
 
 ## Options
 
@@ -699,7 +733,9 @@ Severity reflects the kind of problem.
 | `-f`, `--force` | `destroy` | Force member destruction. |
 | `--dry-run` | `destroy` | Resolve only; destroy nothing. Prints what would be removed and what would stay. |
 | `--archive DIR` | `audit` | Audit a preserved archive instead of live machines. |
-| `-o PATH` | `cs-dispatch-viewer` | Where the page is written. |
+| `-o PATH` | `cs-dispatch-viewer` | Where the page is written. A directory, or a path ending in a slash, writes a site. |
+| `--tracer BIN` | `cs-dispatch-viewer` | The `cs-tracer` binary to read transcripts with. Default: `cs-tracer` on PATH. |
+| `--no-traces` | `cs-dispatch-viewer` | Draw dispatches alone; never run the tracer. |
 
 `--profile` is mutually exclusive with the quick fleet flags, and `--agent` is mutually exclusive
 with `--agent-cli`/`--agents`. Membership must not depend on ambiguous flag merging.
