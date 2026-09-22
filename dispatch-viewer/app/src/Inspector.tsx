@@ -277,7 +277,7 @@ function StepBody({ run, m }: { run: Run; m: StepMark }) {
   if (ms != null && ms > 0) rows.push([m.idle ? "waited" : "took", fmtMs(ms)]);
   if (!m.idle && s.activeMs != null && s.workMs != null)
     rows.push(["of which", "waited " + fmtMs(s.workMs - s.activeMs) + ", generated " + fmtMs(s.activeMs)]);
-  if (s.error) rows.push(["result", "error"]);
+  if (s.error) rows.push(["result", <span className="bad">error</span>]);
   if (m.session.page)
     rows.push([
       "tracer",
