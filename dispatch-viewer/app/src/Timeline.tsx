@@ -284,9 +284,10 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
           if (kind === "wait") {
             // A tool call is stamped when it is issued, and its time runs
             // forward from there to its result (tracer rule R70). The wait is
-            // a hatched span from the call for as long as it took, at the
-            // row's full height, so the blank it leaves in the columns reads
-            // as waiting rather than as sparse work.
+            // a hatched span from the call for as long as it took, at a third
+            // of the row: enough for the hatch to read, and under the height
+            // of an ordinary column, so the blank it leaves in the columns
+            // reads as waiting rather than as sparse work.
             laneEvents.push({
               i: m.i,
               lane: stepLane(session.node, session),
@@ -296,7 +297,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
               at: fmtT(m.step.ts),
               position: pos(m.step.ts),
               extent: ms / 1000,
-              magnitude: 1,
+              magnitude: 0.35,
             });
           } else {
             laneEvents.push({
@@ -338,7 +339,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
             at: fmtT(m.step.ts),
             position: from,
             extent: Math.min(from + (m.step.idleMs ?? 0) / 1000, box[1]) - from,
-            magnitude: 1,
+            magnitude: 0.35,
           });
         }
       }

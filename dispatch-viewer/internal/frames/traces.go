@@ -51,7 +51,7 @@ type Session struct {
 }
 
 // Step is one strip entry, the tracer's per-event shape, plus a short text
-// for the hover and the wait flag the page draws below the line.
+// for the hover and the wait flag the page draws as a hatched span.
 type Step struct {
 	I        int    `json:"i"`
 	Kind     string `json:"kind"`
