@@ -99,6 +99,11 @@ func (a *app) observeCampaign(ctx context.Context, campaign *model.Campaign) (ob
 			acc = protocol.AcceptedFor(entries, member.Name)
 		}
 		o := protocol.Compute(facts, failed, protocol.Blind{Looks: blindRun}, acc, pol, now)
+		// A resume of the orchestrator is the host's to perform (PROTOCOL.md §9),
+		// so the line names the instrument, as it names restart for a credential.
+		if member.Role == "orchestrator" && o.NextMove == "resume" {
+			o.Detail += " · the host's move: cs-campaign resume"
+		}
 		obs.Derived = append(obs.Derived, nodeView{
 			Name: member.Name, Role: member.Role,
 			State: string(o.State), Dispatch: o.Dispatch, Detail: o.Detail,

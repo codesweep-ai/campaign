@@ -531,7 +531,7 @@ ask and is never a stale reading from an hour ago.
 | `node-replied` | The reply exists and the orchestrator has not accepted it. | Nothing. Judging it is the orchestrator's job. |
 | `node-stuck` | The ladder is spent, a bound tripped, the machine is gone, or the credential was rejected. | Read the line, which says which. A rejected credential is yours to renew. Otherwise read the transcript, and decide. |
 | `node-unreachable` | This look failed. It overlays a state rather than replacing one. | Look again before concluding anything. |
-| `node-refused` | The provider throttled the member, or was overloaded or down. The harness is waiting and spends no rung. | Nothing, unless every member shows it for a long time. Then the key is over its limit or the provider is down, and fewer members on the key is the lever. |
+| `node-refused` | The provider throttled the member, or was overloaded or down. The harness is waiting and spends no rung. | For an agent, nothing. For the orchestrator, `cs-campaign resume` once the line says `resume next`; a tending loop may do that for you. Otherwise nothing, unless every member shows it for a long time. Then the key is over its limit or the provider is down, and fewer members on the key is the lever. |
 
 The right answer is usually to do nothing. Recovery is mechanical and already running: templated
 continues, then a restart re-anchor, bounded by the policy numbers you set.
@@ -576,6 +576,7 @@ started itself, and a nudge would interrupt it. A record that has been still for
 means it has stopped:
 
 ```sh
+cs-campaign resume acme                  # after a provider refusal: same session, no rung spent
 cs-campaign send acme --file nudge.md    # continues m1 if open, opens a dispatch if past it
 cs-campaign restart acme                 # drop a wedged session, re-anchor on the open dispatch
 ```

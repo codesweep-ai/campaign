@@ -24,7 +24,8 @@ alone.
 
 This still matters: rules written only for agents would leave the orchestrator with no
 defined obligations at all. It is a node here: it has states, and it owes a reply. What it
-does not have is a dispatcher that recovers it, and that is deliberate: recovering a stopped
+does not have is a dispatcher that judges for it, and that is deliberate. The host carries it on
+mechanically after a provider refusal (§9). Recovering a stopped
 orchestrator is the operator's, by design (§9).
 
 ## 2. Three nouns
@@ -427,7 +428,8 @@ single tool call may run. The win is one model wake-up per interval instead of o
 
 **An orchestrator that stops while its workers are still going is a defect in the
 orchestrator**, not a condition for the host to paper over. The host's job is to make that
-defect visible, not to repair it.
+defect visible, not to repair it. An orchestrator whose provider refused its turn has not
+stopped in that sense: it is waiting, and the host carries it on (§9).
 
 ## 9. How the host observes
 
@@ -443,9 +445,15 @@ interrupts the work, and fails precisely when the orchestrator is stuck.
 claim. "Orchestrator says backend is working" beside "backend is unreachable" is the
 highest-value line an operator can see, and a single merged status column destroys it.
 
-**During a campaign, the host observes; it does not act.** Every repair inside a campaign belongs to the
-orchestrator, and a campaign that needs the host to keep it running has an orchestrator
-defect (§8). The boundary sits at the machines themselves: a node whose machine is gone
+**During a campaign, the host observes, and acts only mechanically, for the one node that has no
+dispatcher.** Every repair that takes judgment belongs to the orchestrator, and a campaign that
+needs the host's judgment to keep it running has an orchestrator defect (§8). The orchestrator is
+a node too, and its provider can refuse its turn as it refuses any agent's. Nothing above it
+inside the campaign can carry it on. So the host performs for the orchestrator exactly what the
+orchestrator performs for a refused agent. After the provider's wait, it resumes the same session
+into the same dispatch, which spends no rung. The host derives that move the way it derives every
+state, and performs no other. A continue, a restart and the verdict remain a person's. The boundary
+sits at the machines themselves: a node whose machine is gone
 cannot be restarted by an orchestrator, which has no power to create or boot one. A credential
 the provider rejects is on the same side of that boundary, because an orchestrator cannot issue
 or renew one. Both repairs are infrastructure work by a human, outside this protocol rather

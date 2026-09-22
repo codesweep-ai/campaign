@@ -15,6 +15,7 @@ import (
 var memberFacingBehaviors = map[string]string{
 	"send":       "prompt-await",     // the dispatch-and-reply rule, one verb
 	"restart":    "restart-resume",   // rung two of the ladder, operator-invoked
+	"resume":     "session-resume",   // the same session carried on, no rung spent
 	"transcript": "output-retrieval", // raw session transcript, forensics only
 	"archive":    "archive-evidence",
 }

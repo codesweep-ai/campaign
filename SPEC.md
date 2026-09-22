@@ -104,7 +104,7 @@ lifecycle, the protocol, member access, evidence and health:
 ```sh
 cs-campaign init|validate|plan|orientation            # author and check; allocate nothing
 cs-campaign create <name> --profile <file>            # provision, brief, verify, dispatch
-cs-campaign observe|send|restart <campaign>           # the protocol surface
+cs-campaign observe|send|restart|resume <campaign>    # the protocol surface
 cs-campaign ssh|fetch|transcript <campaign>[/member]  # member access
 cs-campaign archive|audit <campaign>                  # evidence
 cs-campaign ls                                        # every campaign on this host
@@ -584,8 +584,15 @@ tabular output, environment defaults and host-owned JSON state.
 **R77.** Normal operation **MUST** be create, then observe. The host dispatches to the orchestrator
 alone, with the create-time readback as the single host-to-agent exception.
 
-**R78.** Every repair inside a running campaign **MUST** belong to the orchestrator. `send` and
-`restart` against the orchestrator are operator instruments and **MUST NOT** become a loop.
+**R78.** Every repair that takes judgment inside a running campaign **MUST** belong to the
+orchestrator. `send` and `restart` against the orchestrator are operator instruments and **MUST
+NOT** become a loop.
+
+**R78a.** `resume` against the orchestrator **MUST** perform only the move the state computation
+derives as a resume: a provider refusal whose wait has elapsed, or a turn that never ran. It
+**MUST** refuse every other state by name and send nothing, and it **MUST** refuse an agent. *It is
+the one host instrument a loop may call: its pacing and its bound come from the computation, so a
+caller cannot make refused load return early.*
 
 **R79.** `observe` **MUST** render its two panes separately and **MUST NOT** merge them: node
 states computed now from each node's own machine, beside what the orchestrator recorded. *One is

@@ -55,8 +55,9 @@ func (a *app) root() *cobra.Command {
 		// Planning and lifecycle.
 		a.initCmd(), a.orientationCmd(), a.createCmd(false), a.createCmd(true), a.validateCmd(), a.destroyCmd(),
 		// The protocol: one send verb, one observation surface, one operator
-		// recovery instrument. Node state is computed, never stored.
-		a.observeCmd(), a.sendCmd(), a.restartCmd(),
+		// recovery instrument, and the host's one no-rung move for the
+		// orchestrator. Node state is computed, never stored.
+		a.observeCmd(), a.sendCmd(), a.restartCmd(), a.resumeCmd(),
 		// Member access.
 		a.memberPass("ssh"), a.fetchCmd(), a.transcriptCmd(),
 		// Evidence.

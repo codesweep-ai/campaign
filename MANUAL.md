@@ -21,6 +21,7 @@ cs-campaign create <campaign> --profile PROFILE [--accept-upstream-change] [--dr
 cs-campaign observe <campaign> [--json]
 cs-campaign send <campaign> [TEXT] [--file PATH]
 cs-campaign restart <campaign>
+cs-campaign resume <campaign>
 cs-campaign ssh <campaign>[/member] [ARGS...]
 cs-campaign fetch <campaign>[/member]
 cs-campaign transcript <campaign>[/member]
@@ -296,7 +297,7 @@ observe its own death and you can.
 | `node-replied` | The reply exists and the orchestrator has not accepted it. |
 | `node-stuck` | The ladder is spent, a bound tripped, the machine is gone, or the provider rejected the node's credential. The line says which. |
 | `node-unreachable` | This look failed. An overlay on every state, not a state. |
-| `node-refused` | The node's provider ended its last turn, or could not be reached: a throttle, an overload, an outage or a network that is down. An overlay. The harness waits and then carries the same session on, and no rung is spent. |
+| `node-refused` | The node's provider ended its last turn, or could not be reached: a throttle, an overload, an outage or a network that is down. An overlay. The harness waits and then carries the same session on, and no rung is spent. For the orchestrator the line names `cs-campaign resume` as the host's move. |
 
 A `node-refused` line carries what the provider said and what happens next, as in
 `throttled 40s ago · 3 refused in a row · provider asked for 12s · resuming in 80s, no rung spent`.
@@ -346,6 +347,7 @@ way, so backticks and `$( )` in it are substituted before delivery.
 
 ```sh
 cs-campaign restart <campaign>
+cs-campaign resume <campaign>
 ```
 
 Drops the orchestrator's wedged session and re-anchors it against the open dispatch by mechanical
@@ -358,6 +360,29 @@ restarted — session dropped, re-anchored against the open dispatch
 
 `send` and `restart` target the orchestrator alone, for the one failure only you can see: it
 stopped. Agent recovery is the orchestrator's ladder, run inside its own `wait`.
+
+### resume
+
+```sh
+cs-campaign resume <campaign>
+```
+
+Carries the mission on after the orchestrator's provider refused its turn, or after a turn that
+never ran. The same session continues on the same dispatch, and no rung is spent. It performs the
+move `observe` derives and nothing else. While the provider's wait is still running it refuses and
+says how long is left. Once `providerWaitSeconds` has tripped it refuses and names the bound. For a
+stopped orchestrator whose next move is a continue it refuses and names `send`. In every refused
+case nothing is sent.
+
+```console
+$ cs-campaign resume acme
+m1 resumed after its provider's refusal, no rung spent
+```
+
+This is the one host instrument a tending loop may call. Poll `observe --json`, and when the
+orchestrator's line says `resume next`, run it. The pacing and the bound come
+from the same computation, so a call made early does nothing. An agent's refusal is the
+orchestrator's to resume, and the command refuses an agent by name.
 
 ### ssh
 

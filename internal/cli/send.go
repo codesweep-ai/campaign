@@ -5,7 +5,8 @@ package cli
 // Both are operator instruments, never a loop: a human who sees node-stopped
 // on the orchestrator decides whether to continue it (PROTOCOL.md §8: an
 // orchestrator that stops is a defect to be made visible, not repaired
-// automatically).
+// automatically). The one move a loop may make is resume (resume.go): it
+// spends no rung, and the computation says when.
 
 import (
 	"errors"
