@@ -1,0 +1,22 @@
+{
+  "id": "SAC-056",
+  "title": "A resumed create moves the deadline under members that have already read it",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, operating the deps-pilot campaign on 2026-09-22, from the orchestrator's first assessment note",
+  "opened": "2026-09-22",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "**What happens.** `adoptResumableCreate` re-anchors the saved deadline to each new create attempt, and the resumed create rewrites `member.json` with it. Nothing tells a member that its clock moved. The campaign's `createdAt` stays at the first attempt.\n\n**Seen live.** deps-pilot's deadline went from 14:48:04Z to 15:06:18Z to 15:32:51Z across three creates on 2026-09-22. The orchestrator read `member.json` during the first attempt and derived hour 0 as the deadline minus `elapsedSeconds`: 00:48:04Z. It kept that clock for the whole run. It told pm, qa and ux that the briefing loop had spent most of the two-hour planning box, when the harness's own clock had barely started.\n\n**Why it matters.** The orchestrator enforces the deadline by judgement, so its reading of the clock is the one that counts. Two clocks that disagree by 45 minutes turn a delay the harness absorbed into schedule pressure the team felt. Here the cost was a shorter planning phase. With a short deadline it could cut work.\n\n**Where it is.** The re-anchor is in `adoptResumableCreate`, in `internal/cli/create.go`. The comment there explains the re-anchor: without it, a short deadline could expire before the mission opens.\n\n**What would help.** Keep the re-anchor, and say so where members will read it. The resumed readback or the mission dispatch could state the deadline and that it replaced an earlier one. Recording each attempt's start next to `createdAt` would also let `ls` and `observe` show which clock is live.",
+  "notes": [],
+  "links": [
+    "SAC-055"
+  ]
+}
