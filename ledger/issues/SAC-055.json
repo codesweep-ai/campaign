@@ -3,18 +3,29 @@
   "title": "A resumed create re-sends the first readback verbatim, and members read it as a broken channel",
   "type": "defect",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, operating the deps-pilot campaign on 2026-09-22, from the replies of its pm, frontend and orchestrator",
   "opened": "2026-09-22",
-  "resolved": null,
+  "resolved": "2026-09-22",
   "stint": "pilot2-tier1",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "9263f09"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "At 28e6ba6, `go test ./internal/cli/ -run 'Resumed|FirstReadbackIsAsked|DocumentedResumedReadback|MalformedReadback|SubstantiveReadback' -count=1` passes 10 tests against a fake member that keeps its channels as files. A member whose recorded readback passed in d001, against unchanged seeded files, receives no d002, and create prints `confirmed its briefing in d001 on an earlier create`. A member whose d001 answer failed is asked in a new message headed `This is dispatch d002`. It quotes the failure and says `Nothing in your briefing has changed since.`, and never names d001 as its own id. A changed brief is asked for again, naming `roles/dev.md`. An unanswered d001 is continued as `d001.001.md`, which says the dispatch is still open. With the skip and the reason switched off, four of the tests fail, measured before the fix was replayed onto the traces work, which left its code unchanged. `make ci` passed at 28e6ba6, and its smoke tier replayed all 9 scenarios."
   },
   "resolution": null,
   "details": "**What happens.** Re-running `create` after a failed readback opens a new readback dispatch on every member. Members whose readback already passed get one too. The text is `readbackPrompt`'s, word for word, so a dispatch with id `d002` or `d003` opens with \"This is dispatch d001\" and says nothing about why it came again.\n\n**Seen live.** deps-pilot took three creates on 2026-09-22, because a provider outage kept two members from answering within the readback bound. The other members received the same briefing up to four times. pm concluded that \"your send path is broken\". It then wrote its shortlist under a dispatch that said not to perform any work, and refused the next copy as blocked. frontend also started work early. The orchestrator spent a note proving by md5 that the copies were identical.\n\n**Why it matters.** The readback exists to confirm a briefing before any work. A repeated, misnumbered copy teaches capable members that the channel is unreliable, and they respond by acting on their own reading. That is the opposite of what the readback is for.\n\n**Where it is.** `runReadback` in `internal/cli/readback.go` calls `readbackOne` for every member on every create, whatever that member's saved readback says. The text is `readbackPrompt` in `internal/cli/readbackverify.go`. MANUAL.md says a re-run \"continues the still-open readback dispatch\", which holds only for a member whose readback is still open.\n\n**What would help.** Skip a member whose saved readback passed and whose dispatch is closed. When a member must be asked again, name the real dispatch id and say why: create resumed after an earlier failure, and nothing in its briefing changed.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-22",
+      "text": "The skip reads two things: the saved readback record and the member's own channel. The record now carries the dispatch its answer closed and the seeded digests the member held. A record written by an older build carries neither, so its member is asked once more, with the reason."
+    },
+    {
+      "date": "2026-09-22",
+      "text": "A first create asks exactly as before, so no recorded session changes. Everything a resumed create adds is in the message file, which a replay treats as a tool's output."
+    }
+  ],
   "links": []
 }

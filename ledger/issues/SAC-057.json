@@ -3,18 +3,29 @@
   "title": "A send to a seat whose dispatch is open silently continues it, so an approval can carry another dispatch's id",
   "type": "defect",
   "severity": "high",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, from the two deps-maintenance campaigns of 2026-09-22: the first pilot's orchestrator findings (§2.7 and its dispatch-id table) and its findings log, and the pilot2 review of both",
   "opened": "2026-09-22",
-  "resolved": null,
+  "resolved": "2026-09-22",
   "stint": "pilot2-tier1",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "877177f"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "At 28e6ba6, `go test ./cmd/cs-campaign-member/ -run 'Send|MintRace|Continuation' -count=1` passes 7 tests against the scripted fake world. A plain send to dev, node-working on an open d001, fails with `dev is node-working on d001, which is still open: this message would continue d001, not open a new dispatch. Nothing was delivered.` No message is delivered and no turn is started. A `--continue` after dev replied to d001 fails with `would open d002, not continue d001`. A lost mint race is refused, naming the winner's dispatch. With the refusal switched off, three of the tests fail, measured before the fix was replayed onto the traces work, which left its code unchanged. `make ci` passed at 28e6ba6, and all 9 smoke scenarios still replay."
   },
   "resolution": null,
   "details": "**What happens.** `cs-campaign-member send <agent>` continues the agent's dispatch when one is open and opens a new one when it is closed. The only sign of which happened is the word `continued` or `opened` at the end of the output, after the message has been delivered.\n\n**Seen live.** In the first deps pilot the orchestrator numbered its dispatches itself. Its message meant as `d030` went to pm while pm was still working on `d029`, so it landed as `d029.001.md` under a heading that said `d030`. From then on the orchestrator's ids ran one ahead of the transport's. The converse happened too: a ruling meant to continue qa's `d005` opened `d006`, because qa had replied 106 seconds earlier, and the orchestrator then read `d006` as unanswered.\n\n**Why it matters.** Two steps merge into one, or one step splits into two, and nobody is told before it happens. The dispatch id is the token a design approval cites, and a frozen value is re-recorded under that token. An approval that lands inside another dispatch carries that dispatch's id. The pilot3 orchestrator brief works around it by sending only to free seats, which costs latency.\n\n**Where it is.** `sendBody` delivers and `cmdSend` reports what it did, both in `cmd/cs-campaign-member/dispatcher.go`. The orientation template says \"you never classify, the tool computes it\".\n\n**What would help.** Keep the classification computed, and make the sender say which it expects. A send that would continue an open dispatch is refused unless it says `--continue`, naming the open dispatch and its state. A `--continue` that would open a new dispatch is refused too, naming the reply that closed it. Nothing is delivered on a refusal.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-22",
+      "text": "The refusal works in both directions. The pilot3 brief works around the first, and the first pilot's findings log shows the second happening to a ruling. SPEC.md R57 now requires a send a model issues to state which it expects, which changes a MUST."
+    },
+    {
+      "date": "2026-09-22",
+      "text": "The host's `cs-campaign send` and the wait ladder's own continues are unchanged. Both act on facts they have just computed, and neither is issued by a model."
+    }
+  ],
   "links": []
 }
