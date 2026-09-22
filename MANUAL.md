@@ -655,6 +655,13 @@ as the channels prove it. Checking the box overlays the orchestrator's claims as
 orchestrator's `log.jsonl`: claims, not channel traffic. Acceptance is a log claim, so it appears
 only with the log shown.
 
+**Addresses.** The page's address names the selection, so a view can be handed to someone.
+`#m/<member>` picks the member's first dispatch. `#m/<member>/<dNNN>` picks that dispatch's
+opening and zooms to it. `#e/<n>` picks any event or step by the index this page gives it, the
+number the tracer links carry. The page writes the most specific form back as the
+selection moves, and Escape clears it. A trace page is addressed the tracer's way,
+`tracer/traces/<session>.html#ev-<n>`.
+
 **Selection.** Click any mark to inspect it. Reply notes render as markdown, evidence blocks as
 JSON, and the `raw` toggle shows the artifact byte for byte as it sits in the archive. Selecting an
 accept circle outlines the reply it judged, and the reverse. A dispatch's inspector lists its

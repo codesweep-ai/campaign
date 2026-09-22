@@ -31,6 +31,8 @@ export default function App() {
   const [showDetail, setShowDetail] = useState(true);
   const [showWaits, setShowWaits] = useState(false);
   const [errorsOnly, setErrorsOnly] = useState(false);
+  // A dispatch the timeline should zoom to, as its span id "<member>/<dNNN>".
+  const [zoomSpan, setZoomSpan] = useState<string | null>(null);
 
   const events: IndexedEvent[] = useMemo(
     () => (run ? run.events.map((e, i) => ({ ...e, i })) : []),
@@ -77,9 +79,30 @@ export default function App() {
       selRef.current = i;
       setSel(i);
       setLogSel(null);
+      writeHash(i, events);
     },
-    [],
+    [events],
   );
+
+  // The address names the selection, so a view can be handed to someone:
+  // #m/<member> is the member's first dispatch, #m/<member>/<dNNN> is that
+  // dispatch's opening, zoomed to, and #e/<n> is any event or step by the
+  // index this page gives it. The page writes the most specific form back
+  // as the selection moves, and reads a new one when the address changes.
+  useEffect(() => {
+    if (!run) return;
+    const apply = () => {
+      const target = readHash(location.hash, events);
+      if (!target) return;
+      selRef.current = target.i;
+      setSel(target.i);
+      setLogSel(null);
+      setZoomSpan(target.zoom ?? null);
+    };
+    apply();
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
+  }, [run, events]);
 
   const selectLog = useCallback((l: LogEntry) => {
     selRef.current = -1;
@@ -245,6 +268,7 @@ export default function App() {
                     showDetail={traced && showDetail}
                     showWaits={showWaits}
                     errorsOnly={errorsOnly}
+                    zoomSpan={zoomSpan}
                     onSelect={select}
                   />
                 ) : (
@@ -278,4 +302,28 @@ export default function App() {
       <Footer>cs-dispatch-viewer · @codesweep-ai/ui v{__UI_VERSION__}</Footer>
     </AppShell>
   );
+}
+
+/** The selection an address names, and the dispatch to zoom to when it names one. */
+function readHash(hash: string, events: IndexedEvent[]): { i: number; zoom?: string } | null {
+  const parts = decodeURIComponent(hash.replace(/^#/, "")).split("/");
+  if (parts[0] === "e" && parts.length === 2) {
+    const i = Number(parts[1]);
+    return Number.isInteger(i) && i >= 0 ? { i } : null;
+  }
+  if (parts[0] === "m" && (parts.length === 2 || parts.length === 3)) {
+    const [, member, dispatch] = parts;
+    const open = events.find((e) => e.node === member && e.type === "open" && (!dispatch || e.dispatch === dispatch));
+    if (!open) return null;
+    return dispatch ? { i: open.i, zoom: member + "/" + dispatch } : { i: open.i };
+  }
+  return null;
+}
+
+/** Writes the address for a selection, without adding a history entry. */
+function writeHash(i: number, events: IndexedEvent[]) {
+  const e = i >= 0 ? events[i] : undefined;
+  const hash = i < 0 ? "" : e && e.type === "open" && e.dispatch ? `#m/${e.node}/${e.dispatch}` : `#e/${i}`;
+  const url = location.pathname + location.search + hash;
+  if (location.hash !== hash) history.replaceState(null, "", url);
 }

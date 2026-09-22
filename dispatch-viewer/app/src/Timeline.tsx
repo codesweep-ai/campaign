@@ -41,6 +41,8 @@ interface TimelineProps {
   showDetail: boolean;
   showWaits: boolean;
   errorsOnly: boolean;
+  /** A dispatch to zoom to, as its span id "<member>/<dNNN>", applied when it changes. */
+  zoomSpan?: string | null;
   onSelect: (i: number) => void;
 }
 
@@ -81,7 +83,7 @@ const PRESETS: { value: string; label: string; span?: number }[] = [
   { value: "300", label: "5m", span: 300 },
 ];
 
-export function Timeline({ run, events, marks, sel, link, showLog, showDetail, showWaits, errorsOnly, onSelect }: TimelineProps) {
+export function Timeline({ run, events, marks, sel, link, showLog, showDetail, showWaits, errorsOnly, zoomSpan, onSelect }: TimelineProps) {
   const origin = +new Date(run.campaign.createdAt);
   const pos = (iso: string | undefined): number => (+new Date(iso as string) - origin) / 1000;
 
@@ -416,6 +418,14 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
     setPreset("");
     setView({ start: s.from - pad, end: end + pad });
   }, []);
+
+  // An address naming a dispatch zooms to it once the boxes exist. Declared
+  // after the run-view effect above, so on first load it has the last word.
+  useEffect(() => {
+    if (!zoomSpan) return;
+    const s = spans.find((s) => s.id === zoomSpan);
+    if (s) zoomToSpan(s);
+  }, [zoomSpan, spans, zoomToSpan]);
 
   return (
     <div>
