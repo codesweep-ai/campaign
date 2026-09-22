@@ -60,8 +60,15 @@ export async function selectEvent(page, i) {
   await page.evaluate(() => document.activeElement?.blur?.());
   await page.keyboard.press("Home");
   for (let k = 0; k < pos; k++) await page.keyboard.press("ArrowRight");
+  // The listbox moves its active descendant to the selection in a passive
+  // effect, after paint. A read in the same task saw the previous one.
+  await settle(page);
   return true;
 }
+
+/** Two animation frames: what a passive effect needs to land. */
+export const settle = (page) =>
+  page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 
 export async function structure(page) {
   return ev(page, (SEL) => {
@@ -418,10 +425,13 @@ export async function issueRowKeyboard(page) {
   return { ...base, reached: seen.size, home, end };
 }
 
-/** Amended CF-31 (d005): the timeline exposes exactly one Tab stop (the
-    EventLanes listbox; its census options are deliberately non-tabbable), and
-    every visible event is reachable from it by keyboard — Home, then
-    ArrowRight once per step to the end, visiting every visible index. */
+/** Amended CF-31 (d005, then the positioned layout): the timeline exposes
+    exactly one Tab stop (the EventLanes listbox; its census options are
+    deliberately non-tabbable), and every visible event is reachable from it
+    by keyboard. The positioned layout walks one member's timeline with Home
+    and ArrowRight, and ArrowDown moves to the next member's, so the walk is
+    Home, ArrowRight to the end of the timeline, ArrowDown, and again until
+    ArrowDown moves nowhere. */
 export async function timelineKeyboard(page) {
   await setLog(page, true);
   const expected = await ev(page, (SEL) =>
@@ -441,16 +451,32 @@ export async function timelineKeyboard(page) {
       return opt ? +opt.getAttribute(SEL.squareIndexAttr) : null;
     });
   await page.focus(SEL.timelineListbox);
+  // An earlier probe may have left the selection on a lower member, so climb
+  // to the first timeline before the walk begins.
+  for (let k = 0; k < expected.length; k++) {
+    const before = await readActive();
+    await page.keyboard.press("ArrowUp");
+    if ((await readActive()) === before) break;
+  }
   await page.keyboard.press("Home");
   const seen = [await readActive()];
-  for (let k = 1; k < expected.length; k++) {
+  // Bounded by the number of events, plus one ArrowDown and Home per timeline.
+  for (let k = 0; k < expected.length * 2 + 2; k++) {
     await page.keyboard.press("ArrowRight");
+    const next = await readActive();
+    if (next !== seen[seen.length - 1]) {
+      seen.push(next);
+      continue;
+    }
+    await page.keyboard.press("ArrowDown");
+    if ((await readActive()) === next) break;
+    await page.keyboard.press("Home");
     seen.push(await readActive());
   }
   return {
     tabStops,
     total: expected.length,
-    steps: seen.length,
+    steps: new Set(seen).size,
     missing: expected.filter((i) => !seen.includes(i)),
   };
 }

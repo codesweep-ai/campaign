@@ -11,14 +11,14 @@
           "events": 4
         },
         {
-          "label": "log",
-          "kind": "log",
-          "events": 6
-        },
-        {
           "label": "dev",
           "kind": "member",
           "events": 9
+        },
+        {
+          "label": "orchestrator log",
+          "kind": "log",
+          "events": 0
         }
       ],
       "clobbered": [],
@@ -29,14 +29,14 @@
           "events": 4
         },
         {
-          "label": "log",
-          "kind": "log",
-          "events": 6
-        },
-        {
           "label": "dev",
           "kind": "member",
           "events": 11
+        },
+        {
+          "label": "orchestrator log",
+          "kind": "log",
+          "events": 0
         }
       ],
       "create-phase": [
@@ -49,10 +49,122 @@
           "label": "dev",
           "kind": "member",
           "events": 4
+        },
+        {
+          "label": "orchestrator log",
+          "kind": "log",
+          "events": 0
         }
       ]
     },
-    "note": ""
+    "note": "",
+    "approval": {
+      "id": "owner",
+      "reason": "The timeline gained per-member trace rows, the log card hides until the log is shown, and the inspector's at row carries elapsed time, all by design.",
+      "previous": {
+        "healthy": [
+          {
+            "label": "orchestrator",
+            "kind": "orchestrator",
+            "events": 4
+          },
+          {
+            "label": "log",
+            "kind": "log",
+            "events": 6
+          },
+          {
+            "label": "dev",
+            "kind": "member",
+            "events": 9
+          }
+        ],
+        "clobbered": [],
+        "name-mismatch": [
+          {
+            "label": "orchestrator",
+            "kind": "orchestrator",
+            "events": 4
+          },
+          {
+            "label": "log",
+            "kind": "log",
+            "events": 6
+          },
+          {
+            "label": "dev",
+            "kind": "member",
+            "events": 11
+          }
+        ],
+        "create-phase": [
+          {
+            "label": "orchestrator",
+            "kind": "orchestrator",
+            "events": 1
+          },
+          {
+            "label": "dev",
+            "kind": "member",
+            "events": 4
+          }
+        ]
+      },
+      "measured": {
+        "healthy": [
+          {
+            "label": "orchestrator",
+            "kind": "orchestrator",
+            "events": 4
+          },
+          {
+            "label": "dev",
+            "kind": "member",
+            "events": 9
+          },
+          {
+            "label": "orchestrator log",
+            "kind": "log",
+            "events": 0
+          }
+        ],
+        "clobbered": [],
+        "name-mismatch": [
+          {
+            "label": "orchestrator",
+            "kind": "orchestrator",
+            "events": 4
+          },
+          {
+            "label": "dev",
+            "kind": "member",
+            "events": 11
+          },
+          {
+            "label": "orchestrator log",
+            "kind": "log",
+            "events": 0
+          }
+        ],
+        "create-phase": [
+          {
+            "label": "orchestrator",
+            "kind": "orchestrator",
+            "events": 1
+          },
+          {
+            "label": "dev",
+            "kind": "member",
+            "events": 4
+          },
+          {
+            "label": "orchestrator log",
+            "kind": "log",
+            "events": 0
+          }
+        ]
+      }
+    }
   },
   {
     "id": "CF-02",
@@ -233,7 +345,6 @@
         "sections": [
           "Timeline",
           "Issues",
-          "Orchestrator log",
           "Inspector"
         ]
       },
@@ -262,7 +373,110 @@
         ]
       }
     },
-    "note": ""
+    "note": "",
+    "approval": {
+      "id": "owner",
+      "reason": "The timeline gained per-member trace rows, the log card hides until the log is shown, and the inspector's at row carries elapsed time, all by design.",
+      "previous": {
+        "healthy": {
+          "legend": [
+            "channels dispatch open continue restart reply done reply blocked/needs-input verdict",
+            "orchestrator log accept (log) plan assessment"
+          ],
+          "sections": [
+            "Timeline",
+            "Issues",
+            "Orchestrator log",
+            "Inspector"
+          ]
+        },
+        "clobbered": {
+          "legend": [
+            "channels dispatch open continue restart reply done reply blocked/needs-input verdict",
+            "orchestrator log accept (log) plan assessment"
+          ],
+          "sections": [
+            "Timeline",
+            "Issues",
+            "Orchestrator log",
+            "Inspector"
+          ]
+        },
+        "name-mismatch": {
+          "legend": [
+            "channels dispatch open continue restart reply done reply blocked/needs-input verdict",
+            "orchestrator log accept (log) plan assessment"
+          ],
+          "sections": [
+            "Timeline",
+            "Issues",
+            "Orchestrator log",
+            "Inspector"
+          ]
+        },
+        "create-phase": {
+          "legend": [
+            "channels dispatch open continue restart reply done reply blocked/needs-input verdict",
+            "orchestrator log accept (log) plan assessment"
+          ],
+          "sections": [
+            "Timeline",
+            "Issues",
+            "Orchestrator log",
+            "Inspector"
+          ]
+        }
+      },
+      "measured": {
+        "healthy": {
+          "legend": [
+            "channels dispatch open continue restart reply done reply blocked/needs-input verdict",
+            "orchestrator log accept (log) plan assessment"
+          ],
+          "sections": [
+            "Timeline",
+            "Issues",
+            "Orchestrator log",
+            "Inspector"
+          ]
+        },
+        "clobbered": {
+          "legend": [
+            "channels dispatch open continue restart reply done reply blocked/needs-input verdict",
+            "orchestrator log accept (log) plan assessment"
+          ],
+          "sections": [
+            "Timeline",
+            "Issues",
+            "Inspector"
+          ]
+        },
+        "name-mismatch": {
+          "legend": [
+            "channels dispatch open continue restart reply done reply blocked/needs-input verdict",
+            "orchestrator log accept (log) plan assessment"
+          ],
+          "sections": [
+            "Timeline",
+            "Issues",
+            "Orchestrator log",
+            "Inspector"
+          ]
+        },
+        "create-phase": {
+          "legend": [
+            "channels dispatch open continue restart reply done reply blocked/needs-input verdict",
+            "orchestrator log accept (log) plan assessment"
+          ],
+          "sections": [
+            "Timeline",
+            "Issues",
+            "Orchestrator log",
+            "Inspector"
+          ]
+        }
+      }
+    }
   },
   {
     "id": "CF-06",
@@ -282,59 +496,171 @@
     "status": "keep",
     "value": {
       "healthy": [
-        "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=2026-08-18 07:01:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
-        "1|sel=1|node=dev|event=open · dev/d001|at=2026-08-18 07:01:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
-        "2|sel=2|node=orchestrator|event=open · orchestrator/m1|at=2026-08-18 07:02:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=md|link=null",
-        "3|sel=3|node=orchestrator|event=accept · d001|at=2026-08-18 07:02:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=-|link=4",
-        "4|sel=4|node=orchestrator|event=reply · orchestrator/d001 · done|at=2026-08-18 07:03:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
-        "5|sel=5|node=dev|event=reply · dev/d001 · done|at=2026-08-18 07:04:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
-        "6|sel=6|node=orchestrator|event=plan|at=2026-08-18 07:05:00Z|docs=md|link=null",
-        "7|sel=7|node=dev|event=open · dev/d002|at=2026-08-18 07:10:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=null",
-        "8|sel=8|node=dev|event=continue · dev/d002|at=2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=null",
-        "9|sel=9|node=dev|event=reply · dev/d002 · done|at=2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=10",
-        "10|sel=10|node=orchestrator|event=accept · dev/d002|at=2026-08-18 07:30:00Z|docs=-|link=9",
-        "11|sel=11|node=orchestrator|event=accept · d999|at=2026-08-18 07:31:00Z|docs=-|link=null",
-        "12|sel=12|node=orchestrator|event=accept · dev/d002|at=2026-08-18 07:32:00Z|docs=-|link=9",
-        "13|sel=13|node=dev|event=open · dev/d003|at=2026-08-18 07:35:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
-        "14|sel=14|node=dev|event=continue · dev/d003|at=2026-08-18 07:36:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
-        "15|sel=15|node=dev|event=continue · dev/d003|at=2026-08-18 07:37:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
-        "16|sel=16|node=dev|event=continue · dev/d003|at=2026-08-18 07:38:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
-        "17|sel=17|node=orchestrator|event=verdict · orchestrator/m1 · campaign-met|at=2026-08-18 07:40:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=md|link=18",
-        "18|sel=18|node=orchestrator|event=accept · orchestrator/m1|at=2026-08-18 07:41:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=-|link=17"
+        "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=1:00 · 2026-08-18 07:01:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+        "1|sel=1|node=dev|event=open · dev/d001|at=1:00 · 2026-08-18 07:01:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+        "2|sel=2|node=orchestrator|event=open · orchestrator/m1|at=2:00 · 2026-08-18 07:02:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z · 1m00s after the reply|docs=md|link=null",
+        "3|sel=3|node=orchestrator|event=accept · d001|at=2:00 · 2026-08-18 07:02:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=-|link=4",
+        "4|sel=4|node=orchestrator|event=reply · orchestrator/d001 · done|at=3:00 · 2026-08-18 07:03:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+        "5|sel=5|node=dev|event=reply · dev/d001 · done|at=4:00 · 2026-08-18 07:04:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+        "6|sel=6|node=orchestrator|event=plan|at=5:00 · 2026-08-18 07:05:00Z|docs=md|link=null",
+        "7|sel=7|node=dev|event=open · dev/d002|at=10:00 · 2026-08-18 07:10:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z · 7m00s after the reply|recovery=1 cont · 0 restarts|docs=md|link=null",
+        "8|sel=8|node=dev|event=continue · dev/d002|at=25:00 · 2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z · 7m00s after the reply|recovery=1 cont · 0 restarts|docs=md|link=null",
+        "9|sel=9|node=dev|event=reply · dev/d002 · done|at=25:00 · 2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z · 7m00s after the reply|recovery=1 cont · 0 restarts|docs=md|link=10",
+        "10|sel=10|node=orchestrator|event=accept · dev/d002|at=30:00 · 2026-08-18 07:30:00Z|docs=-|link=9",
+        "11|sel=11|node=orchestrator|event=accept · d999|at=31:00 · 2026-08-18 07:31:00Z|docs=-|link=null",
+        "12|sel=12|node=orchestrator|event=accept · dev/d002|at=32:00 · 2026-08-18 07:32:00Z|docs=-|link=9",
+        "13|sel=13|node=dev|event=open · dev/d003|at=35:00 · 2026-08-18 07:35:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "14|sel=14|node=dev|event=continue · dev/d003|at=36:00 · 2026-08-18 07:36:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "15|sel=15|node=dev|event=continue · dev/d003|at=37:00 · 2026-08-18 07:37:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "16|sel=16|node=dev|event=continue · dev/d003|at=38:00 · 2026-08-18 07:38:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "17|sel=17|node=orchestrator|event=verdict · orchestrator/m1 · campaign-met|at=40:00 · 2026-08-18 07:40:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z · 1m00s after the reply|docs=md|link=18",
+        "18|sel=18|node=orchestrator|event=accept · orchestrator/m1|at=41:00 · 2026-08-18 07:41:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z · 1m00s after the reply|docs=-|link=17"
       ],
       "clobbered": "no-timeline",
       "name-mismatch": [
-        "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=2026-08-18 07:01:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
-        "1|sel=1|node=dev|event=open · dev/d001|at=2026-08-18 07:01:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
-        "2|sel=2|node=orchestrator|event=open · orchestrator/m1|at=2026-08-18 07:02:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=md|link=null",
-        "3|sel=3|node=orchestrator|event=accept · d001|at=2026-08-18 07:02:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=-|link=4",
-        "4|sel=4|node=orchestrator|event=reply · orchestrator/d001 · done|at=2026-08-18 07:03:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
-        "5|sel=5|node=dev|event=reply · dev/d001 · done|at=2026-08-18 07:04:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
-        "6|sel=6|node=orchestrator|event=plan|at=2026-08-18 07:05:00Z|docs=md|link=null",
-        "7|sel=7|node=dev|event=open · dev/d002|at=2026-08-18 07:10:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=null",
-        "8|sel=8|node=dev|event=continue · dev/d002|at=2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=null",
-        "9|sel=9|node=dev|event=reply · dev/d002 · done|at=2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=10",
-        "10|sel=10|node=orchestrator|event=accept · dev/d002|at=2026-08-18 07:30:00Z|docs=-|link=9",
-        "11|sel=11|node=orchestrator|event=accept · d999|at=2026-08-18 07:31:00Z|docs=-|link=null",
-        "12|sel=12|node=orchestrator|event=accept · dev/d002|at=2026-08-18 07:32:00Z|docs=-|link=9",
-        "13|sel=13|node=dev|event=open · dev/d003|at=2026-08-18 07:35:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
-        "14|sel=14|node=dev|event=continue · dev/d003|at=2026-08-18 07:36:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
-        "15|sel=15|node=dev|event=continue · dev/d003|at=2026-08-18 07:37:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
-        "16|sel=16|node=dev|event=continue · dev/d003|at=2026-08-18 07:38:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
-        "17|sel=17|node=dev|event=reply · dev/d003 · done|at=2026-08-18 07:38:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
-        "18|sel=18|node=dev|event=reply · dev/d005 · done|at=2026-08-18 07:39:00Z|docs=md|link=null",
-        "19|sel=19|node=orchestrator|event=verdict · orchestrator/m1 · campaign-met|at=2026-08-18 07:40:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=md|link=20",
-        "20|sel=20|node=orchestrator|event=accept · orchestrator/m1|at=2026-08-18 07:41:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=-|link=19"
+        "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=1:00 · 2026-08-18 07:01:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+        "1|sel=1|node=dev|event=open · dev/d001|at=1:00 · 2026-08-18 07:01:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+        "2|sel=2|node=orchestrator|event=open · orchestrator/m1|at=2:00 · 2026-08-18 07:02:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z · 1m00s after the reply|docs=md|link=null",
+        "3|sel=3|node=orchestrator|event=accept · d001|at=2:00 · 2026-08-18 07:02:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=-|link=4",
+        "4|sel=4|node=orchestrator|event=reply · orchestrator/d001 · done|at=3:00 · 2026-08-18 07:03:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+        "5|sel=5|node=dev|event=reply · dev/d001 · done|at=4:00 · 2026-08-18 07:04:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+        "6|sel=6|node=orchestrator|event=plan|at=5:00 · 2026-08-18 07:05:00Z|docs=md|link=null",
+        "7|sel=7|node=dev|event=open · dev/d002|at=10:00 · 2026-08-18 07:10:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z · 7m00s after the reply|recovery=1 cont · 0 restarts|docs=md|link=null",
+        "8|sel=8|node=dev|event=continue · dev/d002|at=25:00 · 2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z · 7m00s after the reply|recovery=1 cont · 0 restarts|docs=md|link=null",
+        "9|sel=9|node=dev|event=reply · dev/d002 · done|at=25:00 · 2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z · 7m00s after the reply|recovery=1 cont · 0 restarts|docs=md|link=10",
+        "10|sel=10|node=orchestrator|event=accept · dev/d002|at=30:00 · 2026-08-18 07:30:00Z|docs=-|link=9",
+        "11|sel=11|node=orchestrator|event=accept · d999|at=31:00 · 2026-08-18 07:31:00Z|docs=-|link=null",
+        "12|sel=12|node=orchestrator|event=accept · dev/d002|at=32:00 · 2026-08-18 07:32:00Z|docs=-|link=9",
+        "13|sel=13|node=dev|event=open · dev/d003|at=35:00 · 2026-08-18 07:35:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "14|sel=14|node=dev|event=continue · dev/d003|at=36:00 · 2026-08-18 07:36:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "15|sel=15|node=dev|event=continue · dev/d003|at=37:00 · 2026-08-18 07:37:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "16|sel=16|node=dev|event=continue · dev/d003|at=38:00 · 2026-08-18 07:38:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "17|sel=17|node=dev|event=reply · dev/d003 · done|at=38:00 · 2026-08-18 07:38:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+        "18|sel=18|node=dev|event=reply · dev/d005 · done|at=39:00 · 2026-08-18 07:39:00Z|docs=md|link=null",
+        "19|sel=19|node=orchestrator|event=verdict · orchestrator/m1 · campaign-met|at=40:00 · 2026-08-18 07:40:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z · 1m00s after the reply|docs=md|link=20",
+        "20|sel=20|node=orchestrator|event=accept · orchestrator/m1|at=41:00 · 2026-08-18 07:41:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z · 1m00s after the reply|docs=-|link=19"
       ],
       "create-phase": [
-        "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=2026-08-18 09:01:00Z|docs=md|link=null",
-        "1|sel=1|node=dev|event=open · dev/d001|at=2026-08-18 09:01:00Z|open for=2m00s|docs=md|link=null",
-        "2|sel=2|node=dev|event=reply · dev/d001 · done|at=2026-08-18 09:03:00Z|open for=2m00s|docs=md|link=null",
-        "3|sel=3|node=dev|event=open · dev/d002|at=2026-08-18 09:10:00Z|open for=2m00s|docs=md|link=null",
-        "4|sel=4|node=dev|event=reply · dev/d002 · done|at=2026-08-18 09:12:00Z|open for=2m00s|docs=md|link=null"
+        "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=1:00 · 2026-08-18 09:01:00Z|docs=md|link=null",
+        "1|sel=1|node=dev|event=open · dev/d001|at=1:00 · 2026-08-18 09:01:00Z|open for=2m00s|docs=md|link=null",
+        "2|sel=2|node=dev|event=reply · dev/d001 · done|at=3:00 · 2026-08-18 09:03:00Z|open for=2m00s|docs=md|link=null",
+        "3|sel=3|node=dev|event=open · dev/d002|at=10:00 · 2026-08-18 09:10:00Z|open for=2m00s|docs=md|link=null",
+        "4|sel=4|node=dev|event=reply · dev/d002 · done|at=12:00 · 2026-08-18 09:12:00Z|open for=2m00s|docs=md|link=null"
       ]
     },
-    "note": "one line per event: index|selected index|kv rows|doc panel kinds|linked square; measured with the log shown"
+    "note": "one line per event: index|selected index|kv rows|doc panel kinds|linked square; measured with the log shown",
+    "approval": {
+      "id": "owner",
+      "reason": "The timeline gained per-member trace rows, the log card hides until the log is shown, and the inspector's at row carries elapsed time, all by design.",
+      "previous": {
+        "healthy": [
+          "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=2026-08-18 07:01:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+          "1|sel=1|node=dev|event=open · dev/d001|at=2026-08-18 07:01:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+          "2|sel=2|node=orchestrator|event=open · orchestrator/m1|at=2026-08-18 07:02:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=md|link=null",
+          "3|sel=3|node=orchestrator|event=accept · d001|at=2026-08-18 07:02:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=-|link=4",
+          "4|sel=4|node=orchestrator|event=reply · orchestrator/d001 · done|at=2026-08-18 07:03:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+          "5|sel=5|node=dev|event=reply · dev/d001 · done|at=2026-08-18 07:04:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+          "6|sel=6|node=orchestrator|event=plan|at=2026-08-18 07:05:00Z|docs=md|link=null",
+          "7|sel=7|node=dev|event=open · dev/d002|at=2026-08-18 07:10:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=null",
+          "8|sel=8|node=dev|event=continue · dev/d002|at=2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=null",
+          "9|sel=9|node=dev|event=reply · dev/d002 · done|at=2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=10",
+          "10|sel=10|node=orchestrator|event=accept · dev/d002|at=2026-08-18 07:30:00Z|docs=-|link=9",
+          "11|sel=11|node=orchestrator|event=accept · d999|at=2026-08-18 07:31:00Z|docs=-|link=null",
+          "12|sel=12|node=orchestrator|event=accept · dev/d002|at=2026-08-18 07:32:00Z|docs=-|link=9",
+          "13|sel=13|node=dev|event=open · dev/d003|at=2026-08-18 07:35:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "14|sel=14|node=dev|event=continue · dev/d003|at=2026-08-18 07:36:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "15|sel=15|node=dev|event=continue · dev/d003|at=2026-08-18 07:37:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "16|sel=16|node=dev|event=continue · dev/d003|at=2026-08-18 07:38:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "17|sel=17|node=orchestrator|event=verdict · orchestrator/m1 · campaign-met|at=2026-08-18 07:40:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=md|link=18",
+          "18|sel=18|node=orchestrator|event=accept · orchestrator/m1|at=2026-08-18 07:41:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=-|link=17"
+        ],
+        "clobbered": "no-timeline",
+        "name-mismatch": [
+          "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=2026-08-18 07:01:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+          "1|sel=1|node=dev|event=open · dev/d001|at=2026-08-18 07:01:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+          "2|sel=2|node=orchestrator|event=open · orchestrator/m1|at=2026-08-18 07:02:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=md|link=null",
+          "3|sel=3|node=orchestrator|event=accept · d001|at=2026-08-18 07:02:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=-|link=4",
+          "4|sel=4|node=orchestrator|event=reply · orchestrator/d001 · done|at=2026-08-18 07:03:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+          "5|sel=5|node=dev|event=reply · dev/d001 · done|at=2026-08-18 07:04:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+          "6|sel=6|node=orchestrator|event=plan|at=2026-08-18 07:05:00Z|docs=md|link=null",
+          "7|sel=7|node=dev|event=open · dev/d002|at=2026-08-18 07:10:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=null",
+          "8|sel=8|node=dev|event=continue · dev/d002|at=2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=null",
+          "9|sel=9|node=dev|event=reply · dev/d002 · done|at=2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z|recovery=1 cont · 0 restarts|docs=md|link=10",
+          "10|sel=10|node=orchestrator|event=accept · dev/d002|at=2026-08-18 07:30:00Z|docs=-|link=9",
+          "11|sel=11|node=orchestrator|event=accept · d999|at=2026-08-18 07:31:00Z|docs=-|link=null",
+          "12|sel=12|node=orchestrator|event=accept · dev/d002|at=2026-08-18 07:32:00Z|docs=-|link=9",
+          "13|sel=13|node=dev|event=open · dev/d003|at=2026-08-18 07:35:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "14|sel=14|node=dev|event=continue · dev/d003|at=2026-08-18 07:36:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "15|sel=15|node=dev|event=continue · dev/d003|at=2026-08-18 07:37:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "16|sel=16|node=dev|event=continue · dev/d003|at=2026-08-18 07:38:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "17|sel=17|node=dev|event=reply · dev/d003 · done|at=2026-08-18 07:38:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "18|sel=18|node=dev|event=reply · dev/d005 · done|at=2026-08-18 07:39:00Z|docs=md|link=null",
+          "19|sel=19|node=orchestrator|event=verdict · orchestrator/m1 · campaign-met|at=2026-08-18 07:40:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=md|link=20",
+          "20|sel=20|node=orchestrator|event=accept · orchestrator/m1|at=2026-08-18 07:41:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z|docs=-|link=19"
+        ],
+        "create-phase": [
+          "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=2026-08-18 09:01:00Z|docs=md|link=null",
+          "1|sel=1|node=dev|event=open · dev/d001|at=2026-08-18 09:01:00Z|open for=2m00s|docs=md|link=null",
+          "2|sel=2|node=dev|event=reply · dev/d001 · done|at=2026-08-18 09:03:00Z|open for=2m00s|docs=md|link=null",
+          "3|sel=3|node=dev|event=open · dev/d002|at=2026-08-18 09:10:00Z|open for=2m00s|docs=md|link=null",
+          "4|sel=4|node=dev|event=reply · dev/d002 · done|at=2026-08-18 09:12:00Z|open for=2m00s|docs=md|link=null"
+        ]
+      },
+      "measured": {
+        "healthy": [
+          "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=1:00 · 2026-08-18 07:01:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+          "1|sel=1|node=dev|event=open · dev/d001|at=1:00 · 2026-08-18 07:01:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+          "2|sel=2|node=orchestrator|event=open · orchestrator/m1|at=2:00 · 2026-08-18 07:02:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z · 1m00s after the reply|docs=md|link=null",
+          "3|sel=3|node=orchestrator|event=accept · d001|at=2:00 · 2026-08-18 07:02:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=-|link=4",
+          "4|sel=4|node=orchestrator|event=reply · orchestrator/d001 · done|at=3:00 · 2026-08-18 07:03:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+          "5|sel=5|node=dev|event=reply · dev/d001 · done|at=4:00 · 2026-08-18 07:04:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+          "6|sel=6|node=orchestrator|event=plan|at=5:00 · 2026-08-18 07:05:00Z|docs=md|link=null",
+          "7|sel=7|node=dev|event=open · dev/d002|at=10:00 · 2026-08-18 07:10:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z · 7m00s after the reply|recovery=1 cont · 0 restarts|docs=md|link=null",
+          "8|sel=8|node=dev|event=continue · dev/d002|at=25:00 · 2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z · 7m00s after the reply|recovery=1 cont · 0 restarts|docs=md|link=null",
+          "9|sel=9|node=dev|event=reply · dev/d002 · done|at=25:00 · 2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z · 7m00s after the reply|recovery=1 cont · 0 restarts|docs=md|link=10",
+          "10|sel=10|node=orchestrator|event=accept · dev/d002|at=30:00 · 2026-08-18 07:30:00Z|docs=-|link=9",
+          "11|sel=11|node=orchestrator|event=accept · d999|at=31:00 · 2026-08-18 07:31:00Z|docs=-|link=null",
+          "12|sel=12|node=orchestrator|event=accept · dev/d002|at=32:00 · 2026-08-18 07:32:00Z|docs=-|link=9",
+          "13|sel=13|node=dev|event=open · dev/d003|at=35:00 · 2026-08-18 07:35:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "14|sel=14|node=dev|event=continue · dev/d003|at=36:00 · 2026-08-18 07:36:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "15|sel=15|node=dev|event=continue · dev/d003|at=37:00 · 2026-08-18 07:37:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "16|sel=16|node=dev|event=continue · dev/d003|at=38:00 · 2026-08-18 07:38:00Z|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "17|sel=17|node=orchestrator|event=verdict · orchestrator/m1 · campaign-met|at=40:00 · 2026-08-18 07:40:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z · 1m00s after the reply|docs=md|link=18",
+          "18|sel=18|node=orchestrator|event=accept · orchestrator/m1|at=41:00 · 2026-08-18 07:41:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z · 1m00s after the reply|docs=-|link=17"
+        ],
+        "clobbered": "no-timeline",
+        "name-mismatch": [
+          "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=1:00 · 2026-08-18 07:01:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+          "1|sel=1|node=dev|event=open · dev/d001|at=1:00 · 2026-08-18 07:01:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=null",
+          "2|sel=2|node=orchestrator|event=open · orchestrator/m1|at=2:00 · 2026-08-18 07:02:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z · 1m00s after the reply|docs=md|link=null",
+          "3|sel=3|node=orchestrator|event=accept · d001|at=2:00 · 2026-08-18 07:02:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=-|link=4",
+          "4|sel=4|node=orchestrator|event=reply · orchestrator/d001 · done|at=3:00 · 2026-08-18 07:03:00Z|open for=2m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+          "5|sel=5|node=dev|event=reply · dev/d001 · done|at=4:00 · 2026-08-18 07:04:00Z|open for=3m00s|accepted at=2026-08-18 07:02:00Z|docs=md|link=3",
+          "6|sel=6|node=orchestrator|event=plan|at=5:00 · 2026-08-18 07:05:00Z|docs=md|link=null",
+          "7|sel=7|node=dev|event=open · dev/d002|at=10:00 · 2026-08-18 07:10:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z · 7m00s after the reply|recovery=1 cont · 0 restarts|docs=md|link=null",
+          "8|sel=8|node=dev|event=continue · dev/d002|at=25:00 · 2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z · 7m00s after the reply|recovery=1 cont · 0 restarts|docs=md|link=null",
+          "9|sel=9|node=dev|event=reply · dev/d002 · done|at=25:00 · 2026-08-18 07:25:00Z|open for=15m00s|accepted at=2026-08-18 07:32:00Z · 7m00s after the reply|recovery=1 cont · 0 restarts|docs=md|link=10",
+          "10|sel=10|node=orchestrator|event=accept · dev/d002|at=30:00 · 2026-08-18 07:30:00Z|docs=-|link=9",
+          "11|sel=11|node=orchestrator|event=accept · d999|at=31:00 · 2026-08-18 07:31:00Z|docs=-|link=null",
+          "12|sel=12|node=orchestrator|event=accept · dev/d002|at=32:00 · 2026-08-18 07:32:00Z|docs=-|link=9",
+          "13|sel=13|node=dev|event=open · dev/d003|at=35:00 · 2026-08-18 07:35:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "14|sel=14|node=dev|event=continue · dev/d003|at=36:00 · 2026-08-18 07:36:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "15|sel=15|node=dev|event=continue · dev/d003|at=37:00 · 2026-08-18 07:37:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "16|sel=16|node=dev|event=continue · dev/d003|at=38:00 · 2026-08-18 07:38:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "17|sel=17|node=dev|event=reply · dev/d003 · done|at=38:00 · 2026-08-18 07:38:00Z|open for=3m00s|recovery=3 cont · 0 restarts|docs=md|link=null",
+          "18|sel=18|node=dev|event=reply · dev/d005 · done|at=39:00 · 2026-08-18 07:39:00Z|docs=md|link=null",
+          "19|sel=19|node=orchestrator|event=verdict · orchestrator/m1 · campaign-met|at=40:00 · 2026-08-18 07:40:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z · 1m00s after the reply|docs=md|link=20",
+          "20|sel=20|node=orchestrator|event=accept · orchestrator/m1|at=41:00 · 2026-08-18 07:41:00Z|open for=38m00s|accepted at=2026-08-18 07:41:00Z · 1m00s after the reply|docs=-|link=19"
+        ],
+        "create-phase": [
+          "0|sel=0|node=orchestrator|event=open · orchestrator/d001|at=1:00 · 2026-08-18 09:01:00Z|docs=md|link=null",
+          "1|sel=1|node=dev|event=open · dev/d001|at=1:00 · 2026-08-18 09:01:00Z|open for=2m00s|docs=md|link=null",
+          "2|sel=2|node=dev|event=reply · dev/d001 · done|at=3:00 · 2026-08-18 09:03:00Z|open for=2m00s|docs=md|link=null",
+          "3|sel=3|node=dev|event=open · dev/d002|at=10:00 · 2026-08-18 09:10:00Z|open for=2m00s|docs=md|link=null",
+          "4|sel=4|node=dev|event=reply · dev/d002 · done|at=12:00 · 2026-08-18 09:12:00Z|open for=2m00s|docs=md|link=null"
+        ]
+      }
+    }
   },
   {
     "id": "CF-11",
@@ -500,8 +826,8 @@
           "logHidden": true,
           "checked": false,
           "logListVisible": false,
-          "noticeVisible": true,
-          "logRows": 6,
+          "noticeVisible": false,
+          "logRows": 0,
           "visibleSquares": 13
         },
         "on": {
@@ -516,8 +842,8 @@
           "logHidden": true,
           "checked": false,
           "logListVisible": false,
-          "noticeVisible": true,
-          "logRows": 6,
+          "noticeVisible": false,
+          "logRows": 0,
           "visibleSquares": 13
         },
         "revealedByLog": [
@@ -535,8 +861,8 @@
           "logHidden": true,
           "checked": false,
           "logListVisible": false,
-          "noticeVisible": true,
-          "logRows": 6,
+          "noticeVisible": false,
+          "logRows": 0,
           "visibleSquares": 15
         },
         "on": {
@@ -551,8 +877,8 @@
           "logHidden": true,
           "checked": false,
           "logListVisible": false,
-          "noticeVisible": true,
-          "logRows": 6,
+          "noticeVisible": false,
+          "logRows": 0,
           "visibleSquares": 15
         },
         "revealedByLog": [
@@ -569,7 +895,7 @@
           "logHidden": true,
           "checked": false,
           "logListVisible": false,
-          "noticeVisible": true,
+          "noticeVisible": false,
           "logRows": 0,
           "visibleSquares": 5
         },
@@ -585,14 +911,214 @@
           "logHidden": true,
           "checked": false,
           "logListVisible": false,
-          "noticeVisible": true,
+          "noticeVisible": false,
           "logRows": 0,
           "visibleSquares": 5
         },
         "revealedByLog": []
       }
     },
-    "note": ""
+    "note": "",
+    "approval": {
+      "id": "owner",
+      "reason": "The timeline gained per-member trace rows, the log card hides until the log is shown, and the inspector's at row carries elapsed time, all by design.",
+      "previous": {
+        "healthy": {
+          "off": {
+            "logHidden": true,
+            "checked": false,
+            "logListVisible": false,
+            "noticeVisible": true,
+            "logRows": 6,
+            "visibleSquares": 13
+          },
+          "on": {
+            "logHidden": false,
+            "checked": true,
+            "logListVisible": true,
+            "noticeVisible": false,
+            "logRows": 6,
+            "visibleSquares": 19
+          },
+          "offAgain": {
+            "logHidden": true,
+            "checked": false,
+            "logListVisible": false,
+            "noticeVisible": true,
+            "logRows": 6,
+            "visibleSquares": 13
+          },
+          "revealedByLog": [
+            3,
+            6,
+            10,
+            11,
+            12,
+            18
+          ]
+        },
+        "clobbered": "no-timeline",
+        "name-mismatch": {
+          "off": {
+            "logHidden": true,
+            "checked": false,
+            "logListVisible": false,
+            "noticeVisible": true,
+            "logRows": 6,
+            "visibleSquares": 15
+          },
+          "on": {
+            "logHidden": false,
+            "checked": true,
+            "logListVisible": true,
+            "noticeVisible": false,
+            "logRows": 6,
+            "visibleSquares": 21
+          },
+          "offAgain": {
+            "logHidden": true,
+            "checked": false,
+            "logListVisible": false,
+            "noticeVisible": true,
+            "logRows": 6,
+            "visibleSquares": 15
+          },
+          "revealedByLog": [
+            3,
+            6,
+            10,
+            11,
+            12,
+            20
+          ]
+        },
+        "create-phase": {
+          "off": {
+            "logHidden": true,
+            "checked": false,
+            "logListVisible": false,
+            "noticeVisible": true,
+            "logRows": 0,
+            "visibleSquares": 5
+          },
+          "on": {
+            "logHidden": false,
+            "checked": true,
+            "logListVisible": true,
+            "noticeVisible": false,
+            "logRows": 0,
+            "visibleSquares": 5
+          },
+          "offAgain": {
+            "logHidden": true,
+            "checked": false,
+            "logListVisible": false,
+            "noticeVisible": true,
+            "logRows": 0,
+            "visibleSquares": 5
+          },
+          "revealedByLog": []
+        }
+      },
+      "measured": {
+        "healthy": {
+          "off": {
+            "logHidden": true,
+            "checked": false,
+            "logListVisible": false,
+            "noticeVisible": false,
+            "logRows": 0,
+            "visibleSquares": 13
+          },
+          "on": {
+            "logHidden": false,
+            "checked": true,
+            "logListVisible": true,
+            "noticeVisible": false,
+            "logRows": 6,
+            "visibleSquares": 19
+          },
+          "offAgain": {
+            "logHidden": true,
+            "checked": false,
+            "logListVisible": false,
+            "noticeVisible": false,
+            "logRows": 0,
+            "visibleSquares": 13
+          },
+          "revealedByLog": [
+            3,
+            6,
+            10,
+            11,
+            12,
+            18
+          ]
+        },
+        "clobbered": "no-timeline",
+        "name-mismatch": {
+          "off": {
+            "logHidden": true,
+            "checked": false,
+            "logListVisible": false,
+            "noticeVisible": false,
+            "logRows": 0,
+            "visibleSquares": 15
+          },
+          "on": {
+            "logHidden": false,
+            "checked": true,
+            "logListVisible": true,
+            "noticeVisible": false,
+            "logRows": 6,
+            "visibleSquares": 21
+          },
+          "offAgain": {
+            "logHidden": true,
+            "checked": false,
+            "logListVisible": false,
+            "noticeVisible": false,
+            "logRows": 0,
+            "visibleSquares": 15
+          },
+          "revealedByLog": [
+            3,
+            6,
+            10,
+            11,
+            12,
+            20
+          ]
+        },
+        "create-phase": {
+          "off": {
+            "logHidden": true,
+            "checked": false,
+            "logListVisible": false,
+            "noticeVisible": false,
+            "logRows": 0,
+            "visibleSquares": 5
+          },
+          "on": {
+            "logHidden": false,
+            "checked": true,
+            "logListVisible": true,
+            "noticeVisible": false,
+            "logRows": 0,
+            "visibleSquares": 5
+          },
+          "offAgain": {
+            "logHidden": true,
+            "checked": false,
+            "logListVisible": false,
+            "noticeVisible": false,
+            "logRows": 0,
+            "visibleSquares": 5
+          },
+          "revealedByLog": []
+        }
+      }
+    }
   },
   {
     "id": "CF-16",
@@ -827,66 +1353,66 @@
         "a[Header](?)",
         "button[ThemeToggle]",
         "input#showlog[Card]",
+        "input#errorsonly[Card]",
+        "button[SegmentedControl]",
         "div[EventLanes]:square 0",
         "button[Card]",
         "tr[Table]:issue-row",
-        "button[Card]",
         "body",
         "a[Header](?)",
         "a[Header](?)",
         "button[ThemeToggle]",
         "input#showlog[Card]",
+        "input#errorsonly[Card]",
+        "button[SegmentedControl]",
         "div[EventLanes]:square 0",
         "button[Card]",
         "tr[Table]:issue-row",
-        "button[Card]",
-        "body",
-        "a[Header](?)",
-        "a[Header](?)"
+        "body"
       ],
       "name-mismatch": [
         "a[Header](?)",
         "a[Header](?)",
         "button[ThemeToggle]",
         "input#showlog[Card]",
+        "input#errorsonly[Card]",
+        "button[SegmentedControl]",
         "div[EventLanes]:square 0",
         "button[Card]",
         "tr[Table]:issue-row",
-        "button[Card]",
         "body",
         "a[Header](?)",
         "a[Header](?)",
         "button[ThemeToggle]",
         "input#showlog[Card]",
+        "input#errorsonly[Card]",
+        "button[SegmentedControl]",
         "div[EventLanes]:square 0",
         "button[Card]",
         "tr[Table]:issue-row",
-        "button[Card]",
-        "body",
-        "a[Header](?)",
-        "a[Header](?)"
+        "body"
       ],
       "create-phase": [
         "a[Header](?)",
         "a[Header](?)",
         "button[ThemeToggle]",
         "input#showlog[Card]",
+        "input#errorsonly[Card]",
+        "button[SegmentedControl]",
         "div[EventLanes]:square 0",
         "button[Card]",
         "tr[Table]:issue-row",
-        "button[Card]",
         "body",
         "a[Header](?)",
         "a[Header](?)",
         "button[ThemeToggle]",
         "input#showlog[Card]",
+        "input#errorsonly[Card]",
+        "button[SegmentedControl]",
         "div[EventLanes]:square 0",
         "button[Card]",
         "tr[Table]:issue-row",
-        "button[Card]",
-        "body",
-        "a[Header](?)",
-        "a[Header](?)"
+        "body"
       ]
     },
     "note": "stops are tag#id[data-component]; scroll containers appear because Chromium focuses them"
@@ -895,7 +1421,7 @@
     "id": "CF-31",
     "title": "squares focusable (tabIndex ≥ 0)",
     "status": "must-change",
-    "target": "the timeline exposes exactly one Tab stop, and every visible event is reachable from it by keyboard (Home, then ArrowRight to the end)",
+    "target": "the timeline exposes exactly one Tab stop, and every visible event is reachable from it by keyboard (Home and ArrowRight along a member's timeline, ArrowDown to the next member's)",
     "value": {
       "healthy": {
         "tabStops": 1,
@@ -916,7 +1442,13 @@
         "missing": []
       }
     },
-    "note": ""
+    "note": "",
+    "approval": {
+      "id": "owner",
+      "reason": "The timeline gained per-member trace rows, the log card hides until the log is shown, and the inspector's at row carries elapsed time, all by design.",
+      "previous": "the timeline exposes exactly one Tab stop, and every visible event is reachable from it by keyboard (Home, then ArrowRight to the end)",
+      "measured": "the timeline exposes exactly one Tab stop, and every visible event is reachable from it by keyboard (Home and ArrowRight along a member's timeline, ArrowDown to the next member's)"
+    }
   },
   {
     "id": "CF-32",
@@ -1022,10 +1554,22 @@
       "bytes": 500000
     },
     "value": {
-      "bytes": 289709,
-      "gzip": 86934
+      "bytes": 341978,
+      "gzip": 102209
     },
-    "note": "budget 300,000 bytes for the shell; gzip is zlib's default level"
+    "note": "budget 300,000 bytes for the shell; gzip is zlib's default level",
+    "approval": {
+      "id": "owner",
+      "reason": "The timeline gained per-member trace rows, the log card hides until the log is shown, and the inspector's at row carries elapsed time, all by design.",
+      "previous": {
+        "bytes": 289709,
+        "gzip": 86934
+      },
+      "measured": {
+        "bytes": 341978,
+        "gzip": 102209
+      }
+    }
   },
   {
     "id": "CF-41",
@@ -1036,31 +1580,87 @@
     },
     "value": {
       "healthy": {
-        "bytes": 298444,
-        "gzip": 89144,
-        "payloadBytes": 8750,
-        "shellBytes": 289709
+        "bytes": 351101,
+        "gzip": 104596,
+        "payloadBytes": 9138,
+        "shellBytes": 341978
       },
       "clobbered": {
-        "bytes": 298435,
-        "gzip": 89151,
-        "payloadBytes": 8741,
-        "shellBytes": 289709
+        "bytes": 351092,
+        "gzip": 104606,
+        "payloadBytes": 9129,
+        "shellBytes": 341978
       },
       "name-mismatch": {
-        "bytes": 300059,
-        "gzip": 89385,
-        "payloadBytes": 10365,
-        "shellBytes": 289709
+        "bytes": 352716,
+        "gzip": 104834,
+        "payloadBytes": 10753,
+        "shellBytes": 341978
       },
       "create-phase": {
-        "bytes": 293790,
-        "gzip": 88383,
-        "payloadBytes": 4096,
-        "shellBytes": 289709
+        "bytes": 346447,
+        "gzip": 103852,
+        "payloadBytes": 4484,
+        "shellBytes": 341978
       }
     },
-    "note": "shellBytes = bytes − the run-data block + the marker; budgeted like CF-40. Payload size is the archive's, not the viewer's"
+    "note": "shellBytes = bytes − the run-data block + the marker; budgeted like CF-40. Payload size is the archive's, not the viewer's",
+    "approval": {
+      "id": "owner",
+      "reason": "The timeline gained per-member trace rows, the log card hides until the log is shown, and the inspector's at row carries elapsed time, all by design.",
+      "previous": {
+        "healthy": {
+          "bytes": 298444,
+          "gzip": 89144,
+          "payloadBytes": 8750,
+          "shellBytes": 289709
+        },
+        "clobbered": {
+          "bytes": 298435,
+          "gzip": 89151,
+          "payloadBytes": 8741,
+          "shellBytes": 289709
+        },
+        "name-mismatch": {
+          "bytes": 300059,
+          "gzip": 89385,
+          "payloadBytes": 10365,
+          "shellBytes": 289709
+        },
+        "create-phase": {
+          "bytes": 293790,
+          "gzip": 88383,
+          "payloadBytes": 4096,
+          "shellBytes": 289709
+        }
+      },
+      "measured": {
+        "healthy": {
+          "bytes": 351101,
+          "gzip": 104596,
+          "payloadBytes": 9138,
+          "shellBytes": 341978
+        },
+        "clobbered": {
+          "bytes": 351092,
+          "gzip": 104606,
+          "payloadBytes": 9129,
+          "shellBytes": 341978
+        },
+        "name-mismatch": {
+          "bytes": 352716,
+          "gzip": 104834,
+          "payloadBytes": 10753,
+          "shellBytes": 341978
+        },
+        "create-phase": {
+          "bytes": 346447,
+          "gzip": 103852,
+          "payloadBytes": 4484,
+          "shellBytes": 341978
+        }
+      }
+    }
   },
   {
     "id": "CF-60",

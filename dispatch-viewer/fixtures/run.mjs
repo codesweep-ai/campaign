@@ -143,7 +143,7 @@ const CHECKS = [
   { id: "CF-31", title: "squares focusable (tabIndex ≥ 0)", status: "must-change", perArchive: true,
     // Amended (d005): per-square tabIndex contradicts the accepted EventLanes
     // listbox contract (one Tab stop, non-tabbable options, aria-activedescendant).
-    target: "the timeline exposes exactly one Tab stop, and every visible event is reachable from it by keyboard (Home, then ArrowRight to the end)",
+    target: "the timeline exposes exactly one Tab stop, and every visible event is reachable from it by keyboard (Home and ArrowRight along a member's timeline, ArrowDown to the next member's)",
     meets: (v) => v.tabStops === 1 && v.total > 0 && v.steps === v.total && v.missing.length === 0,
     summary: perArchive((v) => (v.tabStops === undefined
       ? `${v.focusable}/${v.total}`
