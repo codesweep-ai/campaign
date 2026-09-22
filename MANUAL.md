@@ -648,7 +648,9 @@ time: an anchor, a turn's start and its end, and a wait call. Time the agent spe
 hatched span on the same row, from where the wait began to where it ended. A blank in the
 columns is then never left to be guessed at. Two things are drawn that way: the orchestrator's
 wait calls, and a turn that ended inside a box before the member replied. Idle between two boxes
-is the gap between them, and is not drawn again. A failed step is a
+is the gap between them, and is not drawn again. A call that forked a session is a column with a
+dot on top, at its real time, and the fork's own steps are a row beneath. The inspector links
+each to the other. A failed step is a
 column in the error colour. With **errors only** on it becomes a full column with a marker in the
 same colour, and everything else is dimmed. The selected dispatch shows its links. A solid one runs from the
 orchestrator's send call to the member's turn that received it, and a dashed one from the

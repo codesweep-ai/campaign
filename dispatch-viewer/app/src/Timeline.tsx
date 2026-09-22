@@ -547,9 +547,11 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, e
  *  component keeps the last mark and its halo inside the viewport. */
 const runEnd = (extent: number): number => extent;
 
-/** A step that sits at its real time: an anchor, a turn start or a turn end. */
+/** A step that sits at its real time: an anchor, a turn start, a turn end,
+ *  or a call that forked a session, so its marker sits over the fork's
+ *  first step on the row beneath. */
 function isPin(s: Step, anchored: boolean): boolean {
-  return anchored || s.kind === "user" || !!s.turnEnd;
+  return anchored || s.kind === "user" || !!s.turnEnd || (!!s.subtask && !!s.childSessionId);
 }
 
 /** Positions for a session's marks in order: pins at their time, the first

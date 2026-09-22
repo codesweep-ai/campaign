@@ -73,7 +73,7 @@ export function Inspector({ run, event, mark, marks, logEntry, docMode, onDocMod
         {event !== null ? (
           <EventBody run={run} e={event} docMode={docMode} marks={marks} onSelect={onSelect} />
         ) : mark !== null ? (
-          <StepBody run={run} m={mark} />
+          <StepBody run={run} m={mark} marks={marks} onSelect={onSelect} />
         ) : logEntry !== null ? (
           <>
             <dl className="kv">
@@ -265,8 +265,29 @@ function Anchors({
   );
 }
 
-function StepBody({ run, m }: { run: Run; m: StepMark }) {
+function StepBody({ run, m, marks, onSelect }: { run: Run; m: StepMark; marks: StepMark[]; onSelect: (i: number) => void }) {
   const s = m.step;
+  // The first step of a session, for a call that forked one and for the
+  // fork's own steps to point back from.
+  const firstOf = (id: string | undefined) => (id ? marks.find((x) => !x.idle && x.session.id === id) : undefined);
+  const jump = (x: StepMark | undefined, page: string | undefined, text: string) =>
+    x ? (
+      <>
+        <button type="button" className="linkish" onClick={() => onSelect(x.i)}>
+          {text}
+        </button>
+        {page ? (
+          <>
+            {" "}
+            <a href={page} target="_blank" rel="noopener">
+              open its trace ↗
+            </a>
+          </>
+        ) : null}
+      </>
+    ) : (
+      text
+    );
   const ms = m.idle ? s.idleMs : s.workMs;
   const rows: [string, ReactNode][] = [
     ["node", m.session.node],
@@ -280,6 +301,22 @@ function StepBody({ run, m }: { run: Run; m: StepMark }) {
   if (!m.idle && s.activeMs != null && s.workMs != null)
     rows.push(["of which", "queued " + fmtMs(s.workMs - s.activeMs) + ", generated " + fmtMs(s.activeMs)]);
   if (s.error) rows.push(["result", <span className="bad">error</span>]);
+  if (s.subtask && s.childSessionId) {
+    const child = run.traces?.sessions.find((c) => c.id === s.childSessionId);
+    const first = firstOf(s.childSessionId);
+    rows.push([
+      "spawned",
+      jump(first, child?.page, "a forked session, " + (child ? child.events + " events" : s.childSessionId.slice(0, 20)) + (first ? ", from " + elapsedOf(run, first.step.ts) : "")),
+    ]);
+  }
+  if (m.session.parent) {
+    const parent = marks.find((x) => !x.idle && x.session.id === m.session.parent && x.step.i === m.session.parentEventIndex);
+    const parentSession = run.traces?.sessions.find((c) => c.id === m.session.parent);
+    rows.push([
+      "forked by",
+      jump(parent, parentSession?.page, parent ? stepLabel(parent) + " at " + elapsedOf(run, parent.step.ts) : "step #" + m.session.parentEventIndex + " of " + m.session.parent.slice(0, 20)),
+    ]);
+  }
   if (m.session.page)
     rows.push([
       "tracer",
