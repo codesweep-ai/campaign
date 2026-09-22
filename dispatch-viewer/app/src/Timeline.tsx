@@ -74,14 +74,11 @@ interface TimelineProps {
    forked session on a row of its own. The wait row carries idle after a
    turn, and the orchestrator's wait calls, as hatched bands. Each member's
    rows share a band, alternating from member to member, with a gap before
-   the next; the selected member's band is the accent. The box
-   frames every row of the timeline, so inside a zoomed box the open and
-   reply marks are its edges and are not drawn again. */
-
-/** Inside a box this wide or narrower, in seconds, the open and reply marks
- *  are the box's edges and are not drawn again. Rows keep their height at
- *  every zoom, so the run view is the same picture with smaller boxes. */
-const DETAIL_SPAN = 2 * 3600;
+   the next; the selected member's band is the accent. The box frames every
+   row of the timeline, and the open and reply marks sit at its ends at every
+   zoom. Rows keep their height at every zoom, so the run view is the same
+   picture with smaller boxes. With member traces off, a traced member keeps
+   its rows, empty, so nothing moves when they come back. */
 
 /** Plumbing the tracer draws in muted ink; left out of the boxes here. A
  *  turn end is not drawn either, since the idle band below says where a turn
@@ -105,8 +102,6 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
   const [view, setView] = useState<EventLanesView | undefined>(undefined);
   const [shown, setShown] = useState<EventLanesViewState | null>(null);
   const [preset, setPreset] = useState("run");
-  const span = shown ? shown.end - shown.start : Infinity;
-  const detail = showDetail && span <= DETAIL_SPAN;
 
   const markOf = useMemo(() => new Map(marks.map((m) => [m.i, m])), [marks]);
 
@@ -162,7 +157,10 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
       session && session.parent ? node + "/steps/" + session.id : node + "/steps";
     for (const [k, n] of run.nodes.entries()) {
       const isOrch = n.role === "orchestrator";
-      const boxes = showDetail && traced.has(n.name);
+      // A traced member keeps its trace rows whether or not the traces are
+      // shown; the rows are empty when they are not.
+      const rows = traced.has(n.name);
+      const boxes = showDetail && rows;
       // Members alternate a shade across the whole timeline, so their rows
       // read as one band each, with a gap between members; the selected
       // member's band is the accent.
@@ -175,11 +173,14 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
         description: `${n.role} (${n.cli})`,
         className: isOrch ? "orch" : "name",
         group: n.name,
-        height: boxes ? 18 : 24,
+        height: 24,
         gapBefore: k > 0 ? 8 : undefined,
         shade,
+        // The protocol marks are sized by their own gaps: a step follows each
+        // within seconds, which would make every one a sliver.
+        widthBy: "lane",
       });
-      if (boxes) {
+      if (rows) {
         lanes.push({
           id: stepLane(n.name),
           label: "",
@@ -205,7 +206,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
           });
         }
       }
-      if (boxes) {
+      if (rows) {
         lanes.push({
           id: waitLane(n.name),
           label: "",
@@ -216,7 +217,7 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
           bars: "down",
           height: 10,
           overview: false,
-          hidden: !showWaits,
+          hidden: !boxes || !showWaits,
           shade,
         });
       }
@@ -397,13 +398,11 @@ export function Timeline({ run, events, marks, sel, link, showLog, showDetail, s
     [selectedSpan, linksFor],
   );
 
-  // Inside a zoomed box the open and reply marks are its edges.
   const hidden = useMemo(() => {
     const h = new Set<Kind>();
     if (!showLog) for (const k of LOGKINDS) h.add(k);
-    if (detail) for (const k of ["open", "reply-done", "reply-bad"] as Kind[]) h.add(k);
     return h.size ? h : undefined;
-  }, [showLog, detail]);
+  }, [showLog]);
 
   // Presets: the run, or a fixed span. With a selection the span is centred
   // on it; otherwise it starts where the current view starts, so run then 1h

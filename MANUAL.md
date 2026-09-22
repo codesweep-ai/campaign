@@ -646,9 +646,9 @@ hatched bands in the row beneath, each from where it began to where it ended. A 
 column in the error colour. With **errors only** on it becomes a full column with a marker in the
 same colour, and everything else is dimmed. The selected dispatch shows its links. A solid one runs from the
 orchestrator's send call to the member's turn that received it, and a dashed one from the
-member's reply call to the orchestrator's acceptance. The **member traces** box hides every row
-the traces add, the steps, the forks and the waiting, and the links; the protocol row and its
-boxes stay. **Waiting**, off by default, shows the rows beneath without moving the bars above
+member's reply call to the orchestrator's acceptance. The **member traces** box empties the
+trace rows and drops the links. The rows, the protocol row and its boxes stay where they are, so
+nothing moves when the traces come back. **Waiting**, off by default, shows the rows beneath without moving the bars above
 them.
 
 **show orchestrator log.** Off by default, so the bare timeline is the dispatch and reply protocol
