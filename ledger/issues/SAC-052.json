@@ -3,17 +3,19 @@
   "title": "The protocol marks and the traces clash on one row set",
   "type": "improvement",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "repository owner, reading the served page: \"the protocol and the traces seem to be clashing, making the diagram hard to read. like maybe we have a protocol view that has the protocol stuff and a trace view that has the traces\", and \"the default view could be what you see if you are on run and ONLY the show orchestrator log is selected\"",
   "opened": "2026-09-22",
-  "resolved": null,
+  "resolved": "2026-09-22",
   "stint": "2026-09-22 waiting on the steps row",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "28926e1"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "The run14-1 site was rendered from the tracer's head and opened in headless Chromium. At `#m/orchestrator@run` the page opens in the protocol view. The lanes are the orchestrator log, then the eight members. It draws 67 marks. The log panel is present, errors only is disabled, and the legend has the channels and log rows. Choosing member traces gives the same lanes plus modeller's fork row. It draws 1665 marks, with every channel and log mark hidden. There is no log panel, errors only is enabled, and the legend has the steps row alone. A step address, `#e/423`, opens in the traces view. The fixture suite passes 20 of 20 rows and 9 of 9 targets after re-recording CF-01, CF-05 and CF-15 with the owner's approval, and `make check` is green."
   },
-  "resolution": null,
+  "resolution": "A segmented control in the timeline's header chooses protocol or member traces, and shows only when the page has traces. Protocol is the run as the channels and the log show it: the log row first, always drawn, every box with its marks, and no trace rows. Member traces hides the marks and the log's claims, keeps the log row empty, and frames each traced member's steps with its box on one row. Errors only and the legend follow the view, and a step address switches to traces. The manual's Timeline paragraph says so.",
   "details": "Every member had a protocol row of boxes and marks and, under it, a steps row of the tracer's columns inside the same boxes. The orchestrator's log claims sat on a row at the bottom, hidden until a checkbox showed them. Read together the two vocabularies fought: dots and labels above, columns below, links between. The owner's reading: the run view with only the log shown is the page that gives the run's shape. The traces are a second page rather than a second row. Wanted: two views. Protocol, the default, is the run as the channels and the log show it, with the log row on top of the orchestrator. Traces empties the log row, drops the marks, and shows the steps inside the boxes. Errors only is a traces control.",
   "notes": [],
   "links": [
