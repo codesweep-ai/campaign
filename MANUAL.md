@@ -617,11 +617,12 @@ An `-o` that names a directory, or ends in a slash, writes a site instead of one
 session, one page per trace. Every step and every anchor on the dispatch page then links to its
 event in the trace, and the tracer's index at `tracer/index.html` lists the sessions.
 
-**Timeline.** Each node gets one lane, with the orchestrator first, on one axis of elapsed time
-since the campaign was created. A mark sits at its real time, so a column is a span of time and
-not an event. Ctrl or Cmd with the wheel zooms about the pointer, the plain wheel scrolls
-sideways, and the overview under the lanes shows the whole run and moves the view. Each dispatch
-is a box from its opening to its reply, trailing to its acceptance. Squares are channel artifacts:
+**Timeline.** Each node gets one band of lanes, with the orchestrator first, on one axis of
+elapsed time since the campaign was created. A mark sits at its real time, so a column is a span
+of time and not an event. Zoom is by preset: the run, an hour, fifteen minutes or five, and a
+selected dispatch can be zoomed to. The plain wheel scrolls sideways, and the overview above the
+lanes, under the zoom row, shows the whole run and moves the view. Each dispatch is a box from
+its opening to its reply. Squares are channel artifacts:
 the facts any observer can verify from the files alone. Every mark's colour is a design token
 from one palette map (`dispatch-viewer/app/src/model.ts`):
 
@@ -637,13 +638,16 @@ from one palette map (`dispatch-viewer/app/src/model.ts`):
 | circle | `--color-cat-1` | plan (log claim) |
 | circle | `--color-cat-4` | assessment (log claim) |
 
-With traces, each member's steps are drawn inside its boxes in the tracer's own colours. A
-step's bar rises by the log of the time it took, with a 2-minute ceiling. The wait after a turn
-hangs below the line in the lane beneath, with a 1-hour ceiling. The orchestrator's own wait
-calls hang below its line too. A solid link joins the orchestrator's send call to the member's
-turn that received the dispatch, and a dashed link joins the member's reply call to the
-orchestrator's acceptance. The **trace steps** box hides the steps and links, and **waiting**
-hides the lanes below the line without moving the bars above them.
+With traces, each member's steps are drawn inside its boxes in the tracer's own colours. Inside
+a box every step is a column of one width, and its bar rises by the log of the time it took,
+with a 2-minute ceiling. The wait after a turn, and the orchestrator's own wait calls, are
+hatched bands in the row beneath, each from where it began to where it ended. A failed step is a
+column in the error colour. With **errors only** on it becomes a full column with a marker in the
+same colour, and everything else is dimmed. The selected dispatch shows its links. A solid one runs from the
+orchestrator's send call to the member's turn that received it, and a dashed one from the
+member's reply call to the orchestrator's acceptance. The **trace steps** box hides the steps and
+links, and **waiting**, off by default, shows the rows beneath without moving the bars above
+them.
 
 **show orchestrator log.** Off by default, so the bare timeline is the dispatch and reply protocol
 as the channels prove it. Checking the box overlays the orchestrator's claims as circles on the
