@@ -3,19 +3,28 @@
   "title": "A refused orchestrator has no resumer: the host derives the resume and nobody performs it",
   "type": "defect",
   "severity": "high",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "user report (host), from the operator postmortems of two campaigns that ran the same night on one claude login, brought to the maintainer with a proposed design",
   "opened": "2026-09-22",
-  "resolved": null,
+  "resolved": "2026-09-22",
   "stint": "campaign-reliability-v4",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "8b39999",
+      "b8a6d72",
+      "3993946"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`go test ./internal/cli -run Resume -count=1`: 6 of 6 PASS. All six failed before the fix with `unknown command \"resume\"`. `./scripts/record-fixtures.sh claude-fault-capacity`: the recording PASSED in 358 s. The driver read `node-refused` for the orchestrator, the host sent one resume, and the verdict was `campaign-met`. `make test-smoke SMOKE_TESTS=TestSmokeReplay/claude-fault-capacity`: PASS in 266 s, with 0 upstream calls and one host resume. `make ci`: rc 0, with 8 of 8 smoke scenarios replayed and 0 upstream calls."
   },
   "resolution": null,
   "details": "**What happened.** The provider ended the orchestrator's mission turn in two campaigns within a minute and a half of each other, one with a 529 and one with a 500. Both orchestrators were claude on a lent login. The turn driver classified each as `capacity`. From the next look, `observe` read `orchestrator node-refused m1 capacity · 1 refused in a row · resume next, no rung spent` on every look. No resume was sent. After `providerWaitSeconds` the line became `node-stuck … provider wait bound tripped`, and it read that way for two more hours. Every agent sat `node-free` or `node-replied` with work waiting to be read. Both campaigns stood idle for a little over three hours, until a person sent `cs-campaign send` to each. That is a continue, so it spent a rung and re-sent the mission, where a resume would have carried the same session on for nothing. Each campaign then went on to converge.\n\n**Why.** A refused agent is resumed by the orchestrator's wait loop, and that loop worked the same night: eight codex throttles across the pair, eight resumes, no rung spent. The orchestrator has no dispatcher above it inside the campaign. The host is that party, and it already computes the orchestrator's state and derives the move. What the host lacks is any way to perform it. The host has `send`, which continues, and `restart`, which restarts. No command of the host performs a resume. PROTOCOL.md section 9 then says that during a campaign the host observes and does not act, so nobody built one.\n\n**Why it matters.** A campaign whose orchestrator is refused once stops until a human notices. A pair on one login fails together. Unattended, the login would have expired before either deadline and neither campaign would have produced an answer. The provider's own retries do not cover this. The CLI retried the overload by itself for four and a half minutes before it gave up. The driver read that as working, which is right. An overload that lasts longer than the CLI's retry budget always reaches this gap.\n\n**How to reproduce.** Open a mission on an orchestrator whose lent slot has a 529 armed for its next call. Watch `observe` derive `resume next` for the orchestrator and watch nothing send it.\n\n**What would help.** A host command that performs the no-rung move on the orchestrator and nothing else. It probes, computes the state, and sends the resume into the open mission when the derived move is `resume`. That move arises for a provider refusal whose wait has elapsed, or for a turn that never ran. In every other state it refuses and names the instrument that applies. A consumer's own tending loop then calls it when `observe` says so, and the pacing, the one-per-look rule and the bound come from the same computation. Section 9 changes to match: the host may perform the no-rung moves for the one node that has no dispatcher, and judgment stays where it is. Continue, restart and the verdict remain a person's. A machine that is gone remains unrecoverable.\n\n**How it is proven.** The first proof is a unit scenario on the host's ladder, where a refused orchestrator gets exactly one resume into the same dispatch and the same session after its wait. It gets none before the wait, and none once the bound has tripped. Then a fault-tier scenario on a real fleet with the fault armed on the orchestrator's lent slot, recorded once and replayed in CI. This is the first evidence for the claude family under an injected fault, which the conformance suite covered and no run had shown.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-22",
+      "text": "Measured on the recording: the CLI retried the overload by itself for about three minutes before the driver saw a refusal. The host's resume went out thirty-five seconds after that. A refused orchestrator now costs a campaign a few minutes, not a person's attention."
+    }
+  ],
   "links": [
     "SAC-034"
   ]
