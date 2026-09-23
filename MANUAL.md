@@ -33,7 +33,7 @@ cs-campaign doctor [<campaign>]
 cs-campaign playbook | manual | version
 
 cs-campaign-member <verb> [args]
-cs-dispatch-viewer <run-dir> [-o out.html | -o site-dir/] [--tracer <bin>] [--no-traces]
+cs-dispatch-viewer <run-dir> [--file <name.html> | --site <dir>] [--tracer <bin>]
 ```
 
 ## Description
@@ -622,14 +622,15 @@ true diagnosis and exit 78.
 ## The archive viewer: cs-dispatch-viewer
 
 ```sh
-cs-dispatch-viewer <run-dir> [-o viewer.html | -o site-dir/] [--tracer <bin>] [--no-traces]
+cs-dispatch-viewer <run-dir> [--file <name.html> | --site <dir>] [--tracer <bin>]
 cs-dispatch-viewer manual | version | help
 ```
 
 Renders one campaign run archive as a self-contained HTML page. It opens straight from disk:
 no server, no network, no runtime dependencies. `<run-dir>` is an archive directory holding
 `campaign.json`, or a run directory holding `archive/`. Output defaults to `viewer.html` in the
-current directory.
+current directory, and `--file` names another. `--site <dir>` writes a folder instead, described
+under **Sites** below.
 
 It reads the archive and nothing else:
 
@@ -645,8 +646,20 @@ It reads the archive and nothing else:
 transcript and runs `cs-tracer normalize` over it. The tracer turns the CLI's own session format
 into its trajectory documents, and the viewer reads only those. It takes the per-event strip,
 with each step's working and idle time, and the event text that joins dispatches to steps. The
-viewer therefore holds no knowledge of any CLI's format. `--no-traces` skips the tracer, and a
-missing tracer is a finding rather than a failure.
+viewer therefore holds no knowledge of any CLI's format.
+
+The tracer is installed from its own repository, never by this one's `make install`:
+
+```sh
+go install github.com/codesweep-ai/tracer/cmd/cs-tracer@latest
+```
+
+Without a tracer, the single file is still written. It draws the dispatches alone, carries the
+`tracer-absent` finding, and the viewer prints a warning with that install command. A site needs
+a tracer and is not written without one. The viewer runs `cs-tracer version` and `cs-tracer help`
+first, and stops when the tracer lacks `normalize` or `--split`. It also stops when a trajectory
+declares a `schemaVersion` other than the one it reads, which is 3. Each message names the tracer's
+version, the schema it wrote, and the command to install a matching one.
 
 The join reads text the harness itself wrote. A member's turn that carries a dispatch says
 `Dispatch ID: dNNN.` by construction. The other three anchors are receipts printed by the
@@ -654,10 +667,56 @@ harness verbs: `<member>/dNNN opened` from `send`, `replied to dNNN` from `reply
 `accepted dNNN from <member>` from `accept`. A receipt an agent suppressed is reported as
 `trace-unlinked`, and the link is left out rather than guessed.
 
-An `-o` that names a directory, or ends in a slash, writes a site instead of one file. Its
-`index.html` is the dispatch page, and `tracer/` beside it is the tracer's own export of every
-session, one page per trace. Every step and every anchor on the dispatch page then links to its
-event in the trace, and the tracer's index at `tracer/index.html` lists the sessions.
+**Sites.** `--site <dir>` writes a folder to read the run in, and to ask an agent about it. It
+needs `cs-tracer`. The folder holds:
+
+| File | What it is |
+|---|---|
+| `index.html` | the dispatch page; every step and anchor links to its event in the trace |
+| `tracer/` | the tracer's own export, one page per session, with `tracer/index.html` listing them |
+| `run-data.json` | the document the page embeds, as a file |
+| `traces/<session>.json` | one session's trajectory as the tracer normalized it, with the member's `node` added and every event in `events` |
+| `facts.json` | the numbers asked for most, computed by the viewer; see below |
+| `AGENTS.md` | how to answer questions about this run, with a reference to every field of both JSON files |
+| `CLAUDE.md` | one line importing `AGENTS.md`, for Claude Code |
+| `.cs-dispatch-viewer.json` | the list of what the viewer wrote here |
+
+`<dir>` must be new, empty, or a site the viewer wrote. A second `--site` to the same folder
+replaces the files the list names. The viewer refuses a folder holding anything else.
+
+Every event, dispatch and step in `run-data.json` carries its address on the page as `addr`, and a
+step with idle after it carries `idleAddr` too. An address goes after `#` in the page's URL:
+`e/<n>` is an event, `m/<member>/<dNNN>` a dispatch, and `traces/e/<n>` a step on the traces view.
+The page numbers steps after its events, two slots a step, so take a step's address from the data.
+
+`facts.json` holds, each with its address:
+
+- the elapsed time, from the first protocol event to the last;
+- per member and per session: work and idle from the tracer's totals, idle as a share of that
+  member's own time, the part of work spent in the harness's `wait`, tool calls, the bytes tools
+  returned, and the tokens the model wrote;
+- every dispatch, longest first;
+- the ten longest idle gaps, each with the step before it;
+- every step that errored, in one of five classes: `provider` (the model's server), `account` (a
+  rate limit), `guard` (the member's CLI refused the call), `command` (the member's own command)
+  and `other`;
+- every continue and restart, with the time since that member's last step, that step, the error
+  that ended its turn when one did, and the run's `continueAttempts`, `restarts`, `stallSeconds`
+  and `providerWaitSeconds` beside them;
+- every subagent a member spawned;
+- every tool call one member made three times or more with the same input, the harness's `wait`
+  marked as polling.
+
+The facts are computed from the same document the page draws, and nothing in them is a judgement.
+
+To ask an agent about a run, serve the site's parent folder so its links open elsewhere. Then
+start any agent CLI inside the site, and give it the served URL:
+
+```sh
+cs-dispatch-viewer ./runs/acme-1 --site sites/acme-1
+cd sites && python3 -m http.server 8799 --bind 127.0.0.1 &
+cd acme-1 && claude            # or codex, or opencode
+```
 
 **Timeline.** Each node gets one row, with the orchestrator first, on one axis of
 elapsed time since the campaign was created. The timeline has two views, chosen by the control in
@@ -775,7 +834,7 @@ Severity reflects the kind of problem.
 | `ambiguous-order` | info | lifecycle events share one second; the rendered order is arbitrary |
 | `trace-missing` | warning | a member's archive holds no transcript, so it has no trace |
 | `tracer-failed` | warning | `cs-tracer` could not read a member's store; that member has no trace |
-| `tracer-absent` | info | no `cs-tracer` was found, so the page draws dispatches without their traces |
+| `tracer-absent` | warning | no `cs-tracer` was found, so the page draws dispatches without their traces |
 | `trace-unlinked` | info | a dispatch anchor was not found in any trace; the link is left out rather than guessed |
 
 ## Options
@@ -801,9 +860,9 @@ Severity reflects the kind of problem.
 | `-f`, `--force` | `destroy` | Force member destruction. |
 | `--dry-run` | `destroy` | Resolve only; destroy nothing. Prints what would be removed and what would stay. |
 | `--archive DIR` | `audit` | Audit a preserved archive instead of live machines. |
-| `-o PATH` | `cs-dispatch-viewer` | Where the page is written. A directory, or a path ending in a slash, writes a site. |
+| `--file PATH` | `cs-dispatch-viewer` | The single page's name. Default: `viewer.html` in the current directory. |
+| `--site DIR` | `cs-dispatch-viewer` | Write a site into DIR instead of a single page. Needs `cs-tracer`. |
 | `--tracer BIN` | `cs-dispatch-viewer` | The `cs-tracer` binary to read transcripts with. Default: `cs-tracer` on PATH. |
-| `--no-traces` | `cs-dispatch-viewer` | Draw dispatches alone; never run the tracer. |
 
 `--profile` is mutually exclusive with the quick fleet flags, and `--agent` is mutually exclusive
 with `--agent-cli`/`--agents`. Membership must not depend on ambiguous flag merging.
@@ -1234,7 +1293,7 @@ cs-campaign create acme --profile acme/profile.yaml
 cs-campaign observe acme
 cs-campaign archive acme --output ./runs/acme-1
 cs-campaign destroy acme
-cs-dispatch-viewer ./runs/acme-1 -o acme-1.html
+cs-dispatch-viewer ./runs/acme-1 --file acme-1.html
 ```
 
 **Nudge a stopped orchestrator, then re-anchor it.**

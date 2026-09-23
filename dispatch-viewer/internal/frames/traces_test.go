@@ -190,7 +190,8 @@ func TestUntarUnpacksAStore(t *testing.T) {
 	}
 }
 
-// Without a tracer the page is still rendered, and says why it has no traces.
+// Without a tracer the page is still rendered, says why it has no traces,
+// and the operator is told on stderr how to get one.
 func TestAttachTracesWithoutATracer(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "campaign.json"), []byte("{}"), 0o600); err != nil {
@@ -198,11 +199,77 @@ func TestAttachTracesWithoutATracer(t *testing.T) {
 	}
 	run := &Run{Nodes: []Node{{Name: "orch", Role: "orchestrator"}}}
 	t.Setenv("PATH", dir) // nothing on it
-	if err := AttachTraces(context.Background(), run, dir, TraceOptions{}); err != nil {
+	var stderr bytes.Buffer
+	if err := AttachTraces(context.Background(), run, dir, TraceOptions{Stderr: &stderr}); err != nil {
 		t.Fatal(err)
 	}
-	if run.Traces != nil || len(run.Issues) != 1 || run.Issues[0].Code != "tracer-absent" {
+	if run.Traces != nil || len(run.Issues) != 1 || run.Issues[0].Code != "tracer-absent" || run.Issues[0].Severity != "warning" {
 		t.Fatalf("traces=%v issues=%+v", run.Traces, run.Issues)
+	}
+	if !strings.Contains(stderr.String(), "warning: cs-tracer is not on PATH") || !strings.Contains(stderr.String(), TracerInstall) {
+		t.Errorf("stderr: %q", stderr.String())
+	}
+}
+
+// A site is the tracer's output kept, so without one there is nothing to
+// build, and the error says how to get it.
+func TestASiteNeedsATracer(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "campaign.json"), []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+	err := AttachTraces(context.Background(), &Run{}, dir, TraceOptions{Site: filepath.Join(dir, "site")})
+	if err == nil || !strings.Contains(err.Error(), "a site needs cs-tracer") || !strings.Contains(err.Error(), TracerInstall) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+// fakeTracer writes a tracer script whose help, normalize and export are
+// given as shell, and an archive with one orchestrator transcript.
+func fakeTracer(t *testing.T, help, normalize string) (dir, tracer string) {
+	t.Helper()
+	dir = t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "campaign.json"), []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	writeTgz(t, filepath.Join(dir, "orchestrator", "transcript", "cli-evidence.tgz"), map[string]string{".cs-turns/claude.log": "x\n"})
+	tracer = filepath.Join(dir, "cs-tracer")
+	script := "#!/bin/sh\ncase \"$1\" in version) echo fake 9;; help) " + help + ";; normalize) mkdir -p \"$4\" && " + normalize + ";; esac\n"
+	if err := os.WriteFile(tracer, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return dir, tracer
+}
+
+// A tracer that writes another schemaVersion would put wrong data on the
+// page, so it stops the render, and the message names both versions.
+func TestAttachTracesRefusesAnotherSchema(t *testing.T) {
+	dir, tracer := fakeTracer(t, "echo normalize --split", `echo '{"schemaVersion":2,"trajectories":[]}' > "$4/index.json"`)
+	run := &Run{Nodes: []Node{{Name: "orch", Role: "orchestrator"}}}
+	err := AttachTraces(context.Background(), run, dir, TraceOptions{Tracer: tracer})
+	if err == nil || !strings.Contains(err.Error(), "schemaVersion 2") || !strings.Contains(err.Error(), "reads 3") || !strings.Contains(err.Error(), "fake 9") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+// A tracer too old to have the commands this calls is stopped at before it
+// is given a store.
+func TestAttachTracesRefusesATracerWithoutItsCommands(t *testing.T) {
+	dir, tracer := fakeTracer(t, "echo normalize", `echo '{"schemaVersion":3,"trajectories":[]}' > "$4/index.json"`)
+	err := AttachTraces(context.Background(), &Run{}, dir, TraceOptions{Tracer: tracer})
+	if err == nil || !strings.Contains(err.Error(), "has no --split") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+// A tracer named with --tracer that cannot run is an error, not a page
+// quietly drawn without traces.
+func TestAttachTracesRefusesATracerThatDoesNotRun(t *testing.T) {
+	dir := t.TempDir()
+	err := AttachTraces(context.Background(), &Run{}, dir, TraceOptions{Tracer: filepath.Join(dir, "missing")})
+	if err == nil || !strings.Contains(err.Error(), "cannot run the tracer") {
+		t.Fatalf("err = %v", err)
 	}
 }
 
@@ -216,7 +283,7 @@ func TestAttachTracesReportsAMissingTranscript(t *testing.T) {
 	writeTgz(t, filepath.Join(dir, "orchestrator", "transcript", "cli-evidence.tgz"), map[string]string{".cs-turns/claude.log": "x\n"})
 	// A tracer that writes an empty index for whatever it is given.
 	fake := filepath.Join(dir, "cs-tracer")
-	script := "#!/bin/sh\ncase \"$1\" in version) echo fake 1;; normalize) mkdir -p \"$4\" && echo '{\"trajectories\":[]}' > \"$4/index.json\";; esac\n"
+	script := "#!/bin/sh\ncase \"$1\" in version) echo fake 1;; help) echo normalize --split;; normalize) mkdir -p \"$4\" && echo '{\"schemaVersion\":3,\"trajectories\":[]}' > \"$4/index.json\";; esac\n"
 	if err := os.WriteFile(fake, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}

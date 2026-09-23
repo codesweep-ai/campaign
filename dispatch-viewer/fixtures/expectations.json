@@ -266,7 +266,7 @@
     "status": "keep",
     "value": {
       "healthy": {
-        "count": "10 found",
+        "count": "11 found",
         "rows": [
           "accept-unknown:error",
           "no-reply:severe",
@@ -277,11 +277,12 @@
           "accept-of-readback:info",
           "accepted-twice:info",
           "accept-of-own-channel:info",
-          "ambiguous-order:info"
+          "ambiguous-order:info",
+          "tracer-absent:warning"
         ]
       },
       "clobbered": {
-        "count": "10 found",
+        "count": "11 found",
         "rows": [
           "accept-unknown:error",
           "mtimes-clobbered:error",
@@ -292,11 +293,12 @@
           "accept-ambiguous:info",
           "accept-of-readback:info",
           "accepted-twice:info",
-          "accept-of-own-channel:info"
+          "accept-of-own-channel:info",
+          "tracer-absent:warning"
         ]
       },
       "name-mismatch": {
-        "count": "14 found",
+        "count": "15 found",
         "rows": [
           "reply-name-mismatch:error",
           "accept-unknown:error",
@@ -311,19 +313,147 @@
           "accepted-twice:info",
           "accept-of-own-channel:info",
           "ambiguous-order:info",
-          "ambiguous-order:info"
+          "ambiguous-order:info",
+          "tracer-absent:warning"
         ]
       },
       "create-phase": {
-        "count": "3 found",
+        "count": "4 found",
         "rows": [
           "log-missing:severe",
           "no-reply:severe",
-          "no-verdict:severe"
+          "no-verdict:severe",
+          "tracer-absent:warning"
         ]
       }
     },
-    "note": ""
+    "note": "",
+    "approval": {
+      "id": "SAC-061",
+      "reason": "A page built without cs-tracer now carries the tracer-absent warning, so every archive gains one issue row.",
+      "previous": {
+        "healthy": {
+          "count": "10 found",
+          "rows": [
+            "accept-unknown:error",
+            "no-reply:severe",
+            "accept-before-reply:warning",
+            "continues-exceed-policy:warning",
+            "accept-before-reply:warning",
+            "accept-ambiguous:info",
+            "accept-of-readback:info",
+            "accepted-twice:info",
+            "accept-of-own-channel:info",
+            "ambiguous-order:info"
+          ]
+        },
+        "clobbered": {
+          "count": "10 found",
+          "rows": [
+            "accept-unknown:error",
+            "mtimes-clobbered:error",
+            "no-reply:severe",
+            "accept-before-reply:warning",
+            "continues-exceed-policy:warning",
+            "accept-before-reply:warning",
+            "accept-ambiguous:info",
+            "accept-of-readback:info",
+            "accepted-twice:info",
+            "accept-of-own-channel:info"
+          ]
+        },
+        "name-mismatch": {
+          "count": "14 found",
+          "rows": [
+            "reply-name-mismatch:error",
+            "accept-unknown:error",
+            "reply-without-dispatch:error",
+            "reply-not-accepted:severe",
+            "accept-before-reply:warning",
+            "continues-exceed-policy:warning",
+            "reply-not-accepted:warning",
+            "accept-before-reply:warning",
+            "accept-ambiguous:info",
+            "accept-of-readback:info",
+            "accepted-twice:info",
+            "accept-of-own-channel:info",
+            "ambiguous-order:info",
+            "ambiguous-order:info"
+          ]
+        },
+        "create-phase": {
+          "count": "3 found",
+          "rows": [
+            "log-missing:severe",
+            "no-reply:severe",
+            "no-verdict:severe"
+          ]
+        }
+      },
+      "measured": {
+        "healthy": {
+          "count": "11 found",
+          "rows": [
+            "accept-unknown:error",
+            "no-reply:severe",
+            "accept-before-reply:warning",
+            "continues-exceed-policy:warning",
+            "accept-before-reply:warning",
+            "accept-ambiguous:info",
+            "accept-of-readback:info",
+            "accepted-twice:info",
+            "accept-of-own-channel:info",
+            "ambiguous-order:info",
+            "tracer-absent:warning"
+          ]
+        },
+        "clobbered": {
+          "count": "11 found",
+          "rows": [
+            "accept-unknown:error",
+            "mtimes-clobbered:error",
+            "no-reply:severe",
+            "accept-before-reply:warning",
+            "continues-exceed-policy:warning",
+            "accept-before-reply:warning",
+            "accept-ambiguous:info",
+            "accept-of-readback:info",
+            "accepted-twice:info",
+            "accept-of-own-channel:info",
+            "tracer-absent:warning"
+          ]
+        },
+        "name-mismatch": {
+          "count": "15 found",
+          "rows": [
+            "reply-name-mismatch:error",
+            "accept-unknown:error",
+            "reply-without-dispatch:error",
+            "reply-not-accepted:severe",
+            "accept-before-reply:warning",
+            "continues-exceed-policy:warning",
+            "reply-not-accepted:warning",
+            "accept-before-reply:warning",
+            "accept-ambiguous:info",
+            "accept-of-readback:info",
+            "accepted-twice:info",
+            "accept-of-own-channel:info",
+            "ambiguous-order:info",
+            "ambiguous-order:info",
+            "tracer-absent:warning"
+          ]
+        },
+        "create-phase": {
+          "count": "4 found",
+          "rows": [
+            "log-missing:severe",
+            "no-reply:severe",
+            "no-verdict:severe",
+            "tracer-absent:warning"
+          ]
+        }
+      }
+    }
   },
   {
     "id": "CF-05",
@@ -683,7 +813,8 @@
         "6:accept-of-readback->4",
         "7:accepted-twice->9",
         "8:accept-of-own-channel->17",
-        "9:ambiguous-order->null"
+        "9:ambiguous-order->null",
+        "10:tracer-absent->null"
       ],
       "clobbered": "no-timeline",
       "name-mismatch": [
@@ -700,15 +831,96 @@
         "10:accepted-twice->9",
         "11:accept-of-own-channel->19",
         "12:ambiguous-order->null",
-        "13:ambiguous-order->null"
+        "13:ambiguous-order->null",
+        "14:tracer-absent->null"
       ],
       "create-phase": [
         "0:log-missing->null",
         "1:no-reply->0",
-        "2:no-verdict->null"
+        "2:no-verdict->null",
+        "3:tracer-absent->null"
       ]
     },
-    "note": "null: the row has no evidence event to jump to (no dispatch)"
+    "note": "null: the row has no evidence event to jump to (no dispatch)",
+    "approval": {
+      "id": "SAC-061",
+      "reason": "A page built without cs-tracer now carries the tracer-absent warning, so every archive gains one issue row.",
+      "previous": {
+        "healthy": [
+          "0:accept-unknown->null",
+          "1:no-reply->13",
+          "2:accept-before-reply->5",
+          "3:continues-exceed-policy->13",
+          "4:accept-before-reply->4",
+          "5:accept-ambiguous->4",
+          "6:accept-of-readback->4",
+          "7:accepted-twice->9",
+          "8:accept-of-own-channel->17",
+          "9:ambiguous-order->null"
+        ],
+        "clobbered": "no-timeline",
+        "name-mismatch": [
+          "0:reply-name-mismatch->17",
+          "1:accept-unknown->null",
+          "2:reply-without-dispatch->18",
+          "3:reply-not-accepted->18",
+          "4:accept-before-reply->5",
+          "5:continues-exceed-policy->17",
+          "6:reply-not-accepted->17",
+          "7:accept-before-reply->4",
+          "8:accept-ambiguous->4",
+          "9:accept-of-readback->4",
+          "10:accepted-twice->9",
+          "11:accept-of-own-channel->19",
+          "12:ambiguous-order->null",
+          "13:ambiguous-order->null"
+        ],
+        "create-phase": [
+          "0:log-missing->null",
+          "1:no-reply->0",
+          "2:no-verdict->null"
+        ]
+      },
+      "measured": {
+        "healthy": [
+          "0:accept-unknown->null",
+          "1:no-reply->13",
+          "2:accept-before-reply->5",
+          "3:continues-exceed-policy->13",
+          "4:accept-before-reply->4",
+          "5:accept-ambiguous->4",
+          "6:accept-of-readback->4",
+          "7:accepted-twice->9",
+          "8:accept-of-own-channel->17",
+          "9:ambiguous-order->null",
+          "10:tracer-absent->null"
+        ],
+        "clobbered": "no-timeline",
+        "name-mismatch": [
+          "0:reply-name-mismatch->17",
+          "1:accept-unknown->null",
+          "2:reply-without-dispatch->18",
+          "3:reply-not-accepted->18",
+          "4:accept-before-reply->5",
+          "5:continues-exceed-policy->17",
+          "6:reply-not-accepted->17",
+          "7:accept-before-reply->4",
+          "8:accept-ambiguous->4",
+          "9:accept-of-readback->4",
+          "10:accepted-twice->9",
+          "11:accept-of-own-channel->19",
+          "12:ambiguous-order->null",
+          "13:ambiguous-order->null",
+          "14:tracer-absent->null"
+        ],
+        "create-phase": [
+          "0:log-missing->null",
+          "1:no-reply->0",
+          "2:no-verdict->null",
+          "3:tracer-absent->null"
+        ]
+      }
+    }
   },
   {
     "id": "CF-15",
@@ -1221,25 +1433,25 @@
     "target": "exactly one issue-row Tab stop; ArrowDown/ArrowUp walk it through every row; Home/End jump to the first/last",
     "value": {
       "healthy": {
-        "total": 10,
+        "total": 11,
         "tabStops": 1,
-        "reached": 10,
+        "reached": 11,
         "home": "0",
-        "end": "9"
+        "end": "10"
       },
       "name-mismatch": {
-        "total": 14,
+        "total": 15,
         "tabStops": 1,
-        "reached": 14,
+        "reached": 15,
         "home": "0",
-        "end": "13"
+        "end": "14"
       },
       "create-phase": {
-        "total": 3,
+        "total": 4,
         "tabStops": 1,
-        "reached": 3,
+        "reached": 4,
         "home": "0",
-        "end": "2"
+        "end": "3"
       }
     },
     "note": ""

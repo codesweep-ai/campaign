@@ -45,9 +45,14 @@ type Session struct {
 	Model            string `json:"model,omitempty"`
 	Events           int    `json:"events"`
 	Strip            []Step `json:"strip"`
-	// events holds the chunk documents while anchors are joined; the page
-	// gets the strip and the anchors, never the event bodies.
-	events []tracerEvent
+	// events holds the chunk documents while anchors are joined and facts
+	// are counted; the page gets the strip and the anchors, never the event
+	// bodies. summary and raw are the tracer's own documents, kept so a site
+	// can write the trajectory as the tracer wrote it.
+	events  []tracerEvent
+	totals  tracerTotals
+	summary json.RawMessage
+	raw     []json.RawMessage
 }
 
 // Step is one strip entry, the tracer's per-event shape, plus a short text
@@ -69,6 +74,10 @@ type Step struct {
 	// Wait marks a harness wait call: time the orchestrator spent waiting
 	// for members rather than working.
 	Wait bool `json:"wait,omitempty"`
+	// Addr is the step's address on the dispatch page and IdleAddr the
+	// address of the idle mark after it (addresses, in frames.go).
+	Addr     string `json:"addr,omitempty"`
+	IdleAddr string `json:"idleAddr,omitempty"`
 }
 
 // Anchor joins one dispatch to one event in one session. Kind is sent
@@ -89,10 +98,20 @@ type TraceOptions struct {
 	Tracer string
 	// Site, when set, is the directory the dispatch page will live in; the
 	// tracer's export goes under Site/tracer and every session gets a Page.
+	// A site cannot be built without a tracer.
 	Site string
-	// Stderr receives the tracer's own diagnostics.
+	// Stderr receives the tracer's own diagnostics, and the warning when
+	// there is no tracer.
 	Stderr io.Writer
 }
+
+// TrajectorySchema is the tracer's schemaVersion this reads. The tracer's
+// SPEC (R7) has a consumer refuse any other rather than render what it can,
+// and a tracer that writes another is stopped at, never read.
+const TrajectorySchema = 3
+
+// TracerInstall is the command every tracer message names.
+const TracerInstall = "go install github.com/codesweep-ai/tracer/cmd/cs-tracer@latest"
 
 var traceIssueDefs = map[string]string{
 	"tracer-absent":  "no cs-tracer was found, so the page draws dispatches without their traces",
@@ -106,23 +125,33 @@ func init() {
 }
 
 // AttachTraces runs the tracer over every member's transcript and joins the
-// result to the run. It never fails the render: whatever cannot be read is
-// reported as a finding, and the page draws what it has.
+// result to the run. A member whose store cannot be read is a finding, and the
+// page draws what it has. Three things stop it instead: a site with no tracer,
+// a --tracer that cannot be run, and a tracer whose output this does not read,
+// since that would put wrong data on the page.
 func AttachTraces(ctx context.Context, run *Run, dir string, opts TraceOptions) error {
 	root := archiveRoot(dir)
+	stderr := opts.Stderr
+	if stderr == nil {
+		stderr = io.Discard
+	}
 	tracer := opts.Tracer
 	if tracer == "" {
 		p, err := exec.LookPath("cs-tracer")
 		if err != nil {
-			run.Issues = append(run.Issues, Issue{Severity: "info", Code: "tracer-absent",
-				Message: "cs-tracer is not on PATH and --tracer was not given; dispatches are drawn without their traces"})
+			if opts.Site != "" {
+				return fmt.Errorf("a site needs cs-tracer, and none is on PATH; install it with %s, or name one with --tracer", TracerInstall)
+			}
+			fmt.Fprintf(stderr, "warning: cs-tracer is not on PATH, so this page has no traces view.\n  install it with %s, or name one with --tracer\n", TracerInstall)
+			run.Issues = append(run.Issues, Issue{Severity: "warning", Code: "tracer-absent",
+				Message: "cs-tracer is not on PATH and --tracer was not given; dispatches are drawn without their traces. Install it with " + TracerInstall})
 			return nil
 		}
 		tracer = p
 	}
-	stderr := opts.Stderr
-	if stderr == nil {
-		stderr = io.Discard
+	version, err := checkTracer(ctx, tracer)
+	if err != nil {
+		return err
 	}
 	scratch, err := os.MkdirTemp("", "cs-dispatch-viewer-")
 	if err != nil {
@@ -130,8 +159,7 @@ func AttachTraces(ctx context.Context, run *Run, dir string, opts TraceOptions) 
 	}
 	defer os.RemoveAll(scratch)
 
-	version, _ := exec.CommandContext(ctx, tracer, "version").Output()
-	tr := &Traces{Tool: strings.TrimSpace(string(version))}
+	tr := &Traces{Tool: version}
 	stores := filepath.Join(scratch, "stores")
 	var stored []string
 	for _, n := range run.Nodes {
@@ -155,6 +183,9 @@ func AttachTraces(ctx context.Context, run *Run, dir string, opts TraceOptions) 
 			continue
 		}
 		sessions, err := readNormalized(norm, n.Name)
+		if schema, ok := errors.AsType[*schemaError](err); ok {
+			return fmt.Errorf("%s writes trajectories at schemaVersion %d, and this cs-dispatch-viewer reads %d; install a matching cs-tracer with %s", version, schema.got, TrajectorySchema, TracerInstall)
+		}
 		if err != nil {
 			run.Issues = append(run.Issues, Issue{Severity: "warning", Code: "tracer-failed",
 				Message: fmt.Sprintf("%s: %v", n.Name, err), Node: n.Name})
@@ -187,6 +218,64 @@ func AttachTraces(ctx context.Context, run *Run, dir string, opts TraceOptions) 
 	}
 	joinAnchors(run, tr)
 	run.Traces = tr
+	addresses(run)
+	return nil
+}
+
+// checkTracer runs the tracer once before it is trusted with a store: it must
+// run, and its usage must name the two commands this calls. It returns the
+// tracer's version line. The schema a tracer writes is checked on its output.
+func checkTracer(ctx context.Context, tracer string) (string, error) {
+	out, err := exec.CommandContext(ctx, tracer, "version").Output()
+	if err != nil {
+		return "", fmt.Errorf("cannot run the tracer %s: %v; install cs-tracer with %s", tracer, err, TracerInstall)
+	}
+	version := strings.TrimSpace(string(out))
+	help, _ := exec.CommandContext(ctx, tracer, "help").CombinedOutput()
+	for _, want := range []string{"normalize", "--split"} {
+		if !strings.Contains(string(help), want) {
+			return "", fmt.Errorf("%s has no %s command, which this cs-dispatch-viewer needs; install a matching cs-tracer with %s", version, want, TracerInstall)
+		}
+	}
+	return version, nil
+}
+
+// schemaError is a tracer document at a schemaVersion this does not read.
+type schemaError struct {
+	file string
+	got  int
+}
+
+func (e *schemaError) Error() string {
+	return fmt.Sprintf("%s: schemaVersion %d, want %d", e.file, e.got, TrajectorySchema)
+}
+
+// WriteTrajectories writes each session the tracer normalized as one file,
+// dir/<session>.json: the tracer's summary document with the member's name
+// and every event added, so one file answers for one session.
+func WriteTrajectories(tr *Traces, dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	for _, s := range tr.Sessions {
+		var doc map[string]json.RawMessage
+		if err := json.Unmarshal(s.summary, &doc); err != nil {
+			return fmt.Errorf("%s: %w", s.ID, err)
+		}
+		doc["node"], _ = json.Marshal(s.Node)
+		events := s.raw
+		if events == nil {
+			events = []json.RawMessage{}
+		}
+		doc["events"], _ = json.Marshal(events)
+		out, err := json.MarshalIndent(doc, "", " ")
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dir, s.ID+".json"), append(out, '\n'), 0o644); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -256,14 +345,16 @@ func untar(tgz, dir string) error {
 // The subset of the tracer's summary and chunk documents this reads. Field
 // names follow schema/trajectory.v1.json in the tracer repository.
 type tracerIndex struct {
-	Trajectories []struct {
+	SchemaVersion int `json:"schemaVersion"`
+	Trajectories  []struct {
 		ID   string `json:"id"`
 		Path string `json:"path"`
 	} `json:"trajectories"`
 }
 
 type tracerSummary struct {
-	Meta struct {
+	SchemaVersion int `json:"schemaVersion"`
+	Meta          struct {
 		Source           string `json:"source"`
 		SessionID        string `json:"sessionId"`
 		ParentSessionID  string `json:"parentSessionId"`
@@ -272,15 +363,29 @@ type tracerSummary struct {
 		StartedAt        string `json:"startedAt"`
 		EndedAt          string `json:"endedAt"`
 	} `json:"meta"`
-	Totals struct {
-		Events int `json:"events"`
-	} `json:"totals"`
-	ChunkCount int    `json:"chunkCount"`
-	Strip      []Step `json:"strip"`
+	Totals     tracerTotals `json:"totals"`
+	ChunkCount int          `json:"chunkCount"`
+	Strip      []Step       `json:"strip"`
+}
+
+// tracerTotals is the part of a summary's totals the facts count: output is
+// the tokens the model wrote, which is not the bytes its tools returned.
+// time is the tracer's own work and idle for the session (its R77): work is
+// the union of its steps' intervals, so tool calls running at once count
+// once, and summing the strip's workMs would not give it.
+type tracerTotals struct {
+	Events    int `json:"events"`
+	ToolCalls int `json:"toolCalls"`
+	Output    int `json:"output"`
+	Time      struct {
+		ElapsedMs int64 `json:"elapsedMs"`
+		IdleMs    int64 `json:"idleMs"`
+		WorkMs    int64 `json:"workMs"`
+	} `json:"time"`
 }
 
 type tracerChunk struct {
-	Events []tracerEvent `json:"events"`
+	Events []json.RawMessage `json:"events"`
 }
 
 type tracerEvent struct {
@@ -298,7 +403,8 @@ type tracerTool struct {
 }
 
 type tracerResult struct {
-	Text string `json:"text"`
+	Text    string `json:"text"`
+	IsError bool   `json:"isError"`
 }
 
 func readNormalized(norm, node string) ([]Session, error) {
@@ -309,6 +415,9 @@ func readNormalized(norm, node string) ([]Session, error) {
 	var idx tracerIndex
 	if err := json.Unmarshal(raw, &idx); err != nil {
 		return nil, fmt.Errorf("index.json: %w", err)
+	}
+	if idx.SchemaVersion != TrajectorySchema {
+		return nil, &schemaError{"index.json", idx.SchemaVersion}
 	}
 	var out []Session
 	for _, t := range idx.Trajectories {
@@ -321,16 +430,26 @@ func readNormalized(norm, node string) ([]Session, error) {
 		if err := json.Unmarshal(raw, &sum); err != nil {
 			return nil, fmt.Errorf("%s/summary.json: %w", t.Path, err)
 		}
+		if sum.SchemaVersion != TrajectorySchema {
+			return nil, &schemaError{t.Path + "/summary.json", sum.SchemaVersion}
+		}
 		s := Session{ID: t.ID, Node: node, Source: sum.Meta.Source, Parent: sum.Meta.ParentSessionID,
 			ParentEventIndex: sum.Meta.ParentEventIndex, StartedAt: sum.Meta.StartedAt,
-			EndedAt: sum.Meta.EndedAt, Model: sum.Meta.Model, Events: sum.Totals.Events, Strip: sum.Strip}
+			EndedAt: sum.Meta.EndedAt, Model: sum.Meta.Model, Events: sum.Totals.Events, Strip: sum.Strip,
+			totals: sum.Totals, summary: raw}
 		byI := map[int]*Step{}
 		for i := range s.Strip {
 			byI[s.Strip[i].I] = &s.Strip[i]
 		}
-		events, err := readChunks(dir)
+		rawEvents, err := readChunks(dir)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", t.Path, err)
+		}
+		events := make([]tracerEvent, len(rawEvents))
+		for i, r := range rawEvents {
+			if err := json.Unmarshal(r, &events[i]); err != nil {
+				return nil, fmt.Errorf("%s: event %d: %w", t.Path, i, err)
+			}
 		}
 		for _, e := range events {
 			st := byI[e.I]
@@ -343,18 +462,19 @@ func readNormalized(norm, node string) ([]Session, error) {
 			}
 		}
 		s.events = events
+		s.raw = rawEvents
 		out = append(out, s)
 	}
 	return out, nil
 }
 
-func readChunks(dir string) ([]tracerEvent, error) {
+func readChunks(dir string) ([]json.RawMessage, error) {
 	names, err := filepath.Glob(filepath.Join(dir, "chunks", "*.json"))
 	if err != nil {
 		return nil, err
 	}
 	sort.Strings(names)
-	var all []tracerEvent
+	var all []json.RawMessage
 	for _, name := range names {
 		raw, err := os.ReadFile(name)
 		if err != nil {

@@ -126,15 +126,44 @@ Invoked under a `cs-<cli>-remote` name, the same binary is the family guard.
 
 `cs-dispatch-viewer` renders one archive as a self-contained HTML page: every node's dispatch
 and reply record on a timeline, the orchestrator's log beside it, and a findings list. It reads
-an archive and writes one file.
+an archive and writes one file, or with `--site` a folder.
 
-When traces are wanted it writes a site instead. The page is `index.html`, and beside it sits
-the tracer's own export of every member's session under `tracer/`, one page per trace. Each step
-and anchor on the timeline then links to its event. The site is chosen by giving `-o` a
-directory. The trace pages stay the tracer's: `cs-tracer` produces them at render time from the
-archive's raw evidence. The viewer therefore carries no CLI-specific code, and a newer tracer can
-re-read an old archive. A single file with traces would carry the trace data but no pages to
-link to, and on a small run it would be eight times the page's size. So the folder is the form.
+Each member's steps come from its transcript, read by `cs-tracer`. The tracer turns each CLI's
+session format into its trajectory documents, and the viewer reads only those. The viewer
+therefore carries no CLI-specific code, and a newer tracer can re-read an old archive.
+
+A site is the page as `index.html`, and beside it the tracer's own export of every session under
+`tracer/`, one page per trace. Each step and anchor on the timeline then links to its event. The
+site also holds the data behind both as files: the page's document, each session's trajectory,
+computed facts, and an `AGENTS.md` saying how to read them. An agent started in the
+folder can then answer questions about the run. The trace pages stay the tracer's: `cs-tracer`
+produces them at render time from the archive's raw evidence. A single file with traces would
+carry the trace data but no pages to link to, and on a small run it would be eight times the
+page's size. So the folder is the form for links and for questions.
+
+**R136.** The single file **MUST NOT** link to a page it did not write. *A link into a folder that
+is not there reads as a broken page.*
+
+**R137.** The viewer **MUST** refuse a trajectory whose `schemaVersion` it does not read, and a
+tracer without the commands it calls, and **MUST** then write nothing. Without a tracer, the
+single file **MUST** still be written, with the dispatches alone and a warning that names how to
+install one, and a site **MUST NOT** be. *Data read in a shape the reader does not know draws a run
+that did not happen. Observed: a viewer older than the traces view wrote a page with none, and
+said nothing.*
+
+**R138.** Every event, dispatch and drawn step in the page's document **MUST** carry the address
+the page selects it by. *The page numbers steps after its events, two slots a step, and an address
+worked out by hand lands on the wrong step.*
+
+**R139.** A site's facts **MUST** be computed from the document the page draws, the same way on
+every render, and **MUST NOT** judge. A stall **MUST** be reported as the harness's own continue or
+restart, with the gap before it, the step that preceded the gap, and the run's policy beside it.
+*The harness already decides when a dispatch has stalled, and the continue is that decision.
+Whether a gap cost the run time is a counterfactual the record cannot settle.*
+
+**R140.** A site **MUST** be written only into a new or empty directory, or over a site the viewer
+wrote there, and **MUST** refuse any other. *A site is replaced whole, and anything else in the
+folder would go with it.*
 
 ### 3.4 What a campaign runs on
 
@@ -1396,6 +1425,13 @@ never graded for content, and skipping the check is recorded. A member reports i
 inputs. A member whose session is reset is returned to its standing context before it is asked to
 work again. Every campaign ends in exactly one exit state, and all but `campaign-met` name what
 remains unmet.
+
+**Viewer.** A rendered page draws only what the archive holds, and a defect in the archive is a
+finding rather than an approximation. The single file links to no page it did not write. A site
+holds the page's document, the trajectories, the facts and the agent's guide, and every address
+in them opens the page on the thing it names. The facts agree with the page, and report stalls as
+the harness's continues and restarts against the run's policy. A tracer whose output the viewer
+does not read stops the render.
 
 **Evidence.** Every member has the same four-channel model. Visibility grants differ between
 orchestrator and agents, and an explicitly handed-off artifact does not expose the orchestrator's

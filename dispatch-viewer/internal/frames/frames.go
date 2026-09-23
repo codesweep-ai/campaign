@@ -40,6 +40,8 @@ type Event struct {
 	Phase    string `json:"phase,omitempty"`
 	Outcome  string `json:"outcome,omitempty"`
 	Text     string `json:"text,omitempty"` // log entry text / message body
+	// Addr is the event's address on the dispatch page (addresses).
+	Addr string `json:"addr,omitempty"`
 }
 
 type Span struct {
@@ -51,6 +53,8 @@ type Span struct {
 	Phase      string `json:"phase,omitempty"`
 	Continues  int    `json:"continues"`
 	Restarts   int    `json:"restarts"`
+	// Addr is the address that picks the dispatch and zooms to it.
+	Addr string `json:"addr,omitempty"`
 }
 
 type Issue struct {
@@ -222,7 +226,46 @@ func Load(dir string) (*Run, error) {
 	buildEventsAndSpans(run)
 	check(run, root, allMsgs)
 	sort.SliceStable(run.Events, func(i, j int) bool { return run.Events[i].At < run.Events[j].At })
+	addresses(run)
 	return run, nil
+}
+
+// addresses writes onto every event, dispatch and step the address the page
+// selects it by, relative to the page (a site's reader prepends where it is
+// served). An event is e/<its index in Events>. A step is numbered after the
+// events, two slots per step in session and strip order, the second slot
+// being the idle mark after it; a step with no time is not drawn but still
+// spends its two. This is App.tsx's readHash and model.ts's stepMarks, and
+// the two must move together.
+func addresses(run *Run) {
+	for i := range run.Events {
+		run.Events[i].Addr = fmt.Sprintf("e/%d", i)
+	}
+	for i := range run.Spans {
+		s := &run.Spans[i]
+		s.Addr = ""
+		if s.OpenedAt != "" {
+			s.Addr = "m/" + s.Node + "/" + s.ID
+		}
+	}
+	if run.Traces == nil {
+		return
+	}
+	n := len(run.Events)
+	for si := range run.Traces.Sessions {
+		sess := &run.Traces.Sessions[si]
+		for i := range sess.Strip {
+			st := &sess.Strip[i]
+			st.Addr, st.IdleAddr = "", ""
+			if st.TS != "" {
+				st.Addr = fmt.Sprintf("traces/e/%d", n)
+				if st.IdleMs != nil && *st.IdleMs > 0 {
+					st.IdleAddr = fmt.Sprintf("traces/e/%d", n+1)
+				}
+			}
+			n += 2
+		}
+	}
 }
 
 func loadMessages(run *Run, node, dir string) ([]protocol.Msg, error) {

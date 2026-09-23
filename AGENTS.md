@@ -21,5 +21,8 @@ harness: start at the manual. **Changing the harness** means editing Go under `i
 - [ledger/AGENTS.md](ledger/AGENTS.md) · this repo keeps a ledger of open issues. Read it before
   you start work.
 
+A question about one finished run is neither job. Build its site with `cs-dispatch-viewer <archive>
+--site <dir>`, and work from the `AGENTS.md` written inside it.
+
 `cs-campaign --help` is generated from the code and is always current. Prefer it over any command
 line quoted in a document.

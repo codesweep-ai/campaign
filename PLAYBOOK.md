@@ -612,7 +612,7 @@ The microVMs are the only copy of a member's work until you harvest it. Order ma
 ```sh
 cs-campaign fetch acme                     # every member's branch into the host repository
 cs-campaign archive acme                   # evidence, with the team audit in the same pass
-cs-dispatch-viewer archives/acme-<stamp>   # one self-contained HTML page
+cs-dispatch-viewer archives/acme-<stamp> --site sites/acme   # the page, the traces, the facts
 cs-campaign destroy acme --dry-run         # read which machines will go, and what stays
 cs-campaign destroy acme                   # teardown, and reclaim the group
 ```
@@ -634,6 +634,13 @@ gate report SKIP at exit zero, and "all gates green" then hides the gates that n
 Render the archive and read its findings. They are a graded checklist somebody already wrote, and
 the manual's findings reference says what each code means. Decide before you start which of them you
 would accept and which would make you re-run, so the post-mortem is not a negotiation with yourself.
+
+**Ask about the run in plain words.** Serve the site's parent folder, start an agent CLI inside
+the site, and tell it the served URL. It reads the site's `AGENTS.md`, answers from the files
+beside it, and puts a link on each claim. Click the links before you believe the claims. Outcomes
+and verdicts are claims too, and the viewer's findings outrank them. Anything the agent labels as
+judgement is its opinion. A small model finds the data but misreads cause and effect, so use a
+strong one when the answer will steer the next run.
 
 Then do the part no command does for you. Re-run the acceptance gates yourself, from a fresh clone
 of the integration branch. That independent check is the point of the exercise, and it has caught

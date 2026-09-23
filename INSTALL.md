@@ -73,6 +73,21 @@ cs-dispatch-viewer 95e65d0 (linux/amd64, go1.26.2)
 $ cs-campaign manual | less        # the full reference, carried inside the binary
 ```
 
+### The tracer, for traces in the viewer
+
+`cs-dispatch-viewer` draws each member's steps inside its dispatches by reading the member's
+transcript with [`cs-tracer`](https://github.com/codesweep-ai/tracer). The tracer is a separate
+program, and this repository's `make install` does not install it:
+
+```bash
+go install github.com/codesweep-ai/tracer/cmd/cs-tracer@latest
+cs-tracer version
+```
+
+Without it, the viewer still writes a single page with the dispatches alone, and warns. A site
+(`cs-dispatch-viewer <run-dir> --site <dir>`) needs it. The viewer checks the tracer it finds, and
+stops with the same install command when that tracer writes a trajectory format it does not read.
+
 ## 2. Install and set up cs-sandbox
 
 `cs-campaign` shells out to `cs-sandbox` for every microVM, the campaign network, the SSH

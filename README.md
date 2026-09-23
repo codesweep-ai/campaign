@@ -171,7 +171,15 @@ re-run every check yourself from a fresh clone.
 Afterwards, turn one archive into a single self-contained page:
 
 ```bash
-cs-dispatch-viewer ./runs/acme-1 -o acme-1.html
+cs-dispatch-viewer ./runs/acme-1 --file acme-1.html
+```
+
+Or write it as a folder, with the page, every member's trace, and the run's data and computed
+facts as files. Start an agent CLI in that folder and ask it what happened; its `AGENTS.md` tells
+the agent how to answer, with a link for each claim:
+
+```bash
+cs-dispatch-viewer ./runs/acme-1 --site acme-1
 ```
 
 ## Quickstart

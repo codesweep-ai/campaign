@@ -1,0 +1,106 @@
+# Questions about the campaign run {{.Name}}
+
+This folder is one finished campaign run, written by `cs-dispatch-viewer {{.Version}}` for an
+agent to answer questions about it. The data is here, in this folder, and nowhere else you need to
+look. Read all of this page before answering; it is short. The two rules that matter most:
+**measure before you claim**, and **every claim carries a link**.
+
+## The run
+
+- campaign `{{.Name}}`, id `{{.ID}}`
+- outcome claimed: `{{if .Outcome}}{{.Outcome}}{{else}}none{{end}}`, with {{.Issues}} issues from the viewer, {{.Severe}} of them severe or worse
+- elapsed {{.Elapsed}}, {{.Events}} protocol events, {{.Dispatches}} dispatches, {{.Sessions}} sessions
+- traces read by `{{.Tracer}}`
+
+| member | role | CLI | model |
+|---|---|---|---|
+{{range .Nodes}}| {{.Name}} | {{.Role}} | {{.CLI}} | {{.Model}} |
+{{end}}
+## What a campaign is
+
+A **campaign** runs a team of AI coding agents on one **mission**. One member is the
+**orchestrator**: it reads the mission, writes briefs, and hands out work to the other
+**members** as **dispatches**. A dispatch is one unit of asked work, numbered `d001`, `d002`, and on
+per member. The mission itself is dispatch `m1` to the orchestrator. A member's first dispatch is
+its **readback**, a check at create time that it read its brief; the host issues and judges it, so
+the orchestrator owes it no acceptance. The orchestrator **opens** a dispatch, the member
+**replies**, and the orchestrator **accepts** the reply or opens another. When the harness judges a
+dispatch stalled it sends a **continue**, and past that a **restart** of the member's session. The
+orchestrator ends with a **verdict**, and the run records an **outcome**. The outcome, the verdicts
+and every reply are claims. The viewer's **issues** argue with them, and an issue outranks a claim.
+
+Members run on different CLIs, which name their tools differently: `Bash` and `Read` are Claude
+Code, `bash`, `read` and `write` are OpenCode, `exec` and `shell` are Codex.
+
+## What is in this folder
+
+- `facts.json`: the numbers asked for most, already computed. **Start here.** It has the elapsed
+  time; per member work, idle, idle as a share of that member's own time, tool calls, tool output
+  in bytes and model output tokens; every dispatch, longest first; the ten longest idle gaps; every
+  failed step, classed; every continue and restart the harness sent, with the gap before it and the
+  policy it acted under; every subagent; and every tool call repeated three times or more.
+- `run-data.json`: everything the dispatch page draws. Events, dispatches, the orchestrator's log,
+  every reply and message, the issues, and each session's steps.
+- `traces/<session>.json`: one session's whole trajectory as the tracer wrote it, with `node`
+  added. `events` holds every step in full: the tool input, the result text, thinking, tokens.
+  These files are large; read the one event you need, by its `i`, rather than the whole file.
+- `index.html`: the dispatch page. `tracer/`: one page per session.
+
+Use `jq` or a short script to read the JSON. Every number in an answer should come from one of
+these files, and an answer should say which.
+
+## Links
+
+Everything on the page has an address, and the data carries it as `addr`. Put the served URL in
+front of it: `<served-url>/#<addr>`. The operator tells you the served URL. If they have not, ask
+once, and until then write links as `#<addr>`. Never invent a host.
+
+- `m/<member>/<dNNN>` picks a dispatch and zooms to it.
+- `e/<n>` picks a protocol event.
+- `traces/e/<n>` picks a step on the traces view. A step's `idleAddr` picks the idle mark after it.
+- A step's `page` in `facts.json` is its place on its own trace page, `tracer/traces/<session>.html#ev-<i>`, which
+  goes after the served URL with no `#` added. The facts carry it for every step they name; for another, it is the session's `page` with `#ev-<i>` after it.
+- `@h:mm:ss-h:mm:ss` after any address sets the visible window, in time since the run began.
+
+Those are the only forms. There are no ranges and no lists. Take every address from the data
+rather than working one out.
+
+## Answering
+
+State the answer first, in plain words, then the evidence, one claim a line, each with its link.
+Short beats complete: the reader will click. Say what you computed and what you read. When you do
+not know, say so; never invent a number, a cause or a link.
+
+Things that mislead, and what to say instead:
+
+- **Tool output is not output tokens.** `toolOutputBytes` is what tools returned to a model;
+  `outputTokens` is what the model wrote. Answer the one asked.
+- **Idle does not sum across members.** Twelve hours of idle in a six-hour run is three members
+  waiting through one gap. Use each member's `idleShare`, and name the gap.
+- **The orchestrator's work is mostly waiting.** It holds one long turn and blocks in the harness's
+  wait call; `wait` says how much. For "who did the most work", compare the members.
+- **A continue or restart is the harness, not the orchestrator.** `recovery.events` lists them.
+  Each carries the gap before it, the step that preceded the gap, and the policy beside it. Report
+  those facts. Whether the gap caused a delay is judgement, and should be labelled as such.
+- **Errors have classes.** `provider` is the model's server, `account` a rate limit, `guard` the
+  member's CLI refusing a call, `command` the member's own command failing. Do not lump them.
+- **A repeated call is not a loop until you look.** `repeatedCalls` counts them; `polling` marks the
+  harness's wait, which repeats by design. Re-reading one file three times is normal.
+- **The outcome is a claim.** A `campaign-converged` outcome beside a `campaign-not-met` issue
+  means the record disagrees with itself. Report both, and lead with the issue.
+
+## Fields
+
+### facts.json
+
+{{.Facts}}
+A duration has these fields:
+
+{{.Dur}}
+A step reference, in `idleGaps`, `failedSteps`, `recovery.events` and `subagents`, has these
+fields:
+
+{{.StepRef}}
+### run-data.json
+
+{{.Run}}
