@@ -31,9 +31,12 @@ type nodeView struct {
 }
 
 type observation struct {
-	Derived []nodeView       `json:"derived"`
-	Claimed []protocol.Entry `json:"claimed"`
-	Mission *protocol.Reply  `json:"mission,omitempty"`
+	// Deadline is the campaign's live clock, nil when none was declared. It
+	// is read from the campaign record, not from any node.
+	Deadline *deadlineView    `json:"deadline,omitempty"`
+	Derived  []nodeView       `json:"derived"`
+	Claimed  []protocol.Entry `json:"claimed"`
+	Mission  *protocol.Reply  `json:"mission,omitempty"`
 	// MissionErr is set when the orchestrator is node-replied on the mission
 	// but its reply could not be read back. Reported rather than swallowed:
 	// an unreadable verdict and an unfinished campaign look identical from
@@ -64,7 +67,7 @@ func (a *app) observeCmd() *cobra.Command {
 // the campaign record so campaign evidence survives a lost orchestrator
 // machine (a backup of a claim, not derived state).
 func (a *app) observeCampaign(ctx context.Context, campaign *model.Campaign) (observation, error) {
-	obs := observation{}
+	obs := observation{Deadline: liveDeadline(campaign, time.Now())}
 	var orchestrator *model.Member
 	for i := range campaign.Members {
 		if campaign.Members[i].Role == "orchestrator" {
@@ -174,7 +177,64 @@ func (a *app) mirrorLog(campaign string, b []byte) {
 	_ = os.WriteFile(filepath.Join(a.store.Dir, campaign+".log-mirror.jsonl"), b, 0o600)
 }
 
+// deadlineView is the campaign's live deadline and the create attempt that
+// set it. A resumed create moves the deadline, and an operator who read an
+// earlier attempt's would otherwise keep working to a clock nobody enforces.
+type deadlineView struct {
+	At               time.Time `json:"at"`
+	RemainingSeconds int64     `json:"remainingSeconds"`
+	// Attempt is the 1-based create attempt that set At, and StartedAt when
+	// it started. Both are zero on a record written before attempts were kept.
+	Attempt   int       `json:"attempt,omitempty"`
+	StartedAt time.Time `json:"startedAt,omitzero"`
+	// Replaced is every deadline an earlier attempt set, oldest first.
+	Replaced []time.Time `json:"replaced,omitempty"`
+}
+
+// liveDeadline reads the campaign's deadline and the attempt that set it,
+// or nil when the profile declared none.
+func liveDeadline(c *model.Campaign, now time.Time) *deadlineView {
+	if c.Deadline.IsZero() {
+		return nil
+	}
+	v := &deadlineView{At: c.Deadline.UTC(), RemainingSeconds: int64(c.Deadline.Sub(now) / time.Second)}
+	if n := len(c.Attempts); n > 0 {
+		v.Attempt, v.StartedAt = n, c.Attempts[n-1].StartedAt.UTC()
+		for _, earlier := range c.Attempts[:n-1] {
+			if !earlier.Deadline.IsZero() {
+				v.Replaced = append(v.Replaced, earlier.Deadline.UTC())
+			}
+		}
+	}
+	return v
+}
+
+func printDeadline(w io.Writer, d *deadlineView) {
+	if d == nil {
+		fmt.Fprintf(w, "DEADLINE — none; the profile declares no defaults.deadline\n\n")
+		return
+	}
+	left := time.Duration(d.RemainingSeconds) * time.Second
+	when := left.String() + " from now"
+	if left <= 0 {
+		when = "passed " + (-left).String() + " ago"
+	}
+	fmt.Fprintf(w, "DEADLINE — %s, %s\n", d.At.Format(time.RFC3339), when)
+	switch {
+	case d.Attempt == 1:
+		fmt.Fprintf(w, "  set when create started, at %s\n", d.StartedAt.Format(time.RFC3339))
+	case d.Attempt > 1:
+		fmt.Fprintf(w, "  moved by create attempt %d, which started at %s. A deadline read before then is out of date.\n",
+			d.Attempt, d.StartedAt.Format(time.RFC3339))
+		for _, r := range d.Replaced {
+			fmt.Fprintf(w, "  replaces %s\n", r.Format(time.RFC3339))
+		}
+	}
+	fmt.Fprintln(w)
+}
+
 func printObservation(w io.Writer, obs observation) {
+	printDeadline(w, obs.Deadline)
 	fmt.Fprintf(w, "DERIVED — computed now, from each node's own machine\n")
 	fmt.Fprintf(w, "  %-14s %-14s %-16s %-8s %s\n", "node", "role", "state", "dispatch", "detail")
 	for _, n := range obs.Derived {

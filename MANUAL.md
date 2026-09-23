@@ -279,6 +279,9 @@ The whole observation surface, in two panes that are never merged.
 
 ```console
 $ cs-campaign observe acme
+DEADLINE — 2026-09-22T14:02:51Z, 4h17m9s from now
+  set when create started, at 2026-09-22T08:02:51Z
+
 DERIVED — computed now, from each node's own machine
   node           role           state            dispatch detail
   orchestrator   orchestrator   node-working     m1       open 4210s · 1 cont, 0 restarts
@@ -509,8 +512,8 @@ cs-campaign ls [--json]
 
 ```console
 $ cs-campaign ls
-NAME  PROVISIONING  GROUP           MEMBERS  AGE
-acme                acme-56aa4ee0   3        2h14m
+NAME  PROVISIONING  GROUP           MEMBERS  AGE    DEADLINE
+acme  -             acme-56aa4ee0   3        2h14m  2026-09-22T14:02:51Z
 ```
 
 A record that cannot be parsed is reported rather than skipped, because a listing that quietly omits
@@ -992,6 +995,11 @@ the value only as the `elapsedSeconds` default.
 The mission dispatch states the deadline as an instant. A resumed `create` measures it from the
 attempt that succeeds, so it moves under members briefed by an earlier attempt. The mission then
 says so, and tells the orchestrator that a deadline read before it is out of date.
+
+The campaign record keeps every create attempt, with when it started and the deadline it set.
+`observe` prints the live deadline above its two panes, and after a resume names the attempt
+that moved it and the deadlines it replaced. `ls` adds the attempt to its `DEADLINE` column once
+there has been more than one.
 
 ### Overriding at create
 

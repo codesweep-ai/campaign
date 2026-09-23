@@ -343,9 +343,21 @@ type Campaign struct {
 	// archive answers "what numbers did this run use".
 	Policy protocol.Policy `json:"policy"`
 	// Deadline is the absolute instant defaults.deadline resolved to at
-	// create; zero when the profile declared none.
+	// create; zero when the profile declared none. A resumed create moves it
+	// to its own start, so it is always the last attempt's.
 	Deadline time.Time `json:"deadline,omitzero"`
-	Members  []Member  `json:"members"`
+	// Attempts is every create attempt, oldest first. CreatedAt stays the
+	// first one's start, so without this nothing says which attempt set the
+	// deadline the orchestrator is working to.
+	Attempts []CreateAttempt `json:"attempts,omitempty"`
+	Members  []Member        `json:"members"`
+}
+
+// CreateAttempt is one run of create: when it started, and the deadline it
+// set, zero when the profile declared none.
+type CreateAttempt struct {
+	StartedAt time.Time `json:"startedAt"`
+	Deadline  time.Time `json:"deadline,omitzero"`
 }
 
 // HarnessCheck is one member's upstream tool surface, measured inside the

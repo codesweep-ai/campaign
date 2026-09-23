@@ -824,6 +824,7 @@ One JSON document per campaign, `version: 2`. It records:
 - the engine, the create checkpoint and the timestamps;
 - the profile path and digest, the overrides and the resolved policy;
 - the resolved deadline and the upstream verdict at create;
+- every create attempt, oldest first, with when it started and the deadline it set;
 - one record per member.
 
 A member record carries its identity: role, CLI, bare sandbox name, qualified reference, address,

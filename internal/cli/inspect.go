@@ -27,7 +27,7 @@ func (a *app) lsCmd() *cobra.Command {
 		// GROUP rather than NETWORK: the group is the isolation boundary and
 		// the handle every cs-sandbox command takes; its network is derived
 		// from it and stays visible in `status`/`inspect` JSON.
-		fmt.Fprintln(table, "NAME\tPROVISIONING\tGROUP\tMEMBERS\tAGE")
+		fmt.Fprintln(table, "NAME\tPROVISIONING\tGROUP\tMEMBERS\tAGE\tDEADLINE")
 		for _, campaign := range campaigns {
 			age := "-"
 			if !campaign.CreatedAt.IsZero() {
@@ -37,7 +37,17 @@ func (a *app) lsCmd() *cobra.Command {
 			if prov == "" {
 				prov = "-"
 			}
-			fmt.Fprintf(table, "%s\t%s\t%s\t%d\t%s\n", campaign.Name, prov, campaign.Group, len(campaign.Members), age)
+			// AGE counts from the first attempt, and a resumed create moves
+			// the deadline to its own, so the column names the attempt that
+			// set it once there has been more than one.
+			deadline := "-"
+			if d := liveDeadline(&campaign, time.Now()); d != nil {
+				deadline = d.At.Format(time.RFC3339)
+				if d.Attempt > 1 {
+					deadline += fmt.Sprintf(" (attempt %d)", d.Attempt)
+				}
+			}
+			fmt.Fprintf(table, "%s\t%s\t%s\t%d\t%s\t%s\n", campaign.Name, prov, campaign.Group, len(campaign.Members), age, deadline)
 		}
 		return table.Flush()
 	}}

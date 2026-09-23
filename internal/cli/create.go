@@ -496,8 +496,10 @@ Do not end your turn without either calling wait or replying.`, missionRef, cloc
 // adoptResumableCreate returns the saved record when a prior create attempt
 // can be resumed, and refuses to overwrite a campaign in any other state.
 func (a *app) adoptResumableCreate(campaign *model.Campaign) (*model.Campaign, error) {
+	attempt := model.CreateAttempt{StartedAt: campaign.CreatedAt, Deadline: campaign.Deadline}
 	saved, err := a.store.Load(campaign.Name)
 	if err != nil {
+		campaign.Attempts = []model.CreateAttempt{attempt}
 		return campaign, nil
 	}
 	if saved.Provisioning != "creating" && saved.Provisioning != "create-failed" {
@@ -510,6 +512,13 @@ func (a *app) adoptResumableCreate(campaign *model.Campaign) (*model.Campaign, e
 	// recorded; the fresh instant reaches every guest because a resumed
 	// create reruns configureChannels, which rewrites member.json.
 	saved.Deadline = campaign.Deadline
+	// A record from a build that kept no attempts still knows when its first
+	// one started. The deadline that attempt set is not known, and is left
+	// out rather than guessed.
+	if len(saved.Attempts) == 0 {
+		saved.Attempts = []model.CreateAttempt{{StartedAt: saved.CreatedAt}}
+	}
+	saved.Attempts = append(saved.Attempts, attempt)
 	return saved, nil
 }
 
