@@ -3,14 +3,32 @@
   "title": "After a resumed create, neither ls nor observe says which attempt's deadline is live",
   "type": "improvement",
   "severity": "low",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "user request (host): \"Add the missing parts of SAC-056\", naming the two things SAC-056's notes record as left out",
   "opened": "2026-09-22",
-  "resolved": null,
+  "resolved": "2026-09-22",
   "stint": "sac-056-attempts",
-  "evidence": { "commits": [], "integrated": [], "verified": null },
-  "resolution": null,
+  "evidence": {
+    "commits": [
+      "cfad94d",
+      "e68c922"
+    ],
+    "integrated": [],
+    "verified": "`go test ./internal/cli/ -run 'ResumedCreateKeepsReadbacks|ResumeOfAnOlderRecord|NoDeclaredDeadline|MovedDeadlineNames' -count=1` passes 4 tests. The end-to-end test runs `create` twice through a fake cs-sandbox, and the first attempt fails as it opens the mission. On the resume, both members print `confirmed its briefing in d001 on an earlier create`, and no d002 is sent. The record then holds two attempts, and the deadline is the second attempt's start plus 30m. The mission states that deadline and says it moved. `ls` shows the deadline with `(attempt 2)`, and `observe` prints `moved by create attempt 2` and the deadline it replaces. Six deliberate breaks each fail at least one of the four tests: the resume flag, the readback skip, the attempt record, the re-anchor, the `ls` suffix and the replaced deadlines. With the resume flag broken, the new end-to-end test is the only test in the package that fails. `make ci` passed at e68c922, and all 9 smoke scenarios replayed."
+  },
+  "resolution": "The campaign record now keeps every create attempt, with its start and the deadline it set. `ls` and `observe` read the live deadline from it and name the attempt that moved it. A test drives a resumed create through `executeCreate`, so the resume's wiring is measured rather than read.",
   "details": "A resumed `create` re-anchors the campaign's deadline to the attempt that resumed it, and the mission dispatch now says so to the orchestrator. The host still cannot see it. The campaign record keeps `createdAt` from the first attempt and one `deadline`, so nothing records when each attempt started or which one set the live clock. `cs-campaign ls` prints an age measured from the first attempt, and `observe` prints no deadline at all. An operator who watched the first attempt's clock has no way to learn it moved.\n\nThe resume path also has no test of its own. The tests for the readback skip and for the mission's deadline sentence call `readbackOne` and `missionDispatchBody` directly. Whether `executeCreate` passes the resume through to both rests on reading the code.\n\nSAC-056's design proposed recording each attempt's start beside `createdAt`, so that `ls` and `observe` can show which clock is live.",
-  "notes": [],
-  "links": ["SAC-056"]
+  "notes": [
+    {
+      "date": "2026-09-22",
+      "text": "A record written before this change has no attempts. Its resume takes the first attempt's start from `createdAt` and leaves that attempt's deadline out, because an older build may already have moved it."
+    },
+    {
+      "date": "2026-09-22",
+      "text": "The state file stays at version 2, as it did when the readback gained its dispatch and inputs. An older cs-campaign refuses a record that carries attempts, because the store rejects unknown fields."
+    }
+  ],
+  "links": [
+    "SAC-056"
+  ]
 }
