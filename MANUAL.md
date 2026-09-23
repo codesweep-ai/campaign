@@ -684,8 +684,9 @@ needs `cs-tracer`. The folder holds:
 `<dir>` must be new, empty, or a site the viewer wrote. A second `--site` to the same folder
 replaces the files the list names. The viewer refuses a folder holding anything else.
 
-Every event, dispatch and step in `run-data.json` carries its address on the page as `addr`, and a
-step with idle after it carries `idleAddr` too. An address goes after `#` in the page's URL:
+Every event, dispatch and drawn step in `run-data.json` carries its address on the page as `addr`,
+and a step with idle after it carries `idleAddr` too. The page draws no column for a turn end, a
+`meta` or `system` step, or a step with no time, so those have no `addr`. An address goes after `#` in the page's URL:
 `e/<n>` is an event, `m/<member>/<dNNN>` a dispatch, and `traces/e/<n>` a step on the traces view.
 The page numbers steps after its events, two slots a step, so take a step's address from the data.
 

@@ -1664,6 +1664,23 @@
     "note": "the link allowlist lives in the viewer and applies to whichever parser entry is plugged in; anything off it becomes an empty href. The tables/pipes counts guard against a silent fallback to paragraphised pipes"
   },
   {
+    "id": "CF-62",
+    "title": "every step address in the page's data opens the page on that step, idle marks and undrawn steps included",
+    "status": "keep",
+    "value": {
+      "checked": 8,
+      "idleMarks": 1,
+      "undrawn": 3,
+      "wrong": [],
+      "pageErrors": 0
+    },
+    "note": "the synthetic traces archive is read through a fake tracer, so the check needs no cs-tracer and no real trajectory. It is the one place the addresses the Go side writes meet the page that reads them",
+    "origin": {
+      "id": "SAC-063",
+      "reason": "Every step address the page's data carries must open the page on that step."
+    }
+  },
+  {
     "id": "CF-50",
     "title": "no external requests on file://, no page errors, no console errors (all probe pages)",
     "status": "keep",

@@ -25,6 +25,7 @@ archive, drives a headless Chrome over each, and compares what it measured with
 | Synthetic archives | `archives.mjs` — `healthy`, `clobbered`, `name-mismatch`, `create-phase`, ported line for line from `dispatch-viewer/internal/frames/frames_test.go` (event times are file mtimes, stamped at write). |
 | Wide-finding archive | `archives.mjs` — the healthy fixture plus a `FLEET-ANOMALY.txt` whose body is one long unbroken token, which is what makes the Finding column unable to wrap. Rendered only by CF-60 so the per-archive rows gain no unit. |
 | Markdown archive | `archives.mjs` — one dispatch whose body carries a table and three links (`https:`, `javascript:`, `data:`). Rendered only by CF-61, for the same reason. |
+| Traces archive | `archives.mjs` — two members with a transcript each, read through a fake `cs-tracer` the suite writes beside it, which returns an invented trajectory. It holds a step with no time, a turn end with idle after it, and a meta step. Rendered only by CF-62, and the one render with traces. |
 | Corrupt page | the shell with an unparseable `run-data` block spliced in the way `cli.go assemble()` does. |
 | axe-core | `vendor/axe-core/axe.min.js` (4.13.0, MPL-2.0, unmodified, LICENSE beside it) unless `DISPATCH_FIXTURES_AXE` names another. CF-20 never skips for lack of axe. |
 
@@ -51,7 +52,7 @@ run the whole suite: nothing else is fetched or looked up outside the checkout.
 
 ## Every check is reproducible
 
-All 29 checks measure only archives this suite generates, so a clone reproduces
+All 30 checks measure only archives this suite generates, so a clone reproduces
 every value in `expectations.json`. Nothing is asserted that a reader cannot
 re-measure.
 
@@ -88,6 +89,7 @@ archive and the first differing field.
 | F. Hygiene | CF-50..51 | no non-`file:` requests, page errors or console errors across every page opened; `<script>` elements in the rendered page |
 | G. Layout | CF-60 | the issues table stays inside its card at a 600 px viewport, against the wide-finding archive; containment, not a pixel width |
 | H. Markdown | CF-61 | rendered markdown drops `javascript:`/`data:` links (empty href), keeps an ordinary link, and renders tables as tables |
+| I. Addresses | CF-62 | every step's `addr` and `idleAddr` in the page's data, set as the page's address, selects that step and shows it in the inspector |
 
 ## Re-recording
 

@@ -21,7 +21,7 @@ func TestAddressesNumberStepsAsThePageDoes(t *testing.T) {
 		Spans:  []Span{{ID: "d002", Node: "dev", OpenedAt: "t"}, {ID: "d003", Node: "dev"}},
 		Traces: &Traces{Sessions: []Session{
 			{ID: "a", Strip: []Step{{I: 0, TS: "t"}, {I: 1}, {I: 2, TS: "t", IdleMs: ms(5)}}},
-			{ID: "b", Strip: []Step{{I: 0, TS: "t", IdleMs: ms(0)}}},
+			{ID: "b", Strip: []Step{{I: 0, TS: "t", IdleMs: ms(0)}, {I: 1, Kind: "turn_end", TS: "t", IdleMs: ms(5)}, {I: 2, Kind: "meta", TS: "t"}}},
 		}},
 	}
 	addresses(run)
@@ -38,7 +38,7 @@ func TestAddressesNumberStepsAsThePageDoes(t *testing.T) {
 		}
 	}
 	want := []string{"e/0", "e/1", "e/2", "m/dev/d002", "",
-		"traces/e/3|", "|", "traces/e/7|traces/e/8", "traces/e/9|"}
+		"traces/e/3|", "|", "traces/e/7|traces/e/8", "traces/e/9|", "|traces/e/12", "|"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("addresses:\n got %q\nwant %q", got, want)
 	}
@@ -93,10 +93,11 @@ func TestRecoveryNamesTheGapAndTheErrorThatEndedTheTurn(t *testing.T) {
 	if ev.Addr != "e/1" || ev.SinceLastStep == nil || ev.SinceLastStep.HMS != "2:59:59" {
 		t.Errorf("event %+v, gap %+v", ev, ev.SinceLastStep)
 	}
-	if ev.LastStep == nil || ev.LastStep.Kind != "turn_end" || ev.LastStep.Addr != "traces/e/6" {
+	// A turn end is not drawn, so it has no address; the error before it does.
+	if ev.LastStep == nil || ev.LastStep.Kind != "turn_end" || ev.LastStep.Addr != "" {
 		t.Errorf("last step %+v", ev.LastStep)
 	}
-	if ev.TurnError == nil || ev.TurnError.Label != "server_error" || ev.TurnError.Page != "tracer/traces/s.html#ev-1" {
+	if ev.TurnError == nil || ev.TurnError.Label != "server_error" || ev.TurnError.Addr != "traces/e/4" || ev.TurnError.Page != "tracer/traces/s.html#ev-1" {
 		t.Errorf("turn error %+v", ev.TurnError)
 	}
 	if f.Recovery.Policy.StallSeconds != 180 || f.Recovery.Policy.ProviderWaitSeconds != 3600 {

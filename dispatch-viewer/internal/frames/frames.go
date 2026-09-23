@@ -230,13 +230,18 @@ func Load(dir string) (*Run, error) {
 	return run, nil
 }
 
-// addresses writes onto every event, dispatch and step the address the page
-// selects it by, relative to the page (a site's reader prepends where it is
-// served). An event is e/<its index in Events>. A step is numbered after the
-// events, two slots per step in session and strip order, the second slot
+// undrawnSteps are the step kinds the page numbers but draws no column for
+// (Timeline.tsx UNDRAWN and PLUMBING). They get no address, though the idle
+// mark after one does, since the page draws that.
+var undrawnSteps = map[string]bool{"turn_end": true, "meta": true, "system": true}
+
+// addresses writes onto every event, dispatch and drawn step the address the
+// page selects it by, relative to the page (a site's reader prepends where it
+// is served). An event is e/<its index in Events>. A step is numbered after
+// the events, two slots per step in session and strip order, the second slot
 // being the idle mark after it; a step with no time is not drawn but still
 // spends its two. This is App.tsx's readHash and model.ts's stepMarks, and
-// the two must move together.
+// the two must move together; fixture CF-62 checks they do.
 func addresses(run *Run) {
 	for i := range run.Events {
 		run.Events[i].Addr = fmt.Sprintf("e/%d", i)
@@ -258,7 +263,9 @@ func addresses(run *Run) {
 			st := &sess.Strip[i]
 			st.Addr, st.IdleAddr = "", ""
 			if st.TS != "" {
-				st.Addr = fmt.Sprintf("traces/e/%d", n)
+				if !undrawnSteps[st.Kind] {
+					st.Addr = fmt.Sprintf("traces/e/%d", n)
+				}
 				if st.IdleMs != nil && *st.IdleMs > 0 {
 					st.IdleAddr = fmt.Sprintf("traces/e/%d", n+1)
 				}

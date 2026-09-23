@@ -522,3 +522,43 @@ export async function selectionKeys(page) {
   const afterEnd = (await selState(page)).sel;
   return { start, last: n - 1, activeDescendantFollows, afterEscape, afterHome, afterEnd };
 }
+
+/** CF-62: every step address the page's own data carries opens the page on
+    that step. For each step's addr and idleAddr in run-data, set the address,
+    then read the selection and the inspector's node, session and step rows.
+    A step's address is written by the Go side (frames.addresses) and read by
+    the page (readHash, stepMarks), so this is the only check that the two
+    agree. */
+export async function stepAddresses(page) {
+  const targets = await page.evaluate(() => {
+    const run = JSON.parse(document.getElementById("run-data").textContent);
+    const out = [];
+    let undrawn = 0; // steps the data gives no address: no time, a turn end, meta, system
+    for (const s of run.traces?.sessions || []) {
+      for (const st of s.strip) {
+        if (!st.addr) undrawn++;
+        if (st.addr) out.push({ addr: st.addr, node: s.node, session: s.id.slice(0, 20), i: st.i, idle: false });
+        if (st.idleAddr) out.push({ addr: st.idleAddr, node: s.node, session: s.id.slice(0, 20), i: st.i, idle: true });
+      }
+    }
+    return { out, undrawn };
+  });
+  const wrong = [];
+  for (const t of targets.out) {
+    await page.evaluate((a) => { location.hash = "#" + a; }, t.addr);
+    await settle(page);
+    const got = await ev(page, (SEL) => {
+      const kv = {};
+      const dl = __fx.$(SEL.inspectorKv);
+      if (dl) {
+        const terms = __fx.$$(SEL.inspectorTerm, dl), values = __fx.$$(SEL.inspectorValue, dl);
+        terms.forEach((d, k) => { kv[__fx.txt(d)] = __fx.txt(values[k]); });
+      }
+      return { selected: __fx.selected(SEL), node: kv.node, session: kv.session, step: kv.step || "" };
+    });
+    const ok = got.selected === +t.addr.split("/").pop() && got.node === t.node && got.session === t.session &&
+      got.step.endsWith("#" + t.i) && got.step.startsWith("idle") === t.idle;
+    if (!ok) wrong.push(`${t.addr}: want ${t.node} ${t.session} #${t.i}${t.idle ? " idle" : ""}, got ${JSON.stringify(got)}`);
+  }
+  return { checked: targets.out.length, idleMarks: targets.out.filter((t) => t.idle).length, undrawn: targets.undrawn, wrong };
+}

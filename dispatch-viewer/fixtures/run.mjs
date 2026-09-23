@@ -35,7 +35,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import os from "node:os";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
-import { writeSyntheticArchives, writeCorruptPage, writeWideFindingArchive, writeMarkdownArchive } from "./archives.mjs";
+import { writeSyntheticArchives, writeCorruptPage, writeWideFindingArchive, writeMarkdownArchive, writeTracesArchive } from "./archives.mjs";
 import { HERE, axeScript, fileUrl, launchBrowser, openPage } from "./browser.mjs";
 import * as P from "./probes.mjs";
 import { SEL } from "./selectors.mjs";
@@ -181,6 +181,9 @@ const CHECKS = [
     summary: (v) => (v.panel === false
       ? "no md panel"
       : `${v.unsafeLinks} unsafe, ${v.droppedLinks} dropped, ${v.safeLinks} safe, ${v.tables} tables, ${v.literalPipes} pipes, ${v.pageErrors} errors`) },
+  // I. addresses
+  { id: "CF-62", title: "every step address in the page's data opens the page on that step, idle marks and undrawn steps included", status: "keep",
+    summary: (v) => `${v.checked} addresses (${v.idleMarks} idle), ${v.undrawn} undrawn, ${v.wrong.length} wrong, ${v.pageErrors} errors` },
   // F. hygiene
   { id: "CF-50", title: "no external requests on file://, no page errors, no console errors (all probe pages)", status: "keep", perArchive: true,
     summary: perArchive((v) => `${v.requests.length} req, ${v.pageErrors.length} err, ${v.consoleErrors.length} console`) },
@@ -202,6 +205,7 @@ const NOTES = {
   "CF-41": "shellBytes = bytes − the run-data block + the marker; budgeted like CF-40. Payload size is the archive's, not the viewer's",
   "CF-50": "aggregated over every page the suite opened for the archive",
   "CF-60": "containment, not a width: rows stay within the card, the card within the page, and no horizontal scroll is needed. The wide-finding archive's Finding message is one long unbroken token, which is what the four shared archives cannot produce",
+  "CF-62": "the synthetic traces archive is read through a fake tracer, so the check needs no cs-tracer and no real trajectory. It is the one place the addresses the Go side writes meet the page that reads them",
   "CF-61": "the link allowlist lives in the viewer and applies to whichever parser entry is plugged in; anything off it becomes an empty href. The tables/pipes counts guard against a silent fallback to paragraphised pipes",
 };
 
@@ -427,6 +431,19 @@ set("CF-19", null, await withPage("corrupt", fileUrl(corruptHtml), (page, plog) 
     return { ...m, pageErrors: plog.pageErrors.length };
   }));
   delete hygiene["markdown"];
+}
+// CF-62 renders a synthetic archive through a fake tracer, the one render in
+// the suite with traces, and only for this check.
+{
+  const { root, tracer } = writeTracesArchive(path.join(out, "archives"));
+  const trHtml = path.join(out, "traces.html");
+  const tr = spawnSync(viewer, [root, "--file", trHtml, "--tracer", tracer], NOTRACER);
+  if (tr.status !== 0) die(2, `render traces failed: ${tr.stderr}`);
+  set("CF-62", null, await withPage("traces", fileUrl(trHtml), async (page, plog) => {
+    const m = await P.stepAddresses(page);
+    return { ...m, pageErrors: plog.pageErrors.length };
+  }));
+  delete hygiene["traces"];
 }
 {
   const buf = readFileSync(SHELL);

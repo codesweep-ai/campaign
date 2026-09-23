@@ -214,3 +214,32 @@ func TestReferencesCoverTheTypes(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// A rebuild that fails leaves the previous site as it was: every file is
+// built before anything the previous site held is removed.
+func TestAFailedRebuildKeepsThePreviousSite(t *testing.T) {
+	root := siteArchive(t)
+	site := filepath.Join(root, "site")
+	var stdout, stderr bytes.Buffer
+	if code := Main([]string{root, "--site", site}, &stdout, &stderr); code != 0 {
+		t.Fatalf("first build: exit %d: %s", code, stderr.String())
+	}
+	previous, err := siteFiles(site)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Raw JSON that is not JSON cannot be marshalled, so run-data.json
+	// cannot be built.
+	bad := &frames.Run{Readback: json.RawMessage("{not json")}
+	if err := writeSite(site, previous, bad, []byte("new page")); err == nil {
+		t.Fatal("writeSite accepted a run it cannot write")
+	}
+	for _, f := range previous {
+		if _, err := os.Stat(filepath.Join(site, f)); err != nil {
+			t.Errorf("the failed rebuild removed %s", f)
+		}
+	}
+	if b, _ := os.ReadFile(filepath.Join(site, "index.html")); string(b) == "new page" {
+		t.Error("the failed rebuild replaced index.html")
+	}
+}

@@ -101,7 +101,7 @@ var runDocs = map[string]string{
 	"traces.sessions[].strip[].childSessionId": "that subagent's session",
 	"traces.sessions[].strip[].text":           "the step's first line, or its command, cut short",
 	"traces.sessions[].strip[].wait":           "the step is a call to the harness's wait",
-	"traces.sessions[].strip[].addr":           "the step's address on the page; absent for a step with no time, which the page does not draw",
+	"traces.sessions[].strip[].addr":           "the step's address on the page; absent for a step the page does not draw: one with no time, a turn end, or `meta` and `system` steps",
 	"traces.sessions[].strip[].idleAddr":       "the address of the idle mark after it",
 	"traces.anchors":                           "where each dispatch shows in the traces",
 	"traces.anchors[].node":                    "",
@@ -205,6 +205,6 @@ var stepRefDocs = map[string]string{
 	"label":   "the tool name, or the error's kind",
 	"error":   "whether the step failed",
 	"text":    "its first line, or its command, cut short",
-	"addr":    "the step's address on the page",
+	"addr":    "the step's address on the page; absent for a turn end, which the page does not draw",
 	"page":    "the step on its trace page",
 }
