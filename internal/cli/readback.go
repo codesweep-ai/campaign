@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	"time"
 
 	"github.com/codesweep-ai/campaign/internal/model"
+	"github.com/codesweep-ai/campaign/internal/protocol"
 )
 
 // readbackBound caps one member's readback end to end. Far above any healthy
@@ -33,7 +35,7 @@ import (
 // ladder inside the bound is what actually recovers a stopped one.
 var readbackBound = 15 * time.Minute
 
-// runReadback sends dispatch d001 to every member concurrently, awaits the
+// runReadback asks every member for its readback concurrently, awaits the
 // replies (ladder on silence), verifies each restatement mechanically, and
 // records it on the campaign. A failure means "do not dispatch" and fails
 // create by name.
@@ -58,13 +60,11 @@ func (a *app) runReadback(ctx context.Context, out io.Writer, campaign *model.Ca
 
 	// Record the restatements whether they passed or failed — a rejected one
 	// is exactly the answer an operator needs to re-read afterwards.
-	now := time.Now().UTC()
 	for i := range results {
 		if results[i].report.Empty() {
 			continue
 		}
 		report := results[i].report
-		report.At = now
 		report.Detail = results[i].detail
 		campaign.Members[i].Readback = &report
 	}
@@ -99,8 +99,8 @@ func (a *app) runReadback(ctx context.Context, out io.Writer, campaign *model.Ca
 	return nil
 }
 
-// readbackOne opens d001 on one member and awaits its reply. Returns "" on
-// success, else the reason it failed.
+// readbackOne asks one member for its readback and awaits the reply. Returns
+// "" on success, else the reason it failed.
 //
 // A readback whose FORM is wrong is asked for once more. The reply closed its
 // dispatch, so the second asking is a new dispatch, which is what rework is
@@ -109,11 +109,32 @@ func (a *app) runReadback(ctx context.Context, out io.Writer, campaign *model.Ca
 // away a team that is up with its keys lent. What a second try cannot cure is
 // never retried: a member that answers as someone else, reports its seeded
 // files absent or names the wrong branch has told the host something true.
+//
+// On a resumed create a member that already passed is not asked again, and one
+// that is asked again is told why. Re-sending the first asking word for word,
+// headed with another dispatch's id, taught members the channel was broken:
+// seen live, three of them started work under a dispatch that said not to.
 func (a *app) readbackOne(ctx context.Context, out io.Writer, campaign *model.Campaign, member model.Member) (string, model.Readback) {
 	briefed := len(member.SeededInputs) > 0
-	prompt := readbackPrompt(member)
+	facts, failed := a.sandbox.probeMember(ctx, member)
+	if failed {
+		return fmt.Sprintf("dispatch failed: cannot reach %s to deliver", member.Name), model.Readback{}
+	}
+	if kept, ok := keptReadback(member, facts); ok {
+		fmt.Fprintf(out, "…  %s: confirmed its briefing in %s on an earlier create, and the briefing is unchanged — not asked again\n", member.Name, kept.Dispatch)
+		return "", kept
+	}
+	id, _, err := protocol.SendTarget(facts)
+	if err != nil {
+		return "dispatch failed: " + err.Error(), model.Readback{}
+	}
+	prompt := readbackPrompt(member, id, resumedReason(member, facts))
 	for attempt := 1; ; attempt++ {
-		id, _, err := a.hostSend(ctx, member, prompt, false)
+		if attempt == 1 {
+			_, _, err = a.hostSendPrepared(ctx, member, facts, prompt, false)
+		} else {
+			id, _, err = a.hostSend(ctx, member, prompt, false)
+		}
 		if err != nil {
 			return "dispatch failed: " + err.Error(), model.Readback{}
 		}
@@ -122,6 +143,7 @@ func (a *app) readbackOne(ctx context.Context, out io.Writer, campaign *model.Ca
 			return err.Error(), model.Readback{}
 		}
 		report, perr := parseReadback(reply.Note)
+		report.At, report.Dispatch, report.Inputs = time.Now().UTC(), id, maps.Clone(member.SeededInputs)
 		var detail string
 		switch {
 		case perr != nil:
@@ -155,6 +177,66 @@ func readbackIncomplete(r readbackReport, briefed bool) bool {
 		return true
 	}
 	return briefed && (strings.TrimSpace(r.Goal) == "" || strings.TrimSpace(r.Scope) == "")
+}
+
+// keptReadback returns the readback an earlier create recorded when the member
+// has nothing left to confirm: the answer passed, it closed the member's
+// latest dispatch, and the seeded files are the ones it answered against.
+func keptReadback(member model.Member, facts protocol.Facts) (model.Readback, bool) {
+	r := member.Readback
+	if r == nil || r.Empty() || r.Detail != "" || r.Dispatch == "" {
+		return model.Readback{}, false
+	}
+	d := protocol.Current(facts.Msgs)
+	if d == nil || d.ID != r.Dispatch || !facts.Replies[d.ID] || len(changedInputs(r.Inputs, member.SeededInputs)) > 0 {
+		return model.Readback{}, false
+	}
+	return *r, true
+}
+
+// resumedReason says why a member is asked for its readback again, or "" when
+// this is the first asking. Before the mission opens, every dispatch a member
+// holds is a readback, so holding any means an earlier create already asked.
+func resumedReason(member model.Member, facts protocol.Facts) string {
+	d := protocol.Current(facts.Msgs)
+	if d == nil {
+		return ""
+	}
+	why := "`create` was resumed after an earlier attempt failed. "
+	if !facts.Replies[d.ID] {
+		return why + fmt.Sprintf("This dispatch, %s, is still open, because no reply to it exists yet. Answer it once, as below.", d.ID)
+	}
+	r := member.Readback
+	if r == nil || r.Dispatch != d.ID {
+		return why + fmt.Sprintf("The host kept no record of your answer to %s, so it asks once more.", d.ID)
+	}
+	if r.Detail != "" {
+		why += fmt.Sprintf("Your answer to %s could not be used: %s. ", d.ID, r.Detail)
+	} else {
+		why += fmt.Sprintf("Your answer to %s was accepted. ", d.ID)
+	}
+	if changed := changedInputs(r.Inputs, member.SeededInputs); len(changed) > 0 {
+		return why + "These seeded files have changed since, so read them again: " + strings.Join(changed, ", ") + "."
+	}
+	return why + "Nothing in your briefing has changed since."
+}
+
+// changedInputs names the seeded files whose digest differs between two
+// recordings, including any present in only one of them.
+func changedInputs(before, now map[string]string) []string {
+	var changed []string
+	for name, digest := range now {
+		if before[name] != digest {
+			changed = append(changed, name)
+		}
+	}
+	for name := range before {
+		if _, ok := now[name]; !ok {
+			changed = append(changed, name)
+		}
+	}
+	sort.Strings(changed)
+	return changed
 }
 
 type lockedWriter struct {

@@ -278,7 +278,7 @@ func (w *simWorld) env() *envState {
 func (w *simWorld) campaign(env *envState, horizon int64) map[string]protocol.State {
 	w.t.Helper()
 	for _, name := range sortedAgents(env) {
-		if _, err := sendBody(env, name, "do the work"); err != nil {
+		if _, err := sendBody(env, name, "do the work", false); err != nil {
 			w.t.Fatalf("dispatch to %s: %v", name, err)
 		}
 	}
@@ -685,7 +685,7 @@ func TestConformanceTheAgentsOwnWordDecidesWorking(t *testing.T) {
 	dev := &simNode{name: "dev", script: func(int64) turnOutcome { return turnOutcome{runs: 60} }}
 	w := newSimWorld(t, dev)
 	env := w.env()
-	if _, err := sendBody(env, "dev", "do the work"); err != nil {
+	if _, err := sendBody(env, "dev", "do the work", false); err != nil {
 		t.Fatal(err)
 	}
 	// The host's turn ends with no reply. Ten minutes on, a background task
@@ -758,7 +758,7 @@ func TestConformanceWaitTellsTheOrchestratorToLeaveARefusedNodeAlone(t *testing.
 	w := newSimWorld(t, dev)
 	dev.script = throttledUntil(w.now+3600, 600)
 	env := w.env()
-	if _, err := sendBody(env, "dev", "do the work"); err != nil {
+	if _, err := sendBody(env, "dev", "do the work", false); err != nil {
 		t.Fatal(err)
 	}
 	w.advance(200) // the opening turn is refused at +120s, and the provider asked for ten minutes

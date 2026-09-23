@@ -121,7 +121,7 @@ var issueDefs = map[string]string{
 	"restarts-exceed-policy":  "recovery spent more restarts than the policy allows",
 	"accept-before-reply":     "an acceptance logged before the reply it judges — clock skew or judgment of unanswered work",
 	"readback-absent":         "a member never restated its briefing",
-	"accept-of-readback":      "the log accepts d001, a host-issued, host-judged dispatch",
+	"accept-of-readback":      "the log accepts a create-time readback, a host-issued, host-judged dispatch",
 	"accept-of-own-channel":   "the log accepts a dispatch on the orchestrator's own channel, which the host judges",
 	"accept-ambiguous":        "a bare accept matches several nodes' dispatches; shown attached to all of them",
 	"accepted-twice":          "the same dispatch accepted twice; the later entry is shown",
@@ -215,6 +215,10 @@ func Load(dir string) (*Run, error) {
 			}
 		}
 	}
+	// Known before the spans are judged: which dispatches were create's own
+	// can rest on message times only when those times are real.
+	clobbered, _ := mtimesClobbered(allMsgs)
+	run.TimelineValid = !clobbered
 	buildEventsAndSpans(run)
 	check(run, root, allMsgs)
 	sort.SliceStable(run.Events, func(i, j int) bool { return run.Events[i].At < run.Events[j].At })
@@ -373,6 +377,54 @@ func m1OpenAt(run *Run, orch string) string {
 	return ""
 }
 
+// createPhase reports whether a dispatch is one create issued: a readback,
+// sent and judged by the host before the mission opened. d001 is always one,
+// but a resumed create, or a readback asked for a second time, puts later
+// ones at d002 and past, so the id alone cannot say. Three facts can:
+//   - no mission was ever opened, so nobody but the host dispatched at all;
+//   - readback.json names the dispatch each member's recorded answer closed,
+//     and every dispatch up to it on that node came before the mission;
+//   - the dispatch opened before the mission did, when message times are real.
+func createPhase(run *Run) func(node, id, openedAt string) bool {
+	m1At := m1OpenAt(run, orchestratorName(run))
+	recorded := recordedReadbacks(run.Readback)
+	return func(node, id, openedAt string) bool {
+		switch {
+		case id == protocol.MissionID:
+			return false
+		case id == "d001", m1At == "":
+			return true
+		case recorded[node] != "" && id <= recorded[node]:
+			return true
+		}
+		return run.TimelineValid && openedAt != "" && openedAt < m1At
+	}
+}
+
+// recordedReadbacks maps each member to the dispatch its recorded readback
+// closed. Archives older than that record carry no dispatch, and their members
+// are left out.
+func recordedReadbacks(raw json.RawMessage) map[string]string {
+	var rb struct {
+		Members []struct {
+			Member   string `json:"member"`
+			Readback *struct {
+				Dispatch string `json:"dispatch"`
+			} `json:"readback"`
+		} `json:"members"`
+	}
+	out := map[string]string{}
+	if json.Unmarshal(raw, &rb) != nil {
+		return out
+	}
+	for _, m := range rb.Members {
+		if m.Readback != nil && m.Readback.Dispatch != "" {
+			out[m.Member] = m.Readback.Dispatch
+		}
+	}
+	return out
+}
+
 func orchestratorName(run *Run) string {
 	for _, n := range run.Nodes {
 		if n.Role == "orchestrator" {
@@ -414,10 +466,11 @@ func buildEventsAndSpans(run *Run) {
 	// Every silent resolution the attachment makes is reported as a finding,
 	// and every claim is checked against the authority model: the orchestrator
 	// judges only what it authored — agent-channel dispatches past the
-	// readback. The host judges its own issues: d001 everywhere, and the
-	// orchestrator's whole channel (m1 and any post-mission send, which mints
-	// d002+ there).
+	// readback. The host judges its own issues: every readback (createPhase),
+	// and the orchestrator's whole channel (m1 and any post-mission send,
+	// which mints d002+ there).
 	orch := orchestratorName(run)
+	readback := createPhase(run)
 	for _, ev := range run.Events {
 		if ev.Type != "accept" {
 			continue
@@ -457,10 +510,17 @@ func buildEventsAndSpans(run *Run) {
 			s.AcceptedAt = ev.At
 		}
 		// Authority: a claim of judgment over a host-judged dispatch.
+		var readbacks []string
+		for _, s := range matched {
+			if readback(s.Node, s.ID, s.OpenedAt) {
+				readbacks = append(readbacks, s.Node+"/"+s.ID)
+			}
+		}
+		sort.Strings(readbacks)
 		switch {
-		case ev.Dispatch == "d001":
+		case len(readbacks) > 0:
 			run.Issues = append(run.Issues, Issue{Severity: "info", Code: "accept-of-readback",
-				Message: fmt.Sprintf("log accepts %s, but d001 is the create-time readback — host-issued and host-judged; the orchestrator owes it no acceptance", name),
+				Message: fmt.Sprintf("log accepts %s, but it names a create-time readback (%s) — host-issued and host-judged; the orchestrator owes it no acceptance", name, strings.Join(readbacks, ", ")),
 				Node:    ev.Text, Dispatch: ev.Dispatch})
 		case ev.Text == orch || ev.Dispatch == protocol.MissionID || allOn(matched, orch):
 			run.Issues = append(run.Issues, Issue{Severity: "info", Code: "accept-of-own-channel",
@@ -524,25 +584,9 @@ func check(run *Run, root string, msgs []protocol.Msg) {
 		}
 	}
 
-	// Clobbered mtimes: collection stamps every message file within seconds of
-	// one extraction moment, while real dispatch traffic spans minutes. A
-	// near-zero spread across several files is collection time, not event
-	// time, and no timeline can honestly be drawn from it.
-	if len(msgs) >= 3 {
-		min, max := msgs[0].MTime, msgs[0].MTime
-		for _, m := range msgs[1:] {
-			if m.MTime < min {
-				min = m.MTime
-			}
-			if m.MTime > max {
-				max = m.MTime
-			}
-		}
-		if max-min <= 5 {
-			run.TimelineValid = false
-			run.Issues = append(run.Issues, Issue{Severity: "error", Code: "mtimes-clobbered",
-				Message: fmt.Sprintf("all %d message files fall within %ds — collection time, not event time; this archive predates the mtime-preserving extractor, regenerate the run with the current cs-campaign", len(msgs), max-min)})
-		}
+	if clobbered, spread := mtimesClobbered(msgs); clobbered {
+		run.Issues = append(run.Issues, Issue{Severity: "error", Code: "mtimes-clobbered",
+			Message: fmt.Sprintf("all %d message files fall within %ds — collection time, not event time; this archive predates the mtime-preserving extractor, regenerate the run with the current cs-campaign", len(msgs), spread)})
 	}
 
 	// Per-span checks.
@@ -554,14 +598,10 @@ func check(run *Run, root string, msgs []protocol.Msg) {
 	}
 	pol := run.Campaign.Policy
 	orch := orchestratorName(run)
-	m1At := m1OpenAt(run, orch)
+	readback := createPhase(run)
 	for _, s := range run.Spans {
-		// Create-phase dispatches are host-issued and host-judged: d001
-		// always, and any agent dispatch opened before the mission existed —
-		// a resumed create re-runs the readback and mints d002+. When mtimes
-		// are bogus only the ID form is trustworthy.
-		hostPhase := s.ID == "d001" ||
-			(run.TimelineValid && s.Node != orch && (m1At == "" || (s.OpenedAt != "" && s.OpenedAt < m1At)))
+		// Create-phase dispatches are host-issued and host-judged.
+		hostPhase := readback(s.Node, s.ID, s.OpenedAt)
 		// Recovery spend is checked before the reply gate: an exhausted
 		// ladder that never got an answer is the case that matters most.
 		if s.Continues > pol.ContinueAttempts {
@@ -606,7 +646,7 @@ func check(run *Run, root string, msgs []protocol.Msg) {
 					s.Node, s.ID, s.AcceptedAt, s.RepliedAt, s.Node), Node: s.Node, Dispatch: s.ID})
 		}
 		// Acceptance is owed only for orchestrator-authored dispatches: agent
-		// channels past the readback. The host judges d001 everywhere, and the
+		// channels past the readback. The host judges every readback, and the
 		// orchestrator's whole channel (m1, and post-mission sends mint d002+
 		// there — the ID alone does not name the author).
 		if s.Node != orch && !hostPhase && s.AcceptedAt == "" {
@@ -681,6 +721,22 @@ func check(run *Run, root string, msgs []protocol.Msg) {
 		}
 	}
 	sort.SliceStable(run.Issues, func(i, j int) bool { return sevRank(run.Issues[i].Severity) < sevRank(run.Issues[j].Severity) })
+}
+
+// mtimesClobbered says the message times are collection time. Collection
+// stamps every message file within seconds of one extraction moment, while
+// real dispatch traffic spans minutes. A near-zero spread across several files
+// is collection time, not event time, and no timeline can honestly be drawn
+// from it.
+func mtimesClobbered(msgs []protocol.Msg) (bool, int64) {
+	if len(msgs) < 3 {
+		return false, 0
+	}
+	lo, hi := msgs[0].MTime, msgs[0].MTime
+	for _, m := range msgs[1:] {
+		lo, hi = min(lo, m.MTime), max(hi, m.MTime)
+	}
+	return hi-lo <= 5, hi - lo
 }
 
 func sevRank(s string) int {

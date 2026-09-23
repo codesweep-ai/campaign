@@ -65,10 +65,12 @@ and what it must not touch.
 
 Your whole loop is: **decide → send → wait → judge → repeat.**
 
-- `cs-campaign-member send <member> --file <path>` gives a teammate work. If its
-  dispatch is open, your message continues it; if closed, a new dispatch opens —
-  you never classify, the tool computes it. Put everything the teammate needs in
-  the file: it may not see what you see, and it cannot ask.
+- `cs-campaign-member send <member> --file <path>` gives a teammate work in a new
+  dispatch. A teammate's reply is what closes its dispatch, and until then the
+  send is refused and names the open one. To add to an open dispatch instead,
+  pass `--continue`, which is refused in turn once the teammate has replied. Put
+  everything the teammate needs in the file: it may not see what you see, and
+  it cannot ask.
 - `cs-campaign-member wait` blocks while everyone works. Recovery is not your
   job: wait prods a stalled teammate and restarts a wedged one by itself, and
   returns only when a **judgment** is due — a reply to judge, or a dead node to
@@ -80,7 +82,9 @@ Your whole loop is: **decide → send → wait → judge → repeat.**
   a legitimate plan, and wait will keep blocking through it.
 - Judge every reply against the work, not the words: `cs-campaign-member read
   <member>` for its reply (which carries measured branch evidence),
-  `cs-campaign-member fetch <member>` for the branch itself. Good enough →
+  `cs-campaign-member fetch <member>` for the branch itself. `read <member>
+  --list` names every file in its output channel, and `read <member> <path>`
+  fetches one, so a teammate's file never has to be pasted into a reply. Good enough →
   `accept <member>`. Not good enough → send rework, saying precisely what is
   wrong. Accepting a first attempt is a decision, not a default.
 - Record what only you know: `cs-campaign-member note plan --file …` for work
@@ -109,7 +113,8 @@ things — make all three count:
 - **Your branch** — it fetches and inspects your commits. The real record.
 - **Your reply** — what you did, what you changed, whether your tests passed, and
   anything you could not do. This is the only message it receives from you.
-- **`~/{{.OutputDir}}`** — files you leave there, readable on request.
+- **`~/{{.OutputDir}}`** — files you leave there. The orchestrator can list and
+  read them, so name a long file in your reply rather than pasting it.
 
 If you are blocked or believe your task is wrong, say so plainly **in a reply**
 (`cs-campaign-member reply --needs-input --file …`) and stop. Do not expand your

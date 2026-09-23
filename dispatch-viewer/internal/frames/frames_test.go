@@ -3,6 +3,7 @@ package frames
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -212,5 +213,103 @@ func TestLoadClobberedRun(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("mtimes-clobbered finding missing")
+	}
+}
+
+// resumedFixture is a create that took two attempts. dev's first readback,
+// d001, could not be used, so the resumed create asked again in d002, and the
+// mission then gave dev its work as d003. Nothing in a dispatch id says d002 is
+// a readback: only the mission's opening time, and readback.json's record of
+// the dispatch dev's answer closed, can.
+func resumedFixture(t *testing.T, clobbered, mission, recorded bool, log string) string {
+	t.Helper()
+	root := t.TempDir()
+	base := time.Date(2026, 9, 22, 14, 0, 0, 0, time.UTC)
+	at := func(min int) time.Time {
+		if clobbered {
+			return base.Add(2 * time.Hour)
+		}
+		return base.Add(time.Duration(min) * time.Minute)
+	}
+	stamp := func(min int) string { return base.Add(time.Duration(min) * time.Minute).Format(time.RFC3339) }
+	reply := func(node, id string, min int, extra string) {
+		dir := filepath.Join(root, "agents", node)
+		if node == "orchestrator" {
+			dir = filepath.Join(root, "orchestrator")
+		}
+		write(t, filepath.Join(dir, "output", "replies", id+".json"),
+			`{"dispatch":"`+id+`","phase":"done","note":"n","at":"`+stamp(min)+`"`+extra+`}`, at(min))
+	}
+	write(t, filepath.Join(root, "campaign.json"), `{
+	  "name":"rs1","id":"rs1-1","createdAt":"2026-09-22T14:00:00Z","updatedAt":"2026-09-22T15:00:00Z",
+	  "policy":{"continueAttempts":2,"restarts":1},
+	  "members":[{"name":"orchestrator","role":"orchestrator","cli":"claude"},{"name":"dev","role":"agent","cli":"codex"}]}`, at(0))
+	o := filepath.Join(root, "orchestrator")
+	d := filepath.Join(root, "agents", "dev")
+	write(t, filepath.Join(o, "input", "d001.md"), "# readback", at(1))
+	reply("orchestrator", "d001", 2, "")
+	write(t, filepath.Join(d, "input", "d001.md"), "# readback", at(1))
+	reply("dev", "d001", 2, "")
+	write(t, filepath.Join(d, "input", "d002.md"), "# readback, asked again by the resumed create", at(10))
+	reply("dev", "d002", 11, "")
+	if mission {
+		write(t, filepath.Join(o, "input", "m1.md"), "# mission", at(20))
+		write(t, filepath.Join(d, "input", "d003.md"), "# work", at(25))
+		reply("dev", "d003", 30, "")
+		reply("orchestrator", "m1", 40, `,"outcome":"campaign-met"`)
+		write(t, filepath.Join(o, "output", "log.jsonl"), log, at(35))
+	}
+	if recorded {
+		write(t, filepath.Join(root, "readback.json"), `{"members":[
+		  {"member":"orchestrator","role":"orchestrator","cli":"claude","readback":{"member":"orchestrator","dispatch":"d001"}},
+		  {"member":"dev","role":"agent","cli":"codex","readback":{"member":"dev","dispatch":"d002"}}]}`, at(41))
+	}
+	return root
+}
+
+func issuesFor(t *testing.T, root, code string) []Issue {
+	t.Helper()
+	run, err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found []Issue
+	for _, i := range run.Issues {
+		if i.Code == code {
+			found = append(found, i)
+		}
+	}
+	return found
+}
+
+// An acceptance of a readback has no standing whatever its id. A resumed create
+// puts dev's readback at d002, and the viewer only ever recognised d001.
+func TestAnAcceptOfALaterReadbackIsReported(t *testing.T) {
+	log := `{"at":"2026-09-22T14:32:00Z","kind":"accepted","text":"dev/d002"}
+{"at":"2026-09-22T14:33:00Z","kind":"accepted","text":"dev/d003"}
+`
+	for _, clobbered := range []bool{false, true} {
+		found := issuesFor(t, resumedFixture(t, clobbered, true, true, log), "accept-of-readback")
+		if len(found) != 1 || found[0].Dispatch != "d002" || !strings.Contains(found[0].Message, "dev/d002") {
+			t.Errorf("clobbered=%v: the accept of dev's d002 readback must be reported once, naming it; got %+v", clobbered, found)
+		}
+	}
+}
+
+// A readback owes the orchestrator no acceptance. With real message times the
+// mission's opening says which dispatches came before it. With clobbered ones,
+// readback.json's record of the dispatch each answer closed still says so.
+func TestALaterReadbackOwesNoAcceptance(t *testing.T) {
+	log := `{"at":"2026-09-22T14:33:00Z","kind":"accepted","text":"dev/d003"}
+`
+	for _, clobbered := range []bool{false, true} {
+		if found := issuesFor(t, resumedFixture(t, clobbered, true, true, log), "reply-not-accepted"); len(found) != 0 {
+			t.Errorf("clobbered=%v: dev's d002 is a readback and owes no acceptance; got %+v", clobbered, found)
+		}
+	}
+	// A create that never opened the mission issued every dispatch in it, so no
+	// message time and no readback record is needed to say so.
+	if found := issuesFor(t, resumedFixture(t, true, false, false, ""), "reply-not-accepted"); len(found) != 0 {
+		t.Errorf("a failed create's readbacks owe no acceptance, even with clobbered times; got %+v", found)
 	}
 }

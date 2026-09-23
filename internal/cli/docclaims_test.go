@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/codesweep-ai/campaign"
 	"github.com/codesweep-ai/campaign/internal/covmap"
@@ -329,6 +330,58 @@ func TestTheProbeAndTheAuditAgreeOnWhereARecordLives(t *testing.T) {
 		}
 		if audited != dir && filepath.Dir(audited) != dir {
 			t.Errorf("%s: the audit reads %q and the probe reads under %q", cli, audited, dir)
+		}
+	}
+}
+
+// MANUAL.md: "A member whose readback passed is not asked again, as long as its
+// seeded files are unchanged, and `create` prints `confirmed its briefing in
+// d001 on an earlier create`." An operator resuming a create reads that line to
+// know nobody was briefed twice.
+func TestTheDocumentedResumedReadbackLineIsWhatCreatePrints(t *testing.T) {
+	claim := "confirmed its briefing in d001 on an earlier create"
+	if !strings.Contains(campaign.ManualMD, "A member whose readback passed is not asked again") || !strings.Contains(campaign.ManualMD, claim) {
+		t.Errorf("MANUAL.md no longer states what a resumed create does with a readback that passed")
+	}
+	a, state := readbackMemberApp(t, "unused")
+	run, member := readbackCampaign()
+	earlierReadback(t, state, true, goodReadback)
+	member.Readback = recorded(t, "")
+	var out strings.Builder
+	if detail, _ := a.readbackOne(t.Context(), &out, run, member); detail != "" || !strings.Contains(out.String(), claim) {
+		t.Errorf("a resumed create printed %q (detail %q); MANUAL.md promises %q", out.String(), detail, claim)
+	}
+}
+
+// MANUAL.md: "The mission dispatch states the deadline as an instant", and on a
+// resumed create "tells the orchestrator that a deadline read before it is out
+// of date". The orchestrator is the one enforcing the deadline, so this is the
+// sentence an operator relies on after resuming a create.
+func TestTheDocumentedMissionDeadlineIsWhatTheMissionSays(t *testing.T) {
+	for _, claim := range []string{"The mission dispatch states the deadline as an instant.", "a deadline read before it is out of date"} {
+		if !strings.Contains(campaign.ManualMD, claim) {
+			t.Errorf("MANUAL.md no longer states %q; this test names the sentence it keeps true", claim)
+		}
+	}
+	mission := missionDispatchBody(completeInputs(t), time.Date(2026, 9, 22, 15, 32, 51, 0, time.UTC), true)
+	if !strings.Contains(mission, "deadline is 2026-09-22T15:32:51Z") || !strings.Contains(mission, "is out of date") {
+		t.Errorf("a resumed create's mission does not say what MANUAL.md promises:\n%s", mission)
+	}
+}
+
+// MANUAL.md: "Without `--continue`, a send to an agent whose dispatch is open
+// is refused", and "Nothing is delivered on a refusal". The guest binary's own
+// tests, TestSendRefusesToContinueAnOpenDispatchUnasked and
+// TestSendRefusesToOpenWhenAskedToContinue, hold the behaviour. This holds the
+// sentences, so neither side moves without the other being looked at.
+func TestTheDocumentedSendRefusalNamesTheFlag(t *testing.T) {
+	for _, claim := range []string{
+		"Without `--continue`, a send to an agent whose dispatch is open is refused",
+		"With it, a send to an agent that has replied is refused",
+		"Nothing is delivered on a refusal",
+	} {
+		if !strings.Contains(campaign.ManualMD, claim) {
+			t.Errorf("MANUAL.md no longer states %q; this test names the sentence it keeps true", claim)
 		}
 	}
 }

@@ -35,18 +35,9 @@ func (a *app) hostSend(ctx context.Context, member model.Member, body string, re
 // hostSendPrepared delivers against facts already probed, so a restart's
 // kill/forget cannot race a second probe's view.
 func (a *app) hostSendPrepared(ctx context.Context, member model.Member, facts protocol.Facts, body string, restart bool) (string, bool, error) {
-	d := protocol.Current(facts.Msgs)
-	var id string
-	opened := false
-	switch {
-	case d == nil || facts.Replies[d.ID]:
-		var err error
-		if id, err = protocol.NextDispatchID(facts.Msgs); err != nil {
-			return "", false, err
-		}
-		opened = true
-	default:
-		id = d.ID
+	id, opened, err := protocol.SendTarget(facts)
+	if err != nil {
+		return "", false, err
 	}
 	return id, opened, a.deliver(ctx, member, facts, id, body, restart)
 }

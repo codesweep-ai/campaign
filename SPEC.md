@@ -425,7 +425,11 @@ different node's unjudged reply.*
 
 **R57.** There **MUST** be exactly one send operation. It opens a dispatch if the current one is
 closed and continues it if open, computed from the worker's channel and never classified by a
-model.
+model. A send a model issues **MUST** also state which of the two it expects, and one the
+computation contradicts **MUST** be refused with nothing delivered. *A reply can land between the
+model's look and its send, so its expectation is a claim about the world, and the computation is
+the check on it. A message that lands on the other side joins a step it was not part of, under that
+step's id.*
 
 **R58.** Recovery **MUST** be mechanical: the templated continue, then the restart re-anchor. The
 dispatcher's `wait` runs it under operator-set policy numbers, bounded by attempt counts and an
@@ -1067,7 +1071,8 @@ a probe per look; the benefit is that a host that was switched off learns nothin
 comes back.
 
 **One send.** The classification lives in one function over one directory listing. A model never
-decides whether its own message opens or continues.
+decides whether its own message opens or continues. It says which it expects, and a send that would
+do the other is refused.
 
 **Order in the state computation.** Reachability precedes everything, and the reply check precedes
 the liveness check. A node that replied and then exited is `node-replied`, not `node-stopped`.

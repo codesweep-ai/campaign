@@ -260,8 +260,12 @@ files absent or names the wrong branch is not asked again, because that answer i
 
 A readback is bounded at 15 minutes per member. That is generous for a healthy team, and under
 heavy host load a member's first turn can miss it. The failure names the member and is not a dead
-end: `create` is checkpoint-resumable, so running the same `create` again continues the still-open
-readback dispatch rather than starting over.
+end: `create` is checkpoint-resumable, so running the same `create` again carries on where it
+stopped. A member whose readback passed is not asked again, as long as its seeded files are
+unchanged, and `create` prints `confirmed its briefing in d001 on an earlier create`. A member that
+never answered has its readback continued. A member whose answer failed, or whose seeded files
+changed, is asked in a new dispatch. Either way the message names the real dispatch and says why
+it came again.
 
 `--accept-upstream-change` proceeds past an upstream deviation and records it on the campaign.
 
@@ -592,14 +596,21 @@ help.
 |---|---|
 | `list` | The roster: every teammate, its CLI, its repositories. |
 | `observe` | Every agent's state, computed now, in one snapshot. |
-| `send <agent> --file F\|-` | Dispatch or continue. Opens if closed, continues if open. |
+| `send <agent> --file F\|- [--continue]` | Opens a new dispatch. With `--continue`, adds to the open one instead. |
 | `read <agent> [path]` | The agent's reply to its current dispatch, or a file from its output channel. |
+| `read <agent> --list [dir]` | Every file in the agent's output channel, or in one directory of it, with its size, as the paths `read` takes. |
 | `restart <agent>` | Drops its session and re-anchors it against its open dispatch. |
 | `accept <agent>` | Records its current reply as accepted, which frees the agent. |
 | `note plan\|assessment --file F\|-` | Appends to the log. Re-planning is another `plan` entry. |
 | `wait [--for SECS]` | Blocks. Recovery runs itself. Returns when a judgement is due — a reply to judge, or a node gone stuck — or when the chunk elapses: `--for` seconds, 240 by default. A free teammate is not a judgement; it is named on the elapsed line instead. |
 | `fetch <agent> [repo]` | Fetches its branch to `refs/remotes/campaign/<agent>/<repo>`. |
 | `push <agent> [repo]` | Pushes HEAD to it at `refs/campaign/orchestrator`. |
+
+`send` computes where the message lands, and refuses a send that would land somewhere its sender
+did not say. Without `--continue`, a send to an agent whose dispatch is open is refused, naming the
+dispatch and the agent's state. With it, a send to an agent that has replied is refused, naming the
+reply that closed the dispatch. Nothing is delivered on a refusal, and the exit status is 1. An
+approval therefore always travels under the dispatch its sender meant.
 
 A dispatcher verb run on an agent is refused, naming the role. Invoked under a `cs-<cli>-remote`
 name, the same binary is the family guard: a wrong-family call against a member is refused with the
@@ -754,7 +765,7 @@ Severity reflects the kind of problem.
 | `continues-exceed-policy` / `restarts-exceed-policy` | warning | recovery spent more rungs than the policy allows |
 | `accept-before-reply` | warning | an acceptance logged before the reply it judges: clock skew, or judgement of unanswered work |
 | `readback-absent` | warning | a member never restated its briefing |
-| `accept-of-readback` | info | the log accepts `d001`, a host-issued and host-judged dispatch |
+| `accept-of-readback` | info | the log accepts a create-time readback, a host-issued and host-judged dispatch: `d001`, or a later one a resumed `create` opened |
 | `accept-of-own-channel` | info | the log accepts a dispatch on the orchestrator's own channel, which the host judges |
 | `accept-ambiguous` | info | a bare accept matches several nodes' dispatches; shown attached to all of them |
 | `accepted-twice` | info | the same dispatch accepted twice; the later entry is shown |
@@ -978,6 +989,10 @@ command, which the cassette holds.
 stops nothing by itself. The orchestrator's judgement enforces the deadline, and the machine uses
 the value only as the `elapsedSeconds` default.
 
+The mission dispatch states the deadline as an instant. A resumed `create` measures it from the
+attempt that succeeds, so it moves under members briefed by an earlier attempt. The mission then
+says so, and tells the orchestrator that a deadline read before it is out of date.
+
 ### Overriding at create
 
 The profile is the configuration. `--set PATH=VALUE` overrides one resolved path for this run
@@ -1074,7 +1089,7 @@ OpenCode signs in with a provider key rather than with a login of its own. Grant
 **`readback FAILED — N member(s) could not confirm their briefing; do not dispatch`**
 
 One or more members did not restate their job. The line names each one. Fix the brief, or re-run
-`create`, which continues the still-open readback dispatch. A member that cannot reach its model
+`create`, which asks again only the members that still owe a readback. A member that cannot reach its model
 fails here too. Check the credential its profile named: a stale host login and a missing
 `~/.cs-keys` entry both look like silence.
 

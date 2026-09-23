@@ -288,6 +288,11 @@ type Readback struct {
 	Obligations string    `json:"obligations,omitempty"`
 	At          time.Time `json:"at,omitzero"`
 	Detail      string    `json:"detail,omitempty"`
+	// Dispatch is the dispatch this answer closed, and Inputs the seeded files
+	// the member held when it gave it. A resumed create reads both to decide
+	// whether a member that passed has anything left to confirm.
+	Dispatch string            `json:"dispatch,omitempty"`
+	Inputs   map[string]string `json:"inputs,omitempty"`
 }
 
 // Empty reports that nothing was parsed out of the member's turn — a member that
