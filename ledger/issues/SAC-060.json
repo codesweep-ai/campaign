@@ -1,0 +1,16 @@
+{
+  "id": "SAC-060",
+  "title": "After a resumed create, neither ls nor observe says which attempt's deadline is live",
+  "type": "improvement",
+  "severity": "low",
+  "status": "in-progress",
+  "foundBy": "user request (host): \"Add the missing parts of SAC-056\", naming the two things SAC-056's notes record as left out",
+  "opened": "2026-09-22",
+  "resolved": null,
+  "stint": "sac-056-attempts",
+  "evidence": { "commits": [], "integrated": [], "verified": null },
+  "resolution": null,
+  "details": "A resumed `create` re-anchors the campaign's deadline to the attempt that resumed it, and the mission dispatch now says so to the orchestrator. The host still cannot see it. The campaign record keeps `createdAt` from the first attempt and one `deadline`, so nothing records when each attempt started or which one set the live clock. `cs-campaign ls` prints an age measured from the first attempt, and `observe` prints no deadline at all. An operator who watched the first attempt's clock has no way to learn it moved.\n\nThe resume path also has no test of its own. The tests for the readback skip and for the mission's deadline sentence call `readbackOne` and `missionDispatchBody` directly. Whether `executeCreate` passes the resume through to both rests on reading the code.\n\nSAC-056's design proposed recording each attempt's start beside `createdAt`, so that `ls` and `observe` can show which clock is live.",
+  "notes": [],
+  "links": ["SAC-056"]
+}
