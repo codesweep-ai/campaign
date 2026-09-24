@@ -3,17 +3,20 @@
   "title": "make repin leaves the viewer's ui pin where it is",
   "type": "improvement",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "foundBy": "user report (host): \"is make repin also repinning the npm dependency on the ui npm package in the ledger, tracer and campaign projects?\"",
   "opened": "2026-09-23",
-  "resolved": null,
+  "resolved": "2026-09-23",
   "stint": "npm-repins",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "7cf9cdf",
+      "6a72a68"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "In a clean clone of main with the change, `make repin` moved the dispatch viewer's ui pin to ui's last build and rebuilt the committed page. `make ci` then passed, smoke legs included. `make -n repin` moved no pin. ci runs 35957448142 and 35958979991 passed on the two commits."
   },
-  "resolution": null,
+  "resolution": "`make repin` moves the viewer's `@codesweep-ai/ui` pin to the npm version of ui's last build, through `scripts/repin-npm.mjs`, and rebuilds the committed viewer on it. Where the status file lists no npm version yet, it takes the version the build's npm image carries. A pin whose project lists no build stays where it is.",
   "details": "`make repin` moves the codesweep-ai tools in `go.mod` to the last commit each one's CI built, and stops there. The viewer's `@codesweep-ai/ui` pin in `dispatch-viewer/app/package.json` stays where it was set by hand. It moves only through oss-repin, which needs every sibling checked out beside this one. A clone of this repository alone has no way to take ui's last build.",
   "notes": [],
   "links": []
