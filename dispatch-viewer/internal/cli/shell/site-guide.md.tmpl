@@ -93,6 +93,9 @@ Things that mislead, and what to say instead:
 - **A continue or restart is the harness, not the orchestrator.** `recovery.events` lists them.
   Each carries the gap before it, the step that preceded the gap, and the policy beside it. Report
   those facts.
+- **A resume is not a continue.** After a provider refuses a turn, the same session is resumed and
+  no rung is spent. The harness resumes a member; the operator resumes the orchestrator. The
+  record says when it happened, not why it happened then.
 - **Errors have classes.** `provider` is the model's server, `account` a rate limit, `guard` the
   member's CLI refusing a call, `command` the member's own command failing. Do not lump them.
 - **A repeated call is not a loop until you look.** `repeatedCalls` counts them. `polling` marks only

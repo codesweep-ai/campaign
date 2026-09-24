@@ -635,6 +635,7 @@ export function Legend({ detail }: { detail: boolean }) {
         ["open", "dispatch open"],
         ["continue", "continue"],
         ["restart", "restart"],
+        ["resume", "resume"],
         ["reply-done", "reply done"],
         ["reply-bad", "reply blocked/needs-input"],
         ["verdict-ok", "verdict"],

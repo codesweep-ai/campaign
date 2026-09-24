@@ -30,8 +30,9 @@ func call(at string, work float64, tool, command, result string) tallyStep {
 }
 
 // The invented run's three sessions. Each holds something a question about a
-// run turns on: the orchestrator's turn ends on a provider error and an hour
-// passes before the harness's continue; tester hits a rate limit; dev has a
+// run turns on: the orchestrator's turn ends on a provider error and its
+// session is resumed 52 minutes later; tester hits a rate limit and is
+// resumed; dev has a
 // guard refusal and a failed command; the orchestrator's wait repeats five
 // times; tester and dev sit idle for over an hour.
 var tallySessions = []struct {
@@ -48,9 +49,9 @@ var tallySessions = []struct {
 		call("09:33", 1.8, "Bash", "cs-campaign-member accept tester d002", "accepted d002 from tester"),
 		call("09:40:10", 7, "Bash", "cs-campaign-member wait", "dev/d002 replied"),
 		call("09:42", 1.8, "Bash", "cs-campaign-member accept dev d002", "accepted d002 from dev"),
-		{kind: "assistant", at: "09:44", work: 2, err: true, label: "server_error", text: "API Error: 529 overloaded_error"},
-		{kind: "turn_end", at: "09:44", idle: 60, text: "turn ended"},
-		{kind: "user", at: "10:44", text: "continue"},
+		{kind: "assistant", at: "09:52", work: 10, err: true, label: "server_error", text: "API Error: 529 overloaded_error"},
+		{kind: "turn_end", at: "09:52", idle: 52, text: "turn ended"},
+		{kind: "user", at: "10:44", text: "resume"},
 		{kind: "assistant", at: "10:45", work: 1, text: "Next: Unicode text."},
 		call("10:46:50", 1.8, "Bash", "cs-campaign-member send dev d003 --file briefs/dev-d003.md", "dev/d003 opened"),
 		call("10:47:50", 1, "Bash", "cs-campaign-member send tester d003 --file briefs/tester-d003.md", "tester/d003 opened"),
@@ -82,7 +83,7 @@ var tallySessions = []struct {
 		{kind: "user", at: "09:09", text: "Dispatch ID: d002. Write acceptance tests."},
 		call("09:14", 5, "exec", "go vet ./acceptance/...", ""),
 		{kind: "turn_end", at: "09:15", work: 1, idle: 7, err: true, label: "rate_limit_exceeded", text: "429 Rate limit reached"},
-		{kind: "user", at: "09:22", text: "continue"},
+		{kind: "user", at: "09:22", text: "resume"},
 		call("09:30:50", 8.8, "exec", "cs-campaign-member reply d002 --file reply.md", "replied to d002 "),
 		{kind: "turn_end", at: "09:31", idle: 77, text: "turn ended"},
 		{kind: "user", at: "10:48", text: "Dispatch ID: d003. Add Unicode tests."},
@@ -137,10 +138,10 @@ func tallyArchive(t *testing.T) string {
 	write(o+"input/m1.md", "# mission", "09:05")
 	write(d+"input/d002.md", "# d002", "09:08")
 	write(q+"input/d002.md", "# d002", "09:09")
-	write(q+"input/d002.001.md", "continue", "09:22")
+	write(q+"input/d002.001.resume.md", "resume", "09:22")
 	write(q+"output/replies/d002.json", reply("d002", "09:31"), "09:31")
 	write(d+"output/replies/d002.json", reply("d002", "09:40"), "09:40")
-	write(o+"input/m1.001.md", "continue", "10:44")
+	write(o+"input/m1.001.resume.md", "resume", "10:44")
 	write(d+"input/d003.md", "# d003", "10:47")
 	write(q+"input/d003.md", "# d003", "10:48")
 	write(q+"output/replies/d003.json", reply("d003", "11:00"), "11:00")
@@ -295,8 +296,14 @@ func TestFactsShowWhatQuestionsAboutARunTurnOn(t *testing.T) {
 		recovery = append(recovery, fmt.Sprintf("%s %s after %s, ended by %s", get(e, "node"), get(e, "type"),
 			get(e, "sinceLastStep", "hms"), get(e, "turnError", "label")))
 	}
-	if got, want := strings.Join(recovery, "; "), "tester continue after 0:07:00, ended by rate_limit_exceeded; orchestrator continue after 1:00:00, ended by server_error"; got != want {
+	if got, want := strings.Join(recovery, "; "), "tester resume after 0:07:00, ended by rate_limit_exceeded; orchestrator resume after 0:52:00, ended by server_error"; got != want {
 		t.Errorf("recovery = %s\nwant %s", got, want)
+	}
+	// A resume spends no rung, so it is not a continue.
+	for _, dt := range get(f, "dispatches").([]any) {
+		if get(dt, "node") == "tester" && get(dt, "dispatch") == "d002" && (get(dt, "continues") != 0.0 || get(dt, "resumes") != 1.0) {
+			t.Errorf("tester/d002 = %v, want 0 continues and 1 resume", dt)
+		}
 	}
 	if rc := get(f, "repeatedCalls", 0); get(rc, "node") != "orchestrator" || get(rc, "count") != 5.0 || get(rc, "polling") != true {
 		t.Errorf("first repeated call = %v, want the orchestrator's wait, five times, polling", rc)

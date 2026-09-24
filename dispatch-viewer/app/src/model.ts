@@ -9,6 +9,7 @@ export type Kind =
   | "open"
   | "continue"
   | "restart"
+  | "resume"
   | "reply-done"
   | "reply-bad"
   | "verdict-ok"
@@ -40,6 +41,7 @@ export const palette: Record<Kind, EventToken> = {
   open: "--color-neutral",
   continue: "--color-warning",
   restart: "--color-cat-8-mid",
+  resume: "--color-cat-6-mid",
   "reply-done": "--color-success",
   "reply-bad": "--color-error",
   "verdict-ok": "--color-link",
@@ -129,6 +131,8 @@ export function kindOf(e: IndexedEvent): Kind {
       return "continue";
     case "restart":
       return "restart";
+    case "resume":
+      return "resume";
     case "reply":
       return e.phase === "done" ? "reply-done" : "reply-bad";
     case "accept":
@@ -156,7 +160,7 @@ export function shapeOf(e: IndexedEvent): EventShape {
 // the channel marks too: a box's edges are its opening and its reply.
 export const LOGKINDS: ReadonlySet<Kind> = new Set(["accept", "plan", "assessment"]);
 export const PROTOCOLKINDS: ReadonlySet<Kind> = new Set([
-  "open", "continue", "restart", "reply-done", "reply-bad", "verdict-ok", "verdict-bad",
+  "open", "continue", "restart", "resume", "reply-done", "reply-bad", "verdict-ok", "verdict-bad",
 ]);
 
 export const spanOf = (run: Run, e: IndexedEvent): Span | undefined =>

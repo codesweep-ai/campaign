@@ -702,9 +702,9 @@ page when the page does not draw it:
 - every step that errored, in one of five classes: `provider` (the model's server), `account` (a
   rate limit), `guard` (the member's CLI refused the call), `command` (the member's own command)
   and `other`;
-- every continue and restart, with the time since that member's last step, that step, the error
-  that ended its turn when one did, and the run's `continueAttempts`, `restarts`, `stallSeconds`
-  and `providerWaitSeconds` beside them;
+- every continue, restart and resume, with the time since that member's last step, that step,
+  the error that ended its turn when one did, and the run's `continueAttempts`, `restarts`,
+  `stallSeconds` and `providerWaitSeconds` beside them;
 - every subagent a member spawned;
 - every tool call one member made three times or more with the same input, with the harness's
   `wait`, and only that call, marked as polling.
@@ -742,6 +742,7 @@ files alone. Every mark's colour is a design token from one palette map
 | dot | `--color-neutral` | dispatch open |
 | dot | `--color-warning` | continue |
 | dot | `--color-cat-8-mid` | restart re-anchor |
+| dot | `--color-cat-6-mid` | resume: the same session carried on after its provider refused a turn, no rung spent |
 | dot | `--color-success` | reply, phase `done` |
 | dot | `--color-error` | reply, phase `blocked` or `needs-input` |
 | dot, haloed | `--color-link` with a `--color-accent-bg` halo | the mission verdict; `--color-severe` with a `--color-severe-bg` halo when the campaign was not met |

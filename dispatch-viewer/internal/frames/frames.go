@@ -32,7 +32,7 @@ type Node struct {
 // log) or from preserved guest mtimes (messages).
 type Event struct {
 	Node     string `json:"node"`
-	Type     string `json:"type"` // open|continue|restart|reply|accept|plan|assessment|verdict
+	Type     string `json:"type"` // open|continue|restart|resume|reply|accept|plan|assessment|verdict
 	At       string `json:"at"`   // RFC3339
 	Dispatch string `json:"dispatch,omitempty"`
 	Seq      int    `json:"seq,omitempty"`
@@ -53,6 +53,9 @@ type Span struct {
 	Phase      string `json:"phase,omitempty"`
 	Continues  int    `json:"continues"`
 	Restarts   int    `json:"restarts"`
+	// Resumes carried the same session on after its provider refused a
+	// turn. They spend no rung, so they are not continues.
+	Resumes int `json:"resumes"`
 	// Addr is the address that picks the dispatch and zooms to it.
 	Addr string `json:"addr,omitempty"`
 }
@@ -305,6 +308,8 @@ func loadMessages(run *Run, node, dir string) ([]protocol.Msg, error) {
 			typ = "continue"
 			if m.Restart {
 				typ = "restart"
+			} else if m.Resume {
+				typ = "resume"
 			}
 		}
 		run.Events = append(run.Events, Event{Node: node, Type: typ,
@@ -506,6 +511,8 @@ func buildEventsAndSpans(run *Run) {
 			s.Continues++
 		case "restart":
 			s.Restarts++
+		case "resume":
+			s.Resumes++
 		case "reply", "verdict":
 			s.RepliedAt = ev.At
 			s.Phase = ev.Phase

@@ -111,8 +111,8 @@ function EventBody({
       const wait = s.repliedAt ? dur(s.repliedAt, s.acceptedAt) : "";
       rows.push(["accepted at", fmtT(s.acceptedAt) + (wait ? " · " + wait + " after the reply" : "")]);
     }
-    if (s.continues || s.restarts)
-      rows.push(["recovery", s.continues + " cont · " + s.restarts + " restarts"]);
+    if (s.continues || s.restarts || s.resumes)
+      rows.push(["recovery", s.continues + " cont · " + s.restarts + " restarts" + (s.resumes ? " · " + s.resumes + " resumes" : "")]);
   }
 
   let body: ReactNode = null;
@@ -168,7 +168,7 @@ function EventBody({
         </>
       );
     }
-  } else if (e.type === "open" || e.type === "continue" || e.type === "restart") {
+  } else if (e.type === "open" || e.type === "continue" || e.type === "restart" || e.type === "resume") {
     const m = ((run.messages || {})[e.node] || {})[e.file as string];
     body = <DocBlock kind="md" content={m || "(message body unavailable)"} docMode={docMode} />;
   } else if (e.type === "plan" || e.type === "assessment") {

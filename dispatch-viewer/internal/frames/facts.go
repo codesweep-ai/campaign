@@ -103,6 +103,7 @@ type DispatchTime struct {
 	Duration  Dur    `json:"duration"`
 	Continues int    `json:"continues"`
 	Restarts  int    `json:"restarts"`
+	Resumes   int    `json:"resumes"`
 	Addr      string `json:"addr"`
 }
 
@@ -136,7 +137,7 @@ type FailedStep struct {
 	Result string `json:"result,omitempty"`
 }
 
-// Recovery is every continue and restart the harness sent, each with the time
+// Recovery is every continue, restart and resume sent, each with the time
 // since that member's last recorded step, beside the policy it acts under.
 type Recovery struct {
 	Policy RecoveryPolicy  `json:"policy"`
@@ -209,7 +210,7 @@ func ComputeFacts(run *Run) *Facts {
 			stop = parseTS(s.RepliedAt)
 		}
 		f.Dispatches = append(f.Dispatches, DispatchTime{Node: s.Node, Dispatch: s.ID, Phase: s.Phase,
-			OpenedAt: s.OpenedAt, RepliedAt: s.RepliedAt, Continues: s.Continues, Restarts: s.Restarts,
+			OpenedAt: s.OpenedAt, RepliedAt: s.RepliedAt, Continues: s.Continues, Restarts: s.Restarts, Resumes: s.Resumes,
 			Addr: s.Addr, Duration: dur(max(0, stop.Sub(parseTS(s.OpenedAt)).Milliseconds()))})
 	}
 	slices.SortStableFunc(f.Dispatches, func(a, b DispatchTime) int {
@@ -270,7 +271,7 @@ func ComputeFacts(run *Run) *Facts {
 	})
 
 	for _, e := range run.Events {
-		if e.Type != "continue" && e.Type != "restart" {
+		if e.Type != "continue" && e.Type != "restart" && e.Type != "resume" {
 			continue
 		}
 		ev := RecoveryEvent{Type: e.Type, Node: e.Node, Dispatch: e.Dispatch, At: e.At, Addr: e.Addr}

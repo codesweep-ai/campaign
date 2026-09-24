@@ -11,7 +11,7 @@ export interface Node {
 
 export interface RunEvent {
   node: string;
-  type: string; // open|continue|restart|reply|accept|plan|assessment|verdict
+  type: string; // open|continue|restart|resume|reply|accept|plan|assessment|verdict
   at: string; // RFC3339
   dispatch?: string;
   seq?: number;
@@ -35,6 +35,7 @@ export interface Span {
   phase?: string;
   continues: number;
   restarts: number;
+  resumes?: number;
 }
 
 export interface Issue {
