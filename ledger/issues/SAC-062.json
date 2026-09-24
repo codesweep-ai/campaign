@@ -1,0 +1,20 @@
+{
+  "id": "SAC-062",
+  "title": "A push that changes only the ledger runs the whole of ci",
+  "type": "improvement",
+  "severity": "low",
+  "status": "in-progress",
+  "foundBy": "user report (host): \"support ledger builds on pushes that only contain ledger changes, with just linting, ledger checking, and a pages build to publish the ledger page\"",
+  "opened": "2026-09-23",
+  "resolved": null,
+  "stint": "ledger-builds",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "Closing an issue is a commit that changes only `ledger/`, and pushing it runs the whole of `ci`. Nothing `ci` builds or tests has changed but the records. Such a push needs only the ledger check, the document linters and a site build, which publishes the ledger's page.",
+  "notes": [],
+  "links": []
+}
