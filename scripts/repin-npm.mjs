@@ -8,9 +8,12 @@
 // commits its CI built and passed, newest first, each with the npm version it
 // was published under (codesweep-ai/dashboards SPEC.md). A pin moves to the
 // version of the first, so it never lands on a commit CI failed, is still
-// building, or never built because it changed only the ledger. A pin whose
-// project's file cannot be read or lists no build stays where it is, and says
-// so. A range is left alone: moving one is a third-party upgrade, not a repin.
+// building, or never built because it changed only the ledger. Where the file
+// lists no npm version, as when npmjs.com had not yet listed the one just
+// published, the build's npm image carries the same version, and that is taken.
+// A pin whose project's file cannot be read or lists no build stays where it
+// is, and says so. A range is left alone: moving one is a third-party upgrade,
+// not a repin.
 //
 // The install runs through scripts/with-npmrevs.sh, because a build that has
 // not been released reaches npm only as an image. The one exception is
@@ -58,9 +61,12 @@ export async function plan(pkg, { readStatus, onNpmjs, goMod }) {
         continue;
       }
       const commit = last.commit.slice(0, 7);
-      const to = last.versions?.npm?.[name];
+      const to = last.versions?.npm?.[name] ?? last.versions?.images?.[`npm/${name.slice(SCOPE.length)}`];
       if (!to) {
-        Object.assign(step, { kind: "held", line: `${name}: held, as its last build, ${commit}, names no npm version` });
+        Object.assign(step, {
+          kind: "held",
+          line: `${name}: held, as its last build, ${commit}, names no npm version`,
+        });
         continue;
       }
       if (to === from) {
@@ -70,7 +76,9 @@ export async function plan(pkg, { readStatus, onNpmjs, goMod }) {
       if (name === `${SCOPE}npmrevs` && !goMod && !(await onNpmjs(name, to))) {
         Object.assign(step, {
           kind: "held",
-          line: `${name}: held, as its last build, ${commit}, is only an image, and scripts/with-npmrevs.sh installs this package from npmjs.com`,
+          line:
+            `${name}: held, as its last build, ${commit}, is only an image, ` +
+            "and scripts/with-npmrevs.sh installs this package from npmjs.com",
         });
         continue;
       }
