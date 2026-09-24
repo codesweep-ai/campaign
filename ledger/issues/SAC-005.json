@@ -3,17 +3,20 @@
   "title": "Every member carried a copy of the operator's model credential",
   "type": "improvement",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "user report (host): \"change from using shared credentials to lent credentials for agents\"",
   "opened": "2026-09-05",
-  "resolved": null,
+  "resolved": "2026-09-23",
   "stint": "2026-09-05 credential lending session",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "def1e50",
+      "8af3a1c"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "go test ./internal/cli/ passes TestTheSpellingChoosesTheFlagAndSilenceLends, TestAnEnvironmentKeyCannotBeLent, TestCopiedCredentialsAreNamedBeforeCreate and TestTheDocumentedCredentialDefaultIsWhatAProfileGets. ci run 35943266251 at cdbbf93 passed its smoke jobs on firecracker, podman and macOS."
   },
-  "resolution": null,
+  "resolution": "A plain agentLogin or apiKey grant now lends by default, so a member holds a token that is worthless off the host. Copying the credential in takes an explicit inherit spelling or --credentials inherit, and validate refuses an environment key under lend.",
   "details": "A profile's `auth.inheritAgentLogin` was the only way to give a member the operator's agent login, and it copied the credential in. `create` passed `--inherit-agent-login <family>` to cs-sandbox, so `~/.cs-claude/.credentials.json` or `~/.cs-codex/auth.json` landed inside a microVM running an agent with no approval prompt. `auth.apiKeyFromEnv` did the same for a key, through `--env`.\n\nReproduce it on any campaign whose profile names a login. Create it, then read the file inside a member with `cs-sandbox exec <member> cat .cs-claude/.credentials.json`.\n\nIt matters because the value outlives the campaign wherever the agent copied it, cannot be withdrawn without rotating it, and is readable by everything the member runs. cs-sandbox has since grown credential lending, which hands a sandbox a token worth nothing off the host and leaves the credential where it is.",
   "notes": [
     {
