@@ -43,7 +43,9 @@ while you work, and `make ci` is the one that has to pass.
 No linter needs installing. Every one the gates shell out to is pinned and built from the module
 cache on first use: `golangci-lint`, `deadcode`, `actionlint` and the `cs-` tools. `make repin`
 moves the `cs-` pins to the last commit each one's CI built, and leaves one whose project names
-none. `make versions` says which builds the gates used. A
+none. It moves the dispatch viewer's `@codesweep-ai/ui` pin the same way, through
+`scripts/repin-npm.mjs`, and rebuilds the committed page on it. `make versions` says which builds
+the gates used. A
 campaign resolves `cs-sandbox` and the agent CLIs from PATH at run time, and `doctor` compares what
 it finds against those same `go.mod` pins.
 

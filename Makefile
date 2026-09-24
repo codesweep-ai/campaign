@@ -295,6 +295,10 @@ versions:
 ## each commit is read from its repository, whatever the module proxy holds. Uses
 ## GOWORK=off so this edits the recorded pins even while a workspace is serving
 ## local checkouts.
+##
+## The @codesweep-ai pins in dispatch-viewer/app/package.json move the same way, through
+## scripts/repin-npm.mjs, and the committed viewer is then rebuilt on them. Where
+## npm is absent they stay, and this says so.
 .PHONY: repin
 repin:
 	@tools="$$(go list tool 2>/dev/null | grep codesweep-ai || true)"; \
@@ -314,6 +318,15 @@ repin:
 	done; \
 	if [ -n "$$pins" ]; then GOWORK=off GOPROXY=direct go get -tool $$pins; fi
 	@GOWORK=off go mod tidy
+	@if command -v $(NPM) >/dev/null 2>&1; then \
+		node scripts/repin-npm.mjs $(VIEWER_DIR); \
+	else \
+		echo "$(VIEWER_DIR): SKIP (npm not found; its @codesweep-ai pins stay)"; \
+	fi
+# viewer-build has a line of its own because make runs any recipe line that
+# names MAKE even under -n. The move above names none, so `make -n repin`
+# moves no pin.
+	@if command -v $(NPM) >/dev/null 2>&1; then $(MAKE) --no-print-directory viewer-build; fi
 	@$(MAKE) versions
 
 ## install: build, then copy both binaries into $(PREFIX)/bin
