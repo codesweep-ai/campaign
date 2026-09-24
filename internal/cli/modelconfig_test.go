@@ -33,7 +33,9 @@ func TestModelConfigValidation(t *testing.T) {
 		// so the field is accepted; only the model it attaches to is required.
 		{"opencode model and effort", model.MemberProfile{CLI: "opencode", Model: "zai/glm-5.2", Effort: "high"}, ""},
 		{"opencode effort without model", model.MemberProfile{CLI: "opencode", Effort: "high"}, "effort requires model for opencode"},
+		{"claude model with a context variant", model.MemberProfile{CLI: "claude", Model: "claude-opus-5-5[1m]", Effort: "high"}, ""},
 		{"model with a space", model.MemberProfile{CLI: "claude", Model: "claude opus"}, "invalid model"},
+		{"model with a substitution", model.MemberProfile{CLI: "claude", Model: "$(id)"}, "invalid model"},
 		{"effort with a substitution", model.MemberProfile{CLI: "codex", Effort: "$(id)"}, "invalid effort"},
 		{"model with a quote", model.MemberProfile{CLI: "codex", Model: `a"b`}, "invalid model"},
 	} {
@@ -175,6 +177,40 @@ func TestApplyModelConfigClaudeRewritesEnv(t *testing.T) {
 	}
 	if !strings.Contains(got, "SOMETHING_ELSE=keep") {
 		t.Fatalf("an unrelated assignment was dropped: %s", got)
+	}
+}
+
+// TestApplyModelConfigClaudeKeepsContextVariant: a model's context-window
+// variant is spelled with brackets ("claude-opus-5-5[1m]"), and cs-claude
+// sources this file with `set -a`. Brackets are a shell pattern everywhere
+// except the right-hand side of an assignment, so this runs the composed
+// command and then sources what it wrote, which is the only place the
+// distinction would show.
+func TestApplyModelConfigClaudeKeepsContextVariant(t *testing.T) {
+	const variant = "claude-opus-5-5[1m]"
+	sandbox, capture := captureExecSandbox(t, `if [ "$1" = exec ]; then printf '%s' "$5" > "$CAPTURE"; fi`)
+	home := t.TempDir()
+	member := model.Member{CLI: "claude", Ref: "box.group", Profile: model.MemberProfile{CLI: "claude", Model: variant}}
+	if err := sandbox.applyModelConfig(context.Background(), member); err != nil {
+		t.Fatal(err)
+	}
+	runGuestCommand(t, home, capturedCommand(t, capture))
+
+	body, err := os.ReadFile(filepath.Join(home, ".cs-claude", "env"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(body); !strings.Contains(got, "ANTHROPIC_MODEL="+variant) {
+		t.Fatalf("the variant was not written verbatim: %s", got)
+	}
+	cmd := exec.Command("sh", "-c", `set -a; . "$HOME/.cs-claude/env"; printf '%s' "$ANTHROPIC_MODEL"`)
+	cmd.Env = append(os.Environ(), "HOME="+home)
+	sourced, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(sourced) != variant {
+		t.Fatalf("sourcing the file yielded %q, want %q", sourced, variant)
 	}
 }
 

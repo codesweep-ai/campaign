@@ -841,8 +841,9 @@ agents:
 
 `engine` says what a member runs on: `firecracker` for a microVM, or `podman` for a container.
 `model` and `effort` are handed to that member's CLI unchanged, so use the slugs that CLI accepts.
-For `opencode`, `effort` requires `model` beside it, because it attaches reasoning options to a
-named model, not to the session. `repos[].ref` picks the branch or tag cloned into the member, and
+A bracketed variant such as `claude-opus-5-5[1m]` is one of them: it asks that model for its
+million-token context window. For `opencode`, `effort` requires `model` beside it, because it
+attaches reasoning options to a named model, not to the session. `repos[].ref` picks the branch or tag cloned into the member, and
 `snapshots` gives it a frozen tree it can read.
 
 Every member needs at least one repository, and `validate` refuses one without it. A member commits

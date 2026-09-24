@@ -1,0 +1,20 @@
+{
+  "id": "SAC-064",
+  "title": "A profile cannot name a model's context-window variant, because the token rule forbids brackets",
+  "type": "defect",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "user report (host): \"Make sure to update the campaign profile to use the latest Opus 5.5 1M context model which is now available\", while writing a campaign profile",
+  "opened": "2026-09-24",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "**What happens.** `model: claude-opus-5-5[1m]` fails validation with `invalid model`. The bracketed suffix is how a CLI names a model's context-window variant. The plain slug runs the default window, and `[1m]` asks the same model for its million-token one. A campaign can run that model, but only on the smaller window.\n\n**Why.** `modelToken` in `internal/cli/profile.go` allows letters, digits, dot, underscore, slash and hyphen, and nothing else. Its comment gives the reason. Each adapter writes the value somewhere different, so one rule here replaces escaping it three ways.\n\n**Why brackets are safe.** `applyModelConfig` composes every command through `shellArgs`, which single-quotes each value. The guest shell therefore sees the brackets literally. codex writes `model = %q`, a quoted TOML string. opencode takes the slug as argv to python, which encodes it as JSON. Only cs-claude reads a bare value, from the file it sources with `set -a`. There the value sits on the right of an assignment, and a shell expands no pattern in that position.\n\n**Why it matters.** The window decides whether a long orchestrator turn holds its history or compacts. A member can be moved by hand afterwards. A profile is what a campaign is reproduced from, so the declaration belongs in it.",
+  "notes": [],
+  "links": []
+}

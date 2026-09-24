@@ -29,7 +29,14 @@ var envName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 // rather than escaped three ways: every real model slug and effort level is in
 // this class, from "claude-opus-5" to a fully qualified
 // "fireworks-ai/accounts/fireworks/models/kimi-k3".
-var modelToken = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]*$`)
+//
+// Brackets are in the class because a CLI spells a model's variant that way:
+// "claude-opus-5-5[1m]" selects the million-token context window of a model
+// whose plain slug runs the default one. They reach each adapter quoted -
+// single-quoted for the guest shell by shellArgs, inside a TOML string for
+// codex, as argv to python for opencode - and the shell line claude sources is
+// an assignment, whose value a shell does not expand as a pattern.
+var modelToken = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/\[\]-]*$`)
 
 // decodeProfile reads and decodes a profile, without validating it.
 //
