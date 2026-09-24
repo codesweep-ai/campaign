@@ -42,8 +42,8 @@ while you work, and `make ci` is the one that has to pass.
 
 No linter needs installing. Every one the gates shell out to is pinned and built from the module
 cache on first use: `golangci-lint`, `deadcode`, `actionlint` and the `cs-` tools. `make repin`
-moves the `cs-` pins to the last commit each one's CI passed, and `make versions` says which
-builds the gates used. A
+moves the `cs-` pins to the last commit each one's CI built, and leaves one whose project names
+none. `make versions` says which builds the gates used. A
 campaign resolves `cs-sandbox` and the agent CLIs from PATH at run time, and `doctor` compares what
 it finds against those same `go.mod` pins.
 
@@ -158,7 +158,7 @@ The order is **build, then validate, then bump the pin**, never the pin first:
 4. Say in the commit message what you ran and what it proved.
 
 Step 4 is the whole record. `go.mod` says which version; only the commit can say that somebody ran
-step 2 against it. `make repin` moves every pin to the last commit its CI passed in one go, so a
+step 2 against it. `make repin` moves every pin to the last commit its CI built in one go, so a
 commit from it carries the same obligation.
 
 **Never `make install` in the sandbox repo while a campaign is live.** It replaces the binary
