@@ -158,8 +158,11 @@ worked out by hand lands on the wrong step.*
 **R139.** A site's facts **MUST** be computed from the document the page draws, the same way on
 every render, and **MUST NOT** judge. A stall **MUST** be reported as the harness's own continue or
 restart, with the gap before it, the step that preceded the gap, and the run's policy beside it.
+Every step the facts name **MUST** carry its address, or its place on its trace page when the page
+does not draw it.
 *The harness already decides when a dispatch has stalled, and the continue is that decision.
-Whether a gap cost the run time is a counterfactual the record cannot settle.*
+Whether a gap cost the run time is a counterfactual the record cannot settle. A step with neither
+link leaves an agent nothing to cite, and it invents one.*
 
 **R140.** A site **MUST** be written only into a new or empty directory, or over a site the viewer
 wrote there, and **MUST** refuse any other. *A site is replaced whole, and anything else in the

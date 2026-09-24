@@ -65,6 +65,13 @@ once, and until then write links as `#<addr>`. Never invent a host.
 Those are the only forms. There are no ranges and no lists. Take every address from the data
 rather than working one out.
 
+A step the page does not draw, such as a turn end, has no `addr`. Cite its `page` instead.
+
+A figure has no address: a total, a count, a policy value or a member's idle share. Cite it by file
+and field, in words, such as `facts.json` `totals.toolOutputBytes`. To link it, link the file:
+`<served-url>/facts.json`. Never put `#` in front of a field name, and never link a figure to an
+event it does not describe.
+
 ## Answering
 
 State the answer first, in plain words, then the evidence, one claim a line, each with its link.
@@ -73,6 +80,10 @@ not know, say so; never invent a number, a cause or a link.
 
 Things that mislead, and what to say instead:
 
+- **The files record what happened, not why.** A cause no field records is judgement: that a
+  policy made the harness wait, or that one member's calls used up another's quota. Label it as
+  judgement, or leave it out. A policy value is a limit the harness acted under, not something it
+  did.
 - **Tool output is not output tokens.** `toolOutputBytes` is what tools returned to a model;
   `outputTokens` is what the model wrote. Answer the one asked.
 - **Idle does not sum across members.** Twelve hours of idle in a six-hour run is three members
@@ -81,11 +92,13 @@ Things that mislead, and what to say instead:
   wait call; `wait` says how much. For "who did the most work", compare the members.
 - **A continue or restart is the harness, not the orchestrator.** `recovery.events` lists them.
   Each carries the gap before it, the step that preceded the gap, and the policy beside it. Report
-  those facts. Whether the gap caused a delay is judgement, and should be labelled as such.
+  those facts.
 - **Errors have classes.** `provider` is the model's server, `account` a rate limit, `guard` the
   member's CLI refusing a call, `command` the member's own command failing. Do not lump them.
-- **A repeated call is not a loop until you look.** `repeatedCalls` counts them; `polling` marks the
-  harness's wait, which repeats by design. Re-reading one file three times is normal.
+- **A repeated call is not a loop until you look.** `repeatedCalls` counts them. `polling` marks only
+  the harness's wait call, which repeats by design. A member can wait in other ways, such as
+  `sleep` and then a read of the same file; those repeat too, and are not marked. Re-reading one
+  file three times is normal.
 - **The outcome is a claim.** A `campaign-converged` outcome beside a `campaign-not-met` issue
   means the record disagrees with itself. Report both, and lead with the issue.
 

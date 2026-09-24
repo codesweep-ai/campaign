@@ -690,7 +690,8 @@ and a step with idle after it carries `idleAddr` too. The page draws no column f
 `e/<n>` is an event, `m/<member>/<dNNN>` a dispatch, and `traces/e/<n>` a step on the traces view.
 The page numbers steps after its events, two slots a step, so take a step's address from the data.
 
-`facts.json` holds, each with its address:
+`facts.json` holds the following. Each step it names carries its address, or its place on its trace
+page when the page does not draw it:
 
 - the elapsed time, from the first protocol event to the last;
 - per member and per session: work and idle from the tracer's totals, idle as a share of that
@@ -705,8 +706,8 @@ The page numbers steps after its events, two slots a step, so take a step's addr
   that ended its turn when one did, and the run's `continueAttempts`, `restarts`, `stallSeconds`
   and `providerWaitSeconds` beside them;
 - every subagent a member spawned;
-- every tool call one member made three times or more with the same input, the harness's `wait`
-  marked as polling.
+- every tool call one member made three times or more with the same input, with the harness's
+  `wait`, and only that call, marked as polling.
 
 The facts are computed from the same document the page draws, and nothing in them is a judgement.
 

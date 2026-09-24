@@ -166,7 +166,7 @@ var factsDocs = map[string]string{
 	"failedSteps[].class":                  "`provider` (the model's server failed), `account` (a rate limit), `guard` (the member's CLI refused the call), `command` (the member's own command failed) or `other`",
 	"failedSteps[].result":                 "the start of what the call returned",
 	"recovery":                             "every continue and restart the harness sent. The harness sends one when it judges a dispatch stalled",
-	"recovery.policy":                      "the limits it acted under: continues and restarts allowed per dispatch, the seconds of quiet it calls a stall, and the seconds it waits on a failing provider",
+	"recovery.policy":                      "the limits it acted under: continues and restarts allowed per dispatch, the seconds of quiet it calls a stall, and the most seconds a dispatch may sit behind a failing provider. Each is a limit, not a record of what the harness did",
 	"recovery.policy.continueAttempts":     "",
 	"recovery.policy.restarts":             "",
 	"recovery.policy.stallSeconds":         "",
@@ -187,7 +187,7 @@ var factsDocs = map[string]string{
 	"repeatedCalls[].tool":                 "",
 	"repeatedCalls[].input":                "the input, cut short",
 	"repeatedCalls[].count":                "",
-	"repeatedCalls[].polling":              "the call is the harness's wait, which repeats by design",
+	"repeatedCalls[].polling":              "the call is the harness's wait, which repeats by design. Only that call is marked: a member can wait in other ways, such as `sleep` and then a read of the same file",
 	"repeatedCalls[].addrs":                "each call's step",
 }
 
@@ -205,6 +205,6 @@ var stepRefDocs = map[string]string{
 	"label":   "the tool name, or the error's kind",
 	"error":   "whether the step failed",
 	"text":    "its first line, or its command, cut short",
-	"addr":    "the step's address on the page; absent for a turn end, which the page does not draw",
+	"addr":    "the step's address on the page; absent for a turn end, which the page does not draw, and then `page` is the link to cite",
 	"page":    "the step on its trace page",
 }
