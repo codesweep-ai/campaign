@@ -21,6 +21,11 @@
 # under a real engine — ~/Library/Application Support as a state root, the
 # podman machine, and every path a member is given having to live under $HOME.
 #
+# Only codesweep-ai has that host. A fork has no runner with its labels, and a
+# job asking for one does not fail: it queues for a day, holding every job that
+# needs it. So each job for that machine asks for github.repository_owner
+# first, and a fork runs the other hosts without it.
+#
 # Every hosted job here names ubuntu-26.04 rather than ubuntu-latest, and the
 # reason is the podman that image carries. The recorder joins the campaign's own
 # network and a member reaches this host at the address pasta publishes, and
@@ -29,7 +34,7 @@
 # downgraded below that line, so a fabric built there has no route back to the
 # host at all. cs-sandbox pins the same image for the same reason.
 #
-# Every smoke job waits on build-test, all four legs of it. The tier boots real
+# Every smoke job waits on build-test, every leg of it. The tier boots real
 # machines and takes tens of minutes; a branch whose unit tests are red has
 # nothing to learn from it, and the runners it would occupy are shared with the
 # sibling project.
@@ -74,33 +79,42 @@ jobs:
     name: build-test (${{ matrix.label }})
     strategy:
       fail-fast: false
+      # The legs as JSON, because the self-hosted macOS runner's leg is only in
+      # codesweep-ai (see the header). A leg cannot skip itself — a job's `if` is
+      # decided before the matrix expands, so it cannot name one leg — but the
+      # matrix can be built without it, and `strategy` may read `github`.
+      # Left out rather than failed: in codesweep-ai every job that needs this one
+      # still waits for the macOS arm64 leg, and in a fork the matrix completes
+      # without it.
+      #
+      # Each leg is its own format() argument, never part of the format string,
+      # where JSON's braces would be read as placeholders. That is also what lets
+      # WSL's `wsl-bash {0}` through untouched.
+      #
+      # A plain scalar, not a `>-` block: GitHub's TypeScript workflow parser
+      # (the one behind the editor tooling) reads a block scalar's indentation
+      # and final newline into the value, and turns this list into a string. A
+      # plain scalar has one rule of its own: no space after a JSON colon, since
+      # ": " would end it.
+      #
+      # covlabel: artifact names take neither "/" nor a space, both of which
+      # label carries, so the coverage artifact is named with this.
+      #
+      # The macOS arm64 leg's os is an array, not a label string: self-hosted
+      # runners are selected by ANDing labels, and these three are the ones the
+      # runner registers automatically. That machine runs a pool for this
+      # repository and another for the sibling project; the two are separate
+      # registrations on the same machine, so no custom label is needed to tell
+      # them apart — a runner only ever takes jobs from the repository it is
+      # registered to.
       matrix:
-        include:
-          - os: ubuntu-26.04
-            label: ubuntu-26.04
-            # Artifact names take neither "/" nor a space, both of which
-            # matrix.label carries, so the coverage artifact is named with this.
-            covlabel: ubuntu-26.04
-            shell: bash
-          # An array, not a label string: self-hosted runners are selected by
-          # ANDing labels, and these three are the ones the runner registers
-          # automatically. That machine runs a pool for this repository and
-          # another for the sibling project; the two are separate registrations
-          # on the same machine, so no custom label is needed to tell them
-          # apart — a runner only ever takes jobs from the repository it is
-          # registered to.
-          - os: [self-hosted, macOS, ARM64]
-            label: macos-arm64 / self-hosted
-            covlabel: macos-arm64-self-hosted
-            shell: bash
-          - os: macos-15-intel
-            label: macos-15-intel
-            covlabel: macos-15-intel
-            shell: bash
-          - os: windows-2025
-            label: windows-2025 / WSL2
-            covlabel: windows-2025-wsl2
-            shell: wsl-bash {0}
+        include: ${{ fromJSON(format('[{0},{1},{2}{3}]',
+          '{"os":"ubuntu-26.04","label":"ubuntu-26.04","covlabel":"ubuntu-26.04","shell":"bash"}',
+          '{"os":"macos-15-intel","label":"macos-15-intel","covlabel":"macos-15-intel","shell":"bash"}',
+          '{"os":"windows-2025","label":"windows-2025 / WSL2","covlabel":"windows-2025-wsl2","shell":"wsl-bash {0}"}',
+          github.repository_owner == 'codesweep-ai'
+            && ',{"os":["self-hosted","macOS","ARM64"],"label":"macos-arm64 / self-hosted","covlabel":"macos-arm64-self-hosted","shell":"bash"}'
+            || '')) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     # The shell has to be set HERE and not per step: `steps.*.shell` accepts no
@@ -120,8 +134,9 @@ jobs:
       # setting — no fork PR runs anything until a maintainer approves it. This
       # catches the case where that setting is loosened by mistake.
       #
-      # It fails rather than skips because a matrix leg cannot skip itself, and
-      # a green check that silently tested nothing is worse than a red one.
+      # It fails rather than dropping the leg. A fork's PR runs as codesweep-ai,
+      # so the matrix above keeps the macOS arm64 leg for it, and a green check
+      # that silently tested nothing is worse than a red one.
       - name: refuse fork PRs on the self-hosted runner
         if: matrix.label == 'macos-arm64 / self-hosted' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
         run: |
@@ -434,7 +449,7 @@ jobs:
   # rather than of another repository's branch tip.
   smoke-firecracker:
     name: smoke firecracker (${{ matrix.scenario }})
-    # The unit tier first, all four hosts of it. This one boots two microVMs per
+    # The unit tier first, every host of it. This one boots two microVMs per
     # leg and can spend forty minutes building an image before it does; a branch
     # that does not compile has nothing to learn from that.
     needs: [build-test]
@@ -926,10 +941,13 @@ jobs:
   # left. Queued rather than cancelled: the second run still has to be tested.
   image-macos-arm64:
     name: image (macos-arm64 / self-hosted)
-    # Skips cleanly for fork PRs, like every other job on this machine. The
+    # Only in codesweep-ai, the one owner with this machine (see the header),
+    # and skips cleanly for fork PRs, like every other job on it. The
     # repository's "require approval for all external contributors" setting is
     # what actually protects it.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.repository_owner == 'codesweep-ai' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 30
     concurrency:
@@ -1018,11 +1036,17 @@ jobs:
   smoke-macos-arm64:
     name: smoke podman (macos-arm64 / ${{ matrix.scenario }})
     needs: [build-test, image-macos-arm64]
-    # Skips cleanly for fork PRs — unlike the build-test leg, which is inside a
-    # matrix and has to fail instead. Same accident-guard caveat applies: the
+    # Only in codesweep-ai, the one owner with this machine (see the header).
+    # Skipping image-macos-arm64 would skip this too, but the gate is spelled
+    # out so it does not depend on that need staying here.
+    #
+    # And skips cleanly for fork PRs — unlike the build-test leg, which is
+    # inside a matrix and fails instead. Same accident-guard caveat applies: the
     # repository's "require approval for all external contributors" setting is
     # what actually protects this machine.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.repository_owner == 'codesweep-ai' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 40
     strategy:
@@ -1208,6 +1232,11 @@ jobs:
   # only the part of the suite it ran: the unit leg never boots a machine, and
   # the smoke job never runs the unit tier. Merged here they are one picture,
   # which is the only one worth reporting or gating on.
+  #
+  # Outside codesweep-ai the self-hosted macOS runner's smoke is skipped (see the
+  # header), and always() is what lets this job run past that skip. The gate
+  # needs nothing from that runner: .coverage-baseline records the unit tier
+  # only, which every hosted leg reaches.
   coverage:
     name: coverage
     runs-on: ubuntu-26.04
