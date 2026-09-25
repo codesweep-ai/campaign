@@ -81,6 +81,7 @@ func seedMiniGuest(t *testing.T, home, memberCLI string) string {
 		}
 	}
 	seedGuestSha256(t, bin)
+	seedGuestPgrep(t, bin)
 	// A mini guest is a HEALTHY member: it holds exactly what the fake
 	// cs-sandbox says it ships. Seeded here rather than per test, because every
 	// create now runs the harness check and a guest with an empty ~/.local/bin
@@ -118,6 +119,21 @@ func seedGuestSha256(t *testing.T, bin string) {
 	}
 	// Same output shape: `<hex>  <path>`, and the probe reads the first field.
 	if err := os.WriteFile(filepath.Join(bin, "sha256sum"), []byte("#!/bin/sh\nexec shasum -a 256 \"$@\"\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// seedGuestPgrep gives the mini-guest a pgrep that sees only its own
+// processes, and it has none.
+//
+// The member probe counts running turn drivers with pgrep. A real member's
+// pgrep sees its own machine. This member is a directory on the host, so the
+// host's pgrep counted the turn drivers of every real campaign running there,
+// and create then waited out its two-minute bound for a turn that was not this
+// member's (SAC-066). No test starts a turn driver in a mini guest.
+func seedGuestPgrep(t *testing.T, bin string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(bin, "pgrep"), []byte("#!/bin/sh\nexit 1\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 }
