@@ -3,17 +3,19 @@
   "title": "The mini-guest unit tests stall while a real campaign runs on the same host",
   "type": "defect",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, running `make ci` while two live campaigns ran on the same host",
   "opened": "2026-09-25",
-  "resolved": null,
+  "resolved": "2026-09-25",
   "stint": "agent-q_and_a",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "160429c"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "With two campaigns live on the host, `TestCampaignDoctorPassesAMemberOnTheShippedHarness` took 121 seconds before the fix and 1.4 after. The `internal/cli` package took 21 seconds, where it had passed the 10-minute timeout. `make ci` then passed, with all 9 smoke scenarios replayed, before a rebase onto 02c755f that changed only ci.yml."
   },
-  "resolution": null,
+  "resolution": "The mini guest now carries its own `pgrep`, which sees no process, as a real member's sees only its own machine. The member probe run on the host no longer counts another campaign's turn drivers.",
   "details": "The mini-guest tests in `internal/cli` stand a directory on the host in for a member, and their fake `cs-sandbox` runs each command there on the host. The member probe counts running turn drivers with `pgrep -fa 'cs-[c]laude-turn '`. On the host, that also counts the turn drivers of any real campaign running there.\n\nWith two campaigns live, `openMissionWhenQuiet` saw their orchestrators as the test's own, busy in a turn. It waited out its two-minute bound in every test that runs `create`. `TestCampaignDoctorPassesAMemberOnTheShippedHarness` took 121 seconds instead of a few, and the `internal/cli` package passed the 10-minute test timeout, so `make ci` failed. A unit test should not depend on what else the host is running.",
   "notes": [],
   "links": []

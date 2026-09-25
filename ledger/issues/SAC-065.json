@@ -3,17 +3,23 @@
   "title": "The dispatch viewer writes nothing an agent can read to answer questions about a finished run",
   "type": "improvement",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "user request (host), settled in a design conversation on 2026-09-22 and 23 that followed a trial of twenty questions about four finished runs, asked of eight model and CLI pairs",
   "opened": "2026-09-23",
-  "resolved": null,
+  "resolved": "2026-09-25",
   "stint": "agent-q_and_a",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "439f8dd",
+      "69e0a97",
+      "6dc21af",
+      "702ccec",
+      "9b45cdb"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`make ci` passed with all 9 smoke scenarios replayed, and the fixture suite passed 21 of 21. Both ran before a rebase onto 02c755f, which changed only ci.yml, and `make actionlint` passes after it. Four deliberate breaks each fail a test. With an undrawn step addressed again, CF-62 reports 2 wrong. With the trace-page links removed, TestEveryStepTheFactsNameHasALinkThatResolves names the rate-limit step. With a resume read as a continue, TestFactsShowWhatQuestionsAboutARunTurnOn fails. With work summed from the strip, TestMemberTotalsKeepTheirMeasuresApart fails. In an eval of five questions about an invented run, Sonnet 5 answered 15 of 15 right, and all 105 links resolved."
   },
-  "resolution": null,
+  "resolution": "A site now holds the page's data, each trajectory, computed facts and an AGENTS.md generated from the types. An agent answers from files in its working directory. Every event, dispatch and drawn step carries its address, and every step the facts name carries an address or a trace page. The guide says how to cite a figure and a step the page does not draw. A resume is its own event, and spends no rung.",
   "details": "Someone who comes back to a campaign days later asks plain questions: what went wrong, where the time went, who waited on whom, and whether anyone looped. An agent CLI can answer them, with every claim linked to the dispatch page. Today it cannot do that well, for four reasons.\n\n- **The data is only inside HTML.** `cs-dispatch-viewer` embeds the run document in `index.html` and each trajectory in chunked script tags. It deletes the tracer's normalized output when it finishes. Agents in the trial spent their effort extracting data, and the GPT-5 models mostly failed to find it at all.\n- **Step addresses have to be reverse-engineered.** The page numbers trace steps after the events, two per step, so step 5 is not `#traces/e/5`. Nothing in the data says so.\n- **Agents compute the facts, and they get them wrong.** In the trial, five of eight columns answered tool-output bytes when asked for output tokens. Several summed idle across members, and several called polling a loop.\n- **A missing or stale tracer is silent.** On 2026-09-23 the installed viewer predated traces, and it wrote a page with no traces and no warning.\n\nThe change: `--file` and `--site` replace `-o`, and `--no-traces` goes. `--site <dir>` also writes `run-data.json`, the kept trajectories, `facts.json` and an `AGENTS.md` for the agent that is started there. Every event, dispatch and step in the data carries its page address. The facts are computed in Go beside the page's own model, with tests, and stalls are reported as the harness's own continue and restart events against the run's policy. Without a tracer, the single file still renders, with a warning that names the install. `--site` needs one. A tracer whose output the viewer does not read stops both modes.",
   "notes": [
     {
@@ -31,6 +37,10 @@
     {
       "date": "2026-09-24",
       "text": "An eval of five questions about an invented run found three more faults. The facts name many steps the page does not draw, and on the four run14 sites 5 to 26 of them per run have no `addr`, only a trace page. The field description of `providerWaitSeconds` called it the seconds the harness waits, and both models then said the harness waited out the limit. And the viewer reported a resume as a continue. On run14-3, 5 of the 6 continues in the facts were resumes. A resume spends no rung, yet each was counted against `continueAttempts`."
+    },
+    {
+      "date": "2026-09-25",
+      "text": "Before the resume and policy fixes, Sonnet 5 answered the first question wrong in 3 of 3 samples. Each said the harness waited out `providerWaitSeconds` and then continued the orchestrator."
     }
   ],
   "links": []
