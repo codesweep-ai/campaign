@@ -1,0 +1,20 @@
+{
+  "id": "SAC-066",
+  "title": "The mini-guest unit tests stall while a real campaign runs on the same host",
+  "type": "defect",
+  "severity": "med",
+  "status": "in-progress",
+  "foundBy": "session agent, running `make ci` while two live campaigns ran on the same host",
+  "opened": "2026-09-25",
+  "resolved": null,
+  "stint": "agent-q_and_a",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The mini-guest tests in `internal/cli` stand a directory on the host in for a member, and their fake `cs-sandbox` runs each command there on the host. The member probe counts running turn drivers with `pgrep -fa 'cs-[c]laude-turn '`. On the host, that also counts the turn drivers of any real campaign running there.\n\nWith two campaigns live, `openMissionWhenQuiet` saw their orchestrators as the test's own, busy in a turn. It waited out its two-minute bound in every test that runs `create`. `TestCampaignDoctorPassesAMemberOnTheShippedHarness` took 121 seconds instead of a few, and the `internal/cli` package passed the 10-minute test timeout, so `make ci` failed. A unit test should not depend on what else the host is running.",
+  "notes": [],
+  "links": []
+}
