@@ -21,9 +21,14 @@
     {
       "date": "2026-09-20",
       "text": "Half of this is done in 41fec1d, and the record stays open for the other half. A `node-stopped` line now says when the node's own session record last changed, as in `continue next · session record changed 40s ago`. An operator reading that line would not have nudged the orchestrator in the case above. The state itself still reads `node-stopped`, on purpose. The record's age was tried as a second measure of liveness and rejected. A node blocked in one long tool call writes nothing. A probe run inside a live three member campaign showed exactly that. The orchestrator had a live driver and a record 27 seconds old, because it was blocked in `wait`. A state that rested on the record would also delay the ladder for a member that had truly stopped. The proper measure is whether the agent is in a turn, whoever started it. The sandbox's turn drivers already know how to tell, and SBX-056 in the sandbox ledger asks for that as a command a probe can run. When it exists, `Compute` should use it beside the driver count, and this record can close. The severity is lowered to low because the misleading line now carries the evidence that corrects it."
+    },
+    {
+      "date": "2026-09-25",
+      "text": "A live campaign on a build carrying this fix read `node-stopped · continue next` for 3h19m while its orchestrator worked. The orchestrator waited in background tasks, so between its 22 self-started turns no driver was alive and the agent was idle. The `busy` word sees a self-started turn only while it runs. SAC-067 records that gap and the failures it hides."
     }
   ],
   "links": [
-    "SAC-035"
+    "SAC-035",
+    "SAC-067"
   ]
 }
