@@ -21,7 +21,10 @@
 // lists no npm version, as when npmjs.com had not yet listed the one just
 // published, the build's npm image carries the same version, and that is taken.
 // A pin whose project lists neither build stays where it is, and says so. A
-// range is left alone: moving one is a third-party upgrade, not a repin.
+// range is left alone: moving one is a third-party upgrade, not a repin. Where
+// the project's own checkout sits beside this one, a local build of a commit it
+// holds on no branch, as after a rebase, is left out, and a newer one left out
+// is named. Without such a checkout the store is taken as it stands.
 //
 // The install runs through scripts/with-npmrevs.sh, which serves the images CI
 // publishes and the store's packages. The one exception is @codesweep-ai/npmrevs
@@ -142,9 +145,37 @@ async function readStatus(name) {
   }
 }
 
+// Whether the checkout of `name`'s project beside `root` holds `commit` on a
+// branch. True where there is no such checkout, since nothing then says it is
+// gone: a campaign member, say, holds the store without the source.
+export function siblingHolds(root, name, commit) {
+  const short = name.slice(SCOPE.length);
+  const dir = path.join(path.dirname(root), short);
+  let ours = false;
+  try {
+    ours = JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8")).name === name;
+  } catch {
+    // no package.json, or not one that parses
+  }
+  if (!ours) {
+    try {
+      const mod = /^module\s+(\S+)/m.exec(readFileSync(path.join(dir, "go.mod"), "utf8"));
+      ours = Boolean(mod && mod[1].split("/").pop() === short);
+    } catch {
+      // no go.mod either: not the project's checkout
+    }
+  }
+  if (!ours) return true;
+  const r = spawnSync("git", ["-C", dir, "for-each-ref", "--count=1", "--contains", commit, "refs/heads"], {
+    encoding: "utf8",
+  });
+  return r.status === 0 && r.stdout.trim() !== "";
+}
+
 // The newest build of `name` in `store`, the build store scripts/record-build.sh
-// names, as { commit, version, recorded }.
-function newestLocal(store, name) {
+// names, as { commit, version, recorded }, among those `holds(commit)` keeps.
+// A newer build left out is said on stderr.
+export function newestLocal(store, name, holds = () => true) {
   let entries;
   try {
     entries = readdirSync(path.join(store, "status", name.slice(SCOPE.length)));
@@ -152,6 +183,7 @@ function newestLocal(store, name) {
     return null;
   }
   let best = null;
+  let gone = null;
   for (const f of entries) {
     if (!f.endsWith(".json")) continue;
     let e;
@@ -163,7 +195,15 @@ function newestLocal(store, name) {
     const version = e.versions?.npm?.[name];
     const stamp = stampOf(version);
     if (!stamp || !/^[0-9a-f]{40}$/.test(e.commit ?? "")) continue;
+    if (!holds(e.commit)) {
+      if (!gone || stamp > stampOf(gone.version)) gone = { commit: e.commit, version };
+      continue;
+    }
     if (!best || stamp > stampOf(best.version)) best = { commit: e.commit, version, recorded: e.recorded };
+  }
+  if (gone && (!best || stampOf(gone.version) > stampOf(best.version))) {
+    const short = name.slice(SCOPE.length);
+    console.error(`${name}: ${gone.commit.slice(0, 7)}, a newer local build, is left out: ../${short} holds that commit on no branch`);
   }
   return best;
 }
@@ -185,7 +225,7 @@ async function main() {
   const store = record.status === 0 ? record.stdout.trim() : null;
   const steps = await plan(pkg, {
     readStatus,
-    readLocal: async (name) => (store ? newestLocal(store, name) : null),
+    readLocal: async (name) => (store ? newestLocal(store, name, (c) => siblingHolds(root, name, c)) : null),
     onNpmjs,
     goMod: existsSync(path.join(root, "go.mod")),
     local: process.env.LOCAL !== "0",
