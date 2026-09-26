@@ -16,7 +16,8 @@
 // THE PIN. The ui dependency is one exact version from the registry, and these
 // rules keep every part of the repo agreeing about it:
 //
-//  1. every @codesweep-ai/ui specifier names that one version, exactly
+//  1. every @codesweep-ai/ui specifier names that one version, exactly, and it
+//     is a build of a commit rather than a -dirty build of a tree with changes
 //  2. every lockfile entry resolves to it AND carries an integrity
 //  3. the installed package reports that version
 //
@@ -168,6 +169,12 @@ func findPin() (pin, bool) {
 			"      reinstall cannot move the package underneath a committed page", versions[spec], pkg, spec)
 		return pin{}, false
 	}
+	if dirtyRe.MatchString(spec) {
+		fail("%s: %s is %q, a build of a tree with changes, which no CI ever builds and no other\n"+
+			"      machine can install. Pin a build of a commit: a clean `make ci` or `npm run ci` in ui\n"+
+			"      records one", versions[spec], pkg, spec)
+		return pin{}, false
+	}
 	fmt.Printf("  pin        registry %s\n", spec)
 	return pin{version: spec}, true
 }
@@ -175,6 +182,7 @@ func findPin() (pin, bool) {
 var (
 	shaRe   = regexp.MustCompile(`\+([0-9a-f]{7})\.tgz$`)
 	exactRe = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.\-+]+)?$`)
+	dirtyRe = regexp.MustCompile(`[-+]dirty$`)
 )
 
 func shortSHA(base string) string {
