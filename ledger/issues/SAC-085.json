@@ -1,0 +1,20 @@
+{
+  "id": "SAC-085",
+  "title": "A replayed codex member was once handed its readback prompt a second time after it had replied",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, reading the one replay miss in the codex-fault-unauthorized scenario during `make ci` on cac0cb2",
+  "opened": "2026-09-26",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "In one `make ci` replay the codex-fault-unauthorized dev made a 15th request after its 14 recorded steps were served, so cs-vcr reported 1 miss. The scenario still passed with its expected verdict, campaign-blocked. The same cassettes replayed with 0 misses in the `make test-smoke` run just before.\n\nThe unpaired request shows why. The dev's first readback was malformed, as it was when recorded, so create asked again as dispatch d002. Its answer to d002 was accepted. Two seconds later its session received the d002 trigger a second time, word for word: `Read ~/.local/share/cs-campaign/input/d002.001.md and follow it. Dispatch ID: d002.`\n\nCampaign's host sends that trigger once per dispatch, and the text is the trigger rather than a continue or a resume. The second copy therefore came from below the host, in `cs-codex-remote` or its turn driver, or from the codex TUI itself. The members were destroyed after the run, so their session transcripts are gone. Under the fault the extra turn was refused anyway. Without one, a doubled trigger would cost a member an unrequested turn on a closed dispatch.",
+  "notes": [],
+  "links": []
+}
