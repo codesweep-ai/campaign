@@ -3,17 +3,19 @@
   "title": "A -dirty ui pin passes the pin check, and fails only in CI",
   "type": "defect",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "foundBy": "agent review (session): `npm run registry:pack` on a tree with changes packs a -dirty build, and nothing stops a pin on one before CI fails on it",
   "opened": "2026-09-25",
-  "resolved": null,
+  "resolved": "2026-09-25",
   "stint": "local-builds",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "69b23ac"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "In a scratch clone, the @codesweep-ai/ui version dispatch-viewer/app/package.json pins was given a `-dirty` suffix. Then `go run scripts/consumer-conventions.go` failed with exit status 1. It said the version is a build of a tree with changes, which no CI ever builds and no other machine can install. With the pin as committed, it passed. GitHub CI's `ci` passed on 8fd7503, once a macOS smoke job was run again: podman there had refused to start a container."
   },
-  "resolution": null,
+  "resolution": "The pin check rejects a ui version ending in `-dirty` or `+dirty`, and says to pin a build of a commit instead.",
   "details": "`scripts/consumer-conventions.go` accepts any exact version as the ui pin, `-dirty` ones included. `npm run registry:pack` on a tree with changes packs such a build. A pin on one installs on the machine that made it and nowhere else, since no CI ever builds that version. CI then fails with E404, long after the commit.",
   "notes": [],
   "links": []

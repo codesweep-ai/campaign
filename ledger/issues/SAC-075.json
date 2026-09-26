@@ -3,17 +3,19 @@
   "title": "The version checks record nothing of the image members boot",
   "type": "improvement",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, reviewing how local builds reach campaign members (tasks/pin-on-local-builds.md, section 8)",
   "opened": "2026-09-25",
-  "resolved": null,
+  "resolved": "2026-09-25",
   "stint": "local-builds",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "e0fcd1a"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "TestUpstreamRecordsTheImageMembersBoot, TestUpstreamRecordsTheImageCSSandboxImageNames and TestUpstreamNamesTheBinaryCSSandboxBinPicks pass under `go test ./internal/cli/ -count=1`. GitHub CI's `ci` passed on 8fd7503, once a macOS smoke job was run again: podman there had refused to start a container."
   },
-  "resolution": null,
+  "resolution": "`UpstreamCheck` and upstream-fingerprint.json record the image members boot, as the host holds it: its reference, podman's ID for it, and the revision its label names. A deviation names the binary it asked, which `CS_SANDBOX_BIN` may pick.",
   "details": "`UpstreamCheck` and `upstream-fingerprint.json` record the cs-sandbox version, and nothing of the image its members boot. Once a local build of a version can be tagged under a localhost/ name, the version alone no longer says which bytes a campaign ran on. The doctor also says `cs-sandbox on PATH` when `CS_SANDBOX_BIN` names another binary.",
   "notes": [],
   "links": []

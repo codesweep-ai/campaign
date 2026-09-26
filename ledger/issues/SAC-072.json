@@ -3,17 +3,19 @@
   "title": "make repin can pin a local sandbox build that has no image",
   "type": "defect",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, reviewing how local builds reach images (tasks/pin-on-local-builds.md, section 7)",
   "opened": "2026-09-25",
-  "resolved": null,
+  "resolved": "2026-09-25",
   "stint": "local-builds",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "b5f5d4e"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "dashboards' tests/test_repin_go.py passes its image test against this same scripts/repin-go.sh. A build whose entry awaits two images is left out and named until a file for each exists. For real, sandbox's `make ci` at its pushed head recorded the build awaiting sandbox and sandbox-slim. `cs-sandbox build` and `cs-sandbox build --slim` then wrote both files under images/sandbox/. GitHub CI's `ci` passed on 8fd7503, once a macOS smoke job was run again: podman there had refused to start a container."
   },
-  "resolution": null,
+  "resolution": "sandbox's `make ci` records its build awaiting its two images, and `cs-sandbox build` records each image it makes. The repin takes a local sandbox build only once both are there, and names a newer one still waiting.",
   "details": "The smoke and live tiers boot the image the pinned cs-sandbox names. `make repin` takes sandbox's newest local build as soon as its `make ci` passes, whether or not an image of it exists. CI's status file waits for both images before it lists a commit. A campaign member cannot build a full image at all, since Firecracker needs /dev/kvm.",
   "notes": [],
   "links": []

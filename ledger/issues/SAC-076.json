@@ -3,17 +3,19 @@
   "title": "The smoke tiers boot only the published image name",
   "type": "defect",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, reviewing how local builds reach campaign members (tasks/pin-on-local-builds.md, section 8)",
   "opened": "2026-09-25",
-  "resolved": null,
+  "resolved": "2026-09-25",
   "stint": "local-builds",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "e0fcd1a"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "TestSandboxImagePicksTheImageThisHostHolds passes under `go test ./internal/cli/ -count=1`. GitHub CI's `ci` passed on 8fd7503, once a macOS smoke job was run again: podman there had refused to start a container."
   },
-  "resolution": null,
+  "resolution": "`SMOKE_IMAGE` and `SBX_IMAGE` come from scripts/sandbox-image.sh. It picks the published image where this host holds it, then the localhost/ build this host holds, and otherwise the published name, which `cs-sandbox build` pulls or builds.",
   "details": "`SMOKE_IMAGE` and `SBX_IMAGE` are the published names `cs-sandbox version --images` prints, passed as `CS_SANDBOX_IMAGE`. An image `cs-sandbox build` makes of an unpublished version is now tagged under localhost/ instead. So a campaign pinned at a local sandbox build rebuilds the image on every run and boots a name no host holds.",
   "notes": [],
   "links": []

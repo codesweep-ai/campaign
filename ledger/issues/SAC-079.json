@@ -3,17 +3,19 @@
   "title": "make tools builds a cs-sandbox that names codesweep-ai images",
   "type": "defect",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, reviewing how local builds reach images (tasks/pin-on-local-builds.md, section 9)",
   "opened": "2026-09-25",
-  "resolved": null,
+  "resolved": "2026-09-25",
   "stint": "local-builds",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "e0fcd1a"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "In a scratch clone at 8fd7503 whose origin is `git@github.com-fork:forker/campaign.git`, `make tools` built a bin/tools/cs-sandbox whose `version --images` names ghcr.io/forker/sandbox. With origin at https://github.com/codesweep-ai/campaign, it names ghcr.io/codesweep-ai/sandbox. GitHub CI's `ci` passed on 8fd7503, once a macOS smoke job was run again: podman there had refused to start a container."
   },
-  "resolution": null,
+  "resolution": "`make tools` links the image owner into cs-sandbox, as sandbox's own Makefile does. It reads the owner from origin, SSH host aliases included, so a fork's tiers look for the fork's images.",
   "details": "`make tools` installs cs-sandbox at the pin with a plain `go install`, so nothing links in the image owner, and it stays `codesweep-ai`. In a fork workspace, bin/tools/cs-sandbox therefore names `ghcr.io/codesweep-ai/sandbox:<version>` for a version only the fork published, and the tiers boot an image that is not there.",
   "notes": [],
   "links": []
