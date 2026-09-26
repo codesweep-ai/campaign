@@ -284,40 +284,24 @@ versions:
 		*)      printf '%-14s %s\n' 'workspace' "$$w — local checkouts override the go.mod pins" ;; \
 	esac
 
-## repin: pin each codesweep-ai tool to the last commit its CI built, and report
+## repin: pin each codesweep-ai tool to its project's newest build, and report
 ##
-## Each project lists the commits its CI built and passed in `built` in the
-## ci-status.json it publishes (codesweep-ai/dashboards SPEC.md), newest first,
-## so a pin never lands on a commit CI failed, is still building, or never built
-## because it changed only the ledger. curl reads it from the project's Pages
-## site, which no API rate limit applies to. A tool whose project's file cannot
-## be read or lists no build keeps its pin, and says so. Uses GOPROXY=direct so
-## each commit is read from its repository, whatever the module proxy holds. Uses
-## GOWORK=off so this edits the recorded pins even while a workspace is serving
-## local checkouts.
+## The newest build is the newer, by UTC commit time, of two: the last commit the
+## project's CI built and passed, the first in `built` in the ci-status.json it
+## publishes (codesweep-ai/dashboards SPEC.md), and the newest local build the
+## owner's build store holds for it, which a clean `make ci` records there. A pin
+## never lands on a commit nothing built, and one whose project lists neither
+## keeps its pin, and says so. Each pin taken from a local build is named, with
+## its commit and when it was recorded. LOCAL=0 takes CI builds only, for a bump
+## meant to be pushed straight away. scripts/repin-go.sh does the moving, and
+## says how it resolves each pin.
 ##
 ## The @codesweep-ai pins in dispatch-viewer/app/package.json move the same way, through
 ## scripts/repin-npm.mjs, and the committed viewer is then rebuilt on them. Where
 ## npm is absent they stay, and this says so.
 .PHONY: repin
 repin:
-	@tools="$$(go list tool 2>/dev/null | grep codesweep-ai || true)"; \
-	if [ -z "$$tools" ]; then \
-		echo "no codesweep-ai tools declared yet — add the first with:" >&2; \
-		echo "  GOPROXY=direct go get -tool github.com/codesweep-ai/lint/cmd/cs-lint@main" >&2; \
-		exit 1; \
-	fi; \
-	pins=""; \
-	for t in $$tools; do \
-		owner=$$(echo "$$t" | cut -d/ -f2); repo=$$(echo "$$t" | cut -d/ -f3); \
-		built=$$(curl -fsSL "https://$$owner.github.io/$$repo/ci-status.json" 2>/dev/null | \
-			sed -n '/^ "built": \[$$/,/^ \]/s/^ *"commit": *"\([0-9a-f]\{40\}\)".*/\1/p' | head -1); \
-		if [ -n "$$built" ]; then echo "$$repo: $$(echo "$$built" | cut -c1-7), the last commit its CI built"; \
-			pins="$$pins $$t@$$built"; \
-		else echo "$$repo: held, as its status file lists no build"; fi; \
-	done; \
-	if [ -n "$$pins" ]; then GOWORK=off GOPROXY=direct go get -tool $$pins; fi
-	@GOWORK=off go mod tidy
+	@LOCAL='$(LOCAL)' scripts/repin-go.sh
 	@if command -v $(NPM) >/dev/null 2>&1; then \
 		node scripts/repin-npm.mjs $(VIEWER_DIR); \
 	else \
@@ -917,6 +901,7 @@ endef
 ## and a run that is going to fail on gofmt should say so before it boots a
 ## virtual machine.
 ci:
+	@scripts/record-build.sh start
 	$(call say,the gate a contributor runs before pushing)
 	@$(MAKE) --no-print-directory check
 	$(call say,actionlint)
@@ -934,6 +919,8 @@ ci:
 	git diff --exit-code -- covmap/
 	$(call say,the whole protocol on real machines with the turns replayed)
 	@$(MAKE) --no-print-directory test-smoke
+	$(call say,the local build record)
+	@scripts/record-build.sh finish
 	@printf '\nci: every gate ran. Not reproduced here: build-test on macOS, and\n'
 	@printf 'the coverage job that merges tiers from other runners.\n'
 

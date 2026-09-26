@@ -40,14 +40,22 @@ That is every gate the CI workflow has, on this machine and in the order the wor
 so a green run here is a green run there. `make check` is the faster subset to keep beside you
 while you work, and `make ci` is the one that has to pass.
 
+A run that passes on a clean tree also records its commit as a local build, so a sibling project
+can pin it before it is pushed. `scripts/record-build.sh` files it, with its module zip, in the
+build store of the repository's owner, `~/.local/share/cs-builds/<owner>/`, and says so. A run
+over uncommitted changes records nothing.
+
 No linter needs installing. Every one the gates shell out to is pinned and built from the module
 cache on first use: `golangci-lint`, `deadcode`, `actionlint` and the `cs-` tools. `make repin`
-moves the `cs-` pins to the last commit each one's CI built, and leaves one whose project names
-none. It moves the dispatch viewer's `@codesweep-ai/ui` pin the same way, through
-`scripts/repin-npm.mjs`, and rebuilds the committed page on it. `make versions` says which builds
-the gates used. A
-campaign resolves `cs-sandbox` and the agent CLIs from PATH at run time, and `doctor` compares what
-it finds against those same `go.mod` pins.
+moves each `cs-` pin to the newer of its project's last CI build and its newest local one, which a
+clean `make ci` records. It names each pin taken from a local build, and leaves one whose project
+has neither. A local build of sandbox counts only once `cs-sandbox build` and `cs-sandbox build
+--slim` have made its images, as CI's status file waits for them. `make repin LOCAL=0` takes CI
+builds only. It moves the dispatch viewer's
+`@codesweep-ai/ui` pin the same way, through `scripts/repin-npm.mjs`, and rebuilds the committed
+page on it. `make versions` says which builds the gates used. A campaign resolves `cs-sandbox` and
+the agent CLIs from PATH at run time, and `doctor` compares what it finds against those same
+`go.mod` pins.
 
 Moving a linter pin is an edit to `go.mod`, or to `go.golangci.mod` for `golangci-lint`. A linter
 release reaches you when you ask for it, not on an unrelated pull request.
@@ -160,8 +168,8 @@ The order is **build, then validate, then bump the pin**, never the pin first:
 4. Say in the commit message what you ran and what it proved.
 
 Step 4 is the whole record. `go.mod` says which version; only the commit can say that somebody ran
-step 2 against it. `make repin` moves every pin to the last commit its CI built in one go, so a
-commit from it carries the same obligation.
+step 2 against it. `make repin` moves every pin to its project's newest build in one go, local or
+CI, so a commit from it carries the same obligation.
 
 **Never `make install` in the sandbox repo while a campaign is live.** It replaces the binary
 underneath a running team.

@@ -14,7 +14,9 @@
 # It also serves its own data directory, which every project's build packs its
 # npm packages into (`make npm-pack` in npmrevs, lint and ledger, `npm run
 # registry:pack` in ui), so a build made earlier on this machine installs
-# without being pushed anywhere.
+# without being pushed anywhere. So does the npm directory of the build store
+# of this repository's owner, where a clean `make ci` records its packages, so
+# a pin `make repin` or `npm run repin` moved to a local build installs.
 #
 # `npm ci` installs from the URLs the lockfile names, so an entry naming this
 # address comes from an image and every other entry still comes from npmjs.com.
@@ -128,7 +130,16 @@ status() { http "$URL/-/npmrevs"; }
 work="$(mktemp -d)"
 server=""
 cleanup() {
-  [ -n "$server" ] && kill "$server" 2>/dev/null
+  if [ -n "$server" ]; then
+    kill "$server" 2>/dev/null
+    # What the registry warned of while it served, such as a local version
+    # whose bytes differ from the published one it took the place of. Its log
+    # goes with the temporary directory, so the warnings are said here.
+    if grep -q 'level=WARN' "$work/serve.log" 2>/dev/null; then
+      echo "with-npmrevs: the registry warned:" >&2
+      grep 'level=WARN' "$work/serve.log" | sed 's/^/  /' >&2
+    fi
+  fi
   rm -rf "$work"
   return 0
 }
@@ -150,8 +161,16 @@ else
   # A version packed into the data directory takes the place of the image of
   # the same version, so a build made here wins over the one CI pushed.
   mkdir -p "$DATA"
+  # The build store of this repository's owner holds the npm packages of every
+  # local build a clean gate recorded (scripts/record-build.sh), so a pin on one
+  # installs. It is served beside the data directory. A version both hold is the
+  # same bytes in both, since a clean commit packs to the same bytes.
+  store_npm=""
+  if store="$("$ROOT/scripts/record-build.sh" store 2>/dev/null)" && [ -d "$store/npm" ]; then
+    store_npm="$store/npm"
+  fi
   # shellcheck disable=SC2086 # NPMREVS may be a command with arguments
-  $NPMREVS serve --data "$DATA" --images "$IMAGES" --images-scope "$SCOPE" \
+  $NPMREVS serve --data "$DATA" ${store_npm:+--data "$store_npm"} --images "$IMAGES" --images-scope "$SCOPE" \
     --listen "127.0.0.1:$PORT" > "$work/serve.log" 2>&1 &
   server=$!
   for _ in $(seq 1 50); do
