@@ -1,21 +1,33 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSX5qe3SWYT3Y5FNV2Ka","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":229,"cache_read_input_tokens":50314,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":229},"output_tokens":20,"service_tier":"standard","inference_geo":"not_available"},"diagnostics":null,"context_management":null}   }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfShQqjSG6nnmTh43zbhF","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":697,"cache_read_input_tokens":49468,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":697},"output_tokens":2,"service_tier":"standard","inference_geo":"not_available"},"diagnostics":null,"context_management":null}        }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01VMygcGY5h1LXgfdbzE94ie","name":"Bash","input":{},"caller":{"type":"direct"}}         }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}              }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git log campaign/dev/subject --oneline -5 \u0026\u0026 echo \\\"---status of that ref---\\\" \u0026\u0026 git show campaign/dev/subject --stat | head -30 \u0026\u0026 echo \\\"---diff vs base---\\\" \u0026\u0026 git diff 1053761f6a654e7ea58deb67a671a00d2e7fc8ac campaign/dev/subject --stat\", \"description\": \"Inspect dev's branch history and diff vs base\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EokDCqgBCBIYAipAE1kEgCqsdgJkN9UE4kM2C0+NWc48ngVUrtCQmkkdmt3Cuur+HbxEAzJ1cHgQ3PCoEdoBgZFsw/xYjbAg5oLKBjIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEIle/Y6fFH0MZ5XOv8YWdVuIAQGoAa7b4NUGsAECEgyz3cj/059u7kHBJMkaDMezeAKyv2KipbaRCyIwFUeJqpz+4YTFq2ktmoZef7pj9CD1swbN+awuIonsreaBaUEXaB4GUE9A6ZoMJlCWKo0BGnZvyJWCiQKxN5gL5Ovup2GkE0qGRmwTj+jZ/bVZhIBSVS6f7lSfKz8PULBSpyNqpLlTm5CjOxLTbYqZYdCJgIH1WHHrqXATUhgiMQswu9UcHQrOVhHMMxT07WQUJpjIrfAFe7ke2ZH7UaqItCckLEVy3SNYXjIsh63naEzVhdt54VynsuayUNBN05JdGAE="}    }
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0             }
+data: {"type":"content_block_stop","index":0            }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01YKB2eSYL4wGmXQbXoERVU4","name":"Bash","input":{},"caller":{"type":"direct"}}     }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member fetch dev 2\u003e\u00261 | tail -20\", \"description\": \"Fetch dev's branch\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1}
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":229,"cache_read_input_tokens":50314,"output_tokens":197,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}}
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":697,"cache_read_input_tokens":49468,"output_tokens":147,"output_tokens_details":{"thinking_tokens":47}},"context_management":{"applied_edits":[]}             }
 
 event: message_stop
-data: {"type":"message_stop"      }
+data: {"type":"message_stop"    }
 

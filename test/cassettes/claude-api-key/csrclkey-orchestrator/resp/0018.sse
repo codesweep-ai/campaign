@@ -1,45 +1,21 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSXJmXrHkkCHCwuj3qku","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":469,"cache_read_input_tokens":48400,"cache_creation":{"ephemeral_5m_input_tokens":469,"ephemeral_1h_input_tokens":0},"output_tokens":5,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}         }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfShe5F9fA8gDbgB4JEFT","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":584,"cache_read_input_tokens":49075,"cache_creation":{"ephemeral_5m_input_tokens":584,"ephemeral_1h_input_tokens":0},"output_tokens":20,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}       }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}   }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_019PytaZLJpCjfUk5ZhaqYav","name":"Bash","input":{},"caller":{"type":"direct"}}    }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Now let's independ"}  }
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ently run the t"}          }
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ests against"}     }
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" the f"}   }
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"etched t"}      }
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ree."}}
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member send dev --file /tmp/dispatch-dev-1.md\", \"description\": \"Send work dispatch to dev\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0        }
-
-event: content_block_start
-data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01BMFyYKw8j6t4VYCC66KpVx","name":"Bash","input":{},"caller":{"type":"direct"}}      }
-
-event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"rm -rf /tmp/verify_greet \u0026\u0026 git -C ~/subject worktree add --detach /tmp/verify_greet refs/remotes/campaign/dev/subject 2\u003e\u00261 \u0026\u0026 cd /tmp/verify_greet \u0026\u0026 python3 -m unittest discover -s tests; echo \\\"EXIT=$?\\\"\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
-
-event: content_block_stop
-data: {"type":"content_block_stop","index":1        }
+data: {"type":"content_block_stop","index":0     }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":469,"cache_read_input_tokens":48400,"output_tokens":168,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}               }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":584,"cache_read_input_tokens":49075,"output_tokens":105,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}}
 
 event: message_stop
-data: {"type":"message_stop"             }
+data: {"type":"message_stop"           }
 

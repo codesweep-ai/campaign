@@ -1,0 +1,42 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSgPNGZ51DDd84oMUxLz","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":628,"cache_read_input_tokens":40224,"cache_creation":{"ephemeral_5m_input_tokens":628,"ephemeral_1h_input_tokens":0},"output_tokens":2,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}       }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}     }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":null,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EtACCqgBCBIYAipANXSs5/uuzw7+k9F2vw9u6aYBw1FWp8ax0eeTsfst0D11MLICFL21J44GGcmcAQZXEJqGCJnJvAp8nKKEINgRnTIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEEJWDbnM3ucCej/QppAGG8+IAQGoAYfV4NUGsAECEgzPsidjxFZj0qK3VAkaDBNybqaecp6zHaVFxiIwNVlKPSJYlPptst9vYWMmp7S8tAEhlDnZiNTtM0TCcs3tfrVCNqSChGQ7S09KooznKlWEXNm+ugByKSKLgLRHrKWxgNx8ugegVZ+5i7fdoFYIVQAOPCGK8i3a1C8OnyedAbm8U/soSCpLfHLJq1HMB5NcMJFZ/yU8tOFQXokCY3j/1Wj+P1dlGAE="}            }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0           }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01NHEDaiBrYnGP6pmSmLgnqo","name":"Read","input":{},"caller":{"type":"direct"}}       }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1   }
+
+event: content_block_start
+data: {"type":"content_block_start","index":2,"content_block":{"type":"tool_use","id":"toolu_0123nCNmYAiTGkAJ32B4RoXB","name":"Read","input":{},"caller":{"type":"direct"}}             }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/home/<USER:1>/.local/share/cs-campaign/input/dev.md\"}","type":"input_json_delta"},"index":2,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":2}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":628,"cache_read_input_tokens":40224,"output_tokens":186,"output_tokens_details":{"thinking_tokens":33}},"context_management":{"applied_edits":[]}          }
+
+event: message_stop
+data: {"type":"message_stop"}
+

@@ -1,57 +1,21 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSYd8aFRTojUYTtYFJDt","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":417,"cache_read_input_tokens":50984,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":417},"output_tokens":2,"service_tier":"standard","inference_geo":"not_available"},"diagnostics":null,"context_management":null}         }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSmtiaKiBJsHxpUAPZWa","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":866,"cache_read_input_tokens":52624,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":866},"output_tokens":21,"service_tier":"standard","inference_geo":"not_available"},"diagnostics":null,"context_management":null}}
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}         }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01K2EUXSjnwzSMrvR6bqJ1v7","name":"Bash","input":{},"caller":{"type":"direct"}}      }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Ver"}  }
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ified independ"}}
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ently: tests pass with"}        }
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" exit "}           }
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"0, and no"}               }
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" ext"} }
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ra"}           }
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"neous files were added. C"} }
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"leaning up the worktree"}}
-
-event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" and accepting."}  }
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member note assessment --file /home/<USER:1>/.local/share/cs-campaign/output/report.md 2\u003e\u00261\", \"description\": \"Record final assessment note\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
 
 event: content_block_stop
 data: {"type":"content_block_stop","index":0}
 
-event: content_block_start
-data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01QQNymyKZ9qLDYrbuY345cs","name":"Bash","input":{},"caller":{"type":"direct"}}}
-
-event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git worktree remove /tmp/dev-verify \u0026\u0026 cs-campaign-member accept dev\", \"description\": \"Remove verification worktree and accept dev's work\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
-
-event: content_block_stop
-data: {"type":"content_block_stop","index":1     }
-
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":417,"cache_read_input_tokens":50984,"output_tokens":160,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}          }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":866,"cache_read_input_tokens":52624,"output_tokens":119,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}               }
 
 event: message_stop
-data: {"type":"message_stop"  }
+data: {"type":"message_stop"}
 

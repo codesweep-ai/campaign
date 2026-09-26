@@ -1,21 +1,33 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSXL8XRmrGFPQQFVYFnV","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":969,"cache_read_input_tokens":49820,"cache_creation":{"ephemeral_5m_input_tokens":969,"ephemeral_1h_input_tokens":0},"output_tokens":20,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}              }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfShh7jK1pnJc9q7KiEqa","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":420,"cache_read_input_tokens":50868,"cache_creation":{"ephemeral_5m_input_tokens":420,"ephemeral_1h_input_tokens":0},"output_tokens":5,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}    }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01FgHmH9BQMoZb8b5DqxUThg","name":"Bash","input":{},"caller":{"type":"direct"}}               }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}       }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member reply --file /tmp/m1_summary.md --outcome campaign-met\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"Ev4DCqgBCBIYAipAlOCpGoF2/VHTgeDz3/yKjr7uz75mPTmooWTqgVlrRA5Ro8E9AIPygJpuBKfs0I5MwdGQsoV8kCOUHtD7UyqzXTIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyENV11MVJj9skXBYoxGXHg++IAQGoAYvd4NUGsAECEgwszos3LJ8HBkLhNLAaDFkSLeKAclRYc6Lf3SIwhFO2Y5miILVyhDLQUuhKclSOB3NT3cuLCQFJDUbttuagXi20VBx6zUGTiWHRofajKoICFAQBqsmuzyFpOxtlG78hTxhyCuO9jnM/i+QPl0t9ULOmGHABo/AdlvuWMtW0HBBVbzdR19jjJBm0CkF2khtYXPJcIoUrE/DOyiaTNH1JuTbHSMhtZ/Y7gqt3V4e5OFCxvJlCd9OxUIZb/ltBFoWZW01GUgrTLdIihcGLndrppuwvF1bvRc4vKDXyLnEhnHVb8rCgKgii0rHDSPxxT2xKcuAzRWlXxISXwj2hPJXFwnqZWBSYpGxlBuhAncpVZlqSs9PpTht4UBor8JzPsJ3n32XUywNFg7v25oTDZjTQCFZKr/08J2LGsMwuNcAMSHyjptceWoRM84xpPtHulOKtjG+CGAE="}}
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0            }
+data: {"type":"content_block_stop","index":0   }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_016HJRtzvRQWZ1V5cdMZUixo","name":"Bash","input":{},"caller":{"type":"direct"}}             }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git show campaign/dev/subject:src/greet.py \u0026\u0026 echo \\\"---TEST---\\\" \u0026\u0026 git show campaign/dev/subject:tests/test_greet.py\", \"description\": \"Show committed file contents\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1     }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":969,"cache_read_input_tokens":49820,"output_tokens":79,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}            }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":420,"cache_read_input_tokens":50868,"output_tokens":213,"output_tokens_details":{"thinking_tokens":81}},"context_management":{"applied_edits":[]}   }
 
 event: message_stop
-data: {"type":"message_stop"}
+data: {"type":"message_stop"   }
 

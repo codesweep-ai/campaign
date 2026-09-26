@@ -78,8 +78,12 @@ for scenario in "${scenarios[@]}"; do
   # cassette — at record time against the scenario, and again before a replay.
   # What is left here is the half no Go test can see once the run is over:
   # whether the recording finished at all.
+  #
+  # orchestrator-stuck is the one ending that is not a verdict: a scenario
+  # whose point is an orchestrator the protocol reads as node-stuck ends
+  # there, with no mission reply (outcomeStuck in the Go tests).
   case "$outcome" in
-    campaign-met|campaign-blocked|campaign-converged|campaign-exhausted) ;;
+    campaign-met|campaign-blocked|campaign-converged|campaign-exhausted|orchestrator-stuck) ;;
     in-progress)
       # The claim was never settled: the run started and did not finish.
       echo "$name: the recording that produced this never finished" >&2

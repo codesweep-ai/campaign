@@ -1,21 +1,36 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSXGrxDYDidWJRfR8DVZ","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":295,"cache_read_input_tokens":43628,"cache_creation":{"ephemeral_5m_input_tokens":295,"ephemeral_1h_input_tokens":0},"output_tokens":20,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}           }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfShfXjPMNgpxQTcomDFw","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":198,"cache_read_input_tokens":43729,"cache_creation":{"ephemeral_5m_input_tokens":198,"ephemeral_1h_input_tokens":0},"output_tokens":2,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}    }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_018DipMLQBeGZ3c2JoiisgKP","name":"Bash","input":{},"caller":{"type":"direct"}}  }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}        }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git commit -m \\\"$(cat \u003c\u003c'EOF'\\nAdd greet(name) function with unittest coverage\\n\\nImplements src/greet.py returning \\\"Hello, \u003cname\u003e!\\\" and tests/test_greet.py\\ncovering a normal name and the empty string case.\\n\\nCo-Authored-By: Claude Sonnet 5 \u003cnoreply@anthropic.com\u003e\\nEOF\\n)\\\" \u0026\u0026 git log --oneline -3\", \"description\": \"Commit the new greet implementation and tests\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"T"}              }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ests pass, exit code "}          }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"0. Now committing."}    }
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0              }
+data: {"type":"content_block_stop","index":0     }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01Nkp8oLvBiY3mfevmeNodkD","name":"Bash","input":{},"caller":{"type":"direct"}}               }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git add src/greet.py tests/test_greet.py \u0026\u0026 git status\", \"description\": \"Stage the two new files\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1              }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":295,"cache_read_input_tokens":43628,"output_tokens":215,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}}
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":198,"cache_read_input_tokens":43729,"output_tokens":119,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}     }
 
 event: message_stop
-data: {"type":"message_stop"  }
+data: {"type":"message_stop"       }
 

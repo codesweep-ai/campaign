@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSgPE9eSLWRJxuhpMLuA","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":40224,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":7,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}      }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}       }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":null,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EtsCCqgBCBIYAipAF661t3r0x8WxF7uDwtD64vYEyW1ilACbO8Y2toyHd6H5157jrnRiudx2yI7/JHRYmHfNlMkKPF3UyF2Nw3qUHDIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEEJWDbnM3ucCej/QppAGG8+IAQGoAYXV4NUGsAECEgyRS1KH8BgdDYEgbL0aDPwGsmFCWPE1VD3tsCIwulguH7RbcE/yTmdthgmyYj1rQJeSdV50nySEHY9IcCLwkYBcOBZXNFrpq7DYPJK1KmDFjGyVUEqljn+uWCnpWiDfd3/AW5wHxCA0/eG7X1dZTrWKJp7TQ340N/glsBJ5f8b9hOYNKaPHv3isLZHZNcV14fe1xitHVXi+yDdPkN55PQY6LX4vbcW0N06WfGUln4MYAQ=="}  }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0             }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01NdosSZdojnYfpiNbzcD3gq","name":"Read","input":{},"caller":{"type":"direct"}}       }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/home/<USER:1>/.config/cs-campaign/member.json\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1             }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":40224,"output_tokens":96,"output_tokens_details":{"thinking_tokens":25}},"context_management":{"applied_edits":[]}         }
+
+event: message_stop
+data: {"type":"message_stop"  }
+

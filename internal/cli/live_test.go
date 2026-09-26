@@ -40,9 +40,12 @@ func TestLiveMatrix(t *testing.T) {
 				t.Skipf("%s", why)
 			}
 			run := runLiveCampaign(t, sc, runOptions{ceiling: 30 * time.Minute})
-			if run.verdict.Outcome != sc.outcome() {
+			if run.outcome() != sc.outcome() {
 				t.Fatalf("this mission is small and mechanical, so %s should end %s; got %s: %s",
-					sc.name, sc.outcome(), run.verdict.Outcome, run.verdict.Note)
+					sc.name, sc.outcome(), run.outcome(), run.note())
+			}
+			if run.verdict == nil {
+				return
 			}
 			for _, cli := range sc.clis() {
 				proveCampaignBehaviours(t, cli, covmap.TierLive)
@@ -158,11 +161,11 @@ func TestLiveRecordsACassette(t *testing.T) {
 			// campaign-met for every scenario but the fault tier's: a
 			// rejected credential is the operator's repair, so a campaign
 			// that met its mission under one would be the surprise.
-			if run.verdict.Outcome != sc.outcome() {
+			if run.outcome() != sc.outcome() {
 				t.Fatalf("record a %s campaign, or the smoke tier asserts on the wrong verdict: got %s: %s",
-					sc.outcome(), run.verdict.Outcome, run.verdict.Note)
+					sc.outcome(), run.outcome(), run.note())
 			}
-			settleRecording(t, store, sc, run.verdict.Outcome)
+			settleRecording(t, store, sc, run.outcome())
 			// The host's session records must not survive into the replay:
 			// startTurn asks hostSessionFresh which branch of protocol.Trigger
 			// to send, and the two emit different prompt text.

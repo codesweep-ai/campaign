@@ -33,16 +33,17 @@
     {
       "content": [
         {
-          "signature": "EtYCCqgBCBIYAipA3x6f8IgQE4Q0Fm1eZhpBoz5Jh+6+ykdQ/N+h4vex4AiBBUoQkgo/rcXOtBr0DBVy2m6x2gWAn2rZho34rXK7qzIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEOZGRRWlTXLiu6IfTs4qgQyIAQGoAZip4NUGsAECEgyuK/KpdIQdtT7W9UcaDCq/AzTr6K67TDjILCIwe9i9fKl4PyP+BvWMstPPIlKPHHyHsg1s2VAg0StQSl9fsPTFD9zRW2zlH6Ky6i7gKlvZw0Evm29zLunw6zjQ/2WvgbmB3VmLJrCl4KDgnrCerWW11DdEQ6zTpsrRSB8VgaTW+8B638Scn+WliA8TZ2mF1ZyyHzSFycaAFglYQs681kNEu1E+Ae1HpjfnGAE=",
+          "signature": "EoQDCqgBCBIYAipAeK8qWi3HZVukjx8l9vPJzFnq+l9yLeZcO065AQ9s6eunxBk26tOrtUjCphy2hTbCONJ179nKLfXZlYuKcMyDRzIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEAkDawEDuVILDC63R0vNBSGIAQGoAYDp4NUGsAECEgyLwhr+x+SABMuVKnsaDFWZxK1jnk/osuOjkCIwSUrDSzrJ/DaNsSdalmpWTNV5EG5PpdjqW4iySjZQR6o/paPUvL9T5OXshlwXcRZ1KogBogivkqsPGRQ8+NOjDXZRccexIHjvMAweItNDwqU5j5JecU1RYvHw3w/jRV6PLjFlzT8CGCXzjLpYgAuEkGD1T4dtPPwC8w/WHxV61Ism0EtYtwjd6GoiwdzQqQ9HfTHicpkOlBgMLwJwzwNa3MaZyciThY3XhPl0qBRMQD75PEs74Pydq3AzVBgB",
           "thinking": "",
           "type": "thinking"
         },
         {
-          "id": "toolu_01YFka9nN9uVuV1ieSqM8huc",
+          "id": "toolu_014tC9afnz7HXvKBt7nNicAY",
           "input": {
-            "file_path": "/home/<USER:1>/.config/cs-campaign/member.json"
+            "command": "cat ~/.config/cs-campaign/member.json",
+            "description": "Read campaign member config"
           },
-          "name": "Read",
+          "name": "Bash",
           "type": "tool_use"
         }
       ],
@@ -51,26 +52,27 @@
     {
       "content": [
         {
-          "content": "1\t{\n2\t  \"campaign\": \"csrclcap\",\n3\t  \"member\": \"dev\",\n4\t  \"role\": \"agent\",\n5\t  \"network\": \"cs-sandbox-<GROUP:1>\",\n6\t  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n7\t  \"repos\": [\n8\t    {\n9\t      \"name\": \"subject\",\n10\t      \"base\": \"1053761f6a654e7ea58deb67a671a00d2e7fc8ac\"\n11\t    }\n12\t  ],\n13\t  \"inputs\": [\n14\t    \"ORIENTATION.md\",\n15\t    \"dev.md\"\n16\t  ],\n17\t  \"inputDir\": \".local/share/cs-campaign/input\",\n18\t  \"outputDir\": \".local/share/cs-campaign/output\",\n19\t  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n20\t  \"policy\": {\n21\t    \"continueAttempts\": 2,\n22\t    \"restarts\": 1,\n23\t    \"elapsedSeconds\": 3600,\n24\t    \"blindProbes\": 10,\n25\t    \"pollSeconds\": 15,\n26\t    \"settlingSeconds\": 300,\n27\t    \"providerWaitSeconds\": 3600,\n28\t    \"stallSeconds\": 180\n29\t  },\n30\t  \"deadline\": \"2026-09-26T19:52:49.312470464Z\"\n31\t}\n32\t",
-          "tool_use_id": "toolu_01YFka9nN9uVuV1ieSqM8huc",
+          "content": "{\n  \"campaign\": \"csrclcap\",\n  \"member\": \"dev\",\n  \"role\": \"agent\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"1053761f6a654e7ea58deb67a671a00d2e7fc8ac\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"providerWaitSeconds\": 3600,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-09-26T22:09:01.196183823Z\"\n}",
+          "is_error": false,
+          "tool_use_id": "toolu_014tC9afnz7HXvKBt7nNicAY",
           "type": "tool_result"
         }
       ],
       "role": "user"
     },
     {
-      "content": "<system-reminder>\n<total_tokens>14959682 tokens left</total_tokens>\n</system-reminder>",
+      "content": "<system-reminder>\n<total_tokens>14959642 tokens left</total_tokens>\n</system-reminder>",
       "role": "system"
     },
     {
       "content": [
         {
-          "signature": "Et0CCqgBCBIYAipAGMxSfxG72Rn8Z4DQu8S7x/vrxDRYb7ec+FqQn9goZkxXK1HeuadYArim8yiP57vZF9t+d2D2PzOjBRMmUwJqADIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEOZGRRWlTXLiu6IfTs4qgQyIAQGoAZqp4NUGsAECEgxChC59TCc2UirMyTUaDBM1OxpgyQgAZxDWYyIwoLMXcXNENxCyFKaPzEGfEE5pEaQErUvl3LF3YAeNMAmapWZbpvCA2+byZkMDKT4iKmKR560U6lz1xu+xo//qs2txOMR3tTC4l6V3TbYaa/TKfZjopyukqihfDa1uVn0Bo20Kjw/vDW6EKBjC1xPSX2o9hBKH7f80Pe/TrbIt4PQxGIJhy2QldQh6+F3FuDjSNIVWqBgB",
+          "signature": "EqcCCqgBCBIYAipAYmwWvd9N0cgHQzGTUsyKSyhBFvbOefBhfchuiSbuEePEyYgv1JlkSM6OAc5wE1rriGiPWRc8mSMFSrmf3CcfZDIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEAkDawEDuVILDC63R0vNBSGIAQGoAYTp4NUGsAECEgzmMlTzrPta17QGTEEaDBPr5K/Ji0PGWeCPAyIwtF+CkdLMGURoY4+z6wMCZHH2FiI0N0RqhVpcxfJHFnke20gEbb7rEp/W0PRebaqdKiyvNDYbXWGHI+HrQagDrNnNmD6MRAxzNOuk0Y3hRKYu8PJBfMaD6/zwBx7c2RgB",
           "thinking": "",
           "type": "thinking"
         },
         {
-          "id": "toolu_01UE2ChSLTjYpGq8LnjACPwi",
+          "id": "toolu_013f6Zi2qdaqKaGzcgk3G9PN",
           "input": {
             "file_path": "/home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md"
           },
@@ -78,7 +80,7 @@
           "type": "tool_use"
         },
         {
-          "id": "toolu_01Q7oC1GXKAffTBURcSjYM3U",
+          "id": "toolu_01BfDNLFbhqBLwziU7gvE9sE",
           "input": {
             "file_path": "/home/<USER:1>/.local/share/cs-campaign/input/dev.md"
           },
@@ -91,30 +93,35 @@
     {
       "content": [
         {
-          "content": "1\tYou own the subject repository.\n2\t\n3\tImplement exactly what each dispatch asks, run the tests you write, commit to\n4\tyour own branch before replying, and tell the truth in your reply.\n5\t",
-          "tool_use_id": "toolu_01Q7oC1GXKAffTBURcSjYM3U",
+          "content": "1\t# Campaign member orientation\n2\t\n3\tYou are `dev`, running as the **agent** of campaign `csrclcap`.\n4\t\n5\tThis file is written by the harness at creation. It describes your environment and\n6\tthe one rule everything runs on. It does not describe the work — that is in the\n7\tfiles listed below.\n8\t\n9\t## What you have\n10\t\n11\t- **`~/subject`** — your own clone of the repository, on branch `cs-sandbox/<DEV:1>.<GROUP:1>`.\n12\t  Nobody else commits to that branch.\n13\t\n14\tFiles placed in `~/.local/share/cs-campaign/input` for you:\n15\t\n16\t- `dev.md`\n17\t\n18\t**Read all of them before you begin.** They are the only statement of what you are\n19\there to do.\n20\t\n21\t## The one rule\n22\t\n23\tWork reaches you as **dispatches** — read your current one with\n24\t`cs-campaign-member inbox`. A dispatch stays open until you close it:\n25\t\n26\t    cs-campaign-member reply --file <path-to-your-summary>\n27\t\n28\t**Do not stop until you have replied.** If you end your turn without a reply, the\n29\twork is not done in anyone's eyes but yours: you will simply be prodded to reply,\n30\tand your unsaved reasoning may be gone. Reply, then stop.\n31\t\n32\tTwo more obligations, both irreversible if skipped:\n33\t\n34\t- **Commit your work to your own branch.** Your machine is destroyed at the end of\n35\t  the campaign; a commit on your branch is the only way anything survives. Your\n36\t  reply automatically records whether your branch really differs from its base —\n37\t  an empty branch under a confident reply speaks for itself.\n38\t- **Write durable results to `~/.local/share/cs-campaign/output`** — reports, findings, anything\n39\t  that should outlive the run and is not source code.\n40\t\n41\t## Reporting\n42\t\n43\tYou have no route to the orchestrator or to any other member. You cannot ask\n44\tquestions, and nothing you write travels on its own. The orchestrator sees three\n45\tthings — make all three count:\n46\t\n47\t- **Your branch** — it fetches and inspects your commits. The real record.\n48\t- **Your reply** — what you did, what you changed, whether your tests passed, and\n49\t  anything you could not do. This is the only message it receives from you.\n50\t- **`~/.local/share/cs-campaign/output`** — files you leave there. The orchestrator can list and\n51\t  read them, so name a long file in your reply rather than pasting it.\n52\t\n53\tIf you are blocked or believe your task is wrong, say so plainly **in a reply**\n54\t(`cs-campaign-member reply --needs-input --file …`) and stop. Do not expand your\n55\tscope to work around it, and do not guess at what was meant.\n56\t",
+          "tool_use_id": "toolu_013f6Zi2qdaqKaGzcgk3G9PN",
           "type": "tool_result"
         },
         {
-          "content": "1\t# Campaign member orientation\n2\t\n3\tYou are `dev`, running as the **agent** of campaign `csrclcap`.\n4\t\n5\tThis file is written by the harness at creation. It describes your environment and\n6\tthe one rule everything runs on. It does not describe the work — that is in the\n7\tfiles listed below.\n8\t\n9\t## What you have\n10\t\n11\t- **`~/subject`** — your own clone of the repository, on branch `cs-sandbox/<DEV:1>.<GROUP:1>`.\n12\t  Nobody else commits to that branch.\n13\t\n14\tFiles placed in `~/.local/share/cs-campaign/input` for you:\n15\t\n16\t- `dev.md`\n17\t\n18\t**Read all of them before you begin.** They are the only statement of what you are\n19\there to do.\n20\t\n21\t## The one rule\n22\t\n23\tWork reaches you as **dispatches** — read your current one with\n24\t`cs-campaign-member inbox`. A dispatch stays open until you close it:\n25\t\n26\t    cs-campaign-member reply --file <path-to-your-summary>\n27\t\n28\t**Do not stop until you have replied.** If you end your turn without a reply, the\n29\twork is not done in anyone's eyes but yours: you will simply be prodded to reply,\n30\tand your unsaved reasoning may be gone. Reply, then stop.\n31\t\n32\tTwo more obligations, both irreversible if skipped:\n33\t\n34\t- **Commit your work to your own branch.** Your machine is destroyed at the end of\n35\t  the campaign; a commit on your branch is the only way anything survives. Your\n36\t  reply automatically records whether your branch really differs from its base —\n37\t  an empty branch under a confident reply speaks for itself.\n38\t- **Write durable results to `~/.local/share/cs-campaign/output`** — reports, findings, anything\n39\t  that should outlive the run and is not source code.\n40\t\n41\t## Reporting\n42\t\n43\tYou have no route to the orchestrator or to any other member. You cannot ask\n44\tquestions, and nothing you write travels on its own. The orchestrator sees three\n45\tthings — make all three count:\n46\t\n47\t- **Your branch** — it fetches and inspects your commits. The real record.\n48\t- **Your reply** — what you did, what you changed, whether your tests passed, and\n49\t  anything you could not do. This is the only message it receives from you.\n50\t- **`~/.local/share/cs-campaign/output`** — files you leave there. The orchestrator can list and\n51\t  read them, so name a long file in your reply rather than pasting it.\n52\t\n53\tIf you are blocked or believe your task is wrong, say so plainly **in a reply**\n54\t(`cs-campaign-member reply --needs-input --file …`) and stop. Do not expand your\n55\tscope to work around it, and do not guess at what was meant.\n56\t",
-          "tool_use_id": "toolu_01UE2ChSLTjYpGq8LnjACPwi",
+          "content": "1\tYou own the subject repository.\n2\t\n3\tImplement exactly what each dispatch asks, run the tests you write, commit to\n4\tyour own branch before replying, and tell the truth in your reply.\n5\t",
+          "tool_use_id": "toolu_01BfDNLFbhqBLwziU7gvE9sE",
           "type": "tool_result"
         }
       ],
       "role": "user"
     },
     {
-      "content": "<system-reminder>\n<total_tokens>14958969 tokens left</total_tokens>\n</system-reminder>",
+      "content": "<system-reminder>\n<total_tokens>14959018 tokens left</total_tokens>\n</system-reminder>",
       "role": "system"
     },
     {
       "content": [
         {
-          "text": "Now let me read the actual dispatch d001.",
-          "type": "text"
+          "id": "toolu_011kB7DnN6Gs4zRo4siz3wfV",
+          "input": {
+            "command": "cs-campaign-member inbox",
+            "description": "Check current dispatch"
+          },
+          "name": "Bash",
+          "type": "tool_use"
         },
         {
-          "id": "toolu_012hMgXXAEs2vvnYZ4DWvAY1",
+          "id": "toolu_01QSgpZLmi2Sxg5MPpifDASn",
           "input": {
             "file_path": "/home/<USER:1>/.local/share/cs-campaign/input/d001.md"
           },
@@ -127,26 +134,27 @@
     {
       "content": [
         {
+          "content": "dispatch d001 — 1 message(s) — OPEN\n\n--- ~/.local/share/cs-campaign/input/d001.md ---\nThis is dispatch d001: confirm your briefing before any work is assigned.\n\n1. Run: cs-campaign-member check-inputs\n   It prints anything you were promised that is absent.\n2. Read ~/.config/cs-campaign/member.json, and then every file it lists under \"inputs\", in order.\n3. Write a file (e.g. /tmp/readback.json) holding EXACTLY this JSON, on a single line:\n\n{\"member\":\"dev\",\"role\":\"agent\",\"branch\":\"<your branch, from member.json>\",\"missing\":[<output of check-inputs, as strings, else empty>],\"goal\":\"<one sentence, in your own words: what this campaign is asking you to accomplish>\",\"scope\":\"<one sentence: what you own and what you must not touch>\",\"obligations\":\"<one sentence: what this campaign requires of you, and what happens to your work if you do not do it>\"}\n\n4. Reply with it: cs-campaign-member reply --file /tmp/readback.json\n\nDo not perform any of the work yet. Your reply closes this dispatch.\n\nYou owe a reply: when the work is concluded, run\n  cs-campaign-member reply --file <path-to-your-summary>\nEnding your turn without one reads as stopped, and you will be continued.",
+          "is_error": false,
+          "tool_use_id": "toolu_011kB7DnN6Gs4zRo4siz3wfV",
+          "type": "tool_result"
+        },
+        {
           "content": "1\tThis is dispatch d001: confirm your briefing before any work is assigned.\n2\t\n3\t1. Run: cs-campaign-member check-inputs\n4\t   It prints anything you were promised that is absent.\n5\t2. Read ~/.config/cs-campaign/member.json, and then every file it lists under \"inputs\", in order.\n6\t3. Write a file (e.g. /tmp/readback.json) holding EXACTLY this JSON, on a single line:\n7\t\n8\t{\"member\":\"dev\",\"role\":\"agent\",\"branch\":\"<your branch, from member.json>\",\"missing\":[<output of check-inputs, as strings, else empty>],\"goal\":\"<one sentence, in your own words: what this campaign is asking you to accomplish>\",\"scope\":\"<one sentence: what you own and what you must not touch>\",\"obligations\":\"<one sentence: what this campaign requires of you, and what happens to your work if you do not do it>\"}\n9\t\n10\t4. Reply with it: cs-campaign-member reply --file /tmp/readback.json\n11\t\n12\tDo not perform any of the work yet. Your reply closes this dispatch.",
-          "tool_use_id": "toolu_012hMgXXAEs2vvnYZ4DWvAY1",
+          "tool_use_id": "toolu_01QSgpZLmi2Sxg5MPpifDASn",
           "type": "tool_result"
         }
       ],
       "role": "user"
     },
     {
-      "content": "<system-reminder>\n<total_tokens>14957773 tokens left</total_tokens>\n</system-reminder>",
+      "content": "<system-reminder>\n<total_tokens>14957757 tokens left</total_tokens>\n</system-reminder>",
       "role": "system"
     },
     {
       "content": [
         {
-          "signature": "EqoCCqgBCBIYAipAGZVjRnJIveTwk9gigEG6xdh8jCKr2cadqWr2s+JLymAUj5fY/ZGXBGcZI4Hrzu9oI+dJ4Jw+rgVGTJegwRrMTDIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEOZGRRWlTXLiu6IfTs4qgQyIAQGoAZ+p4NUGsAECEgwYb53IKUJWr6nA144aDB7USND9gbNPTeF2hCIw4vPRw++ghTKT61JokaYIJ53nTm98ImwZETu5Ice/p/yzBZg1FrVNqbraBxm0ftvvKi+8F5djclQE8+HYppW7mRlIe0rKcJL4niObX4n8sw0tq3/fJAHhZQS7rCSZcLN7WxgB",
-          "thinking": "",
-          "type": "thinking"
-        },
-        {
-          "id": "toolu_011oWAr3f7YmWfoWtKYNXQ5r",
+          "id": "toolu_01UZ62LkDhqESRFpM3HoN7Dt",
           "input": {
             "command": "cs-campaign-member check-inputs",
             "description": "Check for missing promised inputs"
@@ -162,14 +170,14 @@
         {
           "content": "all 2 listed inputs and 0 snapshot(s) present",
           "is_error": false,
-          "tool_use_id": "toolu_011oWAr3f7YmWfoWtKYNXQ5r",
+          "tool_use_id": "toolu_01UZ62LkDhqESRFpM3HoN7Dt",
           "type": "tool_result"
         }
       ],
       "role": "user"
     },
     {
-      "content": "<system-reminder>\n<total_tokens>14957262 tokens left</total_tokens>\n</system-reminder>",
+      "content": "<system-reminder>\n<total_tokens>14956764 tokens left</total_tokens>\n</system-reminder>",
       "role": "system"
     }
   ],

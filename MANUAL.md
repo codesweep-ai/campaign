@@ -333,9 +333,9 @@ idle. Once its session record has been still for longer than one `wait` chunk pl
 `settlingSeconds`, it reads `node-stuck`. The line reads `idle with no turn driven, and its session record still for 12m,
 past one wait chunk and its margin (9m)`. An orchestrator that runs `wait` in a background task is
 woken by it within one chunk, so an idle one past that bound was never woken. The chunk is 240
-seconds, or what `CS_CAMPAIGN_WAIT_SECONDS` sets. Brief the orchestrator to call `wait` in the
-foreground, where a provider error ends a turn the driver records and `cs-campaign resume` can carry
-it on.
+seconds, or what `CS_CAMPAIGN_WAIT_SECONDS` sets. The orchestrator's orientation tells it to call
+`wait` in the foreground, where a provider error ends a turn the driver records and `cs-campaign
+resume` can carry it on.
 
 **CLAIMED** is the orchestrator's own append-only log. A claim beside the facts: "orchestrator says
 qa is working" next to "qa is unreachable" is the line this command exists for. `observe` also

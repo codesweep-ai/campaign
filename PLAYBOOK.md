@@ -341,10 +341,11 @@ for what the campaign delivers, so it verifies returned work rather than accepti
 report. Where an agent reports a number, say that the orchestrator confirms it: a report is a claim
 and the branch is the evidence.
 
-**Have it call `wait` in the foreground**, as a command inside its turn. A turn the host started
-is one a driver records, so a provider error that ends it reads as a refusal and `cs-campaign
-resume` carries it on. An orchestrator that runs `wait` as a background task and ends its turn
-works on in turns its own CLI starts, which no driver records. Never brief it to wait that way.
+**It calls `wait` in the foreground**, as a command inside its turn, and its orientation and
+mission dispatch tell it so. A turn the host started is one a driver records, so a provider error
+that ends it reads as a refusal and `cs-campaign resume` carries it on. An orchestrator that runs
+`wait` as a background task and ends its turn works on in turns its own CLI starts, which no
+driver records. Never brief it to wait that way.
 
 Do not restate the outcome vocabulary. The four values arrive with the mission dispatch, which is
 later and more authoritative than anything you seeded. A brief that names its own is a brief the

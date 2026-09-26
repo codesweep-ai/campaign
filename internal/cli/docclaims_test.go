@@ -322,8 +322,9 @@ func TestTheDocumentedRecordAgeIsOnAStoppedLine(t *testing.T) {
 // SPEC.md R64 lets the record's age decide one state: an idle orchestrator whose
 // record has been still past one wait chunk and the settling window is stuck.
 // MANUAL.md quotes the line at the defaults, and PLAYBOOK.md and PROTOCOL.md tell
-// the operator to have the orchestrator wait in the foreground, which is what
-// keeps its turns ones a driver records (SAC-067).
+// the operator the orchestrator waits in the foreground, which is what keeps its
+// turns ones a driver records (SAC-067). The orientation is where the
+// orchestrator itself is told so (SAC-069).
 func TestTheDocumentedIdleOrchestratorLineIsTheOneComputed(t *testing.T) {
 	root, err := covmap.FindRepoRoot(".")
 	if err != nil {
@@ -333,8 +334,9 @@ func TestTheDocumentedIdleOrchestratorLineIsTheOneComputed(t *testing.T) {
 	for doc, want := range map[string]string{
 		"SPEC.md":     "Once its session record has been still for longer than one `wait` chunk (R126) plus the\nsettling window, it **MUST** read `node-stuck`",
 		"MANUAL.md":   line,
-		"PLAYBOOK.md": "**Have it call `wait` in the foreground**",
+		"PLAYBOOK.md": "**It calls `wait` in the foreground**",
 		"PROTOCOL.md": "**The orchestrator calls the wait in the foreground**",
+		"internal/cli/assets/orientation.md.tmpl": "**Never end your turn without either calling `wait` in the\nforeground or replying.**",
 	} {
 		body, err := os.ReadFile(filepath.Join(root, doc))
 		if err != nil {

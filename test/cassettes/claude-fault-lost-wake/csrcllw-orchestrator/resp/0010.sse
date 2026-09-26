@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSgSZgyFQVskYTbNkwhc","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":455,"cache_read_input_tokens":45379,"cache_creation":{"ephemeral_5m_input_tokens":455,"ephemeral_1h_input_tokens":0},"output_tokens":3,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}       }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}        }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EoQDCqgBCBIYAipA+UJzHF7iI14grv4i0Ly3z+f8YvYJ1bQwf411YxaQZotqNvy/NvQ6CLMVihOHDjmwonKIOKKvEBeeA/pjAuOZCTIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEO1I2spkSLLtSULqZjvgIt6IAQGoAbPV4NUGsAECEgx3K9PnGquyL5h+vgIaDHnwa4LUHRMslozggCIwhX7MQlbJmVQfszzNZJP/ee1MLyLGKP9v7mGTOlFcxowo1jDaSRazrCv+wMeyTkqtKogBH/KQdyyehV7EJQS5X2dHCA+kDYZlZvTpfkdGBImUueT0lEPE7ecazEWiwfpeWHZiy19NwgLz/sCrWTTlggDudCBwJSHbOLG9Kzj4L6FIRhVQG4oSi/d0JGyJSgk1jcHKzP6JwXFgwCSwRoMvEPa43yWG26vGBqcbGho00W9xivOn2HW+vpjawhgB"}             }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0     }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01S4VtG4g2t3HbwztYf94vwv","name":"Bash","input":{},"caller":{"type":"direct"}}          }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"sleep 3; cat /tmp/claude-1000/-home-<USER:1>/85a9cb48-3c0c-417a-a47b-eb0da44e879e/tasks/b3hnl05wa.output 2\u003e\u00261\", \"description\": \"Check output of background task\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1            }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":455,"cache_read_input_tokens":45379,"output_tokens":194,"output_tokens_details":{"thinking_tokens":45}},"context_management":{"applied_edits":[]}     }
+
+event: message_stop
+data: {"type":"message_stop"  }
+

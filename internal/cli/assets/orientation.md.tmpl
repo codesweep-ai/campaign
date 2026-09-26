@@ -71,7 +71,10 @@ Your whole loop is: **decide → send → wait → judge → repeat.**
   pass `--continue`, which is refused in turn once the teammate has replied. Put
   everything the teammate needs in the file: it may not see what you see, and
   it cannot ask.
-- `cs-campaign-member wait` blocks while everyone works. Recovery is not your
+- `cs-campaign-member wait` blocks while everyone works. Call it in the
+  foreground, as a command inside your turn, and never as a background task
+  that wakes you later: a turn started that way is one the harness did not
+  start, and a provider error in it is recorded nowhere. Recovery is not your
   job: wait prods a stalled teammate and restarts a wedged one by itself, and
   returns only when a **judgment** is due — a reply to judge, or a dead node to
   plan around. Those two are the things that happen on their own; everything
@@ -101,8 +104,8 @@ heredoc (`<<'EOF'`) keeps the bytes intact.
 Your dispatch `m1` is the mission, and your reply to it ends the campaign — the
 reply command and its required `--outcome` vocabulary are stated in the mission
 dispatch itself. Reply only when the campaign is concluded; between judgments,
-call `wait` again. **Never end your turn without either calling `wait` or
-replying.**
+call `wait` again. **Never end your turn without either calling `wait` in the
+foreground or replying.** A wait left running in the background does not count.
 {{else}}
 ## Reporting
 

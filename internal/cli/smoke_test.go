@@ -78,12 +78,17 @@ func TestSmokeReplay(t *testing.T) {
 				fixedName:  replayName(sc),
 			})
 
-			if run.verdict.Outcome != sc.outcome() {
+			if run.outcome() != sc.outcome() {
 				t.Fatalf("the recording ended %s, so its replay must too; got %s: %s",
-					sc.outcome(), run.verdict.Outcome, run.verdict.Note)
+					sc.outcome(), run.outcome(), run.note())
 			}
 			assertFaultAnswered(t, sc, run)
 			assertSpentNothing(t, run.proxy)
+			// A campaign left with its orchestrator stuck never judged a
+			// reply, which is one of the things these cells claim.
+			if run.verdict == nil {
+				return
+			}
 			for _, cli := range sc.clis() {
 				proveCampaignBehaviours(t, cli, covmap.TierSmoke)
 			}

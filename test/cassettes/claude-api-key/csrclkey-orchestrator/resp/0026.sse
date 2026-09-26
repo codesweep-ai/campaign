@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfShiJSWikgRF9KMKHjeK","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":908,"cache_read_input_tokens":52435,"cache_creation":{"ephemeral_5m_input_tokens":908,"ephemeral_1h_input_tokens":0},"output_tokens":2,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}             }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}}
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EucECqgBCBIYAipAbzizohl3NK7fMQZ6l/i38gZWVlrsAxrnuYn2KV3IlAW3E28dRiNCNpFie/FB+VwX11oSSgTPDLGb0zQO9Rx5QzIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyENV11MVJj9skXBYoxGXHg++IAQGoAZvd4NUGsAECEgxm9rZMXGCrOvPqk5QaDKgq9y6QPx+h+GdgfiIw8GE4yoGwq/jWgvEa5KVmHQ4/XHUi/4Npiz2ateCY3A7cef5o8w5RrDr2YKb5V+ZXKusCAL73nvyDwU/8wlr2JTc89rENtJzvJzCmmTcQ7Jg+5Y3P6TqKuFuFDTU0FGUDwAYDh4Sqj3G6RIYVFBUiwxcIfeo1ZCTzfOyrXiRM/a2fnfEmXMZnvTuB6cpn7uCV7/h31q64CDHArAOjdzCzt2J5Yv3ffxKWucenZUPL3lEzpae7x7xgo8bSWZ6rQek0TVNUjSbKvreAoz3JoXaRRUJPfeUxCjKj236XrnMh4/EiEShgR6xWrJ3YcgaGCQE0sdNplhH44mVr8lW46rrdrcbG46ijEHAskrpo7rnSXDzk+aZELFb7hc/+OdD1edfF+EYK5sDtCTRrqi0P1mf7btS3d4SGrGFrQYCpspZHkVb+N7BEjzaK+1r66C7T7JUZLWusGMdk1idmVy7BInJS9cjKn5GFkJFxMqoct1YxkBk7OE3WJ5vOBDyqrsFwC7sjIZOqJtqJJ/R6X1NODvffJNfhTrxqYGw9n56rWPCiGAE="}        }
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0  }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01TdrPCCYBKV5gJS2qAWzM5h","name":"Bash","input":{},"caller":{"type":"direct"}}}
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git ls-remote origin | grep -i dev; git ls-remote origin | head -20\", \"description\": \"Check what branches exist on shared origin\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1    }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":908,"cache_read_input_tokens":52435,"output_tokens":242,"output_tokens_details":{"thinking_tokens":127}},"context_management":{"applied_edits":[]}            }
+
+event: message_stop
+data: {"type":"message_stop"             }
+

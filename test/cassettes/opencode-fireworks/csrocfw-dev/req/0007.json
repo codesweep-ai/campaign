@@ -11,7 +11,7 @@
     },
     {
       "content": "",
-      "reasoning_content": "Let me start by reading the member.json file.",
+      "reasoning_content": "Let me start by reading the member.json file and then the inputs it lists.",
       "role": "assistant",
       "tool_calls": [
         {
@@ -25,7 +25,7 @@
       ]
     },
     {
-      "content": "<path>/home/<USER:1>/.config/cs-campaign/member.json</path>\n<type>file</type>\n<content>\n1: {\n2:   \"campaign\": \"csrocfw\",\n3:   \"member\": \"dev\",\n4:   \"role\": \"agent\",\n5:   \"network\": \"cs-sandbox-<GROUP:1>\",\n6:   \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n7:   \"repos\": [\n8:     {\n9:       \"name\": \"subject\",\n10:       \"base\": \"1053761f6a654e7ea58deb67a671a00d2e7fc8ac\"\n11:     }\n12:   ],\n13:   \"inputs\": [\n14:     \"ORIENTATION.md\",\n15:     \"dev.md\"\n16:   ],\n17:   \"inputDir\": \".local/share/cs-campaign/input\",\n18:   \"outputDir\": \".local/share/cs-campaign/output\",\n19:   \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n20:   \"policy\": {\n21:     \"continueAttempts\": 2,\n22:     \"restarts\": 1,\n23:     \"elapsedSeconds\": 3600,\n24:     \"blindProbes\": 10,\n25:     \"pollSeconds\": 15,\n26:     \"settlingSeconds\": 300,\n27:     \"providerWaitSeconds\": 3600,\n28:     \"stallSeconds\": 180\n29:   },\n30:   \"deadline\": \"2026-09-26T19:37:00.508856367Z\"\n31: }\n\n(End of file - total 31 lines)\n</content>",
+      "content": "<path>/home/<USER:1>/.config/cs-campaign/member.json</path>\n<type>file</type>\n<content>\n1: {\n2:   \"campaign\": \"csrocfw\",\n3:   \"member\": \"dev\",\n4:   \"role\": \"agent\",\n5:   \"network\": \"cs-sandbox-<GROUP:1>\",\n6:   \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n7:   \"repos\": [\n8:     {\n9:       \"name\": \"subject\",\n10:       \"base\": \"1053761f6a654e7ea58deb67a671a00d2e7fc8ac\"\n11:     }\n12:   ],\n13:   \"inputs\": [\n14:     \"ORIENTATION.md\",\n15:     \"dev.md\"\n16:   ],\n17:   \"inputDir\": \".local/share/cs-campaign/input\",\n18:   \"outputDir\": \".local/share/cs-campaign/output\",\n19:   \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n20:   \"policy\": {\n21:     \"continueAttempts\": 2,\n22:     \"restarts\": 1,\n23:     \"elapsedSeconds\": 3600,\n24:     \"blindProbes\": 10,\n25:     \"pollSeconds\": 15,\n26:     \"settlingSeconds\": 300,\n27:     \"providerWaitSeconds\": 3600,\n28:     \"stallSeconds\": 180\n29:   },\n30:   \"deadline\": \"2026-09-26T22:16:25.138035982Z\"\n31: }\n\n(End of file - total 31 lines)\n</content>",
       "role": "tool",
       "tool_call_id": "read_0"
     },
@@ -77,7 +77,7 @@
     },
     {
       "content": "",
-      "reasoning_content": "The dispatch is simple: run check-inputs, write the readback.json, reply.",
+      "reasoning_content": "The dispatch asks me to:\n1. Run `cs-campaign-member check-inputs`\n2. Read member.json and inputs (done)\n3. Write readback.json with specific JSON\n4. Reply with it\n\nLet me run check-inputs first.",
       "role": "assistant",
       "tool_calls": [
         {
@@ -96,13 +96,13 @@
       "tool_call_id": "bash_4"
     },
     {
-      "content": "",
-      "reasoning_content": "No missing inputs. Now write the readback JSON exactly as specified, on a single line. Branch: cs-sandbox/<DEV:1>.<GROUP:1>.",
+      "content": "All inputs are present. Now I'll write the readback file:",
+      "reasoning_content": "All inputs are present, so `missing` is an empty array. Now I'll write the readback.json file with the exact JSON structure. Branch is `cs-sandbox/<DEV:1>.<GROUP:1>`.\n\nThe JSON must be on a single line:\n{\"member\":\"dev\",\"role\":\"agent\",\"branch\":\"cs-sandbox/<DEV:1>.<GROUP:1>\",\"missing\":[],\"goal\":\"...\",\"scope\":\"...\",\"obligations\":\"...\"}\n\nLet me compose:\n- goal: one sentence, in my own words: what this campaign is asking me to accomplish. The campaign asks me to own the subject repository and implement exactly what each dispatch asks, with tested, committed work.\n- scope: what I own and must not touch: I own the subject repo clone at ~/subject on my own branch, and must not touch anything outside it or other members' branches.\n- obligations: commit work to my own branch before replying, reply to every dispatch with the truth, write durable results to the output dir — otherwise work is destroyed with the machine and an unreplied dispatch reads as stopped.",
       "role": "assistant",
       "tool_calls": [
         {
           "function": {
-            "arguments": "{\"filePath\":\"/tmp/readback.json\",\"content\":\"{\\\"member\\\":\\\"dev\\\",\\\"role\\\":\\\"agent\\\",\\\"branch\\\":\\\"cs-sandbox/<DEV:1>.<GROUP:1>\\\",\\\"missing\\\":[],\\\"goal\\\":\\\"This campaign asks me to implement exactly what each dispatch asks in the subject repository, with tests, committing to my own branch and reporting truthfully.\\\",\\\"scope\\\":\\\"I own the subject repository clone at ~/subject on my own branch; I must not commit anywhere else or expand scope beyond what a dispatch asks.\\\",\\\"obligations\\\":\\\"I must commit work to my branch, write durable results to the output directory, and reply to every dispatch before stopping, because the machine is destroyed at the end and an uncommitted or unreplied turn loses the work.\\\"}\\n\"}",
+            "arguments": "{\"filePath\":\"/tmp/readback.json\",\"content\":\"{\\\"member\\\":\\\"dev\\\",\\\"role\\\":\\\"agent\\\",\\\"branch\\\":\\\"cs-sandbox/<DEV:1>.<GROUP:1>\\\",\\\"missing\\\":[],\\\"goal\\\":\\\"Own the subject repository and implement exactly what each dispatch asks, writing and running tests for the work.\\\",\\\"scope\\\":\\\"I own my clone of the subject repository at ~/subject on my own branch, and I must not touch anything outside that scope or work around a blocked or wrong task.\\\",\\\"obligations\\\":\\\"I must commit my work to my own branch, reply to every dispatch truthfully before stopping, and write durable results to the output directory, because the machine is destroyed at the end of the campaign and only committed branch work and replied summaries survive.\\\"}\\n\"}",
             "name": "write"
           },
           "id": "write_5",

@@ -57,6 +57,11 @@ type faultSpec struct {
 	member string
 	// args are the flags `cs-sandbox lender fault` is armed with.
 	args []string
+	// freezeWait arms a different fault: no refusal, but a wait that never
+	// returns. Every `cs-campaign-member wait` in the member's machine is
+	// stopped the moment it starts, so a wait the member's CLI moved to the
+	// background never finishes and never wakes it. See freezeWaits.
+	freezeWait bool
 	// wantStates are states `observe` must report at some point in the run.
 	// This is the assertion that fails when a driver stops naming its failure:
 	// the outcome alone can be right for the wrong reason.
@@ -96,6 +101,12 @@ type scenario struct {
 	orch *seat
 	// agentMemoryMiB overrides the campaign default for the agent alone.
 	agentMemoryMiB int
+	// orchEnv is environment for the orchestrator alone, after the profile's
+	// own, for a fault the orchestrator's adapter has to be set up to meet.
+	orchEnv []string
+	// settlingSeconds overrides the campaign's settling window, where a
+	// scenario waits out a bound built on it. Zero takes the default.
+	settlingSeconds int
 	// verb is how that credential reaches the members. Empty is the product
 	// default, which means the profile spells no verb at all and the grant is
 	// lent — the state most of this matrix is in, deliberately, because the
@@ -110,6 +121,7 @@ type scenario struct {
 	fault *faultSpec
 	// wantOutcome is the verdict this scenario ends on. Empty means
 	// campaign-met, which every scenario without a fault is held to.
+	// outcomeStuck is the one that is not a verdict.
 	wantOutcome string
 	// baseURLEnv is the base-URL variable this adapter is aimed with, and the
 	// one thing that decides whether a scenario can be recorded. It is the
@@ -319,6 +331,38 @@ func faultScenarios() []scenario {
 			},
 			wantOutcome: "campaign-met",
 		},
+		// The condition SPEC.md R64's idle-orchestrator rule exists for: an
+		// orchestrator whose wait went to the background, and whose wake never
+		// came. Nothing refuses it and nothing wakes it, so the campaign has no
+		// verdict to reach. What it has to reach is node-stuck, and the line
+		// has to say why.
+		//
+		// Both halves are mechanical rather than asked of the model. Claude
+		// Code moves a Bash call past its timeout to the background, which is
+		// how an orchestrator came to wait there in the field before its bound
+		// was raised (SAC-082), so this one runs with a bound of ten seconds,
+		// and the model cannot ask for more. And every wait is frozen as it
+		// starts, so the one moved to the background never finishes. Frozen
+		// rather than left to finish, because a wait that returned would come
+		// back before the bound under a replay's four-second chunk, and the
+		// replay would not meet the condition its recording did.
+		//
+		// A settling window of a minute rather than five, because the bound is
+		// one chunk plus that window, and the run waits all of it out.
+		{
+			name: "claude-fault-lost-wake", cli: "claude",
+			auth:  "an Anthropic API key in ~/.cs-keys/anthropic",
+			model: "claude-sonnet-5", keyProvider: "anthropic",
+			baseURLEnv:  "ANTHROPIC_BASE_URL",
+			vcrProvider: "anthropic", vcrUpstream: "https://api.anthropic.com",
+			orchEnv:         []string{"BASH_DEFAULT_TIMEOUT_MS=10000", "BASH_MAX_TIMEOUT_MS=10000"},
+			settlingSeconds: 60,
+			fault: &faultSpec{
+				member: "orchestrator", freezeWait: true,
+				wantStates: []string{"node-stuck"},
+			},
+			wantOutcome: outcomeStuck,
+		},
 		// A third condition, "nothing answered at all", is deliberately not
 		// here. Codex rode out sixty dropped connections by itself and
 		// finished its turn, so ending one that way takes about five minutes
@@ -329,8 +373,13 @@ func faultScenarios() []scenario {
 	}
 }
 
+// outcomeStuck is how a scenario ends when its point is an orchestrator that
+// reads node-stuck, which leaves no verdict: recovering it is the operator's
+// move, and this driver makes none.
+const outcomeStuck = "orchestrator-stuck"
+
 // outcome is the verdict this scenario is held to, on both sides of the
-// cassette. A fault scenario can legitimately end blocked.
+// cassette. A fault scenario can legitimately end blocked, or stuck.
 func (s scenario) outcome() string {
 	if s.wantOutcome == "" {
 		return "campaign-met"
@@ -357,6 +406,8 @@ type seat struct {
 	// memoryMiB overrides the campaign default for this member alone, for an
 	// adapter that does not fit in it. Zero takes the default.
 	memoryMiB int
+	// env is this member's own environment, after what every member gets.
+	env []string
 }
 
 // agentSeat is what the scenario's own fields describe, which is the agent.
@@ -373,10 +424,12 @@ func (s scenario) agentSeat() seat {
 // orchSeat is the orchestrator's, which mirrors the agent's unless the scenario
 // names its own.
 func (s scenario) orchSeat() seat {
+	st := s.agentSeat()
 	if s.orch != nil {
-		return *s.orch
+		st = *s.orch
 	}
-	return s.agentSeat()
+	st.env = s.orchEnv
+	return st
 }
 
 // seats is both, orchestrator first. A homogeneous scenario yields the same one
@@ -552,6 +605,8 @@ func replayName(sc scenario) string {
 		return "csrclinh"
 	case "claude-fault-capacity":
 		return "csrclcap"
+	case "claude-fault-lost-wake":
+		return "csrcllw"
 	}
 	return "csr" + sc.cli
 }
@@ -686,6 +741,29 @@ type campaignRun struct {
 	// wrong reason: a campaign that never noticed the refusal and a campaign
 	// that waited it out both end met.
 	states map[string]bool
+	// stuck is the line of an orchestrator that read node-stuck, in a scenario
+	// that ends there rather than on a verdict.
+	stuck string
+}
+
+// outcome is how the run ended: its verdict's outcome, or outcomeStuck.
+func (r campaignRun) outcome() string {
+	switch {
+	case r.verdict != nil:
+		return r.verdict.Outcome
+	case r.stuck != "":
+		return outcomeStuck
+	}
+	return ""
+}
+
+// note is what the run ended on, for a failure message: the verdict's note, or
+// the stuck orchestrator's line.
+func (r campaignRun) note() string {
+	if r.verdict != nil {
+		return r.verdict.Note
+	}
+	return r.stuck
 }
 
 // runOptions is the half of a run that differs between the tiers.
@@ -1024,12 +1102,52 @@ func armFault(t *testing.T, a *app, campaign *model.Campaign, f *faultSpec) {
 	if ref == "" {
 		t.Fatalf("no member %q in this fleet to arm a fault on", f.member)
 	}
+	if f.freezeWait {
+		freezeWaits(t, a, ref)
+		return
+	}
 	args := append([]string{"lender", "fault", ref}, f.args...)
 	out, err := exec.Command(a.sandbox.Bin, args...).CombinedOutput()
 	if err != nil {
 		t.Fatalf("arming the fault on %s failed: %v\n%s", ref, err, out)
 	}
 	t.Logf("fault armed on %s: %s", ref, strings.Join(f.args, " "))
+}
+
+// waitFreezer runs inside a member for the rest of its life, and stops every
+// `cs-campaign-member wait` it finds there, so the wait neither returns nor
+// exits.
+//
+// It stops the wrappers above the wait first, from the top down: the shell
+// the CLI ran it in, and a `timeout` a model put around it. A shell whose
+// child stops reports it as exited, 128 plus the signal, which is how the
+// first recording of this scenario saw `Exit code 147` on every wait and read
+// its teammate's reply directly instead. And `timeout` sends its child a
+// SIGCONT along with its signal. Stopped from the top, nothing is left to
+// notice, and to the CLI the call is simply still running. The walk stops at
+// the first process that is not a shell or `timeout`, which is the CLI.
+//
+// The wait is picked out by its process name first, which the kernel cuts to
+// fifteen characters, so neither a shell it was typed into nor this loop can
+// match. Names are read with builtins, so a pass forks only for the binary.
+const waitFreezer = `while :; do for d in /proc/[0-9]*; do ` +
+	`read -r c 2>/dev/null <"$d/comm" || continue; [ "$c" = cs-campaign-mem ] || continue; ` +
+	`case "$(tr '\0' ' ' <"$d/cmdline" 2>/dev/null)" in *"cs-campaign-member wait"*) ;; *) continue;; esac; ` +
+	`p=${d#/proc/}; chain=$p; while :; do pp=; ` +
+	`while read -r k v; do [ "$k" = PPid: ] && pp=$v && break; done 2>/dev/null <"/proc/$p/status"; ` +
+	`[ -n "$pp" ] || break; read -r pc 2>/dev/null <"/proc/$pp/comm" || break; ` +
+	`case "$pc" in bash|sh|dash|zsh|timeout) chain="$pp $chain"; p=$pp;; *) break;; esac; done; ` +
+	`kill -STOP $chain 2>/dev/null; done; sleep 0.2; done`
+
+// freezeWaits starts waitFreezer in a member, detached, so it outlives the
+// command that started it.
+func freezeWaits(t *testing.T, a *app, ref string) {
+	t.Helper()
+	cmd := fmt.Sprintf("nohup setsid sh -c %s </dev/null >/dev/null 2>&1 &", shellQuote(waitFreezer))
+	if err := a.sandbox.memberRun(context.Background(), ref, cmd); err != nil {
+		t.Fatalf("starting the wait freezer on %s failed: %v", ref, err)
+	}
+	t.Logf("fault armed on %s: every wait is frozen as it starts", ref)
 }
 
 func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiveRoot, scratch string, opts runOptions) campaignRun {
@@ -1167,10 +1285,17 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 				// A stuck node ends the run, except where the scenario is
 				// about a condition only the operator can repair. There the
 				// campaign is expected to reach a verdict that names it, and
-				// failing here would hide the very behaviour under test.
-				if n.State == string(protocol.StateStuck) && sc.outcome() == "campaign-met" {
-					keepEvidence(t, a, campaign, "stuck")
-					t.Fatalf("%s is stuck: %s", n.Name, n.Detail)
+				// failing here would hide the very behaviour under test. Where
+				// the scenario is the stuck orchestrator itself, reading it is
+				// the end, and any other stuck node is still a failure.
+				if n.State == string(protocol.StateStuck) {
+					switch {
+					case sc.outcome() == outcomeStuck && n.Role == "orchestrator" && strings.Contains(n.Detail, "wake never came"):
+						run.stuck = n.Detail
+					case sc.outcome() == "campaign-met" || sc.outcome() == outcomeStuck:
+						keepEvidence(t, a, campaign, "stuck")
+						t.Fatalf("%s is stuck: %s", n.Name, n.Detail)
+					}
 				}
 				if n.Role == "orchestrator" && strings.Contains(n.Detail, "resume next") {
 					said, rerr := a.hostResumeOrchestrator(context.Background(), fleetMember(campaign, n.Name), campaign.Policy)
@@ -1182,7 +1307,10 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 						continue
 					}
 				}
-				if n.Role == "orchestrator" && n.State == string(protocol.StateStopped) {
+				// Not where the scenario is an orchestrator left stopped: it
+				// reads stopped until the idle bound makes it stuck, and the
+				// ceiling is what bounds that.
+				if n.Role == "orchestrator" && n.State == string(protocol.StateStopped) && sc.outcome() != outcomeStuck {
 					orchestratorStopped = true
 				}
 			}
@@ -1199,6 +1327,11 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 			if obs.MissionErr != "" {
 				keepEvidence(t, a, campaign, "unreadable-verdict")
 				t.Fatalf("the orchestrator replied to the mission but its verdict could not be read: %s", obs.MissionErr)
+			}
+			if run.stuck != "" && obs.Mission == nil {
+				if busy = stillWorking(obs.Derived); busy == "" {
+					break
+				}
 			}
 			if obs.Mission != nil {
 				run.verdict = obs.Mission
@@ -1221,7 +1354,7 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 		}
 		time.Sleep(15 * time.Second)
 	}
-	if run.verdict == nil {
+	if run.verdict == nil && run.stuck == "" {
 		keepEvidence(t, a, campaign, "no-verdict")
 		t.Fatalf("no mission reply within %s", opts.ceiling)
 	}
@@ -1669,13 +1802,24 @@ defaults:
     memoryMiB: 1024
   policy:
     pollSeconds: 15
-orchestrator:
+%sorchestrator:
 %sagents:
   dev:
 %s`,
 		liveEngine(),
+		settlingPolicy(sc),
 		memberBlock(sc, sc.orchSeat(), repo, baseURL, name+"-orchestrator"),
 		indent(memberBlock(sc, sc.agentSeat(), repo, baseURL, name+"-dev")))
+}
+
+// settlingPolicy is the policy line for a scenario's own settling window, and
+// nothing for the rest, whose profiles and so whose campaign IDs it must not
+// move.
+func settlingPolicy(sc scenario) string {
+	if sc.settlingSeconds == 0 {
+		return ""
+	}
+	return fmt.Sprintf("    settlingSeconds: %d\n", sc.settlingSeconds)
 }
 
 // memberBlock renders one member's profile block. cassette names the cassette
@@ -1765,6 +1909,7 @@ func memberBlock(sc scenario, st seat, repo, baseURL, cassette string) string {
 			}
 		}
 	}
+	env = append(env, st.env...)
 	b.WriteString("    env:\n")
 	for _, e := range env {
 		fmt.Fprintf(&b, "      - %s\n", e)

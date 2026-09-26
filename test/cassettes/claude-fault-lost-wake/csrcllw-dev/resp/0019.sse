@@ -1,0 +1,33 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSgVGXS6xRiz8X8m8deX","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":302,"cache_read_input_tokens":43967,"cache_creation":{"ephemeral_5m_input_tokens":302,"ephemeral_1h_input_tokens":0},"output_tokens":5,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}    }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}        }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EqgDCqgBCBIYAipAV/cT5sgGrIgOFfKHCo/RZgr5IKHQ6VidK9pn+i390yYGQawgEqUjviHB+Q3lqiUZav81KPSBl/HQHMsSmENHPTIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEEJWDbnM3ucCej/QppAGG8+IAQGoAdfV4NUGsAECEgw0R5fQzXxl9b4wOHIaDP/PdT2lsph/w1KOzCIw9ITWs92iP6BNvAeR7JH0XW3Yd3u/FMzZqT3X/q2rnL4crWTjWQg8M80jVDg6F6Z/KqwBXxHO6plmgEQcBuHF01Mzijy61QiP65lQTWfUovdvRlvohkOGptlDZ2i15lIGT7Sjm55FbkWXECJfdb5dx/OE8+USNtY5GxmWfs4XpEmuERDeJU8s+Letiv+QRwYCxh4z2HhkGb62iYZApsmy0EfAvzPXymJLy3PrqQUJHG3/ii7FaJw3KJNr1/PaXZaez9IBHA0EjP9sJzW97Z8YO6ldx4JzOHYC6XaQKQcjahgB"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0       }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01ATR3b2BJfnd37bQEEY3WdK","name":"Bash","input":{},"caller":{"type":"direct"}}        }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git commit -m \\\"$(cat \u003c\u003c'EOF'\\nAdd greet function with unit tests\\n\\nImplements greet(name) in src/greet.py and covers it with tests for a\\nnormal name and the empty string, runnable via\\n`python3 -m unittest discover -s tests`.\\n\\nCo-Authored-By: Claude Sonnet 5 \u003cnoreply@anthropic.com\u003e\\nEOF\\n)\\\"\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1      }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":302,"cache_read_input_tokens":43967,"output_tokens":239,"output_tokens_details":{"thinking_tokens":59}},"context_management":{"applied_edits":[]}      }
+
+event: message_stop
+data: {"type":"message_stop"              }
+

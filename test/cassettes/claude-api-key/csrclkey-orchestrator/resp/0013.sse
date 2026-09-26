@@ -1,21 +1,33 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSXFhrFdwkpgCsvXvfvY","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":362,"cache_read_input_tokens":46429,"cache_creation":{"ephemeral_5m_input_tokens":362,"ephemeral_1h_input_tokens":0},"output_tokens":20,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}           }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfShce2oiBUgFYFMKZCK4","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":207,"cache_read_input_tokens":47273,"cache_creation":{"ephemeral_5m_input_tokens":207,"ephemeral_1h_input_tokens":0},"output_tokens":9,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}   }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01PhSLez3adJwTtQfFYTjQhV","name":"Bash","input":{},"caller":{"type":"direct"}}             }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}    }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member wait\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EtcECqgBCBIYAipA++m+ZAJ/L+BNWXODzCU2H06gJp01i6dHPWUTu+O8dnn7aLYWO+71twUkhfD7pYFlLJan8eVe3Ml0pgVUXfZD+zIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyENV11MVJj9skXBYoxGXHg++IAQGoAc/c4NUGsAECEgxB1qdJk914UqEeJ94aDLnebB++3d928tB9jCIwqd76GvGCfBnAtFvfQfUbLbSZJcz+umaXUYgwFhc1rvZeZKGzJPrtGc1TM+W57u/tKtsCs6WdI31u0LlG41wB2rius7g2qG+tZq5m4SS6b27kvBmjTCdc3SznTMlR7D9e6DMm5iEDXzAWh25fDquPO+rkIZmPdkiV7Lr+Q5pwMl+WFsweCq68gV/LJqyWNsbnbkf4yT7ofEivrvx6e26p23wUmT2iAu+ogaDzD+VZr9AgLAVnZThG3LC5CQqbSuLlP6seqBYaYTr7b/ktuybgYRtxLm+ZtZQJS7PveOfPiNZ5xdrK9FtNzmnkQfJIj+syrFhtgZF70mZLJzfwwGjbsWwipd26ZAhOzBI99pga+b5KokbKZFdGyG0jI7eJsnnLtkwa75DvalVuAuLhKZT5/zXJHE8UVQFmZbUSNBcVD1bBa4DELg3GmaBl/1hJxe06C7sv0BTWgOGWimxXt0Fkq3oCX/IwH4iFv196RY49wkBHUXXQ++7lKHcXlde8IEHmc5aFGEc3YRMsiDhR+CwYAQ=="}         }
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0     }
+data: {"type":"content_block_stop","index":0            }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01CcUoNeegQpR6V2dM4TKMWn","name":"Bash","input":{},"caller":{"type":"direct"}}         }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member read dev\", \"description\": \"Read dev's reply to its current dispatch\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1              }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":362,"cache_read_input_tokens":46429,"output_tokens":56,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}        }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":207,"cache_read_input_tokens":47273,"output_tokens":211,"output_tokens_details":{"thinking_tokens":119}},"context_management":{"applied_edits":[]} }
 
 event: message_stop
-data: {"type":"message_stop"    }
+data: {"type":"message_stop"        }
 

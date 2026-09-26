@@ -1,21 +1,21 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSZcqVSxp9a38vip1J9s","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":153,"cache_read_input_tokens":49604,"cache_creation":{"ephemeral_5m_input_tokens":153,"ephemeral_1h_input_tokens":0},"output_tokens":16,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}     }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSjz3W26ckVX4V1fAmr1","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":397,"cache_read_input_tokens":50062,"cache_creation":{"ephemeral_5m_input_tokens":397,"ephemeral_1h_input_tokens":0},"output_tokens":20,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}               }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_013iWTxsDDdGW2u5Xzyh3GWs","name":"Bash","input":{},"caller":{"type":"direct"}} }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_016wStnHAN3NYVYEYMa4Xs8Z","name":"Bash","input":{},"caller":{"type":"direct"}}}
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member send dev --file /tmp/dev-dispatch-greet.md 2\u003e\u00261\", \"description\": \"Dispatch the greet mission to dev\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member wait 2\u003e\u00261\", \"description\": \"Wait for dev to complete work (foreground)\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0    }
+data: {"type":"content_block_stop","index":0               }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":153,"cache_read_input_tokens":49604,"output_tokens":114,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}}
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":397,"cache_read_input_tokens":50062,"output_tokens":96,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}              }
 
 event: message_stop
-data: {"type":"message_stop"              }
+data: {"type":"message_stop" }
 

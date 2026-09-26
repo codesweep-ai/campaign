@@ -1,20 +1,20 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSX4MiEhJuP6gCN8TTAF","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":629,"cache_read_input_tokens":46123,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":629},"output_tokens":20,"service_tier":"standard","inference_geo":"not_available"},"diagnostics":null,"context_management":null}     }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfShPbuiLEuZq9hc5ah1L","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":183,"cache_read_input_tokens":46461,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":183},"output_tokens":2,"service_tier":"standard","inference_geo":"not_available"},"diagnostics":null,"context_management":null}    }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01PrH4qVYQHD2z5VHhr5SNse","name":"Bash","input":{},"caller":{"type":"direct"}}              }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}       }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member reply --file ~/.local/share/cs-campaign/output/d002-summary.md\", \"description\": \"Reply to dispatch d002 with the summary\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"delta":{"text":"Dispatch d002 is complete and closed. Summary:\n\n- Implemented `src/greet.py` (`greet(name)` → `\"Hello, \u003cname\u003e!\"`) and `tests/test_greet.py` (tests for `\"Alice\"` and `\"\"`).\n- Ran `python3 -m unittest discover -s tests` from `~/subject` — 2 tests passed, exit code 0.\n- Committed to branch `cs-sandbox/<DEV:1>.<GROUP:1>` (commit `f529927`), no other branch touched.\n- Reply filed via `cs-campaign-member reply --file` with the full report in `~/.local/share/cs-campaign/output/d002-summary.md`.","type":"text_delta"},"index":0,"type":"content_block_delta"}
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0            }
+data: {"type":"content_block_stop","index":0   }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":629,"cache_read_input_tokens":46123,"output_tokens":117,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}}
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":183,"cache_read_input_tokens":46461,"output_tokens":235,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}          }
 
 event: message_stop
 data: {"type":"message_stop"   }

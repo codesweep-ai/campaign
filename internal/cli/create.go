@@ -470,7 +470,7 @@ func missionDispatchBody(inputs campaignInputs, deadline time.Time, resumed bool
 	}
 	return fmt.Sprintf(`This dispatch is the campaign's mission, and it stays open until you reply to it.
 
-The mission itself is stated in %s — read it with your brief and your teammates' briefs, plan, and run the campaign per your orientation: dispatch work with `+"`cs-campaign-member send`"+`, block in `+"`cs-campaign-member wait`"+` between judgments, judge every reply (fetch the branch — the reply carries measured tree-vs-base evidence), and record plan, acceptances and assessments with `+"`accept`"+` and `+"`note`"+`.%s
+The mission itself is stated in %s — read it with your brief and your teammates' briefs, plan, and run the campaign per your orientation: dispatch work with `+"`cs-campaign-member send`"+`, block in `+"`cs-campaign-member wait`"+` between judgments (in the foreground, never as a background task), judge every reply (fetch the branch — the reply carries measured tree-vs-base evidence), and record plan, acceptances and assessments with `+"`accept`"+` and `+"`note`"+`.%s
 
 Reply ONLY when the campaign is concluded — your reply ends it. It must carry exactly one outcome:
 

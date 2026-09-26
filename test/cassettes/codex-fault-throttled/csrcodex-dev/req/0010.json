@@ -344,38 +344,6 @@
       ],
       "role": "user",
       "type": "message"
-    },
-    {
-      "content": [
-        {
-          "text": "I’ll load the campaign context and resume instructions first, then continue the dispatched work and submit the required summary reply.",
-          "type": "output_text"
-        }
-      ],
-      "phase": "commentary",
-      "role": "assistant",
-      "type": "message"
-    },
-    {
-      "call_id": "call_D54EkCDo7kvVOprKT66quQGr",
-      "input": "const r = await tools.exec_command({\"cmd\":\"sed -n '1,240p' ~/.config/cs-campaign/member.json && sed -n '1,260p' ~/.local/share/cs-campaign/input/d002.001.resume.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output)\n",
-      "name": "exec",
-      "status": "completed",
-      "type": "custom_tool_call"
-    },
-    {
-      "call_id": "call_D54EkCDo7kvVOprKT66quQGr",
-      "output": [
-        {
-          "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
-          "type": "input_text"
-        },
-        {
-          "text": "{\n  \"campaign\": \"csrcodex\",\n  \"member\": \"dev\",\n  \"role\": \"agent\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"1053761f6a654e7ea58deb67a671a00d2e7fc8ac\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"providerWaitSeconds\": 3600,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-09-26T19:46:12.884982311Z\"\n}\nYour provider ended your last turn with an error, and the wait it asked for is over. Dispatch d002 is still open. Carry on from where you were, and when the work is concluded run `cs-campaign-member reply --file <path-to-your-summary>`.",
-          "type": "input_text"
-        }
-      ],
-      "type": "custom_tool_call_output"
     }
   ],
   "model": "gpt-5.6-sol",

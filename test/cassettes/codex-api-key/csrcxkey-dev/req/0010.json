@@ -338,7 +338,7 @@
     {
       "content": [
         {
-          "text": "I’ll load the campaign manifest and all declared inputs first, then follow `d002.md` exactly and submit the required summary reply.",
+          "text": "I’m loading the campaign manifest and its complete input set first, then I’ll execute dispatch d002 and submit the required summary reply.",
           "type": "output_text"
         }
       ],
@@ -347,47 +347,21 @@
       "type": "message"
     },
     {
-      "call_id": "call_CzpFz4mN6sJXh4W0MhDpgvD6",
-      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,240p' /home/<USER:1>/.config/cs-campaign/member.json && sed -n '1,260p' /home/<USER:1>/.local/share/cs-campaign/input/d002.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":30000}); text(r.output)\n",
+      "call_id": "call_3hFKFU3BVnH5vvlocXJqAWOt",
+      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,240p' ~/.config/cs-campaign/member.json && printf '\\\\n--- d002 ---\\\\n' && sed -n '1,260p' ~/.local/share/cs-campaign/input/d002.md\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":20000}); text(r.output);\n",
       "name": "exec",
       "status": "completed",
       "type": "custom_tool_call"
     },
     {
-      "call_id": "call_CzpFz4mN6sJXh4W0MhDpgvD6",
+      "call_id": "call_3hFKFU3BVnH5vvlocXJqAWOt",
       "output": [
         {
           "text": "Script completed\nWall time 0.1 seconds\nOutput:\n",
           "type": "input_text"
         },
         {
-          "text": "{\n  \"campaign\": \"csrcxkey\",\n  \"member\": \"dev\",\n  \"role\": \"agent\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"1053761f6a654e7ea58deb67a671a00d2e7fc8ac\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"providerWaitSeconds\": 3600,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-09-26T19:33:40.104225266Z\"\n}\n# Implement and test greeting function\n\nIn the subject repository, deliver exactly the campaign mission:\n\n- Create `src/greet.py` with `greet(name)` returning exactly `\"Hello, <name>!\"`.\n- Create `tests/test_greet.py` with tests covering a normal name and the empty string.\n- Ensure `python3 -m unittest discover -s tests` exits 0.\n\nKeep the change focused. Run the required test command, commit all work to your branch, and reply with the commit and test result.\n",
-          "type": "input_text"
-        }
-      ],
-      "type": "custom_tool_call_output"
-    },
-    {
-      "encrypted_content": "gAAAAABquBBLT-UYSpudr8_ol0r17P7v4G11weCQW7LByBvbLopEsUvL2wP_11c4YWgilUWB9oEc2zJ5WHO73GnC7my9bewS0fCwnJgMkgrFylWVJzSGG6rXj6B6AwhM5FuBrCs0RSY8XnSEhn9idy-fqi26sD0qMyvB2bPwOe4XhxI_b9uuuIV7Z-DrGAd9-qoQifmh_coVoB_qMPiZ4CWBSVtjkDEM6982vOwkKPNrFQTNh_KNnP8U1KaNnGEQSwICo_PqfT6u_VQNZ-uIZbdhVpmegBEhmGqSrrjjBre3xxHfxJKBRGk-SDY5-sH5e_0jlgG9G3ytH1wHYgXfBDHgmL9X_zL3TS9X9Y-vhCMF37-VznJXatg6IU0442VA2hVuzP140RwoCNZoIB0tIylAMreohcaHIiMeqY7xHBUZzxofN3mfGm4wKtx3yCiMwEoviZqdE_U4ccyLDAsN6s-OiriuO-059PREtSddJ86jqRRYfVkj1IPm3tk7mFGjTI_nW6h_cRS2ZZ6SqLQNIYt1tos2yM9moqhmzHvbTYa-FvmD7gTLD5kBsB62xv2S-uARlFxOmFGoePdRZTZ7i3bGSb8wTRwawfWV_itg0agkCqVmAVUeloxXqZCUD6zcxUFJP7Xd35XbpNn-L3tB6Zn6xQdzkzga4m3zrRNmA0iFNFwr3ZFNppYceazSf5Ivys-kYDgEuNnSm1zWFnaIJR1Es9xAkGdAoXRRL85e9snL6GUfeWTWgSJ6N_tzxDwXgy0v07jd3lIsCGnt7OMn9a9_CqqafRyqD65jOWLrWl-Bw3C0dvuq0M0yrbJ61i-vGQI9y-y5AKteeA_-nJGLCsG4-CSGiVkAYUHtfJe2N0gYubL4eINsBrTpiepiY_cTOrlzPOSxY5aNWNGWMmuu8hC4BB6Juq87F8L3xlSWoseKvJ622wLANHBNHyOA72ibQyIiM8KEINfj3b07bbBDO6d3WtskSiKHVnxzYZizmgg_yWrVXgvDocDtRjjNrFLnQXiGuo3U9Z4LZtmPLb6Posn6Dyd8SexXor8-31kBxOQLSyHVE2m7DHpfbudRCMcELtaxXju-EOW9lQ0aDl9X7WHZARl1QoIvQGEMIsEQBrwujpdnqDldJFytqvc3HGZ_f2Ik_-tFMTpPSb_nV7JN0Yp17MUAzm4NIg59LI310lrx7kQp5TsQbT_eWT3tN2PZoyvpZX7sDHGkWmoeaXBiCbO1SsKWcI4xxnI1KlGHvd85igHhewxNuug=",
-      "summary": [],
-      "type": "reasoning"
-    },
-    {
-      "call_id": "call_UjQYths6Hw00Pgk4IRkSzyCH",
-      "input": "const r = await tools.exec_command({cmd:\"sed -n '1,300p' /home/<USER:1>/.local/share/cs-campaign/input/ORIENTATION.md && sed -n '1,300p' /home/<USER:1>/.local/share/cs-campaign/input/dev.md && find /home/<USER:1> -maxdepth 3 -type d -name .git -print\",\"workdir\":\"/home/<USER:1>\",\"yield_time_ms\":10000,\"max_output_tokens\":30000}); text(r.output)\n",
-      "name": "exec",
-      "status": "completed",
-      "type": "custom_tool_call"
-    },
-    {
-      "call_id": "call_UjQYths6Hw00Pgk4IRkSzyCH",
-      "output": [
-        {
-          "text": "Script completed\nWall time 0.0 seconds\nOutput:\n",
-          "type": "input_text"
-        },
-        {
-          "text": "# Campaign member orientation\n\nYou are `dev`, running as the **agent** of campaign `csrcxkey`.\n\nThis file is written by the harness at creation. It describes your environment and\nthe one rule everything runs on. It does not describe the work — that is in the\nfiles listed below.\n\n## What you have\n\n- **`~/subject`** — your own clone of the repository, on branch `cs-sandbox/<DEV:1>.<GROUP:1>`.\n  Nobody else commits to that branch.\n\nFiles placed in `~/.local/share/cs-campaign/input` for you:\n\n- `dev.md`\n\n**Read all of them before you begin.** They are the only statement of what you are\nhere to do.\n\n## The one rule\n\nWork reaches you as **dispatches** — read your current one with\n`cs-campaign-member inbox`. A dispatch stays open until you close it:\n\n    cs-campaign-member reply --file <path-to-your-summary>\n\n**Do not stop until you have replied.** If you end your turn without a reply, the\nwork is not done in anyone's eyes but yours: you will simply be prodded to reply,\nand your unsaved reasoning may be gone. Reply, then stop.\n\nTwo more obligations, both irreversible if skipped:\n\n- **Commit your work to your own branch.** Your machine is destroyed at the end of\n  the campaign; a commit on your branch is the only way anything survives. Your\n  reply automatically records whether your branch really differs from its base —\n  an empty branch under a confident reply speaks for itself.\n- **Write durable results to `~/.local/share/cs-campaign/output`** — reports, findings, anything\n  that should outlive the run and is not source code.\n\n## Reporting\n\nYou have no route to the orchestrator or to any other member. You cannot ask\nquestions, and nothing you write travels on its own. The orchestrator sees three\nthings — make all three count:\n\n- **Your branch** — it fetches and inspects your commits. The real record.\n- **Your reply** — what you did, what you changed, whether your tests passed, and\n  anything you could not do. This is the only message it receives from you.\n- **`~/.local/share/cs-campaign/output`** — files you leave there. The orchestrator can list and\n  read them, so name a long file in your reply rather than pasting it.\n\nIf you are blocked or believe your task is wrong, say so plainly **in a reply**\n(`cs-campaign-member reply --needs-input --file …`) and stop. Do not expand your\nscope to work around it, and do not guess at what was meant.\nYou own the subject repository.\n\nImplement exactly what each dispatch asks, run the tests you write, commit to\nyour own branch before replying, and tell the truth in your reply.\n/home/<USER:1>/subject/.git\n",
+          "text": "{\n  \"campaign\": \"csrcxkey\",\n  \"member\": \"dev\",\n  \"role\": \"agent\",\n  \"network\": \"cs-sandbox-<GROUP:1>\",\n  \"branch\": \"cs-sandbox/<DEV:1>.<GROUP:1>\",\n  \"repos\": [\n    {\n      \"name\": \"subject\",\n      \"base\": \"1053761f6a654e7ea58deb67a671a00d2e7fc8ac\"\n    }\n  ],\n  \"inputs\": [\n    \"ORIENTATION.md\",\n    \"dev.md\"\n  ],\n  \"inputDir\": \".local/share/cs-campaign/input\",\n  \"outputDir\": \".local/share/cs-campaign/output\",\n  \"orientation\": \".local/share/cs-campaign/input/ORIENTATION.md\",\n  \"policy\": {\n    \"continueAttempts\": 2,\n    \"restarts\": 1,\n    \"elapsedSeconds\": 3600,\n    \"blindProbes\": 10,\n    \"pollSeconds\": 15,\n    \"settlingSeconds\": 300,\n    \"providerWaitSeconds\": 3600,\n    \"stallSeconds\": 180\n  },\n  \"deadline\": \"2026-09-26T21:51:24.127249765Z\"\n}\n\n--- d002 ---\n# Implement and test greeting function\n\nIn your `subject` repository, complete the mission exactly:\n\n- Create `src/greet.py` defining `greet(name)` that returns exactly `Hello, <name>!`.\n- Create `tests/test_greet.py` with unittest coverage for a normal name and the empty string. For the empty string, the expected result is `Hello, !`.\n- Ensure `python3 -m unittest discover -s tests` exits 0.\n- Keep the change scoped to this mission.\n- Commit all implementation and test changes to your branch before replying.\n\nIn your reply, state what changed, the exact test command and result, and the commit identifier. Do not reply until the files are committed.\n",
           "type": "input_text"
         }
       ],
