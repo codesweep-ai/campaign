@@ -3,17 +3,19 @@
   "title": "An OpenCode orchestrator's wait is killed at 120 seconds, halfway through its chunk",
   "type": "defect",
   "severity": "med",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, measuring how each agent CLI treats a 150-second command while tracing SAC-082",
   "opened": "2026-09-26",
-  "resolved": null,
-  "stint": null,
+  "resolved": "2026-09-26",
+  "stint": "agent-cli-bump",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "d1d3369"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`go test ./internal/cli/ -run TestAnOrchestratorsWaitFitsItsShellTimeout -count=1` passes on d1d3369, and fails with the OpenCode entry taken out. The variable itself was measured on the host, as the note records. `make ci` passed on fdef140. No smoke scenario runs an OpenCode orchestrator, so the replay tier does not reach this. The opencode-fireworks scenario was re-recorded after the change and replays with 0 misses."
   },
-  "resolution": null,
+  "resolution": "An OpenCode orchestrator is created with `OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` at one wait chunk plus a minute, as a Claude orchestrator is with `BASH_DEFAULT_TIMEOUT_MS`. One table names the variable each adapter's shell bound is set by, and a profile's own value still wins. PROTOCOL.md §8 now says OpenCode kills a call past its bound.",
   "details": "The orchestrator's `wait` blocks for up to one chunk, 240 seconds by default. OpenCode 1.18.32 bounds a shell call at 120 seconds unless the model passes a larger timeout. Past the bound it kills the command and says `shell tool terminated command after exceeding timeout 120000 ms`.\n\nThis was measured on the host with a 150-second command. When the model passed no timeout, the command was killed at 120 seconds. When it passed one, the command ran to completion. An OpenCode orchestrator that calls `wait` plainly therefore fails every chunk that runs past two minutes. It most likely calls `wait` again, so the campaign still moves, but each such chunk costs a failed call and a turn step.\n\nThe Claude half of this was fixed in SAC-082 by raising the bound when the orchestrator is created. OpenCode's binary names `OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS`, which may be the same lever. Codex was measured with no such bound. No smoke scenario runs an OpenCode orchestrator, so the replay tier cannot see this.",
   "notes": [
     {

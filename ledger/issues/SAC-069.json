@@ -3,17 +3,19 @@
   "title": "The orientation and the mission dispatch still allow a background wait, and no smoke scenario exercises one",
   "type": "improvement",
   "severity": "med",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, while closing SAC-067",
   "opened": "2026-09-26",
-  "resolved": null,
-  "stint": null,
+  "resolved": "2026-09-26",
+  "stint": "agent-cli-bump",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "48dc317"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`make ci` passed on fdef140, with all 10 scenarios replayed and 0 misses in each. The claude-fault-lost-wake replay served 39 requests, and its orchestrator read `node-stuck` 76 seconds idle, past the 64-second bound, with the line naming a background wait whose wake never came. Its recording reached the same state past the 5-minute bound. `TestTheDocumentedIdleOrchestratorLineIsTheOneComputed` now also holds the orientation's foreground sentence."
   },
-  "resolution": null,
+  "resolution": "The orientation and the mission dispatch tell the orchestrator to call `wait` in the foreground and never as a background task. The orientation adds that a wait left in the background does not count. PLAYBOOK.md and MANUAL.md now point at the orientation for it. The new fault scenario claude-fault-lost-wake gives its Claude orchestrator a ten-second shell bound and freezes every wait as it starts. The wait is moved to the background and never wakes it. That scenario ends on `node-stuck` rather than on a verdict. Every scenario was re-recorded for the new prompt.",
   "details": "The decision recorded on SAC-067 has two parts that did not land with its fix at f06d9ee.\n\nFirst, the orchestrator's own instructions should say to call `wait` in the foreground. The orientation, `internal/cli/assets/orientation.md.tmpl`, and the mission dispatch in `internal/cli/create.go` say only \"Never end your turn without either calling `wait` or replying\". A wait launched as a background task, followed by the end of the turn, obeys that sentence. Both texts reach the model inside the requests the cassettes under `test/cassettes/` recorded, so editing either makes every recorded scenario miss. The change needs every scenario re-recorded against real providers.\n\nSecond, the smoke tier has no fault scenario in which the orchestrator waits in the background and its wake never comes. That scenario would prove the idle-orchestrator rule of SPEC.md R64 end to end. Recording it costs a real campaign too.\n\nUntil both land, the rule catches an orchestrator that waits in the background, and PLAYBOOK.md tells the operator to brief foreground waiting. Nothing tells the orchestrator itself.",
   "notes": [],
   "links": [
