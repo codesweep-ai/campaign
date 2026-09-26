@@ -3,17 +3,20 @@
   "title": "Three Claude scenarios miss on replay when Claude Code reports that the machine behaved differently",
   "type": "defect",
   "severity": "high",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, replaying the cassettes re-recorded for the move to sandbox d9279e7 and Claude Code 2.1.283",
   "opened": "2026-09-26",
-  "resolved": null,
+  "resolved": "2026-09-26",
   "stint": "agent-cli-bump",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "c8fd7b4",
+      "cac0cb2"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`make ci` passed on cac0cb2. The claude-api-key, claude-subscription and claude-fault-capacity replays passed with 0 misses, out of 43, 47 and 52 requests. None of the three reported a command that failed on replay."
   },
-  "resolution": null,
+  "resolution": "The cs-vcr ruleset v15 cuts the two reminders Claude Code writes only when something happened on the machine, the environment update and the background-task notification (VCR-043 in cs-vcr). Campaign took it with its cs-vcr pin in c8fd7b4. The commands that failed on replay are gone as well, because the fixed commit dates of SAC-084 give a replay the hashes its recording had.",
   "details": "Recorded on Claude Code 2.1.283, claude-api-key, claude-subscription and claude-fault-capacity miss in `make test-smoke` at the same step on every run: 16, 19 and 29.\n\nAt the first two, the recording has an `# Environment update` reminder saying the orchestrator's shell moved, and the replay does not. The orchestrator ran `cd ~/subject && git status && git diff <base commit> campaign/dev/subject --stat`, naming the base commit by its hash. That hash exists only in the recording's subject repository, whose commits are made fresh on each run. The command failed in the replay, so the shell stayed where it was. At step 29 the recording has a background-task notification for a command that outlived its timeout, and the replay's command finished in time.\n\nClaude Code writes both reminders only when something happened on the machine, which a replay does not reproduce by design. The cs-vcr record VCR-043 holds the rule that cuts them.",
   "notes": [],
   "links": [

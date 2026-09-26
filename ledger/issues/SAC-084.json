@@ -3,17 +3,19 @@
   "title": "Recorded commands name commits that do not exist on replay, so they fail there",
   "type": "defect",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, reading the failed commands in the claude-api-key replay",
   "opened": "2026-09-26",
-  "resolved": null,
+  "resolved": "2026-09-26",
   "stint": "agent-cli-bump",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "cac0cb2"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`go test -tags smoke ./internal/cli/ -run TestTheSubjectRepoHasTheSameBaseEveryRun -count=1` passes on cac0cb2 and fails on c8fd7b4, where two seeds a second apart had different bases. No cassette re-recorded in cac0cb2 holds `bad object`. `make ci` passed, and no Claude scenario reported a command that failed on replay, where each reported 9 to 28 before."
   },
-  "resolution": null,
+  "resolution": "The live tiers seed the subject repository and run every member with a fixed author, committer and date, so a commit's hash is the same on every run. A replay's commands name commits that exist.",
   "details": "The live tiers seed the subject repository fresh on every run, and git stamps each commit with the time it was made. The base commit therefore has a new hash on every run, and so has every commit a member makes. The file member.json hands the orchestrator the base hash, and a recorded orchestrator uses it in commands such as `git diff <base> campaign/dev/subject --stat`.\n\nA replay serves those commands verbatim. The commit each one names exists only in the recording's repository, so the command fails with `fatal: bad object` where it succeeded when recorded. The replay counts them as commands that failed here, 9 to 28 per Claude scenario. On 2.1.283 a failed command also changes the request itself, which VCR-043 now tolerates. A failed commit or merge would change what the campaign produced.\n\nA hash is fixed by its content, its parents, its author and committer, and their dates. Fixing the identity and the dates, for the seed and for the members, gives a replay the hashes its recording had.",
   "notes": [],
   "links": [
