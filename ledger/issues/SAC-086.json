@@ -15,7 +15,12 @@
   },
   "resolution": null,
   "details": "The orchestrator's `wait` blocks for up to one chunk, 240 seconds by default. OpenCode 1.18.32 bounds a shell call at 120 seconds unless the model passes a larger timeout. Past the bound it kills the command and says `shell tool terminated command after exceeding timeout 120000 ms`.\n\nThis was measured on the host with a 150-second command. When the model passed no timeout, the command was killed at 120 seconds. When it passed one, the command ran to completion. An OpenCode orchestrator that calls `wait` plainly therefore fails every chunk that runs past two minutes. It most likely calls `wait` again, so the campaign still moves, but each such chunk costs a failed call and a turn step.\n\nThe Claude half of this was fixed in SAC-082 by raising the bound when the orchestrator is created. OpenCode's binary names `OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS`, which may be the same lever. Codex was measured with no such bound. No smoke scenario runs an OpenCode orchestrator, so the replay tier cannot see this.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-09-26",
+      "text": "The variable works. On the host, OpenCode 1.18.32 ran a 150-second command twice, and both calls passed no timeout. Unset, the command was killed at 120 seconds. With `OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS=300000` it ran to completion. The fix can take the shape of SAC-082's, set when an OpenCode orchestrator is created."
+    }
+  ],
   "links": [
     "SAC-082"
   ]
