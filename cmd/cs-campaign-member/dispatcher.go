@@ -84,6 +84,41 @@ var sshOut = func(host, command, payload string) ([]byte, error) {
 // which a machine under load produces as readily as one that is gone (R65).
 var errMissedBound = errors.New("no answer within the bound")
 
+// isBuildStore reports whether dir is this member's clone of the campaign's
+// build store, the one CS_BUILD_STORE names (codesweep-ai/dashboards SPEC.md,
+// "The local build store").
+func isBuildStore(dir string) bool {
+	store := os.Getenv("CS_BUILD_STORE")
+	if store == "" {
+		return false
+	}
+	a, err1 := filepath.EvalSymlinks(store)
+	b, err2 := filepath.EvalSymlinks(dir)
+	return err1 == nil && err2 == nil && a == b
+}
+
+// takeIntoStore merges a teammate's builds, just fetched to ref, into the
+// orchestrator's own clone of the build store: a fast forward where it has
+// taken in nothing since, and a merge otherwise. Unlike a project repository
+// there is nothing to judge first. Every file in the store is named by what it
+// holds and never rewritten, so the merge cannot conflict. And a store left
+// for a hand merge holds each build back from every member it goes to next.
+func takeIntoStore(dir, ref, agent string) error {
+	if _, err := gitOut(dir, "merge-base", "--is-ancestor", ref, "HEAD"); err == nil {
+		fmt.Printf("%s — the build store already holds it\n", ref)
+		return nil
+	}
+	if _, err := gitOut(dir, "merge", "-q", "--ff-only", ref); err == nil {
+		fmt.Printf("%s — taken into the build store, fast forward\n", ref)
+		return nil
+	}
+	if out, err := gitCmd(dir, "merge", "-q", "--no-edit", "-m", "Take in "+agent+"'s builds", ref); err != nil {
+		return fmt.Errorf("taking %s into the build store: %v: %s", ref, err, strings.TrimSpace(string(out)))
+	}
+	fmt.Printf("%s — taken into the build store, merged\n", ref)
+	return nil
+}
+
 // gitCmd runs one git command against a teammate's machine, bounded, with the
 // ssh options git does not set for itself.
 func gitCmd(dir string, args ...string) ([]byte, error) {
@@ -972,6 +1007,9 @@ func cmdFetch(env *envState, args []string, push bool) error {
 	out, err := gitCmd(dir, "fetch", rec.Sandbox+":"+repo, branch+":"+ref)
 	if err != nil {
 		return fmt.Errorf("fetch: %v: %s", err, strings.TrimSpace(string(out)))
+	}
+	if isBuildStore(dir) {
+		return takeIntoStore(dir, ref, args[0])
 	}
 	// Tree-differs-from-base, printed with the ref: an empty branch presented
 	// as delivered work buys a wrong acceptance.

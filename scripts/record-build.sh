@@ -3,7 +3,7 @@
 #
 #   scripts/record-build.sh start               the first step of the gate
 #   scripts/record-build.sh finish [GATE]       the last, once every gate passed
-#   scripts/record-build.sh store               print this repository's store
+#   scripts/record-build.sh store               print this repository's store, up to date
 #
 # A commit GitHub CI built is one a sibling may pin and push. A commit this gate
 # passed on, on a clean tree, is one a sibling may pin while the work is still
@@ -16,9 +16,16 @@
 #     images/<name>/<commit>/       one file per image an image build of it made
 #
 # The owner is the GitHub owner origin names, SSH host aliases included. Where
-# origin is no GitHub URL, as in a campaign member's sandbox, it is the name of
-# the directory the repository sits in. The name is the one siblings pin it by:
-# the last element of its Go module path, or its npm package's name.
+# origin is no GitHub URL, it is the name of the directory the repository sits
+# in. CS_BUILD_STORE names the store outright instead, as a campaign does for
+# its members. The name is the one siblings pin it by: the last element of its
+# Go module path, or its npm package's name.
+#
+# A store that is a git repository, as a campaign member's clone is, keeps each
+# build as a commit of its own. Before it is read or written, it takes in the
+# builds the campaign's orchestrator pushed to refs/campaign/orchestrator, fast
+# forward or by a merge. Every file is named by what it holds, so the merge
+# never conflicts.
 #
 # Nothing is recorded unless the tree was clean at the same commit when the gate
 # started and when it finished, and it says so. A gate run over uncommitted work
@@ -74,16 +81,38 @@ owner() {
   esac
   printf '%s\n' "$o"
 }
-OWNER="$(owner)"
-case "$OWNER" in
-  "" | . | .. | *[!A-Za-z0-9_.-]*)
-    why="no owner to file it under: origin names no GitHub owner, and the directory name '$OWNER' is not one"
-    if [ "$1" = store ]; then echo "record-build: $why" >&2; exit 1; fi
-    skip "$why" ;;
-esac
+if [ -n "${CS_BUILD_STORE:-}" ]; then
+  STORE="$CS_BUILD_STORE"
+else
+  OWNER="$(owner)"
+  case "$OWNER" in
+    "" | . | .. | *[!A-Za-z0-9_.-]*)
+      why="no owner to file it under: origin names no GitHub owner, and the directory name '$OWNER' is not one"
+      if [ "$1" = store ]; then echo "record-build: $why" >&2; exit 1; fi
+      skip "$why" ;;
+  esac
+  STORE="${CS_BUILDS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/cs-builds}/$OWNER"
+fi
 
-STORE="${CS_BUILDS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/cs-builds}/$OWNER"
+# Whether the store is the top of a git work tree, rather than a directory in one.
+store_repo() {
+  [ -d "$STORE" ] && git -C "$STORE" rev-parse --is-inside-work-tree >/dev/null 2>&1 &&
+    [ -z "$(git -C "$STORE" rev-parse --show-prefix 2>/dev/null)" ]
+}
+# The builds the orchestrator delivered, taken into the store's branch.
+take_in() {
+  local ref=refs/campaign/orchestrator
+  store_repo || return 0
+  git -C "$STORE" rev-parse -q --verify "$ref^{commit}" >/dev/null || return 0
+  git -C "$STORE" merge-base --is-ancestor "$ref" HEAD 2>/dev/null && return 0
+  git -C "$STORE" merge -q --ff-only "$ref" 2>/dev/null ||
+    git -C "$STORE" merge -q --no-edit -m "Take in the builds the orchestrator delivered" "$ref" >/dev/null ||
+    echo "record-build: could not take in $ref in $STORE" >&2
+  return 0
+}
+
 if [ "$1" = store ]; then
+  take_in
   printf '%s\n' "$STORE"
   exit 0
 fi
@@ -110,6 +139,7 @@ SHA="$(git -C "$ROOT" rev-parse -q --verify HEAD || true)"
 [ -n "$SHA" ] && [ "$SHA" = "$sha0" ] || skip "HEAD moved while the gate ran"
 clean || skip "the tree changed while the gate ran"
 
+take_in
 ENTRY="$STORE/status/$NAME/$SHA.json"
 if [ -f "$ENTRY" ]; then
   say "$NAME ${SHA:0:7} is already recorded in $STORE"
@@ -233,3 +263,13 @@ what="${GO_VERSION:+go $GO_VERSION}"
 [ -n "$NPM_NAME" ] && what="${what:+$what, }npm $NPM_NAME@$NPM_VERSION"
 say "recorded $NAME ${SHA:0:7} as a local build in $STORE ($what)"
 [ -z "${CS_BUILD_IMAGES:-}" ] || say "siblings take it once its images are built: $CS_BUILD_IMAGES"
+
+# In a store that is a repository, the build is a commit, which the orchestrator
+# carries to the other members.
+if store_repo; then
+  if git -C "$STORE" add -A . && git -C "$STORE" commit -q -m "Record $NAME ${SHA:0:7}" >/dev/null; then
+    say "committed it in $STORE, for the orchestrator to carry"
+  else
+    say "could not commit it in $STORE; it is recorded, and stays uncommitted" >&2
+  fi
+fi

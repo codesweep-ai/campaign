@@ -797,6 +797,17 @@ a fetch that lands nowhere.*
 **R119.** The orchestrator **MAY** fetch agent branches over campaign-local SSH to review, test,
 cherry-pick or merge into its integration branch. The host **MAY** fetch any branch at any time.
 
+**R119a.** A fetch of the repository `CS_BUILD_STORE` names **MUST** take the teammate's builds into
+the orchestrator's clone of it at once. That is a fast forward where it has taken in nothing since,
+and a merge otherwise.
+
+That repository is the campaign's build store, where each member's `make ci` records the builds its
+teammates may pin (codesweep-ai/dashboards SPEC.md, "The local build store"). It is carried like a
+project repository, and given to members as one, under `repos:`, with `CS_BUILD_STORE` in `env:`
+naming the member's clone. There is nothing to judge before taking it in. Every file is named by
+what it holds, so the merge cannot conflict. A member takes in what the orchestrator pushed to it
+the next time its tools read the store.
+
 **R120.** The tool **MUST NOT** push to a remote unless the driver explicitly asks.
 
 **R121.** Campaign IDs **MUST** be deterministic, so destroying a campaign and recreating it

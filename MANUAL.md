@@ -621,7 +621,7 @@ help.
 | `accept <agent>` | Records its current reply as accepted, which frees the agent. |
 | `note plan\|assessment --file F\|-` | Appends to the log. Re-planning is another `plan` entry. |
 | `wait [--for SECS]` | Blocks. Recovery runs itself. Returns when a judgement is due — a reply to judge, or a node gone stuck — or when the chunk elapses: `--for` seconds, 240 by default. A free teammate is not a judgement; it is named on the elapsed line instead. |
-| `fetch <agent> [repo]` | Fetches its branch to `refs/remotes/campaign/<agent>/<repo>`. |
+| `fetch <agent> [repo]` | Fetches its branch to `refs/remotes/campaign/<agent>/<repo>`. The build store `CS_BUILD_STORE` names is merged into the orchestrator's clone at once. |
 | `push <agent> [repo]` | Pushes HEAD to it at `refs/campaign/orchestrator`. |
 
 `send` computes where the message lands, and refuses a send that would land somewhere its sender
@@ -942,6 +942,35 @@ member. A member's own list replaces the one in `defaults`, as `env` does. A sto
 host with `cs-sandbox create-store` and filled with `cs-sandbox seed-store`. It is how an image
 built on the host reaches a member, which cannot build one. A local sandbox build's image is one,
 for a member that boots sandboxes itself.
+
+### A build store
+
+A campaign can hand its members a build store. That is a git repository of the builds each
+project's `make ci` records (codesweep-ai/dashboards SPEC.md, "The local build store"), and with it
+members pin one another's work before anything is pushed. Seed it from the host's store, give it
+to each member that builds or pins under `repos:`, and name the member's clone with
+`CS_BUILD_STORE`. A member's home is the host user's, so the path, with your home in place of
+`<home>`, is the same on both sides:
+
+```sh
+git init -q -b main run1/cs-builds
+cp -a ~/.local/share/cs-builds/codesweep-ai/. run1/cs-builds/
+git -C run1/cs-builds add -A && git -C run1/cs-builds commit -q -m "Seed the build store"
+```
+
+```yaml
+defaults:
+  env: ["CS_BUILD_STORE=<home>/cs-builds"]
+agents:
+  lint:
+    cli: claude
+    repos: [{path: ~/codesweep-ai/lint}, {path: run1/cs-builds, name: cs-builds}]
+```
+
+A member's `make ci` commits each build to its clone. The orchestrator carries the store with
+`fetch` and `push`, like any repository, and a `fetch` of it merges at once. A member takes in
+what was pushed to it the next time one of its tools reads the store.
+
 
 ### Credentials
 
