@@ -302,7 +302,7 @@ observe its own death and you can.
 | `node-working` | A dispatch is open, and this node's turn driver is alive or its agent says it is in a turn. |
 | `node-stopped` | A dispatch is open, the node is not in a turn, and the ladder has a move left. |
 | `node-replied` | The reply exists and the orchestrator has not accepted it. |
-| `node-stuck` | The ladder is spent, a bound tripped, the machine is gone, or the provider rejected the node's credential. The line says which. |
+| `node-stuck` | The ladder is spent, a bound tripped, the machine is gone, the provider rejected the node's credential, or the orchestrator has been idle past one `wait` chunk. The line says which. |
 | `node-unreachable` | This look failed. An overlay on every state, not a state. |
 | `node-refused` | The node's provider ended its last turn, or could not be reached: a throttle, an overload, an outage or a network that is down. An overlay. The harness waits and then carries the same session on, and no rung is spent. For the orchestrator the line names `cs-campaign resume` as the host's move. |
 
@@ -322,7 +322,16 @@ A `node-stopped` line also says when the node's own session record last changed,
 turn that the host started. An agent CLI can start a turn of its own, when a background task it
 left running finishes, and no driver wraps that turn. Such a node reads `node-stopped` while it
 works, and a record that changed seconds ago is how you can tell. The age is evidence beside the
-state. It changes no state and no ladder move.
+state, and it changes no ladder move.
+
+It decides a state in one case, for an orchestrator that no driver wraps and whose agent says it is
+idle. Once its session record has been still for longer than one `wait` chunk plus
+`settlingSeconds`, it reads `node-stuck`. The line reads `idle with no turn driven, and its session record still for 12m,
+past one wait chunk and its margin (9m)`. An orchestrator that runs `wait` in a background task is
+woken by it within one chunk, so an idle one past that bound was never woken. The chunk is 240
+seconds, or what `CS_CAMPAIGN_WAIT_SECONDS` sets. Brief the orchestrator to call `wait` in the
+foreground, where a provider error ends a turn the driver records and `cs-campaign resume` can carry
+it on.
 
 **CLAIMED** is the orchestrator's own append-only log. A claim beside the facts: "orchestrator says
 qa is working" next to "qa is unreachable" is the line this command exists for. `observe` also

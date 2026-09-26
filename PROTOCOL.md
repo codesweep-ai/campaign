@@ -426,6 +426,13 @@ itself pays a full model turn for every "nothing to do" check.
 In practice the wait is chunked rather than one long block, since agent CLIs bound how long a
 single tool call may run. The win is one model wake-up per interval instead of one per poll.
 
+**The orchestrator calls the wait in the foreground**, as a call inside its turn. Some agent CLIs
+can run a command as a background task and start a fresh turn when it finishes. An orchestrator
+that waits that way works in turns the host did not start, so a provider error in one of
+them is recorded nowhere. Its wait still wakes it within one chunk. An orchestrator that is idle,
+with no turn running and its own session record still for longer than a chunk and a margin, was
+never woken, and is `node-stuck`.
+
 **An orchestrator that stops while its workers are still going is a defect in the
 orchestrator**, not a condition for the host to paper over. The host's job is to make that
 defect visible, not to repair it. An orchestrator whose provider refused its turn has not

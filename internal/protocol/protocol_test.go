@@ -470,3 +470,100 @@ func TestAStoppedNodeSaysWhenItsRecordLastChanged(t *testing.T) {
 		t.Errorf("a working node's line must not change: %+v", o)
 	}
 }
+
+// An orchestrator that waits in background tasks of its CLI works in turns no
+// driver wraps, so a failure in one of them reaches no turn log (SAC-067). Its
+// wait wakes it within one chunk, so an orchestrator that is idle, with no
+// driver and a record still for longer than a chunk and its margin, is stuck.
+// Seen live: 3h19m of work read `node-stopped · continue next` on every look.
+func TestAnIdleOrchestratorWhoseRecordOutlivesAWaitChunkIsStuck(t *testing.T) {
+	t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", "")
+	pol := Policy{ContinueAttempts: 2, Restarts: 1, ElapsedSeconds: 1000000, BlindProbes: 3, SettlingSeconds: 100}
+	bound := int64(DefaultWaitSeconds + 100)
+	if got := IdleBound(pol); got != bound {
+		t.Fatalf("the bound is one wait chunk plus the settling window: got %d, want %d", got, bound)
+	}
+	t0 := int64(1_700_000_000)
+	now := t0 + 3*3600
+	// The mission turn the host started ended cleanly 13 minutes in. Every turn
+	// after it was started by the orchestrator's own CLI, and none is logged.
+	mission := Facts{
+		Msgs:     msgs("m1.md@1700000000"),
+		Replies:  map[string]bool{},
+		TurnEnds: []TurnEnd{{At: t0 + 13*60, Exit: 0}},
+	}
+	look := func(agent string, record int64) Observation {
+		f := mission
+		f.Agent, f.Record = agent, record
+		return Compute(f, false, Blind{}, map[string]bool{}, pol, now)
+	}
+	// Between its background turns, with the record changing seconds ago: the
+	// wake is on its way, and the line stays as it was.
+	if o := look("idle", now-16); o.State != StateStopped || o.NextMove != "continue" ||
+		!strings.HasSuffix(o.Detail, "session record changed 16s ago") {
+		t.Errorf("idle within the bound must stay node-stopped with the record's age: %+v", o)
+	}
+	if o := look("idle", now-bound); o.State != StateStopped {
+		t.Errorf("idle exactly at the bound has not outlived it: %+v", o)
+	}
+	// In one of those turns: the agent says so, whatever the record says. A
+	// model thinking through a long call is R64's case and is never caught.
+	if o := look("busy", now-2*3600); o.State != StateWorking {
+		t.Errorf("a busy agent is working however still its record is: %+v", o)
+	}
+	o := look("idle", now-12*60)
+	if o.State != StateStuck || o.NextMove != "" || o.Dispatch != MissionID {
+		t.Fatalf("idle past one chunk and its margin means the wake never came: %+v", o)
+	}
+	for _, want := range []string{"idle with no turn driven", "still for 12m", "past one wait chunk and its margin (5m)", "wake never came"} {
+		if !strings.Contains(o.Detail, want) {
+			t.Errorf("the stuck line must say why, missing %q: %s", want, o.Detail)
+		}
+	}
+	// The environment's chunk is the chunk, as it is for the wait itself.
+	t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", "900")
+	if o := look("idle", now-12*60); o.State != StateStopped {
+		t.Errorf("12m idle is inside a 900s chunk and its margin: %+v", o)
+	}
+	t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", "")
+	// Each other condition absent leaves the line as it was: tools too old to
+	// answer, a node with no record, an agent on a screen that needs a person,
+	// and a member, which never waits.
+	for name, f := range map[string]Facts{
+		"old tools": {Msgs: mission.Msgs, Replies: map[string]bool{}, Record: now - 12*60},
+		"no record": {Msgs: mission.Msgs, Replies: map[string]bool{}, Agent: "idle", TurnEnds: mission.TurnEnds},
+		"blocked":   {Msgs: mission.Msgs, Replies: map[string]bool{}, Agent: "blocked", Record: now - 12*60, TurnEnds: mission.TurnEnds},
+		"member":    {Msgs: msgs("d001.md@1700000000"), Replies: map[string]bool{}, Agent: "idle", Record: now - 12*60, TurnEnds: mission.TurnEnds},
+	} {
+		if o := Compute(f, false, Blind{}, map[string]bool{}, pol, now); o.State != StateStopped {
+			t.Errorf("%s: the rule needs all three conditions and the mission: %+v", name, o)
+		}
+	}
+}
+
+// An orchestrator that waits in the foreground runs its mission as one turn the
+// host started. A provider error that ends it is logged by the driver, and the
+// refusal path owns it however long the record has been still: a resume until
+// providerWaitSeconds, then stuck naming the refusal. Seen live: a capacity
+// error 3h13m in, and the orchestrator left standing for 4h36m after it.
+func TestADrivenMissionEndedByTheProviderKeepsTheRefusalPath(t *testing.T) {
+	t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", "")
+	pol := Policy{ContinueAttempts: 2, Restarts: 1, ElapsedSeconds: 1000000, BlindProbes: 3, SettlingSeconds: 100, ProviderWaitSeconds: 3600}
+	t0 := int64(1_700_000_000)
+	ended := t0 + 3*3600 + 13*60
+	f := Facts{
+		Msgs:     msgs("m1.md@1700000000"),
+		Replies:  map[string]bool{},
+		Agent:    "idle",
+		Record:   ended,
+		TurnEnds: []TurnEnd{{At: ended, Exit: 1, Class: ClassCapacity, Reason: "API Error: 500"}},
+	}
+	o := Compute(f, false, Blind{}, map[string]bool{}, pol, ended+20*60)
+	if o.State != StateRefused || o.NextMove != "resume" {
+		t.Errorf("20m after a capacity error, past the idle bound, the move is still a resume: %+v", o)
+	}
+	o = Compute(f, false, Blind{}, map[string]bool{}, pol, ended+4*3600+36*60)
+	if o.State != StateStuck || !strings.Contains(o.Detail, "provider wait bound tripped") {
+		t.Errorf("past providerWaitSeconds the refusal is named, not the idle bound: %+v", o)
+	}
+}

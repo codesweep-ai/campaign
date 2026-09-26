@@ -66,8 +66,8 @@ type Facts struct {
 	Replies map[string]bool // dispatch ID -> reply file exists
 	Drivers int             // turn-driver processes alive for this node's family
 	// Record is when the family's own session record last changed, in epoch
-	// seconds, or 0 when the node has none. It is reported and never decides a
-	// state: see recordNote.
+	// seconds, or 0 when the node has none. It is reported beside the state
+	// (recordNote), and decides one only for an idle orchestrator (IdleBound).
 	Record int64
 	// Agent is what the family's turn driver answers when asked whether the
 	// agent is in a turn: busy, busy retrying, idle, blocked, unknown or absent.
@@ -326,6 +326,11 @@ func Compute(f Facts, probeFailed bool, blind Blind, accepted map[string]bool, p
 		return Observation{State: StateStopped, Dispatch: d.ID, NextMove: "resume",
 			Detail: fmt.Sprintf("%d cont, %d restarts · no turn ran for the newest message · resume next, no rung spent", continues, restarts)}
 	}
+	if bound := IdleBound(pol); d.ID == MissionID && f.Agent == "idle" && f.Record > 0 && now-f.Record > bound {
+		return Observation{State: StateStuck, Dispatch: d.ID,
+			Detail: fmt.Sprintf("%d cont, %d restarts · idle with no turn driven, and its session record still for %s, past one wait chunk and its margin (%s) · a background wait's wake never came",
+				continues, restarts, shortAge(now-f.Record), shortAge(bound))}
+	}
 	if restarts >= pol.Restarts && continues >= pol.ContinueAttempts {
 		return Observation{State: StateStuck, Dispatch: d.ID,
 			Detail: fmt.Sprintf("%d continues and %d restarts spent", continues, restarts)}
@@ -342,6 +347,25 @@ func Compute(f Facts, probeFailed bool, blind Blind, accepted map[string]bool, p
 		detail += fmt.Sprintf(" · last turn ended %s ago, exit %d", shortAge(clampAge(now-last.At)), last.Exit) + reasonNote(last)
 	}
 	return Observation{State: StateStopped, Dispatch: d.ID, NextMove: move, Detail: detail + recordNote(f, now)}
+}
+
+// IdleBound is how long an orchestrator may sit idle, with no turn driven and
+// its session record still, before it reads node-stuck (SPEC.md R64). It is one
+// wait chunk, as the environment sets it, plus the settling window.
+//
+// An orchestrator that waits in a background task of its CLI works in turns no
+// driver wraps. Between them it is idle, and its wait always wakes it within
+// one chunk: the chunk ends, the CLI starts a turn, and the turn writes the
+// record. The settling window is how long a turn may take to start. Idle past
+// both means the wake never came, and a provider error in a turn nothing wraps
+// is recorded nowhere else.
+//
+// It reads the record's age only where two liveness facts already agree that
+// nothing runs: no driver, and an agent that answers idle. A model thinking
+// through a long call answers busy and never reaches this. The mission is the
+// orchestrator's dispatch alone, so the rule is held to the node that waits.
+func IdleBound(pol Policy) int64 {
+	return int64(WaitChunk(DefaultWaitSeconds)) + int64(pol.Resolve().SettlingSeconds)
 }
 
 // RefusalBackoff is how long to hold a node after its nth refused turn in a
@@ -421,10 +445,10 @@ func RecordDir(cli string) string { return recordGlob[cli][0] }
 // session as a new turn. No driver wraps that turn, so the node reads stopped
 // for as long as it works. Seen live, for the last forty minutes of a campaign.
 //
-// The note is evidence beside the state and never part of it. A record that
-// changed seconds ago tells an operator not to nudge, and it changes no state
-// and no ladder move, because a record is output, and output is a poor measure
-// of silent work (R64).
+// The note is evidence beside the state. A record that changed seconds ago
+// tells an operator not to nudge, and it changes no ladder move, because a
+// record is output, and output is a poor measure of silent work (R64). Its one
+// use in a state is IdleBound's, for an idle orchestrator.
 func recordNote(f Facts, now int64) string {
 	if f.Record <= 0 {
 		return ""

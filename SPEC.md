@@ -493,10 +493,22 @@ host started, and an agent CLI can start one of its own, so the driver alone rea
 stopped. A node whose tools cannot answer is measured by the driver alone, as before.*
 
 A `node-stopped` observation **SHOULD** also report when the node's own session record last
-changed. That report **MUST NOT** decide a state or a ladder move. *A driver wraps only a turn the
-host started, and an agent CLI can start one of its own, so a node can read `node-stopped` while it
-works. The record's age lets an operator see that. It is output, and output is the wrong measure of
-silent work, which is why it stays beside the state and never enters it.*
+changed. That report **MUST NOT** decide a ladder move, and **MUST NOT** decide a state outside the
+one case below. *A driver wraps only a turn the host started, and an agent CLI can start one of its
+own, so a node can read `node-stopped` while it works. The record's age lets an operator see that.
+It is output, and output is the wrong measure of silent work. A long model call or a long tool call
+leaves the record still.*
+
+Take an orchestrator on its mission whose turn driver is absent and whose agent answers that it is
+idle. Once its session record has been still for longer than one `wait` chunk (R126) plus the
+settling window, it **MUST** read `node-stuck`, and the line **MUST** say why. *The age is read only where two
+liveness facts already agree that nothing runs, so a model thinking through a long call answers busy
+and is never caught. An orchestrator that runs `wait` as a background task and ends its turn works
+in turns no driver wraps, and a provider error in one of them is recorded nowhere. Its wait wakes it
+within one chunk, and the turn that wake starts writes the record. Idle past that bound means the
+wake never came. The chunk is the one the default and the environment set. An observer cannot see a
+`--for` the orchestrator passed, so a background wait with a longer one reads stuck early. Waiting
+in the foreground is the supported style (PROTOCOL.md §8).*
 
 **R65.** A failed probe **MUST** be treated as a fact about the observation rather than about the
 node. Only a run of consecutive failures past the operator's threshold **MAY** become the

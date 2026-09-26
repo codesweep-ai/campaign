@@ -293,7 +293,7 @@ func TestTheDocumentedRecordAgeIsOnAStoppedLine(t *testing.T) {
 	for doc, want := range map[string]string{
 		"MANUAL.md":   "session record changed 40s ago",
 		"PLAYBOOK.md": "It says when the orchestrator's own session record",
-		"SPEC.md":     "That report **MUST NOT** decide a state or a ladder move",
+		"SPEC.md":     "That report **MUST NOT** decide a ladder move, and **MUST NOT** decide a state outside the",
 	} {
 		body, err := os.ReadFile(filepath.Join(root, doc))
 		if err != nil {
@@ -315,6 +315,46 @@ func TestTheDocumentedRecordAgeIsOnAStoppedLine(t *testing.T) {
 	}
 	if !strings.HasSuffix(o.Detail, "session record changed 40s ago") {
 		t.Errorf("the stopped line reads %q, and the documents promise the record's age on it", o.Detail)
+	}
+}
+
+// SPEC.md R64 lets the record's age decide one state: an idle orchestrator whose
+// record has been still past one wait chunk and the settling window is stuck.
+// MANUAL.md quotes the line at the defaults, and PLAYBOOK.md and PROTOCOL.md tell
+// the operator to have the orchestrator wait in the foreground, which is what
+// keeps its turns ones a driver records (SAC-067).
+func TestTheDocumentedIdleOrchestratorLineIsTheOneComputed(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const line = "idle with no turn driven, and its session record still for 12m,\npast one wait chunk and its margin (9m)"
+	for doc, want := range map[string]string{
+		"SPEC.md":     "Once its session record has been still for longer than one `wait` chunk (R126) plus the\nsettling window, it **MUST** read `node-stuck`",
+		"MANUAL.md":   line,
+		"PLAYBOOK.md": "**Have it call `wait` in the foreground**",
+		"PROTOCOL.md": "**The orchestrator calls the wait in the foreground**",
+	} {
+		body, err := os.ReadFile(filepath.Join(root, doc))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), want) {
+			t.Errorf("%s no longer carries %q", doc, want)
+		}
+	}
+	t.Setenv("CS_CAMPAIGN_WAIT_SECONDS", "")
+	now := int64(1_700_000_000)
+	facts := protocol.Facts{
+		Msgs:     []protocol.Msg{{ID: protocol.MissionID, MTime: now - 5000, Name: "m1.md"}},
+		Replies:  map[string]bool{},
+		Agent:    "idle",
+		Record:   now - 12*60,
+		TurnEnds: []protocol.TurnEnd{{At: now - 4000}},
+	}
+	o := protocol.Compute(facts, false, protocol.Blind{}, map[string]bool{}, protocol.Policy{}, now)
+	if o.State != protocol.StateStuck || !strings.Contains(o.Detail, strings.ReplaceAll(line, "\n", " ")) {
+		t.Errorf("the documents quote a line the code does not print: %+v", o)
 	}
 }
 

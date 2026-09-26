@@ -339,6 +339,11 @@ for what the campaign delivers, so it verifies returned work rather than accepti
 report. Where an agent reports a number, say that the orchestrator confirms it: a report is a claim
 and the branch is the evidence.
 
+**Have it call `wait` in the foreground**, as a command inside its turn. A turn the host started
+is one a driver records, so a provider error that ends it reads as a refusal and `cs-campaign
+resume` carries it on. An orchestrator that runs `wait` as a background task and ends its turn
+works on in turns its own CLI starts, which no driver records. Never brief it to wait that way.
+
 Do not restate the outcome vocabulary. The four values arrive with the mission dispatch, which is
 later and more authoritative than anything you seeded. A brief that names its own is a brief the
 orchestrator will try to close the campaign with. `validate` warns when a seeded document names
@@ -572,8 +577,9 @@ claim this product makes about autonomy.
 The one failure only you can see is the orchestrator stopping, because it cannot observe its own
 death. You should read the `node-stopped` line first. It says when the orchestrator's own session record
 last changed. A record that changed seconds ago means the orchestrator is working in a turn it
-started itself, and a nudge would interrupt it. A record that has been still for many minutes
-means it has stopped:
+started itself, and a nudge would interrupt it. An idle orchestrator whose record has been still
+for longer than one `wait` chunk and the settling window reads `node-stuck`, and the line says so.
+It has stopped:
 
 ```sh
 cs-campaign resume acme                  # after a provider refusal: same session, no rung spent
