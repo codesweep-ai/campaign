@@ -540,7 +540,9 @@ cs-campaign doctor [<campaign>]
 
 With no argument, checks the host. It holds the `cs-sandbox` build to this build's pin, and the agent
 tools to what that `cs-sandbox` ships. It also lists the agent CLIs here, checks the developer tools
-against their pins, and names the state directory. These groups read as they do in
+against their pins, and names the state directory, and the image the members boot: its reference,
+ID and revision. `CS_SANDBOX_BIN` points every check at a `cs-sandbox` other than the one on
+`PATH`. These groups read as they do in
 `cs-sandbox doctor`. Only the agent tools are required here, because `cs-campaign` drives its agents
 with them.
 
@@ -935,6 +937,11 @@ one of three ways:
 create, the only ref that resolves is `main`, which is the branch it is born on, and any other is
 refused by name.
 
+`imageStores` names shared image stores that a member's own podman reads, in `defaults` or on a
+member. A member's own list replaces the one in `defaults`, as `env` does. A store is made on the
+host with `cs-sandbox create-store` and filled with `cs-sandbox seed-store`. It is how an image
+built on the host reaches a member, which cannot build one. A local sandbox build's image is one,
+for a member that boots sandboxes itself.
 
 ### Credentials
 

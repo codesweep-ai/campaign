@@ -353,6 +353,12 @@ test:
 TOOLSDIR   := $(abspath bin/tools)
 SANDBOX    := $(TOOLSDIR)/cs-sandbox
 WITH_TOOLS := PATH="$(TOOLSDIR):$$PATH"
+# The ghcr.io namespace bin/tools/cs-sandbox names its images in, linked in as
+# sandbox's own Makefile does: this repository's owner, so a fork's tiers boot
+# the images its own sandbox fork makes. A plain `go install` links in nothing,
+# and leaves every fork on codesweep-ai's names. `[^:/]*` after github.com takes
+# an SSH host alias, as a fork's clone uses.
+IMAGE_OWNER ?= $(shell o="$${GITHUB_REPOSITORY_OWNER:-$$(git ls-remote --get-url 2>/dev/null | sed -nE 's|^.*[@/]github\.com[^:/]*[:/]+([^/]+)/.*$$|\1|p')}"; printf '%s' "$${o:-codesweep-ai}" | tr '[:upper:]' '[:lower:]')
 
 ## tools: cs-sandbox, cs-vcr and the agent tools in bin/tools, at the go.mod pins
 ##
@@ -377,7 +383,7 @@ WITH_TOOLS := PATH="$(TOOLSDIR):$$PATH"
 ## add it to a shell profile, which is the opposite of the point here.
 tools:
 	@mkdir -p $(TOOLSDIR)
-	@GOBIN=$(TOOLSDIR) go install github.com/codesweep-ai/sandbox/cmd/cs-sandbox
+	@GOBIN=$(TOOLSDIR) go install -ldflags "-X github.com/codesweep-ai/sandbox/internal/cli.imageOwner=$(IMAGE_OWNER)" github.com/codesweep-ai/sandbox/cmd/cs-sandbox
 	@CGO_ENABLED=0 GOBIN=$(TOOLSDIR) go install github.com/codesweep-ai/vcr/cmd/cs-vcr
 	@# cs-sandbox doctor compares every cs- tool on PATH with its own pins, and fails the
 	@# host on one that differs. go.mod pins the same versions, so the tiers get those too,
@@ -407,12 +413,16 @@ tools:
 ##
 ## Asked of the binary rather than written down, because each variant is named
 ## after the cs-sandbox version that built it and only that binary knows its own.
-## Recursive (=), so a target that never reads one never runs the command.
-SMOKE_IMAGE = $$($(SANDBOX) version --images | awk '$$1=="image-slim"{print $$2}')
+## A version CI published has its ghcr.io name. A version only this machine built
+## has the localhost/ name `cs-sandbox build` tagged it with, and
+## scripts/sandbox-image.sh picks whichever this host holds (cs-sandbox SPEC
+## R166). Recursive (=), and a shell substitution, so it is asked again after
+## setup-smoke's build, and a target that never reads one never runs it.
+SMOKE_IMAGE = $$(SANDBOX=$(SANDBOX) $(CURDIR)/scripts/sandbox-image.sh slim)
 
 ## The shipped image, which the live matrix boots because that tier IS the
 ## product. No cassette is involved there, so nothing binds it to the CI variant.
-SBX_IMAGE = $$($(SANDBOX) version --images | awk '$$1=="image"{print $$2}')
+SBX_IMAGE = $$(SANDBOX=$(SANDBOX) $(CURDIR)/scripts/sandbox-image.sh full)
 
 ## SETUP_IMAGE: the one setup-smoke builds. The slim image, like everything that
 ## replays or records — the live matrix overrides it, and it is the only caller

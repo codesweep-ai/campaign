@@ -174,6 +174,11 @@ type MemberProfile struct {
 	Snapshots []Snapshot      `yaml:"snapshots,omitempty" json:"snapshots,omitempty"`
 	Auth      Auth            `yaml:"auth,omitempty" json:"auth,omitzero"`
 	Resources Resources       `yaml:"resources,omitempty" json:"resources,omitzero"`
+	// ImageStores are shared image stores the member's own podman reads, made
+	// on the host with `cs-sandbox create-store` and `seed-store`. They are how
+	// an image built on the host reaches a member, which cannot build one: a
+	// local sandbox build's image, for a member that boots sandboxes of its own.
+	ImageStores []string `yaml:"imageStores,omitempty" json:"imageStores,omitempty"`
 	// Env is injected into the member's sandbox as KEY=VALUE, or as a bare KEY
 	// to inherit the host's value. It exists for the settings a member's CLI
 	// reads from its environment and the profile has no field for — pointing an
@@ -203,6 +208,8 @@ type Defaults struct {
 	Resources Resources `yaml:"resources,omitempty" json:"resources,omitzero"`
 	// Env applies to every member that does not set its own.
 	Env []string `yaml:"env,omitempty" json:"env,omitempty"`
+	// ImageStores applies to every member that does not name its own.
+	ImageStores []string `yaml:"imageStores,omitempty" json:"imageStores,omitempty"`
 }
 type Profile struct {
 	APIVersion   string                   `yaml:"apiVersion" json:"apiVersion"`
@@ -384,10 +391,24 @@ type HarnessCheck struct {
 type UpstreamCheck struct {
 	CheckedAt      time.Time `json:"checkedAt"`
 	SandboxVersion string    `json:"sandboxVersion,omitempty"`
-	Deviations     []string  `json:"deviations,omitempty"`
-	Warnings       []string  `json:"warnings,omitempty"`
-	Notes          []string  `json:"notes,omitempty"`
-	Accepted       bool      `json:"accepted,omitempty"`
+	// SandboxImage is the image the members boot, as the host held it.
+	SandboxImage *ImageIdentity `json:"sandboxImage,omitempty"`
+	Deviations   []string       `json:"deviations,omitempty"`
+	Warnings     []string       `json:"warnings,omitempty"`
+	Notes        []string       `json:"notes,omitempty"`
+	Accepted     bool           `json:"accepted,omitempty"`
+}
+
+// ImageIdentity is the sandbox image a campaign's members boot, as the host held
+// it: its reference, the ID podman gives it, and the commit its cs-sandbox was
+// built from, read from its revision label. A version names what CI publishes,
+// and an image built on the host from a local build carries a localhost/ name
+// of its own, so the version alone no longer says which bytes a campaign ran.
+// ID and Revision are empty where the host did not hold the image.
+type ImageIdentity struct {
+	Ref      string `json:"ref"`
+	ID       string `json:"id,omitempty"`
+	Revision string `json:"revision,omitempty"`
 }
 
 // Sandbox is one row of `cs-sandbox ls --json`. Ref is the only field safe to

@@ -15,6 +15,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -422,4 +423,95 @@ func upstreamCases() string {
 	}{toolPins()[sandboxModule], shippedTools()})
 	return "  version) echo 'cs-sandbox " + toolPins()[sandboxModule] + " (linux/amd64, go1.27.0)';;\n" +
 		"  agent-tools) echo '" + string(shipped) + "';;\n"
+}
+
+// imagingSandbox is a cs-sandbox stand-in at the pinned version that names its
+// two images, and a podman holding the ones in held, each as "ref id revision".
+func imagingSandbox(t *testing.T, held ...string) *app {
+	t.Helper()
+	pinned := pinnedSandbox(t)
+	dir := installFakeTool(t, "fake-sandbox", `
+case "$1 $2" in
+  "version --images") printf 'image              ghcr.io/test/sandbox:`+pinned+`\nimage-local        localhost/test/sandbox:`+pinned+`\n';;
+  version*) echo 'cs-sandbox `+pinned+` (linux/amd64, go1.27.0)';;
+esac
+`)
+	var body strings.Builder
+	body.WriteString("for ref; do :; done\ncase \"$ref\" in\n")
+	for _, h := range held {
+		f := strings.Fields(h)
+		fmt.Fprintf(&body, "  %s) echo '%s %s'; exit 0;;\n", f[0], f[1], f[2])
+	}
+	body.WriteString("esac\nexit 125")
+	installFakeTool(t, "podman", body.String())
+	return &app{store: store.Store{Dir: t.TempDir()}, sandbox: sandboxCLI{Bin: filepath.Join(dir, "fake-sandbox")}}
+}
+
+// TestUpstreamRecordsTheImageMembersBoot: the version names what CI publishes,
+// and a build of it made here carries a localhost/ name of its own, so the
+// record names the image too: its reference, ID and revision. The published
+// image wins where the host holds both, as it does for cs-sandbox create.
+func TestUpstreamRecordsTheImageMembersBoot(t *testing.T) {
+	pinned := pinnedSandbox(t)
+	pub, loc := "ghcr.io/test/sandbox:"+pinned, "localhost/test/sandbox:"+pinned
+	for _, c := range []struct {
+		name string
+		held []string
+		want model.ImageIdentity
+	}{
+		{"the local build alone", []string{loc + " sha256:1111 abc123"}, model.ImageIdentity{Ref: loc, ID: "sha256:1111", Revision: "abc123"}},
+		{"both", []string{pub + " sha256:2222 def456", loc + " sha256:1111 abc123"}, model.ImageIdentity{Ref: pub, ID: "sha256:2222", Revision: "def456"}},
+		{"neither", nil, model.ImageIdentity{Ref: pub}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Setenv("CS_SANDBOX_IMAGE", "")
+			a := imagingSandbox(t, c.held...)
+			campaign := &model.Campaign{Name: "image"}
+			if err := a.gateUpstream(context.Background(), io.Discard, campaign, false); err != nil {
+				t.Fatal(err)
+			}
+			if got := campaign.Upstream.SandboxImage; got == nil || *got != c.want {
+				t.Fatalf("recorded image = %+v, want %+v", got, c.want)
+			}
+			notes := strings.Join(campaign.Upstream.Notes, "\n")
+			if !strings.Contains(notes, "members boot "+c.want.Ref) {
+				t.Errorf("notes do not name the image: %v", campaign.Upstream.Notes)
+			}
+
+			root := t.TempDir()
+			a.archiveUpstreamFingerprint(context.Background(), root)
+			var fp struct {
+				SandboxImage *model.ImageIdentity `json:"sandboxImage"`
+			}
+			data, err := os.ReadFile(filepath.Join(root, "upstream-fingerprint.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal(data, &fp); err != nil || fp.SandboxImage == nil || *fp.SandboxImage != c.want {
+				t.Errorf("fingerprint image = %+v (%v), want %+v", fp.SandboxImage, err, c.want)
+			}
+		})
+	}
+}
+
+// TestUpstreamRecordsTheImageCSSandboxImageNames: a name the operator chose is
+// the image members boot, whatever cs-sandbox would name.
+func TestUpstreamRecordsTheImageCSSandboxImageNames(t *testing.T) {
+	t.Setenv("CS_SANDBOX_IMAGE", "localhost/pinned:7")
+	a := imagingSandbox(t, "localhost/pinned:7 sha256:7777 fedcba")
+	report := a.verifyUpstream(context.Background())
+	if want := (model.ImageIdentity{Ref: "localhost/pinned:7", ID: "sha256:7777", Revision: "fedcba"}); report.SandboxImage == nil || *report.SandboxImage != want {
+		t.Fatalf("image = %+v, want %+v", report.SandboxImage, want)
+	}
+}
+
+// TestUpstreamNamesTheBinaryCSSandboxBinPicks: a deviation says which binary it
+// asked, since CS_SANDBOX_BIN can put one other than PATH's in front of it.
+func TestUpstreamNamesTheBinaryCSSandboxBinPicks(t *testing.T) {
+	a, bin := installUpstream(t, "v0.0.0-20990101000000-ffffffffffff")
+	t.Setenv("CS_SANDBOX_BIN", bin)
+	report := a.verifyUpstream(context.Background())
+	if len(report.Deviations) == 0 || !strings.Contains(report.Deviations[0], "cs-sandbox at "+bin+" (CS_SANDBOX_BIN) is") {
+		t.Fatalf("deviations = %v", report.Deviations)
+	}
 }

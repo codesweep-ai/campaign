@@ -31,11 +31,14 @@ package cli
 // words: the cs-sandbox pin under "cs-sandbox", then "agent tools", "agent
 // CLIs" and "developer tools".
 //
-// The guest image id is NOT covered: its tag is a per-build counter with no
-// stable reference to resolve, so pinning it needs engine-specific plumbing,
-// left for whoever does that migration.
+// The image the members boot is recorded, not checked: its reference, the ID
+// podman gives it, and the revision its label names. cs-sandbox names it after
+// its own version, and one built on this host from a local build carries a
+// localhost/ name instead (cs-sandbox SPEC R166), which is the case the version
+// alone cannot tell apart.
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -101,7 +104,9 @@ func toolPins() map[string]string {
 // Kept apart because they print differently, and a warning rendered with an
 // `ok` prefix is worse than not printing it at all.
 type upstreamReport struct {
+	SandboxWhere   string // which cs-sandbox was asked, in the doctor's words
 	SandboxVersion string
+	SandboxImage   *model.ImageIdentity
 	Deviations     []string
 	Warnings       []string
 	Notes          []string
@@ -144,7 +149,7 @@ func probeVersion(ctx context.Context, bin string) string {
 // verifyUpstream compares the host surface to this build's manifest.
 func (a *app) verifyUpstream(ctx context.Context) upstreamReport {
 	pins := toolPins()
-	report := upstreamReport{SandboxVersion: "(unknown)"}
+	report := upstreamReport{SandboxVersion: "(unknown)", SandboxWhere: a.sandbox.where()}
 
 	want := pins[sandboxModule]
 	switch reported, err := a.sandbox.version(ctx); {
@@ -168,10 +173,18 @@ func (a *app) verifyUpstream(ctx context.Context) upstreamReport {
 		case got != want:
 			report.SandboxVersion = got
 			report.Deviations = append(report.Deviations,
-				fmt.Sprintf("cs-sandbox on PATH is %s, this build pins %s — install the pinned one:  go install %s/cmd/cs-sandbox@%s",
-					got, want, sandboxModule, want))
+				fmt.Sprintf("%s is %s, this build pins %s — install the pinned one:  go install %s/cmd/cs-sandbox@%s",
+					a.sandbox.where(), got, want, sandboxModule, want))
 		default:
 			report.SandboxVersion = got
+		}
+		report.SandboxImage = a.sandboxImage(ctx)
+		switch img := report.SandboxImage; {
+		case img == nil:
+		case img.ID == "":
+			report.Notes = append(report.Notes, "members boot "+img.Ref+", which this host does not hold yet — create fetches it, or `cs-sandbox build` makes it")
+		default:
+			report.Notes = append(report.Notes, fmt.Sprintf("members boot %s (%s, revision %s)", img.Ref, short(img.ID, 19), short(img.Revision, 12)))
 		}
 	}
 
@@ -202,6 +215,50 @@ func (a *app) verifyUpstream(ctx context.Context) upstreamReport {
 		report.Notes = append(report.Notes, "not on PATH (fine — nothing here needs them): "+strings.Join(absent, " "))
 	}
 	return report
+}
+
+// sandboxImage is the image the members boot, as this host holds it: the one
+// CS_SANDBOX_IMAGE names, else the one the pinned cs-sandbox names for itself.
+// That is the published name where this host holds that image, and else this
+// machine's own build of the version under its localhost/ name, which is the
+// order `cs-sandbox create` looks in. Nil when cs-sandbox names no image.
+func (a *app) sandboxImage(ctx context.Context) *model.ImageIdentity {
+	candidates := []string{os.Getenv("CS_SANDBOX_IMAGE")}
+	if candidates[0] == "" {
+		out, err := a.sandbox.output(ctx, "version", "--images")
+		if err != nil {
+			return nil
+		}
+		candidates = nil
+		for _, label := range []string{"image", "image-local"} {
+			for line := range strings.SplitSeq(string(out), "\n") {
+				if f := strings.Fields(line); len(f) == 2 && f[0] == label {
+					candidates = append(candidates, f[1])
+				}
+			}
+		}
+		if len(candidates) == 0 {
+			return nil
+		}
+	}
+	for _, ref := range candidates {
+		out, err := exec.CommandContext(ctx, "podman", "image", "inspect", "--format",
+			`{{.Id}} {{index .Labels "org.opencontainers.image.revision"}}`, ref).Output()
+		if err != nil {
+			continue
+		}
+		id, rev, _ := strings.Cut(strings.TrimSpace(string(out)), " ")
+		return &model.ImageIdentity{Ref: ref, ID: id, Revision: strings.TrimSpace(rev)}
+	}
+	return &model.ImageIdentity{Ref: candidates[0]}
+}
+
+// short is s cut to n characters, or "none" when there is nothing to cut.
+func short(s string, n int) string {
+	if s == "" {
+		return "none"
+	}
+	return s[:min(len(s), n)]
 }
 
 // agentToolHashes asks cs-sandbox what agent tools it ships, and what they
@@ -235,7 +292,7 @@ func (a *app) agentToolHashes(ctx context.Context) (map[string]string, error) {
 // makes doctor exit non-zero.
 func reportSandboxPin(p *doctorPrinter, report upstreamReport) {
 	if len(report.Deviations) == 0 {
-		p.ok("cs-sandbox on PATH matches the pin (%s)", report.SandboxVersion)
+		p.ok("%s matches the pin (%s)", cmp.Or(report.SandboxWhere, "cs-sandbox on PATH"), report.SandboxVersion)
 	}
 	for _, deviation := range report.Deviations {
 		// The deviation already ends in the command that fixes it. A second
@@ -347,6 +404,7 @@ func (a *app) gateUpstream(ctx context.Context, out io.Writer, campaign *model.C
 	campaign.Upstream = &model.UpstreamCheck{
 		CheckedAt:      time.Now().UTC(),
 		SandboxVersion: report.SandboxVersion,
+		SandboxImage:   report.SandboxImage,
 		Deviations:     report.Deviations,
 		Warnings:       report.Warnings,
 		Notes:          report.Notes,
@@ -370,18 +428,20 @@ func (a *app) gateUpstream(ctx context.Context, out io.Writer, campaign *model.C
 func (a *app) archiveUpstreamFingerprint(ctx context.Context, root string) {
 	report := a.verifyUpstream(ctx)
 	snapshot := struct {
-		At             time.Time         `json:"at"`
-		BuiltAgainst   map[string]string `json:"builtAgainst"`
-		SandboxVersion string            `json:"sandboxVersion"`
-		Deviations     []string          `json:"deviations,omitempty"`
-		Warnings       []string          `json:"warnings,omitempty"`
-		Notes          []string          `json:"notes,omitempty"`
-		AgentTools     map[string]string `json:"agentTools,omitempty"`
-		Error          string            `json:"error,omitempty"`
+		At             time.Time            `json:"at"`
+		BuiltAgainst   map[string]string    `json:"builtAgainst"`
+		SandboxVersion string               `json:"sandboxVersion"`
+		SandboxImage   *model.ImageIdentity `json:"sandboxImage,omitempty"`
+		Deviations     []string             `json:"deviations,omitempty"`
+		Warnings       []string             `json:"warnings,omitempty"`
+		Notes          []string             `json:"notes,omitempty"`
+		AgentTools     map[string]string    `json:"agentTools,omitempty"`
+		Error          string               `json:"error,omitempty"`
 	}{
 		At:             time.Now().UTC(),
 		BuiltAgainst:   toolPins(),
 		SandboxVersion: report.SandboxVersion,
+		SandboxImage:   report.SandboxImage,
 		Deviations:     report.Deviations,
 		Warnings:       report.Warnings,
 		Notes:          report.Notes,

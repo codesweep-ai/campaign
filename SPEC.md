@@ -854,6 +854,7 @@ agents:
 | `model`, `effort` | member | Passed to that member's CLI verbatim. `opencode` requires `model` whenever `effort` is set. |
 | `repos[].path`, `.ref`, `.name` | member | A host repository cloned into the member. |
 | `snapshots[].path`, `.name` | member | A frozen tree the member can read. |
+| `imageStores` | `defaults`, member | Shared image stores the member's podman reads, made on the host with `cs-sandbox create-store` and `seed-store`. A member's own list replaces the defaults'. |
 | `credentials` | `defaults` | The verb every member takes unless it spells one: `lend` or `inherit`. Default `lend`. |
 | `auth.apiKeyFromEnv` | member | Host environment variable names whose values are granted. Always copied in, so refused where the seat resolves to `lend`. |
 | `auth.inheritApiKeyFromEnv` | member | The same grant, declaring the copy. The environment grant's only fused spelling: there is nothing here to lend. |
@@ -990,7 +991,8 @@ having done the work, so the raw stream is the one that must always be collected
 There is no pin file. The `go.mod` embedded in the `cs-campaign` binary names the `cs-sandbox` it
 was built against, and every check compares the host to that.
 
-`doctor` and `create` compare the `cs-sandbox` on `PATH` to it, and a deviation refuses a create.
+`doctor` and `create` compare the `cs-sandbox` on `PATH` to it, or the one `CS_SANDBOX_BIN` names,
+and a deviation refuses a create.
 The sibling `cs-` tools are compared the same way and reported, never gating. A host that runs
 campaigns needs none of them, and one at another version earns a line rather than a refusal.
 
@@ -999,8 +1001,15 @@ tool that build ships. `cs-sandbox` puts those files on a host and seeds them in
 it is the only thing that can answer. A second description on the campaign side is what let a host
 read as correct while its guests did not.
 
+Both also record the image the members boot, as the host holds it: its reference, the ID podman
+gives it, and the revision its label names. It is the one `CS_SANDBOX_IMAGE` names, else the
+published image where the host holds it, else this host's own build under its `localhost/` name.
+That is the order `cs-sandbox create` looks in. A version names what CI publishes, and a local build
+of it is other bytes, so the version alone cannot say which ran. The image is recorded, never
+checked.
+
 `upstream-fingerprint.json` in an archive records what this campaign was built against, what the
-host answered, and the shipped tool hashes at archive time.
+host answered, the image, and the shipped tool hashes at archive time.
 
 ---
 

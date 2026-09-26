@@ -108,6 +108,15 @@ func (s sandboxCLI) readyInterval() time.Duration {
 	return readyProbeInterval
 }
 
+// where names the cs-sandbox these checks run, in the doctor's words: the one
+// on PATH, or the one CS_SANDBOX_BIN names.
+func (s sandboxCLI) where() string {
+	if os.Getenv("CS_SANDBOX_BIN") != "" {
+		return "cs-sandbox at " + s.Bin + " (CS_SANDBOX_BIN)"
+	}
+	return "cs-sandbox on PATH"
+}
+
 func newSandbox() sandboxCLI {
 	bin := os.Getenv("CS_SANDBOX_BIN")
 	if bin == "" {
@@ -811,6 +820,9 @@ func createArgs(campaign *model.Campaign, member model.Member) []string {
 			spec += ":" + snapshot.Name
 		}
 		args = append(args, "--snapshot", spec)
+	}
+	for _, s := range member.Profile.ImageStores {
+		args = append(args, "--image-store", s)
 	}
 	if member.StallSeconds > 0 {
 		args = append(args, "--env", fmt.Sprintf("CS_%s_STALL_SECS=%d", strings.ToUpper(member.CLI), member.StallSeconds))

@@ -158,17 +158,19 @@ embedded in the binary at build time, so the surface a build expects and the sur
 against cannot disagree. `create` refuses a deviating one unless `--accept-upstream-change` records
 the deviation on the campaign.
 
-The order is **build, then validate, then bump the pin**, never the pin first:
+The tiers run the `cs-sandbox` in `bin/tools`, which `make tools` builds at the version `go.mod`
+pins. So the pin moves in your tree first, and is committed only once the new surface has passed:
 
-1. Build and install the new `cs-sandbox`. Rebuild the guest image if its `image/` changed, or
-   members keep the old tools.
-2. Run `make test-integration`. This is the validation, and it must pass on the new surface.
-3. Move the pin with `GOPROXY=direct go get -tool
-   github.com/codesweep-ai/sandbox/cmd/cs-sandbox@<revision>`, then run `make build install`.
-4. Say in the commit message what you ran and what it proved.
+1. For a sandbox commit no registry has images of, make them in the sandbox checkout, once its
+   `make ci` has passed: `bin/cs-sandbox build`, then `bin/cs-sandbox build --slim`. Each records
+   its image in the build store, and `make repin` here takes that build only once both are there.
+2. Move the pin. `make repin` takes sandbox's newest build, local or CI, or `go get -tool
+   github.com/codesweep-ai/sandbox/cmd/cs-sandbox@<revision>` names one.
+3. Run `make test-integration`. This is the validation, and it runs the new `cs-sandbox`.
+4. Run `make build install`, and say in the commit message what you ran and what it proved.
 
 Step 4 is the whole record. `go.mod` says which version; only the commit can say that somebody ran
-step 2 against it. `make repin` moves every pin to its project's newest build in one go, local or
+step 3 against it. `make repin` moves every pin to its project's newest build in one go, local or
 CI, so a commit from it carries the same obligation.
 
 **Never `make install` in the sandbox repo while a campaign is live.** It replaces the binary

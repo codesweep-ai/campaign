@@ -22,6 +22,21 @@ import (
 )
 
 var dnsName = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
+
+// storeName is the name cs-sandbox accepts for a shared image store.
+var storeName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,199}$`)
+
+// validateImageStores refuses a store name cs-sandbox would, before a single
+// member is made rather than at the first create.
+func validateImageStores(names []string) error {
+	for _, n := range names {
+		if !storeName.MatchString(n) {
+			return fmt.Errorf("imageStores: %q is not a store name cs-sandbox accepts", n)
+		}
+	}
+	return nil
+}
+
 var envName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 // modelToken bounds what may reach a guest's config file. The value is written
@@ -110,6 +125,17 @@ func validateProfile(p model.Profile) error {
 	}
 	if len(p.Agents) == 0 {
 		return errors.New("at least one agent is required")
+	}
+	if err := validateImageStores(p.Defaults.ImageStores); err != nil {
+		return fmt.Errorf("defaults: %w", err)
+	}
+	if err := validateImageStores(p.Orchestrator.ImageStores); err != nil {
+		return fmt.Errorf("orchestrator: %w", err)
+	}
+	for name, m := range p.Agents {
+		if err := validateImageStores(m.ImageStores); err != nil {
+			return fmt.Errorf("agent %s: %w", name, err)
+		}
 	}
 	if p.Defaults.Credentials != "" && !model.ValidCredentialVerb(p.Defaults.Credentials) {
 		return fmt.Errorf("defaults.credentials: invalid verb %q (want %s)", p.Defaults.Credentials, strings.Join(model.CredentialVerbs, " or "))
@@ -288,6 +314,10 @@ func applyDefaults(p *model.Profile) {
 		// in would make a member impossible to opt out.
 		if len(m.Env) == 0 {
 			m.Env = p.Defaults.Env
+		}
+		// The same rule, for the same reason.
+		if len(m.ImageStores) == 0 {
+			m.ImageStores = p.Defaults.ImageStores
 		}
 		for i := range m.Repos {
 			m.Repos[i].Path = expandPath(m.Repos[i].Path)

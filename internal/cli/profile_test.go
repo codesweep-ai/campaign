@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"maps"
 	"os"
 	"os/exec"
@@ -1164,5 +1165,85 @@ func TestAMemberWhoseOnlyKeyIsUnsetIsNamed(t *testing.T) {
 	}
 	if err := requireKeyEnv(members); err != nil {
 		t.Errorf("a satisfied grant must not refuse: %v", err)
+	}
+}
+
+// TestImageStoresReachEveryMember: a store named in defaults mounts in every
+// member that names none of its own, a member's own list replaces it whole, as
+// env does, and each becomes an --image-store on that member's create.
+func TestImageStoresReachEveryMember(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "profile.yaml")
+	body := `apiVersion: ` + model.APIVersion + `
+kind: CampaignProfile
+defaults:
+  imageStores: [sandbox-images]
+orchestrator:
+  cli: claude
+  auth: {agentLogin: [claude]}
+agents:
+  dev:
+    cli: claude
+    auth: {agentLogin: [claude]}
+  ops:
+    cli: claude
+    auth: {agentLogin: [claude]}
+    imageStores: [ops-images, sandbox-images]
+`
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	p, _, err := decodeProfile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateProfile(p); err != nil {
+		t.Fatal(err)
+	}
+	applyDefaults(&p)
+	c := &model.Campaign{Engine: "firecracker", Group: "g"}
+	for name, want := range map[string][]string{
+		"orchestrator": {"sandbox-images"},
+		"dev":          {"sandbox-images"},
+		"ops":          {"ops-images", "sandbox-images"},
+	} {
+		m := p.Agents[name]
+		if name == "orchestrator" {
+			m = p.Orchestrator
+		}
+		var got []string
+		args := createArgs(c, model.Member{Sandbox: name, Profile: m})
+		for i, a := range args {
+			if a == "--image-store" && i+1 < len(args) {
+				got = append(got, args[i+1])
+			}
+		}
+		if !slices.Equal(got, want) {
+			t.Errorf("%s: --image-store %v, want %v", name, got, want)
+		}
+	}
+}
+
+// TestImageStoresRefuseAName: a name cs-sandbox would refuse is refused here,
+// before any member is made.
+func TestImageStoresRefuseAName(t *testing.T) {
+	p := model.Profile{APIVersion: model.APIVersion, Kind: "CampaignProfile",
+		Orchestrator: model.MemberProfile{CLI: "claude", Auth: model.Auth{AgentLogin: []string{"claude"}}},
+		Agents: map[string]model.MemberProfile{"dev": {CLI: "claude", Auth: model.Auth{AgentLogin: []string{"claude"}},
+			ImageStores: []string{"../escape"}}}}
+	if err := validateProfile(p); err == nil || !strings.Contains(err.Error(), "imageStores") {
+		t.Fatalf("validateProfile = %v, want imageStores refused", err)
+	}
+}
+
+// TestImageStoresLeaveTheCampaignIDAlone: the ID is a hash of the profile, and
+// cassettes are keyed on it, so a profile that names no store hashes as it did
+// before the field existed.
+func TestImageStoresLeaveTheCampaignIDAlone(t *testing.T) {
+	encoded, err := json.Marshal(model.Profile{Orchestrator: model.MemberProfile{CLI: "claude"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "imageStores") {
+		t.Errorf("an unset imageStores reaches the hashed profile: %s", encoded)
 	}
 }
