@@ -1,21 +1,33 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfFK4Ax9JpRsYcfqB2sU7","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":165,"cache_read_input_tokens":47912,"cache_creation":{"ephemeral_5m_input_tokens":165,"ephemeral_1h_input_tokens":0},"output_tokens":20,"service_tier":"standard","inference_geo":"global"},"context_management":null}  }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSXJX1yKq2yn9aNQuBX3","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":561,"cache_read_input_tokens":47839,"cache_creation":{"ephemeral_5m_input_tokens":561,"ephemeral_1h_input_tokens":0},"output_tokens":3,"service_tier":"standard","inference_geo":"global"},"diagnostics":null,"context_management":null}           }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01LZspUmc8tg4cNokoJf9Dou","name":"Bash","input":{},"caller":{"type":"direct"}} }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}               }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git log --oneline -3 refs/remotes/campaign/dev/subject \u0026\u0026 echo --- \u0026\u0026 git show refs/remotes/campaign/dev/subject --stat \u0026\u0026 echo --- \u0026\u0026 git show refs/remotes/campaign/dev/subject:src/greet.py \u0026\u0026 echo --- \u0026\u0026 git show refs/remotes/campaign/dev/subject:tests/test_greet.py\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EpsFCqgBCBIYAipAIXf8dBTsg98aBX+GRQPjhvl9ArnoWdQInuMtReePhHKhekh3BKxnAzYbJz6lmxLGowK135f0nigSKJjfX5jT+DIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRhNjMzZTQxNC1iMTNmLTRkMTAtOThiMi0yMDRhZTM1NTAyY2NyEEwa20lNNRVDEo5cu6UT9uuIAQGoAZ2d4NUGsAECEgy/wZ+n0/+QouN8idUaDOGRUFWj+4D3MtFOIiIwOy+jPDGr/TaBy3Ttk8TWzTRZSWrJgliKl28JsI7brl46YrXUcZejn4j9Bi5NE8BnKp8DORvpv6KjAl/SQ9jFOazaMwhZwpQ2pokua6oUutYB9J8b4IKt34I8ETpQ5wUp4HD8z5jOSzIxhMT9GQqaBsxe4D4xB+CJBCcwiWta/i35rxxMsVv6WuprgO5SEQt/ahtW+8Z58hcyp1486BKWKrlGnuoJVxRDp2DoE6rxoGhC/w78ePVSAOOq0Mkyp4glyzrKaU9jtmBMWwfwNcLPZeBiQ3DmuL/nPbxdEY8Jy63sNcEpSNIfMph1IdGT3raHjw7/wGLhF6ov60tG9WC5t/pjRfDSFHLZpmAPU7rtXxgUTXWQKxVJ36hYy8x3Izqi/uykKBXhIPoBoEz6yi+xWb06vcxLqabRNVzPXJ7gz69iqsYlmt8zXa7x/4dv0FxvmUwOy7ltJ5mOLeFF71xvZ4f8/f1Aw2+t/jtGV1ZT8EUSDBmZX5vwsqcfhCx7j2t9htJq6Su/hlDEvgzyCU/zxAF0t8Zmd6mtkOKaS1rxUvBQ0qEBbyYLJI57os2NotM2hfyt3DJZFTJdyhTd9neV2z/umGb+kbbSHcvft1/yLoOAbxgB"}             }
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0        }
+data: {"type":"content_block_stop","index":0         }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_019EXtuzAneC78CpqFRC1V8P","name":"Bash","input":{},"caller":{"type":"direct"}}     }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git show refs/remotes/campaign/dev/subject:src/greet.py \u0026\u0026 echo --- \u0026\u0026 git show refs/remotes/campaign/dev/subject:tests/test_greet.py\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1}
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":165,"cache_read_input_tokens":47912,"output_tokens":171,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}              }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":561,"cache_read_input_tokens":47839,"output_tokens":240,"output_tokens_details":{"thinking_tokens":126}},"context_management":{"applied_edits":[]}           }
 
 event: message_stop
-data: {"type":"message_stop"    }
+data: {"type":"message_stop"             }
 

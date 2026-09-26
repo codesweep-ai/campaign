@@ -789,6 +789,10 @@ func (s sandboxCLI) version(ctx context.Context) (string, error) {
 	return reported, nil
 }
 
+// claudeOrchestratorBashTimeoutMs is the Bash timeout a Claude orchestrator
+// runs with: one wait chunk and a minute's margin.
+const claudeOrchestratorBashTimeoutMs = (protocol.DefaultWaitSeconds + 60) * 1000
+
 // createArgs builds the cs-sandbox create invocation. The stall threshold —
 // the turn drivers' own idle definition — travels here as create-time env,
 // landing in the seeded ~/.ssh/environment that sshd applies before every
@@ -839,6 +843,15 @@ func createArgs(campaign *model.Campaign, member model.Member) []string {
 	// protocol.WaitChunk.
 	if v := os.Getenv("CS_CAMPAIGN_WAIT_SECONDS"); v != "" {
 		args = append(args, "--env", "CS_CAMPAIGN_WAIT_SECONDS="+v)
+	}
+	// Claude Code bounds one Bash call at 120s by default, and past that it
+	// moves the command to the background instead of failing it. The wait
+	// blocks for a whole chunk, so under that default a quiet wait was
+	// backgrounded halfway, and the orchestrator went on waiting in turns the
+	// host never started (PROTOCOL.md §8). Before the profile's own env, so a
+	// profile can still set it.
+	if member.CLI == "claude" && member.Role == "orchestrator" {
+		args = append(args, "--env", fmt.Sprintf("BASH_DEFAULT_TIMEOUT_MS=%d", claudeOrchestratorBashTimeoutMs))
 	}
 	// Declared environment first, so a --env the profile asked for is present
 	// whichever way the auth branch below goes.

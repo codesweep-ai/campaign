@@ -49,9 +49,49 @@ func TestGate(t *testing.T) {
 	if err := gate(orch, "send"); err == nil || !strings.Contains(err.Error(), "manifest") {
 		t.Fatalf("orchestrator without a manifest must be refused with the reason: %v", err)
 	}
+	_, orch = fakeHome(t, "orchestrator", protocol.MissionID+".md")
 	orch.Manifest = &protocol.Manifest{}
 	if err := gate(orch, "send"); err != nil {
 		t.Fatalf("orchestrator with manifest passes: %v", err)
+	}
+}
+
+// The verbs that act on the campaign wait for the mission and stop with it.
+// An orchestrator that keeps going after its readback, working from the
+// mission.md in its inputs, otherwise runs the campaign with no dispatch
+// open, and its mission lands behind it at a moment the clock picks. Two of
+// four Claude orchestrators recorded on 2.1.283 did that.
+func TestTheCampaignVerbsWaitForTheMission(t *testing.T) {
+	acting := []string{"send", "accept", "restart", "wait", "push"}
+	looking := []string{"list", "observe", "read", "fetch", "note"}
+
+	home, orch := fakeHome(t, "orchestrator", "d001.md")
+	orch.Manifest = &protocol.Manifest{}
+	mustDo(t, os.WriteFile(filepath.Join(home, protocol.ReplyPath("d001")), []byte("{}"), 0o600))
+	for _, verb := range acting {
+		err := gate(orch, verb)
+		if err == nil || !strings.Contains(err.Error(), "End your turn now") {
+			t.Errorf("before the mission, %s: %v, want a refusal that says to end the turn", verb, err)
+		}
+	}
+	for _, verb := range looking {
+		if err := gate(orch, verb); err != nil {
+			t.Errorf("before the mission, %s is only a look and must pass: %v", verb, err)
+		}
+	}
+
+	mustDo(t, os.WriteFile(filepath.Join(home, protocol.InputDir, protocol.MissionID+".md"), []byte("the mission"), 0o600))
+	for _, verb := range acting {
+		if err := gate(orch, verb); err != nil {
+			t.Errorf("with the mission open, %s must pass: %v", verb, err)
+		}
+	}
+
+	mustDo(t, os.WriteFile(filepath.Join(home, protocol.ReplyPath(protocol.MissionID)), []byte("verdict"), 0o600))
+	for _, verb := range acting {
+		if err := gate(orch, verb); err == nil || !strings.Contains(err.Error(), "over") {
+			t.Errorf("after the verdict, %s: %v, want a refusal that says the campaign is over", verb, err)
+		}
 	}
 }
 

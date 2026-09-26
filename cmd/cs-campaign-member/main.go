@@ -126,13 +126,48 @@ func fatal(format string, a ...any) {
 }
 
 // gate enforces the role boundary in code: dispatcher verbs exist only for
-// the orchestrator. An agent replies; it does not dispatch.
+// the orchestrator. An agent replies; it does not dispatch. And the verbs that
+// act on the campaign run only while there is one, which is for as long as the
+// mission dispatch is open.
 func gate(env *envState, verb string) error {
 	if env.Member.Role != "orchestrator" {
 		return fmt.Errorf("%s is a dispatcher verb; this member's role is %q — an agent replies, it does not dispatch", verb, env.Member.Role)
 	}
 	if env.Manifest == nil {
 		return fmt.Errorf("no campaign manifest at ~/%s — this member was not configured as an orchestrator", protocol.ManifestDoc)
+	}
+	if missionBound[verb] {
+		return missionOpen(env, verb)
+	}
+	return nil
+}
+
+// missionBound are the dispatcher verbs that act on the team rather than look
+// at it: they assign, judge, recover, hand over or wait on work.
+//
+// The readback tells an orchestrator not to start, and its reply that it may
+// finish its turn, and a model can carry on regardless, working from the
+// mission.md in its inputs: two of four Claude orchestrators recorded on
+// 2.1.283 did. It then runs the campaign with no dispatch open, which the
+// host counts as free, and the mission opens behind it at a moment the clock
+// picks. Refused here, the early turn has nothing left to do but end, and the
+// mission opens within seconds. Looking stays open: list, observe, read,
+// fetch and note.
+var missionBound = map[string]bool{"send": true, "accept": true, "restart": true, "wait": true, "push": true}
+
+// missionOpen refuses a verb that acts on the campaign unless this
+// orchestrator's mission dispatch is open.
+func missionOpen(env *envState, verb string) error {
+	msgs, err := localMsgs(env.Home)
+	if err != nil {
+		return err
+	}
+	d := protocol.Current(msgs)
+	if d == nil || d.ID != protocol.MissionID {
+		return fmt.Errorf("%s acts on the campaign, and it has not started: your mission arrives as dispatch %s once this turn ends. End your turn now", verb, protocol.MissionID)
+	}
+	if _, err := os.Stat(filepath.Join(env.Home, protocol.ReplyPath(d.ID))); err == nil {
+		return fmt.Errorf("%s acts on the campaign, and it is over: your mission %s is closed by its reply", verb, protocol.MissionID)
 	}
 	return nil
 }

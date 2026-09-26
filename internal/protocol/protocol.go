@@ -390,7 +390,9 @@ func PollInterval(pol Policy) time.Duration {
 // DefaultWaitSeconds is how long one `wait` blocks before returning with its
 // snapshot and asking to be called again. PROTOCOL.md §8: the wait is chunked
 // rather than one long block, because agent CLIs bound how long a single tool
-// call may run, and 240s sits well inside every adapter's cap.
+// call may run. Claude Code's default bound is 120s, and past it the call is
+// moved to the background rather than failed, so createArgs raises it for a
+// Claude orchestrator.
 //
 // It is not a Policy number, and deliberately so — see WaitChunk.
 const DefaultWaitSeconds = 240

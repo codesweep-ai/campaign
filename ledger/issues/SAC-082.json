@@ -1,0 +1,20 @@
+{
+  "id": "SAC-082",
+  "title": "A Claude orchestrator's wait is moved to the background halfway through its chunk",
+  "type": "defect",
+  "severity": "high",
+  "status": "in-progress",
+  "foundBy": "session agent, replaying the claude-subscription cassette recorded on Claude Code 2.1.283",
+  "opened": "2026-09-26",
+  "resolved": null,
+  "stint": "agent-cli-bump",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The orchestrator's `wait` blocks for up to one chunk, 240 seconds by default. Claude Code bounds a single Bash call at 120 seconds by default. Past that bound it does not fail the command: it moves it to the background and returns at once, saying `Command did not complete within its 120s timeout and was moved to the background`.\n\nA Claude orchestrator whose wait sees nothing to act on for two minutes therefore stops blocking. It carries on working, or it ends its turn and is woken when the task finishes, in a turn the host did not start. PROTOCOL.md §8 rules that out, because a provider error in such a turn is recorded nowhere. The comment on `DefaultWaitSeconds` says that 240 seconds sits well inside every adapter's cap, and for Claude Code it does not.\n\nMeasured in Claude Code 2.1.258 and 2.1.283 alike, on a 150-second command in an interactive session: both moved it to the background at 120 seconds. With `BASH_DEFAULT_TIMEOUT_MS=300000` in the environment, 2.1.283 ran it in the foreground to completion. The recorded claude-subscription orchestrator hit this at its 21st request, and its replay then stopped a background task by an ID that exists only in the recording.",
+  "notes": [],
+  "links": ["SAC-081"]
+}

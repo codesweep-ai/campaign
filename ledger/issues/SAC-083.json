@@ -1,0 +1,23 @@
+{
+  "id": "SAC-083",
+  "title": "An orchestrator can run the campaign before its mission opens, working from mission.md",
+  "type": "defect",
+  "severity": "high",
+  "status": "in-progress",
+  "foundBy": "session agent, tracing why two recorded orchestrators kept going after their readback",
+  "opened": "2026-09-26",
+  "resolved": null,
+  "stint": "agent-cli-bump",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The readback dispatch tells the orchestrator not to do any of the work yet, and the reply that closes it says it may finish its turn. Nothing enforces either. An orchestrator that keeps going can dispatch, wait on and judge its team with no open dispatch of its own, working from the mission.md in its standing inputs. The host counts it as free meanwhile, outside its deadline and recovery accounting.\n\nThe quiet wait added in a9d30a0 was meant to stop this. It withholds the mission until the readback turn ends, reasoning that an empty inbox leaves the turn nothing to carry on with. The file mission.md is already among the inputs, so the turn carries on anyway. Past two minutes the mission is opened behind the running turn, at a point set by the clock, which a replay cannot reproduce.\n\nTwo of four Claude orchestrators recorded on 2.1.283 did this, and both replays then failed their final reply. Simulated from scratch, about one readback in six keeps going, under 2.1.258 and 2.1.283 alike.",
+  "notes": [],
+  "links": [
+    "SAC-081",
+    "SAC-082"
+  ]
+}

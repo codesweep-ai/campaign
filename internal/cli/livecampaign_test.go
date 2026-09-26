@@ -452,6 +452,32 @@ func TestWorkflowRunsEveryScenario(t *testing.T) {
 	}
 }
 
+// A replay's commits have the hashes its recording had. The seed made a second
+// later hashes the same, and every member is told the same fixed dates, so a
+// recorded command that names a commit finds it when it is replayed.
+func TestTheSubjectRepoHasTheSameBaseEveryRun(t *testing.T) {
+	head := func() string {
+		out, err := exec.Command("git", "-C", seedSubjectRepo(t, t.TempDir()), "rev-parse", "HEAD").Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	first := head()
+	time.Sleep(1100 * time.Millisecond)
+	if second := head(); second != first {
+		t.Fatalf("two seeds a second apart have different bases: %s and %s", first, second)
+	}
+	for _, sc := range scenarios() {
+		body := scenarioProfile(sc, t.TempDir(), vcrBaseURL, replayName(sc))
+		for _, want := range []string{"GIT_AUTHOR_DATE=" + fixedCommitDate, "GIT_COMMITTER_DATE=" + fixedCommitDate} {
+			if strings.Count(body, want) != 2 {
+				t.Errorf("%s: want %s for both members:\n%s", sc.name, want, body)
+			}
+		}
+	}
+}
+
 // TestScenarioProfilesSpellTheirCredential checks the matrix without booting
 // anything: every scenario's generated profile is one `create` would accept,
 // and it grants the credential the scenario says it does, by the verb it says.
@@ -1414,6 +1440,18 @@ func campaignName(sc scenario, opts runOptions) string {
 	return fmt.Sprintf("cs%s%d", sc.cli, time.Now().Unix()%100000)
 }
 
+// fixedCommitDate is the date on every commit a campaign test makes, seed and
+// members alike.
+//
+// A commit's hash covers its dates, so a repository seeded at the time of the
+// run gives every run a new base hash, and every member commit on top of it a
+// new one too. member.json hands the orchestrator that base hash, and a
+// recorded orchestrator uses it: `git diff <base> campaign/dev/subject`. The
+// replay serves that command verbatim against a repository where the commit
+// does not exist, and it fails where it succeeded. With the identity and the
+// date fixed, a replay's commits have the hashes its recording had.
+const fixedCommitDate = "2026-01-01T00:00:00Z"
+
 // seedSubjectRepo builds the repository the fleet works in: one commit, so a
 // member's branch has a base its reply can be measured against.
 func seedSubjectRepo(t *testing.T, work string) string {
@@ -1422,7 +1460,12 @@ func seedSubjectRepo(t *testing.T, work string) string {
 	mustRun(t, work, "git", "init", "-q", repo)
 	writeFileT(t, filepath.Join(repo, "README.md"), "campaign subject\n")
 	mustRun(t, repo, "git", "-c", "user.email=t@t", "-c", "user.name=t", "add", "-A")
-	mustRun(t, repo, "git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "base")
+	commit := exec.Command("git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "base")
+	commit.Dir = repo
+	commit.Env = append(os.Environ(), "GIT_AUTHOR_DATE="+fixedCommitDate, "GIT_COMMITTER_DATE="+fixedCommitDate)
+	if out, err := commit.CombinedOutput(); err != nil {
+		t.Fatalf("git commit base: %v\n%s", err, out)
+	}
 	return repo
 }
 
@@ -1668,7 +1711,8 @@ func memberBlock(sc scenario, st seat, repo, baseURL, cassette string) string {
 	// takes the operator's git identity, and their real name and address end up
 	// in a recorded turn the moment an agent runs `git log` — in a file this
 	// repository commits. Fixed rather than absent so the value is also the
-	// same on the machine that replays.
+	// same on the machine that replays. The dates are fixed too, for the hashes:
+	// see fixedCommitDate.
 	env := []string{
 		// Keeps the member off the account features that vary with the
 		// network — telemetry, error reporting, the claude.ai surfaces the
@@ -1684,6 +1728,8 @@ func memberBlock(sc scenario, st seat, repo, baseURL, cassette string) string {
 		"GIT_AUTHOR_EMAIL=test@example.invalid",
 		"GIT_COMMITTER_NAME=campaign test",
 		"GIT_COMMITTER_EMAIL=test@example.invalid",
+		"GIT_AUTHOR_DATE=" + fixedCommitDate,
+		"GIT_COMMITTER_DATE=" + fixedCommitDate,
 	}
 	if baseURL != "" && st.baseURLEnv != "" && cassette != "" {
 		env = append(env, fmt.Sprintf("%s=%s/c/%s/%s%s",

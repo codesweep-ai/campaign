@@ -1,0 +1,22 @@
+{
+  "id": "SAC-081",
+  "title": "Three Claude scenarios miss on replay when Claude Code reports that the machine behaved differently",
+  "type": "defect",
+  "severity": "high",
+  "status": "in-progress",
+  "foundBy": "session agent, replaying the cassettes re-recorded for the move to sandbox d9279e7 and Claude Code 2.1.283",
+  "opened": "2026-09-26",
+  "resolved": null,
+  "stint": "agent-cli-bump",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "Recorded on Claude Code 2.1.283, claude-api-key, claude-subscription and claude-fault-capacity miss in `make test-smoke` at the same step on every run: 16, 19 and 29.\n\nAt the first two, the recording has an `# Environment update` reminder saying the orchestrator's shell moved, and the replay does not. The orchestrator ran `cd ~/subject && git status && git diff <base commit> campaign/dev/subject --stat`, naming the base commit by its hash. That hash exists only in the recording's subject repository, whose commits are made fresh on each run. The command failed in the replay, so the shell stayed where it was. At step 29 the recording has a background-task notification for a command that outlived its timeout, and the replay's command finished in time.\n\nClaude Code writes both reminders only when something happened on the machine, which a replay does not reproduce by design. The cs-vcr record VCR-043 holds the rule that cuts them.",
+  "notes": [],
+  "links": [
+    "SAC-080"
+  ]
+}

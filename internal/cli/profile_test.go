@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/codesweep-ai/campaign/internal/covmap"
 
 	"github.com/codesweep-ai/campaign/internal/model"
+	"github.com/codesweep-ai/campaign/internal/protocol"
 	"github.com/codesweep-ai/campaign/internal/store"
 )
 
@@ -282,6 +284,43 @@ func TestCreateArgsPreserveIsolation(t *testing.T) {
 	want := []string{"create", "box", "--engine", "firecracker", "--type", "agent", "--group", "campaign-grp", "--yolo", "--solo", "--cpus", "2", "--mem", "2048", "--repo", "/src/app@abc123:app", "--snapshot", "/src/specs:specs", "--lend-agent-login", "codex"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("got %#v\nwant %#v", got, want)
+	}
+}
+
+// A Claude orchestrator's wait has to stay one foreground call. Claude Code
+// moves a Bash call past its timeout, 120s by default, into the background,
+// and a wait blocks for a whole chunk. Measured on 2.1.258 and 2.1.283: a
+// 150s command was backgrounded at 120s, and ran to completion with the
+// timeout raised.
+func TestAClaudeOrchestratorsWaitFitsItsBashTimeout(t *testing.T) {
+	c := &model.Campaign{Engine: "firecracker", Group: "campaign-grp", Network: groupNetwork("campaign-grp")}
+	timeout := func(m model.Member) string {
+		for _, a := range createArgs(c, m) {
+			if v, ok := strings.CutPrefix(a, "BASH_DEFAULT_TIMEOUT_MS="); ok {
+				return v
+			}
+		}
+		return ""
+	}
+	orchestrator := model.Member{Sandbox: "o", Role: "orchestrator", CLI: "claude"}
+	got := timeout(orchestrator)
+	if got == "" {
+		t.Fatal("a Claude orchestrator is created with Claude Code's default Bash timeout, under the wait chunk")
+	}
+	if ms, _ := strconv.Atoi(got); ms <= protocol.DefaultWaitSeconds*1000 {
+		t.Errorf("BASH_DEFAULT_TIMEOUT_MS=%s does not exceed the %ds wait chunk", got, protocol.DefaultWaitSeconds)
+	}
+	// Workers do not wait, and other CLIs do not read the variable.
+	for _, m := range []model.Member{{Sandbox: "w", Role: "dev", CLI: "claude"}, {Sandbox: "x", Role: "orchestrator", CLI: "codex"}} {
+		if v := timeout(m); v != "" {
+			t.Errorf("%s/%s got BASH_DEFAULT_TIMEOUT_MS=%s", m.Role, m.CLI, v)
+		}
+	}
+	// A profile that sets it wins, because its env comes after.
+	orchestrator.Profile.Env = []string{"BASH_DEFAULT_TIMEOUT_MS=900000"}
+	args := createArgs(c, orchestrator)
+	if last := slices.Index(args, "BASH_DEFAULT_TIMEOUT_MS=900000"); last < slices.Index(args, "BASH_DEFAULT_TIMEOUT_MS="+got) {
+		t.Errorf("the profile's own setting comes before the default: %v", args)
 	}
 }
 

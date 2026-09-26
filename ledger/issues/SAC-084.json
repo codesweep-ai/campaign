@@ -1,0 +1,22 @@
+{
+  "id": "SAC-084",
+  "title": "Recorded commands name commits that do not exist on replay, so they fail there",
+  "type": "defect",
+  "severity": "med",
+  "status": "in-progress",
+  "foundBy": "session agent, reading the failed commands in the claude-api-key replay",
+  "opened": "2026-09-26",
+  "resolved": null,
+  "stint": "agent-cli-bump",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The live tiers seed the subject repository fresh on every run, and git stamps each commit with the time it was made. The base commit therefore has a new hash on every run, and so has every commit a member makes. The file member.json hands the orchestrator the base hash, and a recorded orchestrator uses it in commands such as `git diff <base> campaign/dev/subject --stat`.\n\nA replay serves those commands verbatim. The commit each one names exists only in the recording's repository, so the command fails with `fatal: bad object` where it succeeded when recorded. The replay counts them as commands that failed here, 9 to 28 per Claude scenario. On 2.1.283 a failed command also changes the request itself, which VCR-043 now tolerates. A failed commit or merge would change what the campaign produced.\n\nA hash is fixed by its content, its parents, its author and committer, and their dates. Fixing the identity and the dates, for the seed and for the members, gives a replay the hashes its recording had.",
+  "notes": [],
+  "links": [
+    "SAC-081"
+  ]
+}

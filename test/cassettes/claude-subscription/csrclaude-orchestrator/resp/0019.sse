@@ -1,21 +1,33 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfFJqvfaXG4JEbYg1YJaU","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":242,"cache_read_input_tokens":50349,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":242},"output_tokens":20,"service_tier":"standard","inference_geo":"not_available"},"context_management":null}     }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfSX66SH7sgtPx8fRF3Hw","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":555,"cache_read_input_tokens":50543,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":555},"output_tokens":4,"service_tier":"standard","inference_geo":"not_available"},"diagnostics":null,"context_management":null}    }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_016DD7aDyPuz7ZsCDKFfZMPE","name":"Bash","input":{},"caller":{"type":"direct"}}         }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}             }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git log --oneline campaign/dev/subject -5 \u0026\u0026 echo --- \u0026\u0026 git diff b761ba2d24b475a7830d42dfa8e030df6ed2d0a4 campaign/dev/subject --stat\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"Eo4ECqgBCBIYAipAvwib/TQeRngQuV3hd5ZpPudVPTzM6KpqOM7SMVZeOhM380cdILjltfaaCqItx0tn/GK+6Wb55U//bvTp3wAmYDIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEIle/Y6fFH0MZ5XOv8YWdVuIAQGoAfSb4NUGsAECEgzpi84Um1hsfGWXhXMaDFB6c17k7tfoeLINqCIw8YxMx1LkI3qVrt7dEQkvBYeXN00gDyZHd1WA61X8Q2Y2/yRQ0TbeGMmg9O1exs2IKpIC0dsgKBRfCjDbgmitY67mW0/VgKuEdBvUnay3vCrnK3Lzdjo3s2urv021lKvMxj5kVDitjsJYPi3HS4o0J/xsF2XT38vHt7qUvLC8RyOirrDGMdWbyZv1I3k4N6Zl2XcHI9qnSfJRRUHjrBUZgDX+OhrdteOMavhLS/PZvgLX+Zxdg4WfkpFIRt3r6/d/1K4LD8Fv4MipmSextK0M013sVT1cg3n2nLJTTYQBlLd2BAtO7wRVlOWZUlBAdB8j4U13e2Swlcl1dI491onbBFwtupjGHqwOqjMsRgjnxdNYWlk2EJESoLExzfIp+Jxk4/perP8EZNobY2cjIBvW80cYMYk30n8VmYVCr2EQU8ykuqSfMRgB"}  }
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0       }
+data: {"type":"content_block_stop","index":0      }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01M2r6kQEpVwj8N9sC9Lk2hE","name":"Bash","input":{},"caller":{"type":"direct"}}             }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cd ~/subject \u0026\u0026 git show campaign/dev/subject:src/greet.py \u0026\u0026 echo \\\"---\\\" \u0026\u0026 git show campaign/dev/subject:tests/test_greet.py\", \"description\": \"Show contents of greet.py and test_greet.py at dev's commit\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1           }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":242,"cache_read_input_tokens":50349,"output_tokens":123,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}       }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":555,"cache_read_input_tokens":50543,"output_tokens":226,"output_tokens_details":{"thinking_tokens":83}},"context_management":{"applied_edits":[]}          }
 
 event: message_stop
-data: {"type":"message_stop"       }
+data: {"type":"message_stop"          }
 

@@ -1,0 +1,25 @@
+{
+  "id": "SAC-080",
+  "title": "The claude-subscription replay misses on Claude Code 2.1.283, because the replay credentials name no account",
+  "type": "defect",
+  "severity": "high",
+  "status": "in-progress",
+  "foundBy": "session agent, replaying the cassettes re-recorded for the move to sandbox d9279e7 and Claude Code 2.1.283",
+  "opened": "2026-09-26",
+  "resolved": null,
+  "stint": "agent-cli-bump",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "Recorded on Claude Code 2.1.283, the claude-subscription scenario fails in `make test-smoke`. Both members miss at their second request with `messages[0].content: 4 items vs 3`, so the campaign never reaches its verdict.\n\nA lent Claude login carries the host's `oauthAccount`, address included, into the member. A recording runs on the real profile, so the member knows an address, and Claude Code writes it into a `# userEmail` section of a system reminder. The recorder, cs-vcr, strips that section and keeps the reminder. The replay's fabricated credential tree holds a token and no account, so the member knows no address and sends no reminder.\n\nClaude Code 2.1.258 was not affected, because that reminder also carried `# claudeMd` and `# currentDate`. In 2.1.283 the address is all it holds. Sandbox fixed the same defect in its own replay tier as SBX-086.",
+  "notes": [
+    {
+      "date": "2026-09-26",
+      "text": "The fix moved to cs-vcr. Its ruleset v15 removes the account reminder whole when cutting the address leaves it empty, on both sides (VCR-042). Campaign takes it by moving its cs-vcr pin, and its fabricated credential tree stays as it was."
+    }
+  ],
+  "links": []
+}
