@@ -1,0 +1,22 @@
+{
+  "id": "SAC-087",
+  "title": "A Claude orchestrator is offered a tool to schedule its own wakeup, which would start a turn no driver records",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, reading the claude-fault-lost-wake recording",
+  "opened": "2026-09-26",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "Recording the claude-fault-lost-wake scenario on Claude Code 2.1.283, the orchestrator's wait was moved to the background. The model then called `ScheduleWakeup` with a delay of 240 seconds, to check on the wait later. The call failed only because it named no prompt: `prompt` is required when `stop` is not true. The model ended its turn instead.\n\nThe tool exists for Claude Code's `/loop` mode. Whether a well-formed call outside that mode starts a turn has not been measured. If it does, the orchestrator wakes itself in a turn no driver records, the class the idle-orchestrator rule of SPEC.md R64 was written for. A delay past one wait chunk plus the settling window would also read `node-stuck` while the wakeup is still pending.\n\nThe next step is to measure a well-formed call in a member, and if it wakes, to disable the tool for campaign members.",
+  "notes": [],
+  "links": [
+    "SAC-069"
+  ]
+}
