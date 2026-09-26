@@ -312,7 +312,11 @@ The wait is at least what the provider asked for, and it doubles from 30 seconds
 the refusals repeat. Members refused together come back one per look, because their combined
 return is what was refused. `providerWaitSeconds` bounds the whole wait. A line that reads
 `the provider rejected this node's credential` is yours to repair: nothing the orchestrator can
-send fixes a key. The repair is to renew the key, and then to restart the member's session with `cs-campaign restart`.
+send fixes a key. The repair depends on where the credential lives. A lent one lives on the host:
+renew the key or sign in again there, and then restart the member's session with `cs-campaign
+restart`. A held one is a copy inside the member, and neither a sign-in on the host nor a restart
+reaches it. Someone has to sign in inside the member with the agent's own CLI, or the seat is
+recreated.
 
 A stopped or stuck line also quotes how the node's last turn ended, in the turn driver's own
 words. The members' machines keep that in `~/.cs-turns/<cli>.log`, and `archive` collects it.
@@ -975,6 +979,17 @@ until it is destroyed, and the host cannot revoke it. Lend instead where the gra
 (agentLogin for claude or codex, apiKey for a provider the host keeps in ~/.cs-keys).
 ```
 
+A seat that holds a copied agent login gets a second line. The copy is the host's login as it stood
+at `create`, and it does not renew. It lasts only as long as the access token it was copied from,
+which for claude is about eight hours after the host last signed in. A later sign-in on the host
+does not reach it:
+
+```console
+warning: orchestrator hold a copied agent login, and it does not renew — it lasts only as long as
+the access token it was copied from, and a later sign-in on the host does not reach it. Once it
+expires, someone has to sign in inside the member, or the seat is recreated.
+```
+
 A member whose only grant is `apiKeyFromEnv` needs one of those variables set in the shell that
 runs `create`, which refuses without it. `validate` and `plan` warn instead, because the key may be
 exported between reading the profile and creating the campaign.
@@ -1016,7 +1031,9 @@ either spelling, else the key grant, else the login grant. A key displaces a log
 that finds a key in its environment spends the key, whatever it was signed in as.
 
 A host login expires when nothing uses it. A lent one is read fresh on every call, so signing in
-again on the host is all a stale one needs.
+again on the host is all a stale one needs. A copied one, granted with `inheritAgentLogin`, does not
+renew and is not read again. It expires with the access token it was copied from, and signing in on
+the host does not reach it.
 
 ### The policy numbers
 

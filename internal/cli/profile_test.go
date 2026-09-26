@@ -577,12 +577,47 @@ func TestCopiedCredentialsAreNamedBeforeCreate(t *testing.T) {
 	if strings.Contains(buf.String(), "lends") {
 		t.Errorf("a lending seat must not be reported: %q", buf.String())
 	}
+	if strings.Contains(buf.String(), "does not renew") {
+		t.Errorf("a copied key is not a login, and has no token to expire: %q", buf.String())
+	}
 	// Silence is the point: a fully lent campaign is the shape being encouraged,
 	// and a warning that always fires stops being read.
 	buf.Reset()
 	warnCopiedCredentials(&buf, members[:1])
 	if buf.Len() != 0 {
 		t.Errorf("a fully lent campaign must be silent: %q", buf.String())
+	}
+}
+
+// A copied login is the host's login as it stood at create. It does not renew,
+// so it expires with the access token it was copied from, and neither a host
+// sign-in nor a restart reaches it (SAC-068). Seen live: an orchestrator whose
+// copied claude login expired about eight hours after the host's last sign-in.
+func TestACopiedLoginIsSaidToExpireWithItsToken(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	members := []model.Member{
+		{Name: "orchestrator", Profile: model.MemberProfile{Auth: model.Auth{
+			InheritAgentLogin: []string{"claude"}, Credentials: model.CredentialInherit}}},
+		{Name: "keyed", Profile: model.MemberProfile{Auth: model.Auth{
+			InheritAPIKey: []string{"openai"}, AgentLogin: []string{"codex"}, Credentials: model.CredentialInherit}}},
+	}
+	var buf bytes.Buffer
+	warnCopiedCredentials(&buf, members)
+	var login string
+	for line := range strings.SplitSeq(buf.String(), "\n") {
+		if strings.Contains(line, "copied agent login") {
+			login = line
+		}
+	}
+	for _, want := range []string{"warning: orchestrator hold a copied agent login", "does not renew",
+		"as long as the access token it was copied from", "a later sign-in on the host does not reach it",
+		"sign in inside the member, or the seat is recreated"} {
+		if !strings.Contains(login, want) {
+			t.Errorf("the login warning must say %q: %q", want, buf.String())
+		}
+	}
+	if strings.Contains(login, "keyed") {
+		t.Errorf("a key displaces a login, so a keyed seat holds no login: %q", login)
 	}
 }
 

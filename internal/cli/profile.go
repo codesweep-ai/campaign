@@ -407,8 +407,14 @@ func warnUnsatisfiedKeyEnv(w io.Writer, members []model.Member) {
 //
 // Silent on a fully lent campaign, which is the shape this warning is trying to
 // make ordinary.
+//
+// A copied agent login is said a second time, because it does not last as long
+// as the member does. It is the host's login as it stood at create, and it does
+// not renew: it expires with the access token it was copied from, and a later
+// sign-in on the host does not reach it. A campaign that outlives the token
+// then fails at an hour nobody chose, and `restart` does not repair it.
 func warnCopiedCredentials(w io.Writer, members []model.Member) {
-	var names []string
+	var names, logins []string
 	for _, m := range members {
 		if m.Profile.Auth.Credentials != model.CredentialInherit {
 			continue
@@ -417,6 +423,10 @@ func warnCopiedCredentials(w io.Writer, members []model.Member) {
 			continue // nothing granted: unsatisfiedKeyEnv speaks to that instead
 		}
 		names = append(names, m.Name)
+		// A granted key displaces a login, so only a seat granted no key holds one.
+		if len(m.Profile.Auth.AgentLogins()) > 0 && len(m.Profile.Auth.APIKeys()) == 0 {
+			logins = append(logins, m.Name)
+		}
 	}
 	if len(names) == 0 {
 		return
@@ -425,6 +435,12 @@ func warnCopiedCredentials(w io.Writer, members []model.Member) {
 		"until it is destroyed, and the host cannot revoke it. Lend instead where the grant allows it "+
 		"(agentLogin for claude or codex, apiKey for a provider the host keeps in ~/.cs-keys).\n",
 		strings.Join(names, ", "))
+	if len(logins) > 0 {
+		fmt.Fprintf(w, "warning: %s hold a copied agent login, and it does not renew — it lasts only as long "+
+			"as the access token it was copied from, and a later sign-in on the host does not reach it. "+
+			"Once it expires, someone has to sign in inside the member, or the seat is recreated.\n",
+			strings.Join(logins, ", "))
+	}
 }
 
 // requireKeyEnv is the same check at the moment the credential is needed, where

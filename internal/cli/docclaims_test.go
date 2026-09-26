@@ -7,6 +7,7 @@ package cli
 // clobbered.
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"slices"
@@ -422,6 +423,55 @@ func TestTheDocumentedSendRefusalNamesTheFlag(t *testing.T) {
 	} {
 		if !strings.Contains(campaign.ManualMD, claim) {
 			t.Errorf("MANUAL.md no longer states %q; this test names the sentence it keeps true", claim)
+		}
+	}
+}
+
+// MANUAL.md quotes the warning a copied agent login gets, and says a held
+// credential is repaired inside the member where a lent one is repaired on the
+// host (SAC-068). The operator acts on both, so the quote has to be what the
+// code prints and the repair has to stay split.
+func TestTheDocumentedCopiedLoginWarningIsTheOnePrinted(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	manual, err := os.ReadFile(filepath.Join(root, "MANUAL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	playbook, err := os.ReadFile(filepath.Join(root, "PLAYBOOK.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	warnCopiedCredentials(&buf, []model.Member{{Name: "orchestrator", Profile: model.MemberProfile{Auth: model.Auth{
+		InheritAgentLogin: []string{"claude"}, Credentials: model.CredentialInherit}}}})
+	var printed string
+	for line := range strings.SplitSeq(buf.String(), "\n") {
+		if strings.Contains(line, "copied agent login") {
+			printed = line
+		}
+	}
+	flat := strings.Join(strings.Fields(string(manual)), " ")
+	if printed == "" || !strings.Contains(flat, printed) {
+		t.Errorf("MANUAL.md does not quote the login warning as printed: %q", printed)
+	}
+	for doc, wants := range map[string][]string{
+		"MANUAL.md": {"A held one is a copy inside the member, and neither a sign-in on the host nor a restart reaches it.",
+			"A copied one, granted with `inheritAgentLogin`, does not renew and is not read again."},
+		"PLAYBOOK.md": {"A held one needs a sign-in inside the member, or the seat recreated.",
+			"A copied login does not renew."},
+	} {
+		body := string(manual)
+		if doc == "PLAYBOOK.md" {
+			body = string(playbook)
+		}
+		body = strings.Join(strings.Fields(body), " ")
+		for _, want := range wants {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s no longer carries %q", doc, want)
+			}
 		}
 	}
 }

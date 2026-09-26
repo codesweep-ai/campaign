@@ -143,7 +143,9 @@ credential gets there is a design decision like any other, and there is a prefer
    the fleet. This is the default verb, and it should be the answer for almost every seat.
 2. **Copy it in**, with `inheritAgentLogin` or `inheritApiKey`, where the grant cannot be lent.
    OpenCode authenticates from a provider key and has no login to lend. Something inside the member
-   may also need the secret itself.
+   may also need the secret itself. A copied login does not renew. It expires with the access token
+   it was copied from, about eight hours after the host last signed in for claude. Only a sign-in
+   inside the member repairs it, so a seat that must outlast that token should lend.
 3. **Pass it from the environment**, with `inheritApiKeyFromEnv`, only when the key cannot live on
    this host at all. It is the weakest of the three. The raw value is read out of whatever shell ran
    `create`, so the key a campaign spends depends on how that shell was set up. The member then
@@ -534,7 +536,7 @@ ask and is never a stale reading from an hour ago.
 | `node-working` | A dispatch is open, and the turn driver is alive or the agent says it is in a turn. | Nothing. |
 | `node-stopped` | A dispatch is open, the node is not in a turn, the ladder has a move left. | Nothing. The ladder runs. For the orchestrator, read the record age on the line before you think of a nudge. |
 | `node-replied` | The reply exists and the orchestrator has not accepted it. | Nothing. Judging it is the orchestrator's job. |
-| `node-stuck` | The ladder is spent, a bound tripped, the machine is gone, or the credential was rejected. | Read the line, which says which. A rejected credential is yours to renew. Otherwise read the transcript, and decide. |
+| `node-stuck` | The ladder is spent, a bound tripped, the machine is gone, or the credential was rejected. | Read the line, which says which. A rejected credential is yours to renew. A lent one is renewed on the host and then restarted. A held one needs a sign-in inside the member, or the seat recreated. Otherwise read the transcript, and decide. |
 | `node-unreachable` | This look failed. It overlays a state rather than replacing one. | Look again before concluding anything. |
 | `node-refused` | The provider throttled the member, or was overloaded or down. The harness is waiting and spends no rung. | For an agent, nothing. For the orchestrator, `cs-campaign resume` once the line says `resume next`; a tending loop may do that for you. Otherwise nothing, unless every member shows it for a long time. Then the key is over its limit or the provider is down, and fewer members on the key is the lever. |
 
