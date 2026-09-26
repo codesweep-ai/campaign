@@ -427,7 +427,7 @@ In practice the wait is chunked rather than one long block, since agent CLIs bou
 single tool call may run. The win is one model wake-up per interval instead of one per poll. The
 chunk has to fit inside that bound. Claude Code's default is two minutes, and past it the call is
 moved to the background rather than failed, which is the background waiting the next paragraph
-rules out.
+rules out. OpenCode's default is also two minutes, and past it the call is killed.
 
 **The orchestrator calls the wait in the foreground**, as a call inside its turn. Some agent CLIs
 can run a command as a background task and start a fresh turn when it finishes. An orchestrator

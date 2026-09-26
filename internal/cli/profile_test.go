@@ -287,40 +287,47 @@ func TestCreateArgsPreserveIsolation(t *testing.T) {
 	}
 }
 
-// A Claude orchestrator's wait has to stay one foreground call. Claude Code
-// moves a Bash call past its timeout, 120s by default, into the background,
-// and a wait blocks for a whole chunk. Measured on 2.1.258 and 2.1.283: a
-// 150s command was backgrounded at 120s, and ran to completion with the
-// timeout raised.
-func TestAClaudeOrchestratorsWaitFitsItsBashTimeout(t *testing.T) {
+// An orchestrator's wait has to stay one call that runs to its end, and a wait
+// blocks for a whole chunk. Claude Code and OpenCode bound a shell call at
+// 120s by default. Measured on Claude Code 2.1.258 and 2.1.283, a 150s
+// command was moved to the background at 120s. On OpenCode 1.18.32 it was
+// killed at 120s. Both ran it to completion with the bound raised.
+func TestAnOrchestratorsWaitFitsItsShellTimeout(t *testing.T) {
 	c := &model.Campaign{Engine: "firecracker", Group: "campaign-grp", Network: groupNetwork("campaign-grp")}
-	timeout := func(m model.Member) string {
+	timeout := func(m model.Member, name string) string {
 		for _, a := range createArgs(c, m) {
-			if v, ok := strings.CutPrefix(a, "BASH_DEFAULT_TIMEOUT_MS="); ok {
+			if v, ok := strings.CutPrefix(a, name+"="); ok {
 				return v
 			}
 		}
 		return ""
 	}
-	orchestrator := model.Member{Sandbox: "o", Role: "orchestrator", CLI: "claude"}
-	got := timeout(orchestrator)
-	if got == "" {
-		t.Fatal("a Claude orchestrator is created with Claude Code's default Bash timeout, under the wait chunk")
-	}
-	if ms, _ := strconv.Atoi(got); ms <= protocol.DefaultWaitSeconds*1000 {
-		t.Errorf("BASH_DEFAULT_TIMEOUT_MS=%s does not exceed the %ds wait chunk", got, protocol.DefaultWaitSeconds)
-	}
-	// Workers do not wait, and other CLIs do not read the variable.
-	for _, m := range []model.Member{{Sandbox: "w", Role: "dev", CLI: "claude"}, {Sandbox: "x", Role: "orchestrator", CLI: "codex"}} {
-		if v := timeout(m); v != "" {
-			t.Errorf("%s/%s got BASH_DEFAULT_TIMEOUT_MS=%s", m.Role, m.CLI, v)
+	for cli, name := range map[string]string{"claude": "BASH_DEFAULT_TIMEOUT_MS", "opencode": "OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS"} {
+		orchestrator := model.Member{Sandbox: "o", Role: "orchestrator", CLI: cli}
+		got := timeout(orchestrator, name)
+		if got == "" {
+			t.Fatalf("an orchestrator on %s is created with its default shell timeout, under the wait chunk", cli)
+		}
+		if ms, _ := strconv.Atoi(got); ms <= protocol.DefaultWaitSeconds*1000 {
+			t.Errorf("%s=%s does not exceed the %ds wait chunk", name, got, protocol.DefaultWaitSeconds)
+		}
+		// Workers do not wait.
+		if v := timeout(model.Member{Sandbox: "w", Role: "dev", CLI: cli}, name); v != "" {
+			t.Errorf("a worker on %s got %s=%s", cli, name, v)
+		}
+		// A profile that sets it wins, because its env comes after.
+		orchestrator.Profile.Env = []string{name + "=900000"}
+		args := createArgs(c, orchestrator)
+		if last := slices.Index(args, name+"=900000"); last < slices.Index(args, name+"="+got) {
+			t.Errorf("the profile's own %s comes before the default: %v", name, args)
 		}
 	}
-	// A profile that sets it wins, because its env comes after.
-	orchestrator.Profile.Env = []string{"BASH_DEFAULT_TIMEOUT_MS=900000"}
-	args := createArgs(c, orchestrator)
-	if last := slices.Index(args, "BASH_DEFAULT_TIMEOUT_MS=900000"); last < slices.Index(args, "BASH_DEFAULT_TIMEOUT_MS="+got) {
-		t.Errorf("the profile's own setting comes before the default: %v", args)
+	// Codex has no such bound, and reads neither variable.
+	codex := model.Member{Sandbox: "x", Role: "orchestrator", CLI: "codex"}
+	for _, name := range []string{"BASH_DEFAULT_TIMEOUT_MS", "OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS"} {
+		if v := timeout(codex, name); v != "" {
+			t.Errorf("a codex orchestrator got %s=%s", name, v)
+		}
 	}
 }
 

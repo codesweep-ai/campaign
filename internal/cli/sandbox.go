@@ -789,9 +789,17 @@ func (s sandboxCLI) version(ctx context.Context) (string, error) {
 	return reported, nil
 }
 
-// claudeOrchestratorBashTimeoutMs is the Bash timeout a Claude orchestrator
+// orchestratorShellTimeoutMs is the bound on one shell call an orchestrator
 // runs with: one wait chunk and a minute's margin.
-const claudeOrchestratorBashTimeoutMs = (protocol.DefaultWaitSeconds + 60) * 1000
+const orchestratorShellTimeoutMs = (protocol.DefaultWaitSeconds + 60) * 1000
+
+// shellTimeoutVar is the variable that sets an adapter's bound on one shell
+// call, for each adapter whose default is under the wait chunk. Codex has no
+// such bound.
+var shellTimeoutVar = map[string]string{
+	"claude":   "BASH_DEFAULT_TIMEOUT_MS",
+	"opencode": "OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS",
+}
 
 // createArgs builds the cs-sandbox create invocation. The stall threshold —
 // the turn drivers' own idle definition — travels here as create-time env,
@@ -844,14 +852,14 @@ func createArgs(campaign *model.Campaign, member model.Member) []string {
 	if v := os.Getenv("CS_CAMPAIGN_WAIT_SECONDS"); v != "" {
 		args = append(args, "--env", "CS_CAMPAIGN_WAIT_SECONDS="+v)
 	}
-	// Claude Code bounds one Bash call at 120s by default, and past that it
-	// moves the command to the background instead of failing it. The wait
-	// blocks for a whole chunk, so under that default a quiet wait was
-	// backgrounded halfway, and the orchestrator went on waiting in turns the
-	// host never started (PROTOCOL.md §8). Before the profile's own env, so a
-	// profile can still set it.
-	if member.CLI == "claude" && member.Role == "orchestrator" {
-		args = append(args, "--env", fmt.Sprintf("BASH_DEFAULT_TIMEOUT_MS=%d", claudeOrchestratorBashTimeoutMs))
+	// Claude Code and OpenCode bound one shell call at 120s by default, and
+	// the wait blocks for a whole chunk. Past its bound Claude Code moves the
+	// call to the background, and the orchestrator went on waiting in turns
+	// the host never started (PROTOCOL.md §8). OpenCode kills it, and the wait
+	// fails halfway. Raised for the orchestrator, the one member that waits.
+	// Before the profile's own env, so a profile can still set it.
+	if v, ok := shellTimeoutVar[member.CLI]; ok && member.Role == "orchestrator" {
+		args = append(args, "--env", fmt.Sprintf("%s=%d", v, orchestratorShellTimeoutMs))
 	}
 	// Declared environment first, so a --env the profile asked for is present
 	// whichever way the auth branch below goes.
