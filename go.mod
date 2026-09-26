@@ -11,7 +11,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/codesweep-ai/ledger v0.0.0-20260926051938-a74e65097227 // indirect
-	github.com/codesweep-ai/lint v0.0.0-20260926051938-002fb9ab3466 // indirect
+	github.com/codesweep-ai/lint v0.0.0-20260926212900-c12282e27f13 // indirect
 	github.com/codesweep-ai/npmrevs v0.0.0-20260926051938-ebb13b8ef732 // indirect
 	github.com/codesweep-ai/sandbox v0.0.0-20260926191456-6a14f999f140 // indirect
 	github.com/codesweep-ai/tracer v0.0.0-20260926051938-c342fc49291f // indirect
