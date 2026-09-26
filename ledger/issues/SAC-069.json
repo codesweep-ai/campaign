@@ -1,0 +1,22 @@
+{
+  "id": "SAC-069",
+  "title": "The orientation and the mission dispatch still allow a background wait, and no smoke scenario exercises one",
+  "type": "improvement",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "session agent, while closing SAC-067",
+  "opened": "2026-09-26",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The decision recorded on SAC-067 has two parts that did not land with its fix at f06d9ee.\n\nFirst, the orchestrator's own instructions should say to call `wait` in the foreground. The orientation, `internal/cli/assets/orientation.md.tmpl`, and the mission dispatch in `internal/cli/create.go` say only \"Never end your turn without either calling `wait` or replying\". A wait launched as a background task, followed by the end of the turn, obeys that sentence. Both texts reach the model inside the requests the cassettes under `test/cassettes/` recorded, so editing either makes every recorded scenario miss. The change needs every scenario re-recorded against real providers.\n\nSecond, the smoke tier has no fault scenario in which the orchestrator waits in the background and its wake never comes. That scenario would prove the idle-orchestrator rule of SPEC.md R64 end to end. Recording it costs a real campaign too.\n\nUntil both land, the rule catches an orchestrator that waits in the background, and PLAYBOOK.md tells the operator to brief foreground waiting. Nothing tells the orchestrator itself.",
+  "notes": [],
+  "links": [
+    "SAC-067"
+  ]
+}
