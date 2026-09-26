@@ -1,0 +1,20 @@
+{
+  "id": "SAC-073",
+  "title": "The member fetch leaves a delivered build store unmerged",
+  "type": "improvement",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, reviewing how local builds reach campaign members (tasks/pin-on-local-builds.md, section 8)",
+  "opened": "2026-09-25",
+  "resolved": null,
+  "stint": "local-builds",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "A campaign's build store is a repository its members hold a clone of, which the orchestrator carries like a project repository (DSH-029). `cs-campaign-member fetch` leaves what it fetched on a remote-tracking ref. So the orchestrator's own store does not see a member's new builds until somebody merges them by hand, and every store push waits on that.",
+  "notes": [],
+  "links": []
+}

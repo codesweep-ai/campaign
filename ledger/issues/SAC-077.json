@@ -1,0 +1,20 @@
+{
+  "id": "SAC-077",
+  "title": "The upgrade steps test the old cs-sandbox pin",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, reviewing how local builds reach campaign members (tasks/pin-on-local-builds.md, section 8)",
+  "opened": "2026-09-25",
+  "resolved": null,
+  "stint": "local-builds",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "CONTRIBUTING.md says to install the new cs-sandbox, run `make test-integration`, and only then move the pin. `make test-integration` runs bin/tools, which `make tools` builds at the pin go.mod names. So the validation step runs the old cs-sandbox, and the new one is never tested before its pin is committed.",
+  "notes": [],
+  "links": []
+}

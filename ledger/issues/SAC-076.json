@@ -1,0 +1,20 @@
+{
+  "id": "SAC-076",
+  "title": "The smoke tiers boot only the published image name",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, reviewing how local builds reach campaign members (tasks/pin-on-local-builds.md, section 8)",
+  "opened": "2026-09-25",
+  "resolved": null,
+  "stint": "local-builds",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "`SMOKE_IMAGE` and `SBX_IMAGE` are the published names `cs-sandbox version --images` prints, passed as `CS_SANDBOX_IMAGE`. An image `cs-sandbox build` makes of an unpublished version is now tagged under localhost/ instead. So a campaign pinned at a local sandbox build rebuilds the image on every run and boots a name no host holds.",
+  "notes": [],
+  "links": []
+}

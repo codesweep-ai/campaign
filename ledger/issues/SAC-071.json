@@ -1,0 +1,20 @@
+{
+  "id": "SAC-071",
+  "title": "A -dirty ui pin passes the pin check, and fails only in CI",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "agent review (session): `npm run registry:pack` on a tree with changes packs a -dirty build, and nothing stops a pin on one before CI fails on it",
+  "opened": "2026-09-25",
+  "resolved": null,
+  "stint": "local-builds",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "`scripts/consumer-conventions.go` accepts any exact version as the ui pin, `-dirty` ones included. `npm run registry:pack` on a tree with changes packs such a build. A pin on one installs on the machine that made it and nowhere else, since no CI ever builds that version. CI then fails with E404, long after the commit.",
+  "notes": [],
+  "links": []
+}

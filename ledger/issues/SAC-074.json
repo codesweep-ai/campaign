@@ -1,0 +1,20 @@
+{
+  "id": "SAC-074",
+  "title": "A campaign cannot pass image stores to its members",
+  "type": "improvement",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, reviewing how local builds reach campaign members (tasks/pin-on-local-builds.md, section 8)",
+  "opened": "2026-09-25",
+  "resolved": null,
+  "stint": "local-builds",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "`cs-sandbox create --image-store` mounts a shared image store in a member, which is how an image built on the host reaches a member that cannot build one. A profile has no field for it, so a campaign cannot use it.",
+  "notes": [],
+  "links": []
+}
