@@ -1,0 +1,20 @@
+{
+  "id": "SAC-088",
+  "title": "A recording can end while the orchestrator's last message is still streaming, and commit a truncated response",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, reading the one replay miss in claude-inherit after the SAC-069 re-recording",
+  "opened": "2026-09-26",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The claude-inherit cassette recorded on 2026-09-26 ended on a truncated response. Its last orchestrator step holds `message_start` and 14 deltas, and no `message_stop`. That step is the orchestrator's closing message, after its reply to the mission. On replay Claude Code sent that request three times, which reads as a retry of a stream that broke off. The third found no step, and cs-vcr reported 1 miss. The verdict had already been read, so the scenario passed.\n\nThe recording driver stops watching once the mission reply exists and every worker is quiet. It leaves the orchestrator out of that check, on the reasoning that it has already replied. A reply is not the end of its turn, though, and the closing message can still be streaming when the run archives and destroys the fleet. That is the most likely way the stream was cut. The timing was not captured, so it is not proven.\n\nA re-recording made the cassette whole again. Waiting for the orchestrator's own turn to end would make it whole every time.",
+  "notes": [],
+  "links": []
+}
