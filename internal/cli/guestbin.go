@@ -9,7 +9,9 @@ import (
 // guestBinaryBytes is the embedded cs-campaign-member binary, produced by
 // `make guestbin` and embedded so the two binaries ship in lockstep. The
 // committed file is a placeholder that keeps plain `go build ./...` working;
-// create refuses to install it.
+// create refuses to install it. `make build` passes -overlay, which has the
+// compiler read the real guest from bin/guest/ in its place, so the file on
+// disk never changes.
 //
 //go:embed assets/cs-campaign-member.bin
 var guestBinaryBytes []byte

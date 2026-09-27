@@ -5,8 +5,7 @@
 #   goreleaser release --snapshot --clean  # full local dry-run into dist/
 #   goreleaser release --clean             # tagged release (needs a git tag)
 #
-# `make snapshot` and `make release` wrap the last two, and restore the guest
-# binary placeholder afterwards.
+# `make snapshot` and `make release` wrap the last two.
 version: 2
 
 project_name: cs-campaign
@@ -33,6 +32,7 @@ builds:
       - CGO_ENABLED=0
     flags:
       - -trimpath
+      - -overlay=bin/guest/{{ .Arch }}.json
     ldflags:
       - -s -w
     goos: [linux, darwin]
@@ -44,10 +44,11 @@ builds:
     # placeholder instead, which create refuses outright — so this hook is not
     # optional, and neither is its GUESTARCH.
     #
-    # It writes one shared file that the compiler then reads through //go:embed,
-    # so the targets must not build concurrently. Every caller passes
-    # --parallelism 1; at the default, arm64 targets pick up whichever guest the
-    # last hook happened to write. See the release target in the Makefile.
+    # It writes the guest under bin/guest/, one per arch, with the overlay file
+    # the -overlay flag above names. The compiler reads the guest in place of
+    # the placeholder, so the tree is never modified and the version is stamped
+    # without +dirty. Targets of different arches read different files, so they
+    # build concurrently.
     hooks:
       pre:
         - make guestbin GUESTARCH={{ .Arch }}

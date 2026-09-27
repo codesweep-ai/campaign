@@ -2,7 +2,8 @@
 # later: covmap/ holds the behaviour rubric, its run records and the rendered
 # page, all reviewed in a diff; ledger/ holds the issue records and their
 # rendered page; internal/cli/assets/cs-campaign-member.bin is a text
-# placeholder the build replaces, and `create` refuses to install one.
+# placeholder the build reads the real guest in place of, and `create` refuses
+# to install one.
 #
 # Campaign material is not ignored either, because none belongs here at all:
 # profiles, missions, briefs and archives live in a workspace outside this
@@ -46,8 +47,8 @@
 # Editor state
 /.vscode/
 
-# A stray build of the guest binary at the root. The embed placeholder lives at
-# internal/cli/assets/cs-campaign-member.bin and must stay the only copy.
+# A stray build of the guest binary at the root. `make guestbin` writes the real
+# ones under bin/guest/.
 /cs-campaign-member
 
 # A local cross-repo workspace is a personal dev tool, never committed:

@@ -17,6 +17,13 @@ VIEWERBIN  := bin/cs-dispatch-viewer
 VIEWERPKG  := ./dispatch-viewer/cmd/cs-dispatch-viewer
 GUESTBIN   := internal/cli/assets/cs-campaign-member.bin
 GUESTARCH  ?= $(shell go env GOARCH)
+# The real guest binary for GUESTARCH, and the `go build -overlay` file that has
+# the compiler read it in place of $(GUESTBIN). The committed placeholder is
+# never written, so the tree stays clean through a build and the version Go
+# stamps names the commit alone, with no +dirty. One pair per arch, so release
+# targets of different arches build side by side.
+GUESTDIR   := bin/guest
+GUESTOVERLAY = $(GUESTDIR)/$(GUESTARCH).json
 PREFIX     ?= $(HOME)/.local
 VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS    := -s -w
@@ -35,11 +42,9 @@ GO_FILES   := $(shell git ls-files '*.go' 2>/dev/null | grep . || find . -name '
 # the index is still an input. $(GIT_DIR)/HEAD is one because the version is the
 # VCS stamp Go embeds, so a commit changes the binaries even when no source did.
 # The embedded files are listed because //go:embed makes them compile-time
-# inputs — all but $(GUESTBIN), which is not an input at all: it is compiled
-# from ./cmd/cs-campaign-member, and the build restores the committed
-# placeholder over it afterwards, which would leave it permanently newer than
-# what it produced.
-GIT_DIR    := $(shell git rev-parse --git-dir 2>/dev/null)
+# inputs. The real guest binary is not listed: guestbin compiles it afresh in
+# every build of $(BIN), from sources the *.go list above already covers.
+GIT_DIR   := $(shell git rev-parse --git-dir 2>/dev/null)
 # The dispatch viewer is a Vite/React app built into one self-contained file,
 # and that file is the only viewer artifact //go:embed reads.
 VIEWERPAGE := dispatch-viewer/internal/cli/shell/viewer.html
@@ -48,12 +53,10 @@ VIEWER_SRC := $(shell find dispatch-viewer/app/src dispatch-viewer/app/public \
               $(wildcard dispatch-viewer/app/index.html dispatch-viewer/app/*.json \
                          dispatch-viewer/app/*.ts dispatch-viewer/app/*.js)
 EMBED_DEPS := MANUAL.md PLAYBOOK.md $(VIEWERPAGE) dispatch-viewer/internal/cli/shell/site-guide.md.tmpl \
-              $(filter-out $(GUESTBIN),$(wildcard internal/cli/assets/*))
-# //go:embed inputs deliberately left out of $(EMBED_DEPS): the build compiles
-# $(GUESTBIN) and then restores the committed placeholder over it, which would
-# leave it permanently newer than the binaries it went into. `make embed-check`
-# allows exactly this list and nothing else.
-EMBED_EXEMPT := $(GUESTBIN)
+              $(wildcard internal/cli/assets/*)
+# //go:embed inputs deliberately left out of $(EMBED_DEPS). Nothing belongs here
+# yet; `make embed-check` allows exactly this list and nothing else.
+EMBED_EXEMPT :=
 BUILD_DEPS := $(shell find . \( -name bin -o -name dist -o -name node_modules -o -name .git \) -prune -o -name '*.go' -print) \
               go.mod go.sum .goreleaser.yaml Makefile $(EMBED_DEPS) $(wildcard $(GIT_DIR)/HEAD)
 
@@ -105,9 +108,17 @@ help:
 ## produced by a build step, so a committed placeholder keeps plain
 ## `go build ./...` and `go test ./...` working. `create` refuses a placeholder
 ## rather than installing one into a member.
+##
+## It writes $(GUESTDIR), never the placeholder: the guest, and the overlay file
+## a build passes as -overlay=$(GUESTOVERLAY). Each is renamed into place from a
+## file named for this make ($$PPID in every line's shell), because goreleaser
+## runs the hook for the darwin and linux targets of one arch at once.
 guestbin:
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(GUESTARCH) go build -trimpath -ldflags '-s -w' -o $(GUESTBIN).tmp ./cmd/cs-campaign-member
-	mv $(GUESTBIN).tmp $(GUESTBIN)
+	@mkdir -p $(GUESTDIR)
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(GUESTARCH) go build -trimpath -ldflags '-s -w' -o $(GUESTDIR)/cs-campaign-member-$(GUESTARCH).tmp.$$PPID ./cmd/cs-campaign-member
+	@mv $(GUESTDIR)/cs-campaign-member-$(GUESTARCH).tmp.$$PPID $(GUESTDIR)/cs-campaign-member-$(GUESTARCH)
+	@printf '{"Replace":{"%s":"%s"}}\n' '$(CURDIR)/$(GUESTBIN)' '$(CURDIR)/$(GUESTDIR)/cs-campaign-member-$(GUESTARCH)' >$(GUESTOVERLAY).tmp.$$PPID
+	@mv $(GUESTOVERLAY).tmp.$$PPID $(GUESTOVERLAY)
 
 ## build: bin/cs-campaign (guest binary embedded) and bin/cs-dispatch-viewer via
 ## goreleaser (single target)
@@ -130,12 +141,6 @@ guestbin:
 ## whole suite and rewrite go.mod as a side effect. `make snapshot` and
 ## `make release` still run them. The fourth hook, `make guestbin`, is not a
 ## gate but a compile the binary cannot do without, so the recipe runs it.
-##
-## The three steps are chained with && and the recipe exits on their status:
-## restoring the placeholder is a cleanup that has to happen either way, and
-## `|| true` on the last command in a `;` chain would report success no matter
-## what failed above it. A build that could not fail would ship a placeholder
-## guest binary, which is the one thing this repo cannot let past.
 build: $(BIN) $(VIEWERBIN)
 
 $(BIN): $(BUILD_DEPS) $(FLAVOUR)
@@ -145,9 +150,6 @@ $(BIN): $(BUILD_DEPS) $(FLAVOUR)
 		$(MAKE) --no-print-directory guestbin && \
 		VERSION='$(VERSION)' $(GORELEASER) build --single-target --snapshot --clean --skip=before --id cs-campaign --output $(BIN) && \
 		VERSION='$(VERSION)' $(GORELEASER) build --single-target --snapshot --clean --skip=before --id cs-dispatch-viewer --output $(VIEWERBIN); \
-		status=$$?; \
-		git checkout -q -- $(GUESTBIN) 2>/dev/null || true; \
-		exit $$status; \
 	else \
 		echo "goreleaser not found; using go build (run 'make build-go-embedded' explicitly to force)"; \
 		$(MAKE) build-go-embedded; \
@@ -172,14 +174,12 @@ $(FLAVOUR):
 build-go-embedded: guestbin $(VIEWERPAGE)
 	@mkdir -p $(dir $(BIN))
 	@echo embedded > $(FLAVOUR) # the same pair `build` makes; it is what `build` falls back to
-	CGO_ENABLED=0 go build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) $(PKG)
-	@git checkout -q -- $(GUESTBIN) 2>/dev/null || true # restore the committed placeholder; the real bytes are in $(BIN)
+	CGO_ENABLED=0 go build -trimpath -overlay=$(GUESTOVERLAY) -ldflags '$(LDFLAGS)' -o $(BIN) $(PKG)
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(VIEWERLDFLAGS)' -o $(VIEWERBIN) $(VIEWERPKG)
 
 ## build-go: the same two binaries without the embedded guest binary
 ##
-## What CI builds. It creates no campaign, and skipping the guest compile
-## leaves the working tree clean.
+## What CI builds. It creates no campaign, so it skips the guest compile.
 ##
 ## $(VIEWERPAGE) is a prerequisite because //go:embed reads it at compile time.
 ## Without it, `go build` runs straight away and bakes in whatever page is on
@@ -939,19 +939,11 @@ ci:
 ## Skips the bill of materials and the signature; both need tools a release job
 ## has and a laptop usually does not.
 snapshot:
-	VERSION='$(VERSION)' $(GORELEASER) release --snapshot --clean --skip=sbom,sign --parallelism 1
-	@git checkout -q -- $(GUESTBIN) 2>/dev/null || true # goreleaser's hook built the real one
+	VERSION='$(VERSION)' $(GORELEASER) release --snapshot --clean --skip=sbom,sign
 
 ## release: tagged release (needs a pushed git tag and credentials)
-##
-## --parallelism 1, here and in snapshot above and in .github/workflows/release.yml:
-## .goreleaser.yaml's pre hook builds the embedded guest binary for the target
-## being built, into the one path //go:embed reads. Concurrent targets overwrite
-## each other's guest, and the arm64 archives silently ship an amd64 one — a
-## binary that installs cleanly and fails with an exec format error at `create`.
 release:
-	$(GORELEASER) release --clean --parallelism 1
-	@git checkout -q -- $(GUESTBIN) 2>/dev/null || true # goreleaser's hook built the real one
+	$(GORELEASER) release --clean
 
 ## release-check: validate .goreleaser.yaml
 release-check:

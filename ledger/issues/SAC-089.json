@@ -1,0 +1,20 @@
+{
+  "id": "SAC-089",
+  "title": "Every `make build` of cs-campaign reports +dirty, even from a clean commit",
+  "type": "defect",
+  "severity": "low",
+  "status": "in-progress",
+  "foundBy": "user report (host): \"Why does cs-campaign version show -dirty as it's from a clean commit?\"",
+  "opened": "2026-09-26",
+  "resolved": null,
+  "stint": "clean-version-stamp",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "`cs-campaign version` printed `v0.0.0-20260927022458-e4629b91e506+dirty` for a binary `make install` built from e4629b9 on a clean tree. `go version -m` on it shows `vcs.modified=true`, and `cs-dispatch-viewer` from the same build carries the same stamp.\n\nThe build writes the real guest binary over the committed placeholder `internal/cli/assets/cs-campaign-member.bin`, compiles, and then restores the placeholder with `git checkout`. Go stamps the version while that tracked file is modified, so the stamp says `+dirty` whatever the commit. The tree is clean again afterwards, which is why `git status` shows nothing.\n\nThe binary is the one the build means to make, but its version no longer names a commit. A release built by goreleaser gets the same stamp, since its pre hook overwrites the same file. An interrupted build also leaves the 3.4 MB guest binary in a tracked file.",
+  "notes": [],
+  "links": []
+}
