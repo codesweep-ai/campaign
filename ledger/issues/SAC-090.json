@@ -3,17 +3,19 @@
   "title": "The readback fails any member whose model names a context variant",
   "type": "defect",
   "severity": "high",
-  "status": "open",
+  "status": "closed",
   "foundBy": "repository owner, on a campaign that would not dispatch: \"About claude-opus-5-5[1m], isn't that a valid model name for Claude code to use?\"",
   "opened": "2026-09-27",
-  "resolved": null,
+  "resolved": "2026-09-27",
   "stint": "2026-09-27 the readback and context variants",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "cd04829"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`go test ./internal/cli/ -run 'ContextVariant|AssertDeclaredTurnConfig|DeclaredSuffix' -count=1` passes. With the change reverted, the case `a variant is satisfied by its base id` fails with the line the campaign printed: `declared model claude-opus-5-5[1m] but the turn answered on claude-opus-5-5`. The full gate passes on this commit, with the smoke tier included."
   },
-  "resolution": null,
+  "resolution": "`matches` now takes both what the operator wrote and what a transcript can carry. The two differ only where a declaration names a context window: `contextVariant` splits the bracketed suffix off, and the plain id satisfies the comparison. A failure still quotes the declaration as the operator wrote it. `declaredSuffix` names what the turn could not show, so a passing line no longer claims to cover the suffix. The manual's readback section says the same.",
   "details": "In one campaign the orchestrator's declared model was `claude-opus-5-5[1m]`. `validate` accepted it, `create` provisioned six microVMs, and the readback failed the campaign:\n\n```\nBAD readback orchestrator (claude): declared model claude-opus-5-5[1m]\n  but the turn answered on claude-opus-5-5 \u2014 the declaration did not take\ncs-campaign: readback FAILED \u2014 1 member(s) could not confirm their briefing; do not dispatch\n```\n\nThe declaration had taken. The check cannot see it.\n\n`assertDeclaredTurnConfig` compares the declared string with the models the transcript names, through `matches`, which is a literal `slices.Contains`. The observed list comes from `turnConfigCommand`, which greps `\"model\":\"\u2026\"` out of the CLI's JSONL. That field carries the API model id. A bracketed suffix asks Claude Code for a context window and selects the session, not the model, so it never appears there. No member declaring a context variant can pass.\n\nMeasured against a session whose model id is `claude-opus-5[1m]`, using the command the check itself runs:\n\n```console\n$ set -- \"$HOME\"/.cs-claude/projects/*/*.jsonl\n$ grep -ho '\"model\":\"[^\"]*\"' \"$@\" | sed 's/.*:\"//;s/\"$//' | sort -u\nclaude-opus-5\nclaude-opus-5-5\n<synthetic>\n```\n\nNo bracket, in a session that has one.\n\nWhat it cost: the campaign could not dispatch, and there is no supported way to correct a declaration on an existing campaign. The record holds it, so editing the profile does not reach it and re-running `create` fails identically; `--set` has no `model` path. The fleet was destroyed and recreated on the plain model, which ran the whole campaign on a smaller context window than was asked for.\n\nThe validator that admits the token (SAC-064) is right, and so is the manual sentence about what the form means. Only the confirmation is wrong.",
   "notes": [],
   "links": [
