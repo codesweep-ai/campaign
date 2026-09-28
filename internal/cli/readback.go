@@ -275,26 +275,47 @@ func (a *app) assertDeclaredTurnConfig(ctx context.Context, member model.Member)
 		return "declared " + declaredSummary(member) + " but the turn's transcript could not be read: " + err.Error()
 	}
 	if member.Model != "" {
-		if detail := matches("model", member.Model, models); detail != "" {
+		base, _ := contextVariant(member.Model)
+		if detail := matches("model", member.Model, base, models); detail != "" {
 			return detail
 		}
 	}
 	if member.Effort != "" && turnEffortReadable(member.CLI) {
-		if detail := matches("effort", member.Effort, efforts); detail != "" {
+		if detail := matches("effort", member.Effort, member.Effort, efforts); detail != "" {
 			return detail
 		}
 	}
 	return ""
 }
 
-// matches reports why observed does not carry want, or "" when it does. A CLI
+// contextVariant splits a declared model into the id a transcript can name and
+// the bracketed context variant it cannot.
+//
+// A CLI spells a model's context window as a suffix: "claude-opus-5-5[1m]" asks
+// Claude Code for that model's million-token window. The suffix selects the
+// session, not the model, so every message the transcript records still carries
+// the plain API id. Comparing the whole string therefore failed a declaration
+// that had taken, and failed it for every model that names a variant.
+func contextVariant(model string) (base, variant string) {
+	open := strings.IndexByte(model, '[')
+	if open <= 0 || !strings.HasSuffix(model, "]") {
+		return model, ""
+	}
+	return model[:open], model[open:]
+}
+
+// matches reports why observed does not carry accept, or "" when it does. A CLI
 // may name several models in one transcript (a subagent, a summariser), so
 // the declared one has to be present rather than alone.
-func matches(field, want string, observed []string) string {
+//
+// want is what the operator declared and what a failure names; accept is what a
+// transcript can carry, which is the same string except where the declaration
+// names a context variant.
+func matches(field, want, accept string, observed []string) string {
 	if len(observed) == 0 {
 		return fmt.Sprintf("declared %s %s but the turn's transcript names no %s, so the declaration cannot be confirmed", field, want, field)
 	}
-	if slices.Contains(observed, want) {
+	if slices.Contains(observed, accept) {
 		return ""
 	}
 	return fmt.Sprintf("declared %s %s but the turn answered on %s — the declaration did not take", field, want, strings.Join(observed, ", "))
@@ -322,8 +343,17 @@ func declaredSuffix(member model.Member) string {
 	if !turnConfigReadable(member.CLI) {
 		return " on " + summary + " (declared — this adapter's turn cannot be read back to confirm it)"
 	}
+	// What the turn could not show is said out loud rather than passed over,
+	// because a line that claims confirmation is read as covering all of it.
+	var unconfirmed []string
 	if member.Effort != "" && !turnEffortReadable(member.CLI) {
-		return " on " + summary + " (model confirmed by the answering turn; this adapter does not name its effort)"
+		unconfirmed = append(unconfirmed, "this adapter does not name its effort")
 	}
-	return " on " + summary + " (confirmed by the answering turn)"
+	if _, variant := contextVariant(member.Model); variant != "" {
+		unconfirmed = append(unconfirmed, "the transcript does not name the "+variant+" context variant")
+	}
+	if len(unconfirmed) == 0 {
+		return " on " + summary + " (confirmed by the answering turn)"
+	}
+	return " on " + summary + " (model confirmed by the answering turn; " + strings.Join(unconfirmed, "; ") + ")"
 }

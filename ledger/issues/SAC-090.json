@@ -1,0 +1,22 @@
+{
+  "id": "SAC-090",
+  "title": "The readback fails any member whose model names a context variant",
+  "type": "defect",
+  "severity": "high",
+  "status": "open",
+  "foundBy": "repository owner, on a campaign that would not dispatch: \"About claude-opus-5-5[1m], isn't that a valid model name for Claude code to use?\"",
+  "opened": "2026-09-27",
+  "resolved": null,
+  "stint": "2026-09-27 the readback and context variants",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "In one campaign the orchestrator's declared model was `claude-opus-5-5[1m]`. `validate` accepted it, `create` provisioned six microVMs, and the readback failed the campaign:\n\n```\nBAD readback orchestrator (claude): declared model claude-opus-5-5[1m]\n  but the turn answered on claude-opus-5-5 \u2014 the declaration did not take\ncs-campaign: readback FAILED \u2014 1 member(s) could not confirm their briefing; do not dispatch\n```\n\nThe declaration had taken. The check cannot see it.\n\n`assertDeclaredTurnConfig` compares the declared string with the models the transcript names, through `matches`, which is a literal `slices.Contains`. The observed list comes from `turnConfigCommand`, which greps `\"model\":\"\u2026\"` out of the CLI's JSONL. That field carries the API model id. A bracketed suffix asks Claude Code for a context window and selects the session, not the model, so it never appears there. No member declaring a context variant can pass.\n\nMeasured against a session whose model id is `claude-opus-5[1m]`, using the command the check itself runs:\n\n```console\n$ set -- \"$HOME\"/.cs-claude/projects/*/*.jsonl\n$ grep -ho '\"model\":\"[^\"]*\"' \"$@\" | sed 's/.*:\"//;s/\"$//' | sort -u\nclaude-opus-5\nclaude-opus-5-5\n<synthetic>\n```\n\nNo bracket, in a session that has one.\n\nWhat it cost: the campaign could not dispatch, and there is no supported way to correct a declaration on an existing campaign. The record holds it, so editing the profile does not reach it and re-running `create` fails identically; `--set` has no `model` path. The fleet was destroyed and recreated on the plain model, which ran the whole campaign on a smaller context window than was asked for.\n\nThe validator that admits the token (SAC-064) is right, and so is the manual sentence about what the form means. Only the confirmation is wrong.",
+  "notes": [],
+  "links": [
+    "SAC-064"
+  ]
+}

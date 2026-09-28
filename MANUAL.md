@@ -252,6 +252,12 @@ ok  readback qa (codex) read its briefing
 campaign acme created — mission m1 opened on the orchestrator (group acme-56aa4ee0)
 ```
 
+A member that declares a `model` or an `effort` has it confirmed here, against the model the
+answering turn was served by. `create` fails a member whose declaration did not take. One part
+cannot be confirmed: a bracketed context variant such as `claude-opus-5-5[1m]` selects the session
+rather than the model, so the transcript records the plain model id. That seat passes on its model
+id and the line says the variant was not confirmed.
+
 A readback that cannot be read is asked for once more. When a member's answer does not parse as
 JSON, or leaves out a required sentence, `create` sends that member one more dispatch that quotes
 what was wrong, and prints `its readback could not be used (…) — asked once more`. A second bad
