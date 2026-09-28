@@ -1,6 +1,6 @@
 module github.com/codesweep-ai/campaign
 
-go 1.27.0
+go 1.27.1
 
 require (
 	github.com/spf13/cobra v1.10.2
@@ -10,11 +10,11 @@ require (
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
-	github.com/codesweep-ai/ledger v0.0.0-20260926051938-a74e65097227 // indirect
-	github.com/codesweep-ai/lint v0.0.0-20260926212900-c12282e27f13 // indirect
-	github.com/codesweep-ai/npmrevs v0.0.0-20260926051938-ebb13b8ef732 // indirect
+	github.com/codesweep-ai/ledger v0.0.0-20260928023949-5ccf9df61728 // indirect
+	github.com/codesweep-ai/lint v0.0.0-20260928023856-ba48d1dc7295 // indirect
+	github.com/codesweep-ai/npmrevs v0.0.0-20260928023815-b1f88887ab49 // indirect
 	github.com/codesweep-ai/sandbox v0.0.0-20260927013012-4df63ceaedbc // indirect
-	github.com/codesweep-ai/tracer v0.0.0-20260926051938-c342fc49291f // indirect
+	github.com/codesweep-ai/tracer v0.0.0-20260928024028-80c601cd84e1 // indirect
 	github.com/codesweep-ai/vcr v0.0.0-20260927003752-bfd215531214 // indirect
 	github.com/docker/cli v29.7.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
@@ -35,10 +35,10 @@ require (
 	go.yaml.in/yaml/v4 v4.0.0-rc.3 // indirect
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20260916154351-b853e4b620cd // indirect
 	golang.org/x/mod v0.41.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5 // indirect
-	golang.org/x/tools v0.49.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260908163034-4bcc4b2ee518 // indirect
+	golang.org/x/tools v0.50.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
