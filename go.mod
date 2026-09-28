@@ -10,11 +10,11 @@ require (
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
-	github.com/codesweep-ai/ledger v0.0.0-20260928023949-5ccf9df61728 // indirect
-	github.com/codesweep-ai/lint v0.0.0-20260928023856-ba48d1dc7295 // indirect
-	github.com/codesweep-ai/npmrevs v0.0.0-20260928023815-b1f88887ab49 // indirect
+	github.com/codesweep-ai/ledger v0.0.0-20260928042936-ac7a10788a67 // indirect
+	github.com/codesweep-ai/lint v0.0.0-20260928042837-41c276ba2f01 // indirect
+	github.com/codesweep-ai/npmrevs v0.0.0-20260928042814-214f73b84205 // indirect
 	github.com/codesweep-ai/sandbox v0.0.0-20260927013012-4df63ceaedbc // indirect
-	github.com/codesweep-ai/tracer v0.0.0-20260928024028-80c601cd84e1 // indirect
+	github.com/codesweep-ai/tracer v0.0.0-20260928043013-53d277e6f915 // indirect
 	github.com/codesweep-ai/vcr v0.0.0-20260927003752-bfd215531214 // indirect
 	github.com/docker/cli v29.7.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
