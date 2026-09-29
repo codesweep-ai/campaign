@@ -10,12 +10,12 @@ require (
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
-	github.com/codesweep-ai/ledger v0.0.0-20260928070835-f7813e9546f9 // indirect
-	github.com/codesweep-ai/lint v0.0.0-20260928070756-b0b5bce85aad // indirect
-	github.com/codesweep-ai/npmrevs v0.0.0-20260928070744-af147f36ecb6 // indirect
-	github.com/codesweep-ai/sandbox v0.0.0-20260928051054-7ecbc17033c2 // indirect
-	github.com/codesweep-ai/tracer v0.0.0-20260928070858-cf46c905b90f // indirect
-	github.com/codesweep-ai/vcr v0.0.0-20260927003752-bfd215531214 // indirect
+	github.com/codesweep-ai/ledger v0.0.0-20260929195228-7eb9e9a96621 // indirect
+	github.com/codesweep-ai/lint v0.0.0-20260929195214-4cd5a16db088 // indirect
+	github.com/codesweep-ai/npmrevs v0.0.0-20260929195159-d74ecfc3b09b // indirect
+	github.com/codesweep-ai/sandbox v0.0.0-20260929195333-38b6867ec3dd // indirect
+	github.com/codesweep-ai/tracer v0.0.0-20260929195245-961ae414c82a // indirect
+	github.com/codesweep-ai/vcr v0.0.0-20260928070923-415d1810e561 // indirect
 	github.com/docker/cli v29.7.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
 	github.com/fatih/color v1.19.0 // indirect
