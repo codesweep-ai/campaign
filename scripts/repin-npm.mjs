@@ -24,7 +24,9 @@
 // range is left alone: moving one is a third-party upgrade, not a repin. Where
 // the project's own checkout sits beside this one, a local build of a commit it
 // holds on no branch, as after a rebase, is left out, and a newer one left out
-// is named. Without such a checkout the store is taken as it stands.
+// is named. Without such a checkout the store is taken as it stands. A local
+// build whose package the store no longer holds, which record-build.sh removes
+// once newer builds replace it, is left out too.
 //
 // The install runs through scripts/with-npmrevs.sh, which serves the images CI
 // publishes and the store's packages. The one exception is @codesweep-ai/npmrevs
@@ -195,6 +197,8 @@ export function newestLocal(store, name, holds = () => true) {
     const version = e.versions?.npm?.[name];
     const stamp = stampOf(version);
     if (!stamp || !/^[0-9a-f]{40}$/.test(e.commit ?? "")) continue;
+    // Named as npm pack names it: @scope/name becomes scope-name.
+    if (!existsSync(path.join(store, "npm", `${name.slice(1).replace("/", "-")}-${version}.tgz`))) continue;
     if (!holds(e.commit)) {
       if (!gone || stamp > stampOf(gone.version)) gone = { commit: e.commit, version };
       continue;

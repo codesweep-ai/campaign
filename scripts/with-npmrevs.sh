@@ -173,15 +173,23 @@ else
   $NPMREVS serve --data "$DATA" ${store_npm:+--data "$store_npm"} --images "$IMAGES" --images-scope "$SCOPE" \
     --listen "127.0.0.1:$PORT" > "$work/serve.log" 2>&1 &
   server=$!
-  for _ in $(seq 1 50); do
-    status >/dev/null && break
-    sleep 0.1
+  # It reads every package it serves before it listens, which takes longer the
+  # more the directories hold. So this waits as long as it runs, up to a
+  # minute, and stops waiting the moment it exits.
+  deadline=$((SECONDS + 60))
+  until status >/dev/null; do
+    if ! kill -0 "$server" 2>/dev/null; then
+      echo "with-npmrevs.sh: the registry stopped before it came up on $URL" >&2
+      cat "$work/serve.log" >&2
+      exit 1
+    fi
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo "with-npmrevs.sh: the registry did not come up on $URL within a minute" >&2
+      cat "$work/serve.log" >&2
+      exit 1
+    fi
+    sleep 0.2
   done
-  status >/dev/null || {
-    echo "with-npmrevs.sh: the registry did not come up on $URL" >&2
-    cat "$work/serve.log" >&2
-    exit 1
-  }
 fi
 
 printf 'registry=%s/\n' "$URL" > "$work/npmrc"
