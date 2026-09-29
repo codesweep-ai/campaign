@@ -1,0 +1,22 @@
+{
+  "id": "SAC-091",
+  "title": "make repin fails when cs-npmrevs takes more than about ten seconds to start",
+  "type": "defect",
+  "severity": "med",
+  "status": "closed",
+  "foundBy": "repository owner: \"make repin here failed\"",
+  "opened": "2026-09-29",
+  "resolved": "2026-09-29",
+  "stint": "2026-09-29 npm build store",
+  "evidence": {
+    "commits": [
+      "92d7876"
+    ],
+    "integrated": [],
+    "verified": "Campaign's `make repin`, rerun with these scripts against the same unpruned store, moved the `@codesweep-ai/ui` pin and rebuilt the viewer in 31 s. Against a stand-in server that exits at once, `with-npmrevs.sh` failed in 0.35 s and printed its log. Against one that took 24 s to listen, it waited and ran the command. dashboards' tests/test_record_build.py passes 18 of 18 against this record-build.sh, byte for byte, and its prune test fails against the previous copy. Run over a copy of the owner's store, the prune took npm/ from 179 packages (311 MB) to 47 (83 MB), keeping each project's three newest. ui's scripts/repin-npm.test.mjs passes 18 of 18 against this repin-npm.mjs, and its test for a build whose package is gone fails against the previous copy."
+  },
+  "resolution": "`scripts/with-npmrevs.sh` now waits as long as the registry runs, up to a minute, and stops at once if it exits. Each recorded build removes the npm packages of older ones. A project keeps them for its three newest builds recorded within three days, and for its newest whatever its age. Entries, modules and images stay, and a store that is a repository, as a campaign's is, is left whole. `scripts/repin-npm.mjs` passes over a build whose package the store no longer holds. npmrevs also reads the packages on every core now, which reaches this repository when its npmrevs pin moves.",
+  "details": "`make repin` moved the Go pins, then stopped at `with-npmrevs.sh: the registry did not come up on http://127.0.0.1:4875`, so the `@codesweep-ai/ui` pin did not move and the viewer was not rebuilt. cs-npmrevs reads every package it serves before it listens, one at a time, and it serves the owner's build store. The store held 179 npm packages (311 MB), which took about 9 seconds to read. `scripts/with-npmrevs.sh` waited about 10 seconds, so the repin failed whenever startup ran slightly slow. Nothing removed old packages from the store, so every clean `make ci` in lint, ledger, npmrevs or ui made the margin smaller.",
+  "notes": [],
+  "links": []
+}
