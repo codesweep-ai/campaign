@@ -106,6 +106,9 @@ func validateProfile(p model.Profile) error {
 	if err := validateMemberPolicy(p.Orchestrator); err != nil {
 		return fmt.Errorf("orchestrator: %w", err)
 	}
+	if err := validateWithhold(p.Orchestrator); err != nil {
+		return fmt.Errorf("orchestrator: %w", err)
+	}
 	for name, m := range p.Agents {
 		if !dnsName.MatchString(name) || name == "orchestrator" {
 			return fmt.Errorf("invalid or reserved agent name %q", name)
@@ -120,6 +123,9 @@ func validateProfile(p model.Profile) error {
 			return fmt.Errorf("agent %s: %w", name, err)
 		}
 		if err := validateMemberPolicy(m); err != nil {
+			return fmt.Errorf("agent %s: %w", name, err)
+		}
+		if err := validateWithhold(m); err != nil {
 			return fmt.Errorf("agent %s: %w", name, err)
 		}
 	}

@@ -349,6 +349,12 @@ func (a *app) planCampaign(opts createOpts, name string, planning bool) (*model.
 	if err = requireRepositories(profile); err != nil {
 		return nil, model.Profile{}, err
 	}
+	// Last of the read-only checks, because it reads whole histories, and
+	// here rather than at create alone so that validate and plan refuse
+	// exactly what create refuses (R88).
+	if err = checkWithheld(profile); err != nil {
+		return nil, model.Profile{}, err
+	}
 	now := time.Now()
 	if planning {
 		now = time.Time{}
@@ -678,6 +684,9 @@ func (a *app) validateCmd() *cobra.Command {
 		// not there costs nothing here and is a tree the member was promised
 		// and does not have once the fleet is up.
 		if err = resolveSnapshots(&profile); err != nil {
+			return err
+		}
+		if err = checkWithheld(profile); err != nil {
 			return err
 		}
 		// Every declared member needs a written purpose and the campaign needs a

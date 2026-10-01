@@ -943,6 +943,32 @@ one of three ways:
 create, the only ref that resolves is `main`, which is the branch it is born on, and any other is
 refused by name.
 
+`repos[].withhold` lists paths that member must never receive from the repository: a file, a
+directory, or a glob, relative to the repository's root. `*` and `?` match within one path segment
+and `**` matches any run of segments, and whatever a declaration matches it withholds with
+everything beneath it. `snapshots[].withhold` is the same declaration for a frozen tree.
+
+```yaml
+agents:
+  qa:
+    cli: claude
+    repos: [{path: /srv/product, withhold: [results, "**/golden"]}]
+    snapshots: [{path: /srv/reference, withhold: [private]}]
+```
+
+A member's clone is the whole repository, every branch included. So `validate` and `create` hold a
+declaration against every object any ref of the repository reaches, a path added and later deleted
+included. A repository holding a withheld path is refused, naming the member, the path and the
+commit that added it. Keep a hold-out in a repository or snapshot that member is not given. The
+clone is made by copying the repository's object store, so an object no ref reaches arrives too. A
+repository with a declaration is therefore refused while it holds one, and the refusal prints the
+`git reflog expire` and `git gc --prune=now` command that removes them. A snapshot is held against
+its directory as it stands.
+
+The fence
+covers the git channel. A dispatch body can carry anything the orchestrator pastes into it, and the
+archive holds every dispatch for a scan afterwards.
+
 `imageStores` names shared image stores that a member's own podman reads, in `defaults` or on a
 member. A member's own list replaces the one in `defaults`, as `env` does. A store is made on the
 host with `cs-sandbox create-store` and filled with `cs-sandbox seed-store`. It is how an image

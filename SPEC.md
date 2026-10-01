@@ -810,6 +810,17 @@ the next time its tools read the store.
 
 **R120.** The tool **MUST NOT** push to a remote unless the driver explicitly asks.
 
+**R120a.** A profile **MAY** withhold paths from a member, declared on that member's repository
+and snapshot entries as files, directories or globs. `validate` and `create` **MUST** refuse a
+repository whose history carries a withheld path on any ref. They **MUST** also refuse a
+repository whose object store keeps an object no ref reaches, and a snapshot whose tree contains
+one. *A member's clone is the whole
+repository, every branch included, and it is made by copying the object store, so neither a
+checkout nor a ref walk bounds what arrives.*
+
+The withhold fence covers the git channel. A dispatch body can carry anything the orchestrator
+chooses to paste, and the archive holds every dispatch for a scan afterwards.
+
 **R121.** Campaign IDs **MUST** be deterministic, so destroying a campaign and recreating it
 identically produces the same group, member names and branches.
 
@@ -864,7 +875,9 @@ agents:
 | `cli` | member | One of `claude`, `codex`, `opencode`. |
 | `model`, `effort` | member | Passed to that member's CLI verbatim. `opencode` requires `model` whenever `effort` is set. |
 | `repos[].path`, `.ref`, `.name` | member | A host repository cloned into the member. |
+| `repos[].withhold` | member | Paths this member must never receive from that repository: files, directories or globs, relative to its root. See R120a. |
 | `snapshots[].path`, `.name` | member | A frozen tree the member can read. |
+| `snapshots[].withhold` | member | The same declaration for a snapshot, held against the tree as it stands. |
 | `imageStores` | `defaults`, member | Shared image stores the member's podman reads, made on the host with `cs-sandbox create-store` and `seed-store`. A member's own list replaces the defaults'. |
 | `credentials` | `defaults` | The verb every member takes unless it spells one: `lend` or `inherit`. Default `lend`. |
 | `auth.apiKeyFromEnv` | member | Host environment variable names whose values are granted. Always copied in, so refused where the seat resolves to `lend`. |
@@ -957,8 +970,7 @@ so a torn write must never be observable.
 
 `kind` is `plan`, `accepted`, `assessment` or `reported`, and nothing else. A `reported` entry is
 written by `wait` and never by hand. Its text is `<node>/<dispatch>`, and it says the orchestrator
-has been told that node is stuck (R134). A later entry of a kind supersedes
-an earlier one. There is no rewrite path.
+has been told that node is stuck (R134). A later entry of a kind supersedes an earlier one. There is no rewrite path.
 
 ### 5.7 The archive
 
@@ -1418,8 +1430,8 @@ is the opposite of what this gate is for.
 
 ## 8. Conformance
 
-An implementation conforms when it satisfies R1 to R124, R4a, R18a and R18b included, and can
-demonstrate each of the following by test.
+An implementation conforms when it satisfies R1 to R124, R4a, R18a, R18b, R119a and R120a
+included, and can demonstrate each of the following by test.
 
 **Isolation.** Two concurrent campaigns cannot resolve or connect to one another by name or raw
 address, and neither one's SSH trust material authenticates to the other's members. A solo agent
@@ -1446,6 +1458,9 @@ artifact. Node state is computed on demand and never stored. A message delivery 
 overwrite an existing message name. Infrastructure health, model activity and task completion
 remain separately observable. A working member is never reported as failed on a watcher's verdict
 alone, and a freshly sent message never reads as stopped inside its settling window.
+
+**Delivery.** A profile that withholds a path a member's clone or snapshot would carry is refused
+before anything is allocated.
 
 **Configuration.** Profile and flag inputs resolve to the same typed plan. `validate` and `plan`
 perform no mutations, unknown overrides fail, and an archived resolved profile contains no secret
