@@ -477,3 +477,27 @@ func TestTheDocumentedCopiedLoginWarningIsTheOnePrinted(t *testing.T) {
 		}
 	}
 }
+
+// The orientation is the only document an orchestrator reads, so a verb it
+// does not name does not exist for the model. It used to teach `fetch` and
+// never `push`, and campaigns improvised the handoff (SAC-029). Both halves
+// carry it now: the orchestrator is told how to deliver work, and the agent
+// where delivered work lands.
+func TestTheOrientationTeachesPush(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(root, "internal/cli/assets/orientation.md.tmpl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"`cs-campaign-member push <member> [repo] --commit <sha>`",
+		"a dispatch may name `refs/campaign/orchestrator` in\n  your clone",
+	} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("the orientation no longer carries %q", want)
+		}
+	}
+}

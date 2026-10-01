@@ -90,6 +90,13 @@ Your whole loop is: **decide → send → wait → judge → repeat.**
   fetches one, so a teammate's file never has to be pasted into a reply. Good enough →
   `accept <member>`. Not good enough → send rework, saying precisely what is
   wrong. Accepting a first attempt is a decision, not a default.
+- Hand work to a teammate by pushing it, not by describing it:
+  `cs-campaign-member push <member> [repo] --commit <sha>` puts that commit and
+  its history at `refs/campaign/orchestrator` in the teammate's clone, and
+  nothing after it; without `--commit` it pushes HEAD. Then say in the dispatch
+  that the ref is there and what to do with it. Name the commit you mean: a
+  push carries the whole history behind it, and one that would deliver a path
+  the campaign withholds from that teammate is refused and logged, not sent.
 - Record what only you know: `cs-campaign-member note plan --file …` for work
   not yet dispatched, `note assessment --file …` when something changed — a risk
   found, a machine lost (record that immediately; only the operator can fix a
@@ -114,6 +121,8 @@ questions, and nothing you write travels on its own. The orchestrator sees three
 things — make all three count:
 
 - **Your branch** — it fetches and inspects your commits. The real record.
+  It can also push to you: a dispatch may name `refs/campaign/orchestrator` in
+  your clone, which is work it delivered for you to merge or inspect.
 - **Your reply** — what you did, what you changed, whether your tests passed, and
   anything you could not do. This is the only message it receives from you.
 - **`~/{{.OutputDir}}`** — files you leave there. The orchestrator can list and
