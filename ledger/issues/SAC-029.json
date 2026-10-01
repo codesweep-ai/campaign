@@ -3,18 +3,27 @@
   "title": "The orchestrator's orientation names fetch and never push",
   "type": "improvement",
   "severity": "med",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent working in the simple-tools-demo repository, which runs a three member campaign at the pinned build of 2026-09-17, while reading why an orchestrator improvised a handoff",
   "opened": "2026-09-19",
-  "resolved": null,
-  "stint": null,
+  "resolved": "2026-10-01",
+  "stint": "campaign-push-feature-s1",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "c99d056"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "TestTheOrientationTeachesPush passes under `go test ./internal/cli/ -count=1`, and `grep -n push internal/cli/assets/orientation.md.tmpl` now prints the two passages. The full gate, `make check`, passes."
   },
-  "resolution": null,
+  "resolution": "The orchestrator's orientation carries a bullet beside the one that teaches `fetch`. It says to hand work to a teammate with `cs-campaign-member push <member> [repo] --commit <sha>`, which lands at `refs/campaign/orchestrator` in the teammate's clone, and then to say so in the dispatch. It says to name the commit, because a push carries the whole history behind it, and that a push carrying a withheld path is refused and logged (SAC-092). The agent's half says the orchestrator can push to it at that ref, and that a dispatch names it when it has. The demo campaign's role brief still carries its own copy of the instruction, which it no longer needs.",
   "details": "`internal/cli/assets/orientation.md.tmpl` tells the orchestrator to judge a reply with `cs-campaign-member read <member>` and `cs-campaign-member fetch <member>`. It does not mention `cs-campaign-member push <member>` anywhere. `MANUAL.md` documents `push`, and it is the only supported way to put work into an agent's clone.\n\nAn orchestrator reads the orientation and not the manual. In the demo campaign it had to hand the developer's work to a qa member. In one run it improvised, and in another it dispatched a command the member could not run. The qa member then spent three dispatches hunting for a branch it could never reach.\n\nThe demo now carries the instruction in its own role brief, which is a workaround every campaign author has to rediscover. With the brief naming `push` and the ref `refs/campaign/orchestrator`, the same orchestrator pushed to each member on cue in three runs.\n\nTo reproduce, run `grep -n push internal/cli/assets/orientation.md.tmpl`, which prints nothing.",
-  "notes": [],
-  "links": []
+  "notes": [
+    {
+      "date": "2026-10-01",
+      "text": "Closed on the branch that adds `--commit` and the withhold fence (SAC-092), so the orientation teaches the push with the commit named, which is the form a hold-out campaign needs."
+    }
+  ],
+  "links": [
+    "SAC-092"
+  ]
 }
