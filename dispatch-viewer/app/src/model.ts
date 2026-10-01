@@ -17,6 +17,8 @@ export type Kind =
   | "accept"
   | "plan"
   | "assessment"
+  | "delivered"
+  | "refused"
   | StepKind;
 
 /** The tracer's event kinds, plus the two the page draws as hatched spans:
@@ -49,6 +51,10 @@ export const palette: Record<Kind, EventToken> = {
   accept: "--color-accent",
   plan: "--color-cat-1",
   assessment: "--color-cat-4",
+  // A push's outcome: a delivery in the link colour, a refusal in the severe
+  // one, so a refused push reads as the thing to look at.
+  delivered: "--color-link",
+  refused: "--color-severe",
   // The tracer's own kind colours (tracer palette.ts), so a step reads the
   // same here and on its trace page.
   user: "--color-cat-9",
@@ -141,6 +147,10 @@ export function kindOf(e: IndexedEvent): Kind {
       return "plan";
     case "assessment":
       return "assessment";
+    case "delivered":
+      return "delivered";
+    case "refused":
+      return "refused";
     case "verdict":
       return e.outcome === "campaign-met" ? "verdict-ok" : "verdict-bad";
   }
@@ -158,7 +168,7 @@ export function shapeOf(e: IndexedEvent): EventShape {
 
 // The traces view removes every mark whose only evidence is log.jsonl, and
 // the channel marks too: a box's edges are its opening and its reply.
-export const LOGKINDS: ReadonlySet<Kind> = new Set(["accept", "plan", "assessment"]);
+export const LOGKINDS: ReadonlySet<Kind> = new Set(["accept", "plan", "assessment", "delivered", "refused"]);
 export const PROTOCOLKINDS: ReadonlySet<Kind> = new Set([
   "open", "continue", "restart", "resume", "reply-done", "reply-bad", "verdict-ok", "verdict-bad",
 ]);
@@ -182,7 +192,7 @@ export const typeLabel = (e: IndexedEvent): string =>
 
 // Log-derived marks live on their own sub-lane under the orchestrator, so the
 // orchestrator lane stays purely channel traffic (it is a node too).
-export const LOGTYPES = new Set(["plan", "assessment", "accept"]);
+export const LOGTYPES = new Set(["plan", "assessment", "accept", "delivered", "refused"]);
 
 /** The lane id an event sits in; LOGTYPES events belong to the orchestrator. */
 export const laneOf = (e: IndexedEvent, orch: string | undefined): string =>

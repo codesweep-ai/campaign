@@ -32,7 +32,7 @@ type Node struct {
 // log) or from preserved guest mtimes (messages).
 type Event struct {
 	Node     string `json:"node"`
-	Type     string `json:"type"` // open|continue|restart|resume|reply|accept|plan|assessment|verdict
+	Type     string `json:"type"` // open|continue|restart|resume|reply|accept|plan|assessment|delivered|refused|verdict
 	At       string `json:"at"`   // RFC3339
 	Dispatch string `json:"dispatch,omitempty"`
 	Seq      int    `json:"seq,omitempty"`
@@ -149,6 +149,11 @@ type LogEntry struct {
 	At   time.Time `json:"at"`
 	Kind string    `json:"kind"`
 	Text string    `json:"text"`
+	// A delivery entry (delivered, refused) also names the member, the
+	// repository and the commit the push named.
+	Member string `json:"member,omitempty"`
+	Repo   string `json:"repo,omitempty"`
+	Commit string `json:"commit,omitempty"`
 }
 
 // campaignDoc is the subset of campaign.json the viewer displays.
@@ -404,6 +409,16 @@ func loadLog(run *Run, path string) error {
 		case "plan", "assessment":
 			run.Events = append(run.Events, Event{Node: orchestratorName(run), Type: e.Kind,
 				At: e.At.UTC().Format(time.RFC3339), Text: e.Text})
+		case "delivered", "refused":
+			// A push's outcome, on the log row like every other claim the
+			// orchestrator records. The text names the member; the repository
+			// and commit go in front so the mark reads whole on its own.
+			text := e.Text
+			if e.Repo != "" && len(e.Commit) >= 12 {
+				text = e.Repo + " " + e.Commit[:12] + ": " + e.Text
+			}
+			run.Events = append(run.Events, Event{Node: orchestratorName(run), Type: e.Kind,
+				At: e.At.UTC().Format(time.RFC3339), Text: text})
 		}
 	}
 	return nil

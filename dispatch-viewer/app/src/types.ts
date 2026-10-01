@@ -11,7 +11,7 @@ export interface Node {
 
 export interface RunEvent {
   node: string;
-  type: string; // open|continue|restart|resume|reply|accept|plan|assessment|verdict
+  type: string; // open|continue|restart|resume|reply|accept|plan|assessment|delivered|refused|verdict
   at: string; // RFC3339
   dispatch?: string;
   seq?: number;
@@ -61,6 +61,11 @@ export interface LogEntry {
   at: string;
   kind: string;
   text: string;
+  // A delivery entry (delivered, refused) also names the member, the
+  // repository and the commit the push named.
+  member?: string;
+  repo?: string;
+  commit?: string;
 }
 
 export interface CampaignMeta {

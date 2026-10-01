@@ -644,6 +644,8 @@ export function Legend({ detail }: { detail: boolean }) {
         ["accept", "accept (log)"],
         ["plan", "plan"],
         ["assessment", "assessment"],
+        ["delivered", "push delivered"],
+        ["refused", "push refused"],
       ])}
       {detail
         ? row("trace steps", "steps", [

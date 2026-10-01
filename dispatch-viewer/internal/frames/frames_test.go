@@ -313,3 +313,43 @@ func TestALaterReadbackOwesNoAcceptance(t *testing.T) {
 		t.Errorf("a failed create's readbacks owe no acceptance, even with clobbered times; got %+v", found)
 	}
 }
+
+// A push's outcome is a log claim like a plan, so it is an event on the
+// orchestrator's log row, with the repository and commit in front of the
+// text, and a refusal keeps its own kind.
+func TestDeliveriesAreLogEvents(t *testing.T) {
+	root := t.TempDir()
+	base := time.Date(2026, 8, 18, 9, 0, 0, 0, time.UTC)
+	at := func(min int) time.Time { return base.Add(time.Duration(min) * time.Minute) }
+	write(t, filepath.Join(root, "campaign.json"), `{
+	  "name":"cf1","id":"cf1-1","createdAt":"2026-08-18T09:00:00Z","updatedAt":"2026-08-18T09:30:00Z",
+	  "members":[{"name":"orchestrator","role":"orchestrator","cli":"claude"},{"name":"dev","role":"agent","cli":"opencode"}]}`, at(0))
+	write(t, filepath.Join(root, "orchestrator", "input", "d001.md"), "# readback", at(1))
+	write(t, filepath.Join(root, "agents", "dev", "input", "d001.md"), "# readback", at(1))
+	write(t, filepath.Join(root, "orchestrator", "output", "log.jsonl"),
+		`{"at":"2026-08-18T09:05:00Z","kind":"delivered","text":"delivered to dev at refs/campaign/orchestrator","member":"dev","repo":"product","commit":"0123456789abcdef0123456789abcdef01234567"}
+{"at":"2026-08-18T09:06:00Z","kind":"refused","text":"refused: results/x is withheld from dev","member":"dev","repo":"product","commit":"89abcdef0123456789abcdef0123456789abcdef"}
+`, at(6))
+	run, err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, e := range run.Events {
+		if e.Type == "delivered" || e.Type == "refused" {
+			if e.Node != "orchestrator" {
+				t.Errorf("%s event on node %q, want the orchestrator", e.Type, e.Node)
+			}
+			got[e.Type] = e.Text
+		}
+	}
+	if got["delivered"] != "product 0123456789ab: delivered to dev at refs/campaign/orchestrator" {
+		t.Errorf("delivered text %q", got["delivered"])
+	}
+	if got["refused"] != "product 89abcdef0123: refused: results/x is withheld from dev" {
+		t.Errorf("refused text %q", got["refused"])
+	}
+	if len(run.Log) != 2 || run.Log[1].Member != "dev" || run.Log[1].Commit == "" {
+		t.Errorf("the raw log lost the delivery fields: %+v", run.Log)
+	}
+}

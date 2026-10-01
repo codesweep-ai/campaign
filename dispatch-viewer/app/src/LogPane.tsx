@@ -84,7 +84,7 @@ export function LogPane({ log, events, onSelect, onSelectLog }: LogPaneProps) {
       </div>
       <div className="none" id="log-hidden">
         The traces view shows what each member did. Switch to protocol for the orchestrator's
-        recorded claims: plan, assessments, accepts.
+        recorded claims: plan, assessments, accepts, deliveries.
       </div>
     </Card>
   );

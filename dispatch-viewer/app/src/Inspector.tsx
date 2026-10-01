@@ -171,7 +171,7 @@ function EventBody({
   } else if (e.type === "open" || e.type === "continue" || e.type === "restart" || e.type === "resume") {
     const m = ((run.messages || {})[e.node] || {})[e.file as string];
     body = <DocBlock kind="md" content={m || "(message body unavailable)"} docMode={docMode} />;
-  } else if (e.type === "plan" || e.type === "assessment") {
+  } else if (e.type === "plan" || e.type === "assessment" || e.type === "delivered" || e.type === "refused") {
     body = <DocBlock kind="md" content={e.text || ""} docMode={docMode} />;
   } else if (e.type === "accept") {
     body = (
