@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/codesweep-ai/campaign/internal/protocol"
+	"github.com/codesweep-ai/campaign/internal/withhold"
 )
 
 func agentRec(env *envState, name string) (protocol.AgentRecord, error) {
@@ -601,8 +602,8 @@ func cmdAccept(env *envState, args []string) error {
 }
 
 func cmdNote(env *envState, args []string) error {
-	if len(args) < 1 || !protocol.LogKinds[args[0]] || args[0] == "accepted" || args[0] == "reported" {
-		return errors.New("note needs a kind: plan or assessment (acceptances come from `accept`)")
+	if len(args) < 1 || (args[0] != "plan" && args[0] != "assessment") {
+		return errors.New("note needs a kind: plan or assessment (acceptances come from `accept`, deliveries from `push`)")
 	}
 	body, _, err := readBody(args[1:])
 	if err != nil {
@@ -965,15 +966,17 @@ func cmdWait(env *envState, args []string) error {
 	}
 }
 
-func cmdFetch(env *envState, args []string, push bool) error {
+// memberRepo resolves the teammate and the repository a fetch or a push names,
+// and the orchestrator's own clone of it.
+func memberRepo(env *envState, args []string, verb string) (name, repo string, rec protocol.AgentRecord, dir string, err error) {
 	if len(args) < 1 {
-		return errors.New("need an agent name")
+		return "", "", rec, "", errors.New("need an agent name")
 	}
-	rec, err := agentRec(env, args[0])
+	name = args[0]
+	rec, err = agentRec(env, name)
 	if err != nil {
-		return err
+		return "", "", rec, "", err
 	}
-	var repo string
 	if len(args) > 1 {
 		repo = args[1]
 	} else {
@@ -983,33 +986,178 @@ func cmdFetch(env *envState, args []string, push bool) error {
 		}
 		sort.Strings(repos)
 		if len(repos) == 0 {
-			return fmt.Errorf("%s has no repository", args[0])
+			return "", "", rec, "", fmt.Errorf("%s has no repository", name)
 		}
 		repo = repos[0]
 	}
-	branch, ok := rec.Repos[repo]
-	if !ok {
-		return fmt.Errorf("%s does not hold repo %q", args[0], repo)
+	if _, ok := rec.Repos[repo]; !ok {
+		return "", "", rec, "", fmt.Errorf("%s does not hold repo %q", name, repo)
 	}
-	dir := filepath.Join(env.Home, repo)
+	dir = filepath.Join(env.Home, repo)
 	if _, err := os.Stat(dir); err != nil {
-		return fmt.Errorf("you have no local clone of %q to %s against — judging a teammate's repo requires the campaign profile to give the orchestrator that repo too; until then, `read %s` shows its reply and output channel only", repo, map[bool]string{true: "push", false: "fetch"}[push], args[0])
+		return "", "", rec, "", fmt.Errorf("you have no local clone of %q to %s against — judging a teammate's repo requires the campaign profile to give the orchestrator that repo too; until then, `read %s` shows its reply and output channel only", repo, verb, name)
 	}
-	if push {
-		out, err := gitCmd(dir, "push", rec.Sandbox+":"+repo, "HEAD:refs/campaign/orchestrator")
-		if err != nil {
-			return fmt.Errorf("push: %v: %s", err, strings.TrimSpace(string(out)))
+	return name, repo, rec, dir, nil
+}
+
+// cmdPush delivers one commit of the orchestrator's clone to a teammate, at
+// refs/campaign/orchestrator. HEAD unless --commit names another. Before
+// anything travels, what the push would newly deliver is held against the
+// paths the profile withholds from that teammate, and a hit refuses the whole
+// push. Every delivery and every refusal is written to the log.
+func cmdPush(env *envState, args []string) error {
+	commitArg := "HEAD"
+	rest := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		if args[i] != "--commit" {
+			rest = append(rest, args[i])
+			continue
 		}
-		fmt.Println("refs/campaign/orchestrator")
-		return nil
+		if i+1 >= len(args) {
+			return errors.New("--commit needs a commit: a sha, a branch or a tag in your clone")
+		}
+		commitArg = args[i+1]
+		i++
 	}
-	ref := fmt.Sprintf("refs/remotes/campaign/%s/%s", args[0], repo)
+	name, repo, rec, dir, err := memberRepo(env, rest, "push")
+	if err != nil {
+		return err
+	}
+	sha, err := gitOut(dir, "rev-parse", "--verify", "--end-of-options", commitArg+"^{commit}")
+	if err != nil {
+		return fmt.Errorf("push: %q is not a commit in your clone of %s; nothing was delivered", commitArg, repo)
+	}
+	remote := rec.Sandbox + ":" + repo
+	if decls := rec.Withhold[repo]; len(decls) > 0 {
+		held, err := heldByMember(dir, remote)
+		if err != nil {
+			return fmt.Errorf("push: cannot read what %s already holds, so nothing was delivered: %v", name, err)
+		}
+		path, decl, culprit, err := newlyDeliveredAt(dir, sha, held, decls)
+		if err != nil {
+			return fmt.Errorf("push: %v; nothing was delivered", err)
+		}
+		if path != "" {
+			why := fmt.Sprintf("refused: %s is withheld from %s (the profile declares %s), and commit %s would deliver it", path, name, decl, culprit)
+			if logErr := logDelivery(env, "refused", name, repo, sha, why); logErr != nil {
+				return fmt.Errorf("push %s; and the refusal could not be logged: %v", why, logErr)
+			}
+			return fmt.Errorf("push %s. Nothing was delivered. Name a commit before it with --commit, or keep the hold-out off the history you deliver", why)
+		}
+	}
+	out, err := gitCmd(dir, "push", remote, sha+":refs/campaign/orchestrator")
+	if err != nil {
+		why := "refused by git: " + strings.TrimSpace(string(out))
+		if logErr := logDelivery(env, "refused", name, repo, sha, why); logErr != nil {
+			return fmt.Errorf("push: %v: %s; and the refusal could not be logged: %v", err, strings.TrimSpace(string(out)), logErr)
+		}
+		return fmt.Errorf("push: %v: %s", err, strings.TrimSpace(string(out)))
+	}
+	if err := logDelivery(env, "delivered", name, repo, sha, "delivered to "+name+" at refs/campaign/orchestrator"); err != nil {
+		return fmt.Errorf("push delivered %s to %s, but the delivery could not be logged: %v", sha[:12], name, err)
+	}
+	fmt.Printf("refs/campaign/orchestrator %s\n", sha[:12])
+	return nil
+}
+
+// logDelivery records one push's outcome in the orchestrator's log.
+func logDelivery(env *envState, kind, member, repo, sha, text string) error {
+	return protocol.AppendLogLocal(env.Home, protocol.Entry{At: clockNow().UTC(), Kind: kind, Text: text,
+		Member: member, Repo: repo, Commit: sha})
+}
+
+// heldByMember lists the commits the teammate's clone already reaches by a
+// ref, as far as the orchestrator's clone knows them. What a push delivers is
+// everything the named commit reaches that none of these do, so this is the
+// boundary a withhold check judges against: history the member already holds
+// is not delivered again, whatever it touches.
+func heldByMember(dir, remote string) ([]string, error) {
+	out, err := gitCmd(dir, "ls-remote", remote)
+	if err != nil {
+		return nil, fmt.Errorf("ls-remote %s: %v: %s", remote, err, strings.TrimSpace(string(out)))
+	}
+	seen := map[string]bool{}
+	var shas []string
+	for line := range strings.SplitSeq(string(out), "\n") {
+		sha, _, ok := strings.Cut(line, "\t")
+		if !ok || seen[sha] {
+			continue
+		}
+		seen[sha] = true
+		shas = append(shas, sha)
+	}
+	if len(shas) == 0 {
+		return nil, nil
+	}
+	// rev-list stops on a sha it cannot resolve, and the member may hold
+	// commits the orchestrator never fetched: its own branch, for one. Keep
+	// the ones this clone has.
+	cmd := exec.Command("git", "-C", dir, "cat-file", "--batch-check")
+	cmd.Stdin = strings.NewReader(strings.Join(shas, "\n") + "\n")
+	known, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("cat-file: %v", err)
+	}
+	var held []string
+	for line := range strings.SplitSeq(string(known), "\n") {
+		f := strings.Fields(line)
+		if len(f) >= 2 && f[1] == "commit" {
+			held = append(held, f[0])
+		}
+	}
+	return held, nil
+}
+
+// newlyDeliveredAt walks every object sha reaches and none of held does,
+// which is exactly what a push of sha would carry, and returns the first path
+// a declaration withholds, the declaration, and the commit that introduces
+// the path on that history.
+func newlyDeliveredAt(dir, sha string, held, decls []string) (path, decl, culprit string, err error) {
+	args := []string{"rev-list", "--objects", sha}
+	for _, h := range held {
+		args = append(args, "^"+h)
+	}
+	out, err := gitOut(dir, args...)
+	if err != nil {
+		return "", "", "", err
+	}
+	for line := range strings.SplitSeq(out, "\n") {
+		_, p, ok := strings.Cut(line, " ")
+		if !ok || p == "" {
+			continue
+		}
+		// rev-list names a directory before its files; the file says more.
+		if d, hit := withhold.Hit(decls, p); hit && (path == "" || strings.HasPrefix(p, path+"/")) {
+			path, decl = p, d
+		}
+	}
+	if path == "" {
+		return "", "", "", nil
+	}
+	culprit = "on it"
+	cargs := append([]string{"rev-list", "--reverse", sha}, args[3:]...)
+	cargs = append(cargs, "--", path)
+	if c, cerr := gitOut(dir, cargs...); cerr == nil {
+		if first, _, _ := strings.Cut(c, "\n"); first != "" {
+			culprit = first[:12]
+		}
+	}
+	return path, decl, culprit, nil
+}
+
+func cmdFetch(env *envState, args []string) error {
+	name, repo, rec, dir, err := memberRepo(env, args, "fetch")
+	if err != nil {
+		return err
+	}
+	branch := rec.Repos[repo]
+	ref := fmt.Sprintf("refs/remotes/campaign/%s/%s", name, repo)
 	out, err := gitCmd(dir, "fetch", rec.Sandbox+":"+repo, branch+":"+ref)
 	if err != nil {
 		return fmt.Errorf("fetch: %v: %s", err, strings.TrimSpace(string(out)))
 	}
 	if isBuildStore(dir) {
-		return takeIntoStore(dir, ref, args[0])
+		return takeIntoStore(dir, ref, name)
 	}
 	// Tree-differs-from-base, printed with the ref: an empty branch presented
 	// as delivered work buys a wrong acceptance.

@@ -818,6 +818,17 @@ one. *A member's clone is the whole
 repository, every branch included, and it is made by copying the object store, so neither a
 checkout nor a ref walk bounds what arrives.*
 
+**R120b.** A push from the orchestrator to a member **MUST** deliver the commit the orchestrator
+names, HEAD when it names none, and no descendant of it.
+
+**R120c.** A push **MUST** refuse, and deliver nothing, when any object it would newly deliver
+sits at a path withheld from that member. What it would newly deliver is every object the named
+commit reaches and no ref the member already holds does. History the member already has is
+therefore not judged again, whatever it touches.
+
+**R120d.** Every delivery and every refusal **MUST** be written to the orchestrator's log, with
+the member, the repository, the commit and the outcome, so the archive lists them.
+
 The withhold fence covers the git channel. A dispatch body can carry anything the orchestrator
 chooses to paste, and the archive holds every dispatch for a scan afterwards.
 
@@ -875,7 +886,7 @@ agents:
 | `cli` | member | One of `claude`, `codex`, `opencode`. |
 | `model`, `effort` | member | Passed to that member's CLI verbatim. `opencode` requires `model` whenever `effort` is set. |
 | `repos[].path`, `.ref`, `.name` | member | A host repository cloned into the member. |
-| `repos[].withhold` | member | Paths this member must never receive from that repository: files, directories or globs, relative to its root. See R120a. |
+| `repos[].withhold` | member | Paths this member must never receive from that repository: files, directories or globs, relative to its root. See R120a and R120c. |
 | `snapshots[].path`, `.name` | member | A frozen tree the member can read. |
 | `snapshots[].withhold` | member | The same declaration for a snapshot, held against the tree as it stands. |
 | `imageStores` | `defaults`, member | Shared image stores the member's podman reads, made on the host with `cs-sandbox create-store` and `seed-store`. A member's own list replaces the defaults'. |
@@ -911,8 +922,8 @@ campaign deadline.
 
 `~/.config/cs-campaign/manifest.json` exists only in the orchestrator. It carries the campaign
 name, the network, and the policy its `wait` loop runs on. One roster row per agent follows, with
-that agent's CLI, bare sandbox name, session name, repositories with branches, base commits and
-snapshots.
+that agent's CLI, bare sandbox name, session name, repositories with branches, base commits,
+snapshots and the paths withheld from it per repository.
 
 ### 5.4 Dispatch messages
 
@@ -968,9 +979,17 @@ so a torn write must never be observable.
 {"at":"2026-08-19T17:02:11Z","kind":"plan","text":"backend takes the parser; qa takes the fixtures."}
 ```
 
-`kind` is `plan`, `accepted`, `assessment` or `reported`, and nothing else. A `reported` entry is
-written by `wait` and never by hand. Its text is `<node>/<dispatch>`, and it says the orchestrator
-has been told that node is stuck (R134). A later entry of a kind supersedes an earlier one. There is no rewrite path.
+`kind` is `plan`, `accepted`, `assessment`, `reported`, `delivered` or `refused`, and nothing
+else. A `reported` entry is written by `wait` and never by hand. Its text is `<node>/<dispatch>`,
+and it says the orchestrator has been told that node is stuck (R134). A `delivered` or `refused`
+entry is written by `push` and never by hand. It carries `member`, `repo` and `commit` beside the
+text, which says what happened (R120d):
+
+```json
+{"at":"2026-08-19T17:40:02Z","kind":"refused","text":"refused: results/answers.txt is withheld from qa (the profile declares results), and commit 7c1d2e3f4a5b would deliver it","member":"qa","repo":"product","commit":"9f0e8d7c6b5a4a3b2c1d0e9f8a7b6c5d4e3f2a1b"}
+```
+
+A later entry of a kind supersedes an earlier one. There is no rewrite path.
 
 ### 5.7 The archive
 
@@ -1430,8 +1449,8 @@ is the opposite of what this gate is for.
 
 ## 8. Conformance
 
-An implementation conforms when it satisfies R1 to R124, R4a, R18a, R18b, R119a and R120a
-included, and can demonstrate each of the following by test.
+An implementation conforms when it satisfies R1 to R124, R4a, R18a, R18b, R119a and R120a to
+R120d included, and can demonstrate each of the following by test.
 
 **Isolation.** Two concurrent campaigns cannot resolve or connect to one another by name or raw
 address, and neither one's SSH trust material authenticates to the other's members. A solo agent
@@ -1459,8 +1478,10 @@ overwrite an existing message name. Infrastructure health, model activity and ta
 remain separately observable. A working member is never reported as failed on a watcher's verdict
 alone, and a freshly sent message never reads as stopped inside its settling window.
 
-**Delivery.** A profile that withholds a path a member's clone or snapshot would carry is refused
-before anything is allocated.
+**Delivery.** A push delivers the commit it names and no descendant of it. A push that would
+newly deliver a withheld path is refused, and the member's clone is unchanged. A profile that
+withholds a path a member's clone or snapshot would carry is refused before anything is allocated.
+The archive of a finished campaign lists every delivery and every refusal.
 
 **Configuration.** Profile and flag inputs resolve to the same typed plan. `validate` and `plan`
 perform no mutations, unknown overrides fail, and an archived resolved profile contains no secret

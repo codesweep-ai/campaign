@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/codesweep-ai/campaign"
 	"github.com/codesweep-ai/campaign/internal/covmap"
 	"github.com/codesweep-ai/campaign/internal/model"
 )
@@ -118,6 +119,20 @@ func TestValidateRefusesADeclarationThatIsNotAPath(t *testing.T) {
 		p := profileWithholding("/nonexistent", []string{bad}, "", nil)
 		if err := validateProfile(p); err == nil || !strings.Contains(err.Error(), "withhold") {
 			t.Errorf("withhold %q: %v", bad, err)
+		}
+	}
+}
+
+// MANUAL.md: "A refused push delivers nothing". It is the sentence a campaign
+// that depends on a hold-out is designed around, and the manual is carried
+// inside the binary.
+func TestTheManualStatesWhatARefusedPushDelivers(t *testing.T) {
+	for _, claim := range []string{
+		"A refused push delivers nothing, and the exit status is 1.",
+		"A member's clone is the whole repository, every branch included",
+	} {
+		if !strings.Contains(campaign.ManualMD, claim) {
+			t.Errorf("MANUAL.md no longer states %q; this test names the sentence it keeps true", claim)
 		}
 	}
 }

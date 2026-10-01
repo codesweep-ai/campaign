@@ -70,7 +70,7 @@ func TestFetchTakesABuildStoreIn(t *testing.T) {
 	}}}
 
 	record(t, dev, "lint")
-	if err := cmdFetch(env, []string{"dev", "cs-builds"}, false); err != nil {
+	if err := cmdFetch(env, []string{"dev", "cs-builds"}); err != nil {
 		t.Fatal(err)
 	}
 	if got := storeGit(t, store, "log", "-1", "--format=%s"); got != "Record lint" {
@@ -79,7 +79,7 @@ func TestFetchTakesABuildStoreIn(t *testing.T) {
 
 	record(t, store, "own")
 	record(t, dev, "ledger")
-	if err := cmdFetch(env, []string{"dev", "cs-builds"}, false); err != nil {
+	if err := cmdFetch(env, []string{"dev", "cs-builds"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"lint", "ledger", "own"} {
@@ -92,7 +92,7 @@ func TestFetchTakesABuildStoreIn(t *testing.T) {
 	}
 
 	head := storeGit(t, store, "rev-parse", "HEAD")
-	if err := cmdFetch(env, []string{"dev", "cs-builds"}, false); err != nil {
+	if err := cmdFetch(env, []string{"dev", "cs-builds"}); err != nil {
 		t.Fatal(err)
 	}
 	if got := storeGit(t, store, "rev-parse", "HEAD"); got != head {
@@ -102,7 +102,7 @@ func TestFetchTakesABuildStoreIn(t *testing.T) {
 	// Named anything else, it is a project repository, and nothing is merged.
 	t.Setenv("CS_BUILD_STORE", filepath.Join(tmp, "elsewhere"))
 	record(t, dev, "tracer")
-	if err := cmdFetch(env, []string{"dev", "cs-builds"}, false); err != nil {
+	if err := cmdFetch(env, []string{"dev", "cs-builds"}); err != nil {
 		t.Fatal(err)
 	}
 	if got := storeGit(t, store, "rev-parse", "HEAD"); got != head {

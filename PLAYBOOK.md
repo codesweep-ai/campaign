@@ -128,6 +128,16 @@ Leave it out for one the tool is about to create, because there is no branch the
 Give the orchestrator every repository it must judge. Without the clone it can read a reply and
 cannot inspect the work behind it.
 
+**Withholding a path from a member.** Some campaigns depend on one member never seeing a file the
+orchestrator holds: the expected results a qa seat must reproduce rather than copy, for one. Declare
+the paths on that member's repository entry, under `withhold`, and the tool keeps them out of the
+git channel. `validate` refuses the profile while any branch of the repository holds such a path,
+because a member's clone carries every branch. Keep the hold-out in a repository or snapshot only
+the orchestrator is given. A `push` to that member is refused when it would deliver the path,
+and every push and refusal is in the orchestrator's log and the archive. Two routes stay open: the
+orchestrator can paste a file into a dispatch, and a snapshot arrives as it stands. Declare
+`withhold` on a snapshot too, and read the member's dispatches in the archive afterwards.
+
 The `--repo` and `--snapshot` flags are the profile-less shorthand. Each takes one path and hands it
 to every member, which is enough to try something and not enough to describe a real team.
 

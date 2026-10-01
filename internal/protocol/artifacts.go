@@ -100,18 +100,26 @@ func ParseReply(b []byte) (Reply, error) {
 // kind supersedes an earlier one; how the log is read is the reader's choice.
 type Entry struct {
 	At   time.Time `json:"at"`
-	Kind string    `json:"kind"` // "plan" | "accepted" | "assessment" | "reported"
+	Kind string    `json:"kind"` // one of LogKinds
 	Text string    `json:"text"`
+	// A delivery entry, "delivered" or "refused", also says to whom and what:
+	// the member, the repository as the member names it, and the commit the
+	// push named. Text carries the outcome in words.
+	Member string `json:"member,omitempty"`
+	Repo   string `json:"repo,omitempty"`
+	Commit string `json:"commit,omitempty"`
 }
 
-// LogKinds are the only kinds the log accepts.
-var LogKinds = map[string]bool{"plan": true, "accepted": true, "assessment": true, "reported": true}
+// LogKinds are the only kinds the log accepts. plan and assessment are
+// written by note; accepted by accept; reported by wait; delivered and refused
+// by push.
+var LogKinds = map[string]bool{"plan": true, "accepted": true, "assessment": true, "reported": true, "delivered": true, "refused": true}
 
 // AppendLogLocal appends one entry to this machine's own log. O_APPEND on one
 // line: a careless append is additive, and there is no rewrite path at all.
 func AppendLogLocal(home string, e Entry) error {
 	if !LogKinds[e.Kind] {
-		return fmt.Errorf("log kind %q is not one of plan, accepted, assessment", e.Kind)
+		return fmt.Errorf("log kind %q is not one of plan, accepted, assessment, reported, delivered, refused", e.Kind)
 	}
 	if err := os.MkdirAll(filepath.Join(home, OutputDir), 0o700); err != nil {
 		return err

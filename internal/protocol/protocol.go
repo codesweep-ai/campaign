@@ -355,6 +355,10 @@ type AgentRecord struct {
 	Repos     map[string]string `json:"repos,omitempty"` // guest name -> branch
 	Bases     map[string]string `json:"bases,omitempty"` // guest name -> base commit
 	Snapshots []string          `json:"snapshots,omitempty"`
+	// Withhold is, per guest repository name, what the profile declared this
+	// agent must never receive. A push holds what it would newly deliver
+	// against it.
+	Withhold map[string][]string `json:"withhold,omitempty"`
 }
 
 // Manifest is manifest.json: the orchestrator's roster and the campaign

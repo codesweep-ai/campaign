@@ -30,7 +30,8 @@ type Repo struct {
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 	// Withhold names the paths this member must never receive from this
 	// repository: files, directories or globs, relative to its root. validate
-	// and create hold them against the host repository's whole history.
+	// and create hold them against the host repository's whole history, and
+	// a push to the member refuses to deliver an object at one of them.
 	Withhold       []string `yaml:"withhold,omitempty" json:"withhold,omitempty"`
 	ResolvedCommit string   `yaml:"-" json:"resolvedCommit,omitempty"`
 	Initialize     bool     `yaml:"-" json:"initialize,omitempty"`

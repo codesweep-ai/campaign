@@ -343,6 +343,7 @@ Only campaign judgment, the class of thing that exists nowhere but in its own he
 | **acceptances** | which dispatches it has judged sufficient |
 | **assessment** | how the mission is going, what is unmet, what is at risk |
 | **reported** | which stuck nodes its `wait` has already told it about |
+| **deliveries** | what it pushed to which member, and what it refused to push |
 
 > **Node state is derived and never recorded. Campaign state is recorded and never derived.**
 
@@ -351,6 +352,9 @@ records that the orchestrator was told. Without the `reported` entry every later
 return at once, and the orchestrator could never block again (§8). The entry is written by the
 wait itself when it returns the judgment. It belongs in the log for the reason everything else
 does: an orchestrator that lost its memory reads there what it already knows.
+
+A delivery is the one act recorded beside the judgments. The member's clone shows what arrived,
+and nothing else says what was refused, or when, or why.
 
 It records nothing else about liveness or dispatch state. The branch is the work itself, and it is
 what the orchestrator reads *before* an acceptance: input to the judgment, never part of node

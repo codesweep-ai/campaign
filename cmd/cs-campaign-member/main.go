@@ -80,9 +80,9 @@ func main() {
 		case "wait":
 			err = cmdWait(env, args)
 		case "fetch":
-			err = cmdFetch(env, args, false)
+			err = cmdFetch(env, args)
 		case "push":
-			err = cmdFetch(env, args, true)
+			err = cmdPush(env, args)
 		}
 	default:
 		usage(os.Stderr)
@@ -116,7 +116,9 @@ Orchestrator only:
   note plan|assessment --file F|-   append to your log; re-planning is another plan entry
   wait [--for SECS]             block; recovery runs itself, returns when a judgment is due
   fetch <agent> [repo]          fetch its branch to refs/remotes/campaign/<agent>/<repo>
-  push <agent> [repo]           push HEAD to it at refs/campaign/orchestrator
+  push <agent> [repo]           push HEAD to it at refs/campaign/orchestrator, and log the delivery;
+                                refused, and logged, when it would deliver a path withheld from the agent
+      --commit C                push C instead of HEAD
 `)
 }
 

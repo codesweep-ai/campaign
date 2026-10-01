@@ -628,13 +628,23 @@ help.
 | `note plan\|assessment --file F\|-` | Appends to the log. Re-planning is another `plan` entry. |
 | `wait [--for SECS]` | Blocks. Recovery runs itself. Returns when a judgement is due — a reply to judge, or a node gone stuck — or when the chunk elapses: `--for` seconds, 240 by default. A free teammate is not a judgement; it is named on the elapsed line instead. |
 | `fetch <agent> [repo]` | Fetches its branch to `refs/remotes/campaign/<agent>/<repo>`. The build store `CS_BUILD_STORE` names is merged into the orchestrator's clone at once. |
-| `push <agent> [repo]` | Pushes HEAD to it at `refs/campaign/orchestrator`. |
+| `push <agent> [repo] [--commit C]` | Pushes `C`, HEAD by default, to it at `refs/campaign/orchestrator`, and logs the delivery. Refused, and logged, when it would deliver a path the profile withholds from that agent. |
 
 `send` computes where the message lands, and refuses a send that would land somewhere its sender
 did not say. Without `--continue`, a send to an agent whose dispatch is open is refused, naming the
 dispatch and the agent's state. With it, a send to an agent that has replied is refused, naming the
 reply that closed the dispatch. Nothing is delivered on a refusal, and the exit status is 1. An
 approval therefore always travels under the dispatch its sender meant.
+
+`push` delivers one commit and its history: the one `--commit` names, or HEAD. Before anything
+travels, it holds what the push would newly deliver against the paths the profile withholds from
+that agent (`repos[].withhold`, under **Configuration**). What it would newly deliver is every
+object the named commit reaches and no ref the agent already holds does. The agent's refs are read
+with `git ls-remote`, so history it already has is not judged again. A push that would deliver
+an object at a withheld path is refused, naming the path, the declaration and the commit that
+introduces it. A refused push delivers nothing, and the exit status is 1. Every push writes one
+entry to the orchestrator's log, `delivered` or `refused`, with the agent, the repository, the
+commit and what happened, so the archive lists every delivery.
 
 A dispatcher verb run on an agent is refused, naming the role. Invoked under a `cs-<cli>-remote`
 name, the same binary is the family guard: a wrong-family call against a member is refused with the
@@ -965,7 +975,8 @@ repository with a declaration is therefore refused while it holds one, and the r
 `git reflog expire` and `git gc --prune=now` command that removes them. A snapshot is held against
 its directory as it stands.
 
-The fence
+The declaration also reaches the orchestrator's roster. A `push` to that member is refused when it
+would newly deliver an object at a withheld path (see **Inside a member** below). The fence
 covers the git channel. A dispatch body can carry anything the orchestrator pastes into it, and the
 archive holds every dispatch for a scan afterwards.
 
@@ -1195,7 +1206,7 @@ Everything else a campaign declares lives in the profile alone.
 | `~/.config/cs-campaign/manifest.json` | host, in the orchestrator | The roster its `wait` loop runs on. |
 | `~/.local/share/cs-campaign/input/` | the member's driver | Dispatch messages. |
 | `~/.local/share/cs-campaign/output/replies/<id>.json` | the member | The reply that closes a dispatch. |
-| `~/.local/share/cs-campaign/output/log.jsonl` | the orchestrator | Its append-only plan, assessment and accept record. |
+| `~/.local/share/cs-campaign/output/log.jsonl` | the orchestrator | Its append-only plan, assessment, accept and delivery record. |
 | `~/.local/bin/cs-campaign-member` | host, in each member | The guest binary. |
 
 ## Environment

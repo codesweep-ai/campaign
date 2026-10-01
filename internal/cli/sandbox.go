@@ -545,10 +545,17 @@ func (s sandboxCLI) configureOrchestrator(ctx context.Context, campaign *model.C
 		}
 		repos := map[string]string{}
 		bases := map[string]string{}
+		var withheld map[string][]string
 		for _, repo := range member.Profile.Repos {
 			repos[repoGuestName(repo)] = member.Branch
 			if repo.ResolvedCommit != "" {
 				bases[repoGuestName(repo)] = repo.ResolvedCommit
+			}
+			if len(repo.Withhold) > 0 {
+				if withheld == nil {
+					withheld = map[string][]string{}
+				}
+				withheld[repoGuestName(repo)] = append([]string(nil), repo.Withhold...)
 			}
 		}
 		var snapshots []string
@@ -561,7 +568,7 @@ func (s sandboxCLI) configureOrchestrator(ctx context.Context, campaign *model.C
 		}
 		manifest.Agents[member.Name] = protocol.AgentRecord{
 			CLI: member.CLI, Sandbox: member.Sandbox, Session: member.Session.Name,
-			Repos: repos, Bases: bases, Snapshots: snapshots,
+			Repos: repos, Bases: bases, Snapshots: snapshots, Withhold: withheld,
 		}
 	}
 	if orchestrator == nil {
