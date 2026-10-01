@@ -3,17 +3,21 @@
   "title": "A push delivers the orchestrator's whole HEAD, and nothing can withhold a path from a member",
   "type": "improvement",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "feature request from another agent, relayed by the user (host); the clone probe below is this session's",
   "opened": "2026-10-01",
-  "resolved": null,
+  "resolved": "2026-10-01",
   "stint": "campaign-push-feature-s1",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "adb32f1",
+      "401ec62",
+      "4513d85"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "TestWithheldPathsAreRefusedBeforeCreate and TestValidateRefusesADeclarationThatIsNotAPath pass under `go test ./internal/cli/ -count=1`. TestPushNamesTheCommitRefusesWithheldPathsAndLogs passes under `go test ./cmd/cs-campaign-member/ -count=1`. It shows a named commit arriving without its descendant. It shows a push carrying a withheld file, deleted again later, refused with the member's ref and objects unchanged. It shows a merge of the member's own work at the withheld path passing. It finds four log entries, each with member, repository and commit. TestDeliveriesAreLogEvents passes under `go test ./dispatch-viewer/... -count=1`. The full gate, `make check`, passes. `make test-smoke` passes in 452 seconds on the committed cassettes, none of which drives a push."
   },
-  "resolution": null,
+  "resolution": "A repository or snapshot entry takes a `withhold` list of files, directories or globs. `validate` and `create` refuse a repository whose history carries one on any ref (SPEC R120a). They also refuse a repository whose object store keeps objects no ref reaches, and a snapshot whose tree holds one. `push` takes `--commit`, and delivers that commit and nothing after it (R120b). It refuses when any object it would newly deliver sits at a withheld path, judged against the refs the member already holds (R120c). Every delivery and refusal is a `delivered` or `refused` log entry with the member, repository and commit (R120d), and the viewer draws them on the log row. Withdraw was dropped. A refusal, a named commit and a log make a wrong delivery something to record, and a prune cannot reach a member that merged or read what arrived. The sandbox clone that copies objects no ref reaches is an upstream matter, left unfiled.",
   "details": "`cs-campaign-member push <agent> [repo]` sends the orchestrator's HEAD to the member at `refs/campaign/orchestrator`. The orchestrator cannot name another commit. A push carries the commit's whole history, so every path on that line arrives in the member's clone whether or not the member merges it.\n\nA campaign can be designed so that one member must never see certain files the orchestrator holds, such as a directory of expected results. One push from the wrong checkout delivers them with the history. Nothing refuses it, nothing records it, and a corrective push to an earlier commit is refused as non-fast-forward. Such a campaign can only find a breach afterwards, by scanning clones, and the log gives it nothing to scan.\n\nThe push is not the only route. A member's repository is a full bare clone of the host repository, every branch included, and the profile's `ref` picks the checkout rather than the history. A withheld path that exists on any branch of the host repository is therefore in every member's clone at create. The clone is also made from a local path, which copies the object store as it stands. A probe on git 2.53 showed the difference: a blob dropped by `git reset --hard`, reachable only from the reflog, was present in a `git clone --bare <path>` and absent from a `git clone --bare file://<path>`. A ref walk cannot see such an object.\n\nWhat would help, in order:\n\n- A `withhold` list on a member's repository and snapshot entries. `validate` and `create` hold it against every object reachable from every ref of the host repository, and refuse a host repository that holds objects no ref reaches.\n- A push that refuses when any object it would newly deliver sits at a withheld path, judged against the refs the member already holds.\n- A log entry for every delivery and every refusal, naming the member, the repository, the commit and the outcome.\n- A `--commit` flag, so a push can name what it sends.\n\nThe fence covers the git channel only. The text of every `send` is already in the archive, and the tool cannot stop a model from pasting a file into a dispatch.",
   "notes": [],
   "links": [
