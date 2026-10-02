@@ -76,7 +76,7 @@ eleven commits is not evidence.
 `dispatch-viewer/app/`, built on `@codesweep-ai/ui` and committed as the single file
 `dispatch-viewer/internal/cli/shell/viewer.html` that the binary embeds. Every Go gate above runs in
 any clone, and the binary builds with Go alone. Rebuilding the page with `make viewer` needs Node
-22.13 or newer and npm, the floor `@codesweep-ai/ui` sets. The install runs through
+24.21.0 or newer and npm, the floor `@codesweep-ai/ui` sets. The install runs through
 `scripts/with-npmrevs.sh`, which puts cs-npmrevs in front of npmjs.com. `@codesweep-ai/ui` publishes
 an image of every build, and a version that has not been released reaches npm only that way. The
 tool is pinned in `go.mod`, the images are public, and every other package still comes from

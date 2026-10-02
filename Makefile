@@ -205,7 +205,7 @@ WITH_NPMREVS := $(abspath scripts/with-npmrevs.sh)
 ## The page is a Vite/React app built to one self-contained file at
 ## $(VIEWERPAGE), which cli.go embeds as before. The built file is committed,
 ## so a clone with Go alone builds a working binary: without npm this target
-## prints SKIP and the committed page stands. Rebuilding needs Node 22.13 or
+## prints SKIP and the committed page stands. Rebuilding needs Node 24.21.0 or
 ## newer, the floor @codesweep-ai/ui sets.
 ##
 ## A phony alias for $(VIEWERPAGE), so a tree whose page is current does no npm
