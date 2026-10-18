@@ -102,7 +102,7 @@ Four surfaces touch the outside world.
 lifecycle, the protocol, member access, evidence and health:
 
 ```sh
-cs-campaign init|validate|plan|orientation            # author and check; allocate nothing
+cs-campaign init|validate|plan|orientation|packet     # author and check; allocate nothing
 cs-campaign create <name> --profile <file>            # provision, brief, verify, dispatch
 cs-campaign observe|send|restart|resume <campaign>    # the protocol surface
 cs-campaign ssh|fetch|transcript <campaign>[/member]  # member access
@@ -664,6 +664,13 @@ one. A verb that is safe to call repeatedly **MUST NOT** take a write lock.
 
 **R85.** Where several commands report state, they **MUST** either agree or say plainly which
 question each answers.
+
+**R85a.** `packet` **MUST** draw everything it shows from the resolution `create` runs. That is
+the plan, the files the convention finds beside the profile, and the orientation each member is
+given. It is also the refusals and warnings `create` would raise, in the tool's own words. It
+**MUST NOT** restate a rule the tool applies elsewhere, and it **MUST** allocate nothing. *A page
+that described `create` from a second copy of its rules would be a review of the copy, and would
+drift from the command it describes.*
 
 ### 4.8 Profiles
 

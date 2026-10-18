@@ -479,19 +479,25 @@ Run two passes, and give the reader nothing but the files:
 Include the orientation in both. It decides the command vocabulary and the reply rules, so leaving
 it out means the one document defining the contract is the one nothing checks against.
 
+`cs-campaign packet` writes what both passes read as one page. Its overview and file pages hold the
+fleet pass, and each member's page holds what that member is given and what it is not. A reader that
+is a model can take the same content as data with `--json`. Keep each packet you review, and pass it
+to the next with `--since`, so the next round reads what changed rather than everything again.
+
 Expect a round to find what the previous round's edits introduced. Stop when a round turns up only
 cosmetic drift. If the scope widens, go back to the fleet pass, because widening re-opens every
 seam.
 
 ## Before you spend
 
-Four checks cost nothing and run before any machine exists:
+Five checks cost nothing and run before any machine exists:
 
 ```sh
 cs-campaign doctor                                   # is this host able to run a campaign
 cs-campaign validate acme/profile.yaml               # is the profile and its files coherent
 cs-campaign orientation acme --profile acme/profile.yaml --member backend
 cs-campaign plan acme --profile acme/profile.yaml    # the resolved campaign, as JSON
+cs-campaign packet acme --profile acme/profile.yaml  # all of it on one page, to review
 ```
 
 Read the plan. Every generated name, the group, the network, the resolved policy numbers and each

@@ -74,7 +74,8 @@ eleven commits is not evidence.
 
 **The dispatch viewer needs Node only to change it.** The page is a React app in
 `dispatch-viewer/app/`, built on `@codesweep-ai/ui` and committed as the single file
-`dispatch-viewer/internal/cli/shell/viewer.html` that the binary embeds. Every Go gate above runs in
+`dispatch-viewer/internal/cli/shell/viewer.html` that the binary embeds. The same app builds the
+page `cs-campaign packet` writes, committed as `internal/cli/assets/packet.html`. Every Go gate above runs in
 any clone, and the binary builds with Go alone. Rebuilding the page with `make viewer` needs Node
 24.21.0 or newer and npm, the floor `@codesweep-ai/ui` sets. The install runs through
 `scripts/with-npmrevs.sh`, which puts cs-npmrevs in front of npmjs.com. `@codesweep-ai/ui` publishes

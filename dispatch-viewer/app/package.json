@@ -7,7 +7,7 @@
     "node": ">=24.21.0"
   },
   "scripts": {
-    "build": "tsc --noEmit && vite build && cp dist/index.html ../internal/cli/shell/viewer.html",
+    "build": "tsc --noEmit && vite build && cp dist/index.html ../internal/cli/shell/viewer.html && vite build --config vite.packet.config.ts && cp dist/packet/packet.html ../../internal/cli/assets/packet.html",
     "typecheck": "tsc --noEmit",
     "fixtures": "node ../fixtures/run.mjs"
   },

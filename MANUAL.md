@@ -15,6 +15,7 @@ host programs, `cs-campaign` and `cs-dispatch-viewer`, print this manual with th
 ```sh
 cs-campaign init <campaign> [--dir DIR] [--orchestrator CLI] [--agent NAME=CLI]...
 cs-campaign orientation <campaign> --profile PROFILE [--member NAME]
+cs-campaign packet <campaign> --profile PROFILE [--file PAGE] [--since PAGE] [--set PATH=VALUE]...
 cs-campaign validate [PROFILE] [--profile PROFILE]
 cs-campaign plan <campaign> --profile PROFILE [--set PATH=VALUE]...
 cs-campaign create <campaign> --profile PROFILE [--accept-upstream-change] [--dry-run]
@@ -110,6 +111,9 @@ it and do not contradict it. A brief may say an agent can ask the orchestrator a
 a verb the member's role refuses. Either one reaches that member as a second instruction that
 disagrees with the first. Nothing before `create` catches it.
 
+Once the briefs are written, `cs-campaign packet` gathers the profile, the mission, every brief and
+every member's orientation into one page. Read it, or have someone else read it, before `create`.
+
 Give the orchestrator every repository it must judge. `fetch` pulls a teammate's branch into the
 orchestrator's own clone, so an orchestrator without the repository can read replies and cannot
 inspect the work.
@@ -183,6 +187,40 @@ ordinary case: reading the orientation is what you do before writing a brief.
 
 The branch it prints is predicted. `cs-sandbox` spells the real one, which `create` reads back
 before it writes the file, so that line alone may differ from what the member receives.
+
+### packet
+
+```sh
+cs-campaign packet <campaign> --profile PROFILE [--file PAGE] [--since PAGE] [--set PATH=VALUE]...
+```
+
+Writes one self-contained HTML page that holds everything to review before `create`, and changes
+nothing else. The page opens from disk in any browser and needs no network.
+
+The page holds the profile, the mission, every brief and every member's orientation, each exactly as
+`create` will use it. It also holds the resolved plan, and the repositories and snapshots each
+member can reach, with any paths withheld from it. Each member has a page of its own. That page
+lists the files the member is seeded with, where each one lands in its home, and their digests. It
+also names the authored files the member is not given.
+
+The page opens on what `create` would refuse and what it would warn about, in the tool's own words.
+Unlike `validate`, it does not require every brief to exist, so it can be read while a campaign is
+still being written. An unwritten brief appears as a refusal.
+
+```console
+$ cs-campaign packet acme --profile acme/profile.yaml --file acme-packet.html
+wrote acme-packet.html: 4 members, 0 refusals, 1 warning
+```
+
+`--since` takes a packet written earlier for the same campaign. The page then shows what changed
+since that review, in the profile, the mission, each brief and each orientation. Keep the packet
+you reviewed, and pass it the next time.
+
+`--set` and `--credentials` take the values `create` will be given, so the page shows the campaign
+that command line would build. With `--json`, the packet's data is printed instead of the page.
+
+The page follows the two review passes in `cs-campaign playbook`. Its overview and file pages serve
+the fleet pass, and each member's page serves that member's pass.
 
 ### validate
 
@@ -875,19 +913,21 @@ Severity reflects the kind of problem.
 
 | Option | Applies to | Meaning |
 |---|---|---|
-| `--json` | `ls`, `observe` | Print machine-readable JSON instead of a table. |
-| `--profile PATH` | `create`, `plan`, `validate` | The campaign profile YAML. |
+| `--json` | `ls`, `observe`, `packet` | Print machine-readable JSON instead of a table, or instead of the page. |
+| `--profile PATH` | `create`, `plan`, `validate`, `orientation`, `packet` | The campaign profile YAML. |
 | `--orchestrator CLI` | `create`, `plan`, `init` | Quick team definition: the orchestrator's CLI. |
 | `--agent NAME=CLI` | `create`, `plan`, `init` | Quick team definition, repeatable. |
 | `--agent-cli CLI`, `--agents N` | `create`, `plan`, `init` | Homogeneous shorthand: N agents on one CLI. |
 | `--repo PATH` | `create`, `plan`, `init` | A repository cloned into every member. |
 | `--snapshot PATH` | `create`, `plan`, `init` | A frozen tree every member can read. |
-| `--credentials VERB` | `create`, `plan` | The campaign's credential verb, `lend` or `inherit`. |
-| `--set PATH=VALUE` | `create`, `plan` | Override one supported profile path, repeatable. |
+| `--credentials VERB` | `create`, `plan`, `packet` | The campaign's credential verb, `lend` or `inherit`. |
+| `--set PATH=VALUE` | `create`, `plan`, `packet` | Override one supported profile path, repeatable. |
 | `--dry-run` | `create`, `plan` | Resolve only; create nothing. |
 | `--accept-upstream-change` | `create`, `plan` | Proceed despite an upstream deviation, recording it on the campaign. |
 | `--dir DIR` | `init` | Scaffold into DIR instead of the campaign name. |
 | `--file PATH` | `send` | Read the message text from a file. |
+| `--file PATH` | `packet` | The page's name. Default: `packet.html` in the current directory. |
+| `--since PATH` | `packet` | A packet written earlier for the same campaign, to show what changed. |
 | `--output DIR` | `archive` | Where the archive is written. |
 | `--archive` | `destroy` | Archive all member evidence before destruction. |
 | `--archive-output DIR` | `destroy` | Archive destination. Requires `--archive`. |
@@ -1195,6 +1235,7 @@ Everything else a campaign declares lives in the profile alone.
 | `$XDG_CONFIG_HOME/cs-campaign/campaigns/<name>.json` | host | One campaign's record. |
 | `$XDG_CONFIG_HOME/cs-campaign/campaigns/.<name>.lock` | host | The per-campaign write lock. |
 | `$XDG_CONFIG_HOME/cs-campaign/campaigns/<name>.log-mirror.jsonl` | `observe` | A copy of the orchestrator's log, so the claim survives a lost machine. |
+| `packet.html` | `packet` | The review page, in the current directory unless `--file` names another. |
 | `<archive>/campaign.json` | `archive` | The record as the campaign ended. |
 | `<archive>/campaign-profile.yaml` | `archive` | The profile the campaign was declared with. |
 | `<archive>/readback.json` | `archive` | Every member's restatement of its job. |
@@ -1348,7 +1389,8 @@ it is not `campaign-met`.
 Every `cs-campaign` command is non-interactive except `ssh` with no arguments, which attaches a
 terminal. `ssh` with arguments runs the command and returns.
 
-`ls --json` and `observe --json` are the machine-readable surfaces. `plan` always prints JSON.
+`ls --json` and `observe --json` are the machine-readable surfaces. `plan` always prints JSON, and
+`packet --json` prints the packet's data instead of writing its page.
 Everything else prints for a human and may change; parse it at your own risk.
 
 `observe` performs one probe per member over the network, plus one read of the orchestrator's log
@@ -1357,7 +1399,8 @@ and, once the mission has been answered, one read of that reply. A failing membe
 machine is gone.
 
 `validate`, `plan`, `orientation`, `ls`, `audit`, `transcript`, `manual` and `doctor` with no
-argument change nothing. `init` writes files and refuses to overwrite. `create`, `send`, `restart`, `fetch`,
+argument change nothing. `init` writes files and refuses to overwrite. `packet` writes one page and
+overwrites it. `create`, `send`, `restart`, `fetch`,
 `archive` and `destroy` change state. So do two commands that read: `doctor <campaign>`
 records each member's refreshed harness verdict, and `observe` mirrors the orchestrator's log beside
 the campaign record.

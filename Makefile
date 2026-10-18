@@ -46,12 +46,14 @@ GO_FILES   := $(shell git ls-files '*.go' 2>/dev/null | grep . || find . -name '
 # every build of $(BIN), from sources the *.go list above already covers.
 GIT_DIR   := $(shell git rev-parse --git-dir 2>/dev/null)
 # The dispatch viewer is a Vite/React app built into one self-contained file,
-# and that file is the only viewer artifact //go:embed reads.
+# and that file is the only viewer artifact //go:embed reads. The same app
+# builds the review page `cs-campaign packet` writes, as a second file.
 VIEWERPAGE := dispatch-viewer/internal/cli/shell/viewer.html
+PACKETPAGE := internal/cli/assets/packet.html
 VIEWER_SRC := $(shell find dispatch-viewer/app/src dispatch-viewer/app/public \
                     -name node_modules -prune -o -type f -print 2>/dev/null) \
-              $(wildcard dispatch-viewer/app/index.html dispatch-viewer/app/*.json \
-                         dispatch-viewer/app/*.ts dispatch-viewer/app/*.js)
+              $(wildcard dispatch-viewer/app/index.html dispatch-viewer/app/packet.html \
+                         dispatch-viewer/app/*.json dispatch-viewer/app/*.ts dispatch-viewer/app/*.js)
 EMBED_DEPS := MANUAL.md PLAYBOOK.md $(VIEWERPAGE) dispatch-viewer/internal/cli/shell/site-guide.md.tmpl \
               $(wildcard internal/cli/assets/*)
 # //go:embed inputs deliberately left out of $(EMBED_DEPS). Nothing belongs here
@@ -220,7 +222,12 @@ $(VIEWERPAGE): $(VIEWER_SRC)
 		echo "viewer: SKIP (npm not on PATH; using the committed $(VIEWERPAGE))"; \
 	fi
 
-## viewer-check: the committed page is what dispatch-viewer/app builds
+# One build writes both pages, so the packet page is current whenever the
+# viewer page is.
+$(PACKETPAGE): $(VIEWERPAGE)
+	@:
+
+## viewer-check: the committed pages are what dispatch-viewer/app builds
 ##
 ## The viewer rule skips when npm is absent, so a clone with Go alone still
 ## builds, and nothing else here runs Node. That skip is what could carry a
@@ -229,11 +236,11 @@ $(VIEWERPAGE): $(VIEWER_SRC)
 viewer-check:
 	@command -v $(NPM) >/dev/null 2>&1 || { echo "viewer-check: npm is required to rebuild the page" >&2; exit 1; }
 	@$(MAKE) --no-print-directory viewer-build
-	@if git diff --quiet -- $(VIEWERPAGE); then \
-		echo "viewer: $(VIEWERPAGE) is what dispatch-viewer/app builds"; \
+	@if git diff --quiet -- $(VIEWERPAGE) $(PACKETPAGE); then \
+		echo "viewer: $(VIEWERPAGE) and $(PACKETPAGE) are what dispatch-viewer/app builds"; \
 	else \
-		echo "$(VIEWERPAGE) was stale. It has been rebuilt from dispatch-viewer/app;" >&2; \
-		echo "commit it alongside the change that moved it." >&2; \
+		echo "$(VIEWERPAGE) or $(PACKETPAGE) was stale. Both have been rebuilt from" >&2; \
+		echo "dispatch-viewer/app; commit them alongside the change that moved them." >&2; \
 		exit 1; \
 	fi
 

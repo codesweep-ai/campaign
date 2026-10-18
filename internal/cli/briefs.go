@@ -177,23 +177,43 @@ func (in campaignInputs) seedFiles(member model.Member) []guestFile {
 	if !in.Declared || in.Planned {
 		return nil
 	}
-	var files []guestFile
+	set := in.seedSet(member)
+	files := make([]guestFile, 0, len(set))
+	for _, e := range set {
+		files = append(files, e.guestFile)
+	}
+	return files
+}
+
+// seedEntry is one file a member is seeded with, and the authored file it
+// comes from, relative to the profile.
+type seedEntry struct {
+	guestFile
+	Source string
+}
+
+// seedSet is the rule seedFiles applies, without its refusal to seed a planned
+// set. `packet` lists a member's inputs before every brief is written, and it
+// reads this so that what it says a member is given is what create delivers.
+// A planned set carries an unwritten mission by name, as seededNames does.
+func (in campaignInputs) seedSet(member model.Member) []seedEntry {
+	var set []seedEntry
 	if own, ok := in.Roles[member.Name]; ok {
-		files = append(files, guestFile{guestInputDir + "/" + own.Name, own.Content})
+		set = append(set, seedEntry{guestFile{guestInputDir + "/" + own.Name, own.Content}, rolesDirName + "/" + own.Name})
 	}
 	if member.Role == "orchestrator" {
-		if in.Mission.Content != "" {
-			files = append(files, guestFile{guestInputDir + "/" + in.Mission.Name, in.Mission.Content})
+		if in.Mission.Content != "" || (in.Planned && in.Mission.Name != "") {
+			set = append(set, seedEntry{guestFile{guestInputDir + "/" + in.Mission.Name, in.Mission.Content}, in.Mission.Name})
 		}
 		for _, name := range sortedRoleNames(in.Roles) {
 			if name == "orchestrator" {
 				continue
 			}
 			f := in.Roles[name]
-			files = append(files, guestFile{guestRolesDir + "/" + f.Name, f.Content})
+			set = append(set, seedEntry{guestFile{guestRolesDir + "/" + f.Name, f.Content}, rolesDirName + "/" + f.Name})
 		}
 	}
-	return files
+	return set
 }
 
 // seededNames lists what a member will find in its input channel, in the order
