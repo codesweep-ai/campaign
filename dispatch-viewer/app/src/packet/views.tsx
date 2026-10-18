@@ -31,19 +31,6 @@ import {
 
 export type Go = (view: string) => void;
 
-// A code view that flows with the page. CodeBlock sizes each line number on its
-// own row, so the gutter widens at line 10 and again at 100 and the code shifts
-// with it; the wrapper passes the last line's digit count to packet.css, which
-// gives every row the same gutter.
-function Code(props: React.ComponentProps<typeof CodeBlock>) {
-  const digits = String(props.code.split("\n").length).length;
-  return (
-    <div className="code-flow" style={{ "--line-digits": digits } as React.CSSProperties}>
-      <CodeBlock {...props} inline />
-    </div>
-  );
-}
-
 const Title = ({ children }: { children: React.ReactNode }) => <span className="section-title">{children}</span>;
 
 function Absent({ path, why }: { path: string; why: string }) {
@@ -514,7 +501,7 @@ export function FileView({ p, f }: { p: Packet; f: PacketFile }) {
 }
 
 export function ProfileView({ p }: { p: Packet }) {
-  return <Code code={p.profile.content} language="yaml" languages={{ yaml }} source={`${p.profile.path} · sha256 ${short(p.profile.digest)}`} />;
+  return <CodeBlock code={p.profile.content} language="yaml" languages={{ yaml }} inline source={`${p.profile.path} · sha256 ${short(p.profile.digest)}`} />;
 }
 
 export function PlanView({ p }: { p: Packet }) {
@@ -536,7 +523,7 @@ export function PlanView({ p }: { p: Packet }) {
           "The profile sets no deadline."
         )}
       </p>
-      <Code code={JSON.stringify(p.campaign, null, 2)} language="json" languages={{ json }} source="cs-campaign plan" />
+      <CodeBlock code={JSON.stringify(p.campaign, null, 2)} language="json" languages={{ json }} inline source="cs-campaign plan" />
     </div>
   );
 }
@@ -562,11 +549,7 @@ export function ChangesView({ p, changes }: { p: Packet; changes: Change[] }) {
               </li>
             ))}
           </ul>
-          {sel ? (
-            <div className="changes-diff">
-              <Code code={sel.diff} language="diff" languages={{ diff }} source={sel.path} />
-            </div>
-          ) : null}
+          {sel ? <CodeBlock code={sel.diff} language="diff" languages={{ diff }} source={sel.path} inline /> : null}
         </>
       )}
     </Card>
