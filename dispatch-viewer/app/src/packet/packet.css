@@ -18,6 +18,14 @@
 }
 code { font-family: var(--font-family-mono); font-size: 0.92em; overflow-wrap: anywhere; }
 code.nowrap { white-space: nowrap; overflow-wrap: normal; }
+/* CodeBlock gives each line number min-width: 3ch inside border-box padding,
+   so a row's gutter is as wide as its own number. Sized here from the last
+   line's digits, every row shares one gutter. The component offers no hook for
+   the number, so this reaches it by structure until the component sizes it. */
+.code-flow code > div > span[aria-hidden="true"]:first-child {
+  min-width: calc((var(--line-digits) + 0.5) * 1ch + var(--space-4) + var(--space-2));
+  font-variant-numeric: tabular-nums;
+}
 .muted { color: var(--muted); }
 .banner { padding: var(--space-4); }
 
@@ -26,7 +34,7 @@ code.nowrap { white-space: nowrap; overflow-wrap: normal; }
   padding: 0 var(--space-4) var(--space-6); align-items: start;
 }
 .packet-nav { position: sticky; top: var(--space-4); padding-top: var(--space-4); max-height: calc(100vh - 6rem); overflow-y: auto; }
-.packet-main { min-width: 0; max-width: 76rem; }
+.packet-main { min-width: 0; }
 .stack { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
 
 .pagehead { padding: var(--space-4) 0 var(--space-3); }

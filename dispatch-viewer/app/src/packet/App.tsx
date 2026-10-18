@@ -58,18 +58,26 @@ export default function App() {
     );
   }
 
+  // Views are named in words, and files by their names on disk, each in a
+  // group of its own, so a lower-case entry is always a file.
   const sections = [
     {
       id: "campaign",
       label: "Campaign",
       nodes: [
         { id: "overview", name: "Overview", type: "leaf" as const },
+        { id: "plan", name: "Resolved plan", type: "leaf" as const },
+        ...(p.since ? [{ id: "changes", name: "What changed", type: "leaf" as const }] : []),
+      ],
+    },
+    {
+      id: "files",
+      label: "Files",
+      nodes: [
+        { id: "profile", name: p.profile.path, type: "leaf" as const },
         ...p.files
           .filter((f) => !f.path.startsWith("roles/"))
           .map((f) => ({ id: "file/" + f.path, name: f.path, type: "leaf" as const })),
-        { id: "profile", name: p.profile.path, type: "leaf" as const },
-        { id: "plan", name: "Plan", type: "leaf" as const },
-        ...(p.since ? [{ id: "changes", name: "What changed", type: "leaf" as const }] : []),
       ],
     },
     {
@@ -100,7 +108,7 @@ export default function App() {
         <Card header={<span className="section-title">Repos and snapshots</span>}>
           <TreesTable p={p} />
         </Card>
-        <Card header={<span className="section-title">Plan</span>}>
+        <Card header={<span className="section-title">Resolved plan</span>}>
           <PlanFacts p={p} />
         </Card>
       </div>
