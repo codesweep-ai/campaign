@@ -3,18 +3,22 @@
   "title": "A relative repository path in a profile resolves against the shell's directory, not the profile's",
   "type": "improvement",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, while choosing a repository path for the example campaign",
   "opened": "2026-10-18",
-  "resolved": null,
+  "resolved": "2026-10-18",
   "stint": null,
   "evidence": {
-    "commits": [],
+    "commits": [
+      "3f7da6e"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "TestARelativeTreeResolvesBesideTheProfile and TestInitWritesTheTreesItWasGivenAsAbsolutePaths pass under `go test ./internal/cli/ -count=1`. The first plans from another directory and finds `app`, `./specs` and `../shared` resolved beside the profile, with nothing written where the shell stood. Removing the resolver fails it. The second runs `init --dir sub/demo --repo ./app` and finds the path written relative to the shell. Removing the step that writes it absolute fails it. The full gate, `make check`, passes."
   },
-  "resolution": null,
+  "resolution": "Decoding a profile now resolves each relative repository and snapshot path against the profile's directory, where its mission and briefs are found. `--repo` and `--snapshot` on the command line stay relative to the shell. `init` writes them into the profile as absolute paths, so a scaffold still names what was typed wherever `--dir` puts it. The manual's Configuration section and SPEC.md's profile table state the rule.",
   "details": "A profile finds its mission and briefs beside itself, wherever it is read from. A repository declared as `path: ./app` resolves through `expandPath` in `internal/cli/profile.go`, which takes it relative to the current directory instead. The same profile therefore names a different repository depending on where the operator stands.\n\nThe cost lands at create. When the path does not exist, plan pins a first commit and create makes the repository. A relative path therefore makes a new repository in whatever directory the shell was in. A profile copied with its briefs into another directory keeps its briefs and loses its repository.\n\nTo reproduce, write a profile whose members declare `path: ./app`, and run `cs-campaign plan <name> --profile <dir>/profile.yaml --dry-run` from a different directory. Each `repos[].path` in the plan names `./app` under the shell's directory, not under `<dir>`.\n\nNeither the manual nor SPEC.md says which base a relative path takes. Resolving it beside the profile, as the briefs are, would make a profile directory self-contained.",
   "notes": [],
-  "links": []
+  "links": [
+    "SAC-093"
+  ]
 }
