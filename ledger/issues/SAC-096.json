@@ -1,0 +1,16 @@
+{
+  "id": "SAC-096",
+  "title": "The packet page reads as if create were still ahead, which is wrong for a campaign create has made",
+  "type": "improvement",
+  "severity": "low",
+  "status": "in-progress",
+  "foundBy": "session agent, while writing packets for campaigns already created, after the user asked: \"why can't we create a review packet for already completed runs and new ones?\"",
+  "opened": "2026-10-18",
+  "resolved": null,
+  "stint": "review-packet-2026-10-18",
+  "evidence": { "commits": [], "integrated": [], "verified": null },
+  "resolution": null,
+  "details": "`cs-campaign packet` writes a page for a campaign that `create` has already made, because it reads only the profile and the files beside it. The page is worded for a campaign not yet created, though. The overview's first card is headed \"Before you create\". The Resolved plan view calls the plan's names and branches predictions, and says the deadline becomes the create time plus the profile's deadline at create. The manual does not say whether a packet of a created campaign shows what its members were given. It does when the inputs on disk are unchanged, and the campaign record holds the digests that show it.",
+  "notes": [],
+  "links": ["SAC-095"]
+}
