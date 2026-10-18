@@ -21,6 +21,7 @@ import {
   plural,
   planned,
   sameTree,
+  toHash,
   seededBytes,
   short,
   size,
@@ -340,7 +341,7 @@ function MemberTrees({ m }: { m: PacketMember }) {
 // A document shows an outline only when it has enough headings to navigate.
 const headings = (md: string) => (md.match(/^#{1,6} /gm) ?? []).length;
 
-export function MemberView({ p, m }: { p: Packet; m: PacketMember }) {
+export function MemberView({ p, m, focus }: { p: Packet; m: PacketMember; focus: string }) {
   const pm = planned(p, m.name);
   const missing = notGiven(p, m);
   type Row = Seed & { orientation?: boolean; label: string; file?: PacketFile };
@@ -353,10 +354,31 @@ export function MemberView({ p, m }: { p: Packet; m: PacketMember }) {
   const [open, setOpen] = useState(0);
   const [jump, setJump] = useState(false);
   const docs = useRef<(HTMLDivElement | null)[]>([]);
+  const given = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (jump) docs.current[open]?.scrollIntoView({ behavior: "instant", block: "start" });
     setJump(false);
   }, [open, jump]);
+  // The hash names what to show: `given` is the table, and a file's name opens
+  // that file. Back and forward walk these like any other page.
+  const here = `member/${m.name}`;
+  useEffect(() => {
+    if (focus === "given") {
+      given.current?.scrollIntoView({ behavior: "instant", block: "start" });
+      return;
+    }
+    const k = rows.findIndex((r) => r.label === focus);
+    if (k >= 0) {
+      setOpen(k);
+      setJump(true);
+    }
+  }, [focus]);
+  // A row rewrites the current entry to point at the table before it adds the
+  // file's, so Back from a file returns to the table it was chosen from.
+  const choose = (k: number) => {
+    history.replaceState(null, "", toHash(`${here}/given`));
+    location.hash = toHash(`${here}/${rows[k].label}`);
+  };
 
   const cols: TableColumn<Row>[] = [
     { id: "n", header: "#", cell: (s) => String(rows.indexOf(s) + 1), width: "2.5rem" },
@@ -407,37 +429,45 @@ export function MemberView({ p, m }: { p: Packet; m: PacketMember }) {
       <Card header={<Title>Repos and snapshots in {m.name}'s home</Title>}>
         <MemberTrees m={m} />
       </Card>
-      <Card header={<Title>What {m.name} is given at create</Title>}>
-        <p className="lede">
-          Its orientation and {plural(m.seeds.length, "seeded file")}, read in this order. Choose one to read it below.{" "}
-          {missing.length ? (
-            <>
-              It is not given{" "}
-              {missing.map((f, k) => (
-                <span key={f}>
-                  {k ? (k === missing.length - 1 ? " or " : ", ") : ""}
-                  <code>{f}</code>
-                </span>
-              ))}
-              .
-            </>
-          ) : (
-            "It is given every authored file."
-          )}
-        </p>
-        <div className="wide">
-          <Table
-            columns={cols}
-            data={rows}
-            rowKey={(s) => s.guest}
-            selectedKey={open >= 0 ? rows[open].guest : null}
-            onRowClick={(s) => {
-              setOpen(rows.indexOf(s));
-              setJump(true);
-            }}
-          />
-        </div>
-      </Card>
+      <div ref={given} className="doc-anchor">
+        <Card
+          header={
+            <span className="anchored">
+              <Title>What {m.name} is given at create</Title>
+              <a className="hash" href={toHash(`${here}/given`)} aria-label={`Link to what ${m.name} is given`}>
+                #
+              </a>
+            </span>
+          }
+        >
+          <p className="lede">
+            Its orientation and {plural(m.seeds.length, "seeded file")}, read in this order. Choose one to read it below.{" "}
+            {missing.length ? (
+              <>
+                It is not given{" "}
+                {missing.map((f, k) => (
+                  <span key={f}>
+                    {k ? (k === missing.length - 1 ? " or " : ", ") : ""}
+                    <code>{f}</code>
+                  </span>
+                ))}
+                .
+              </>
+            ) : (
+              "It is given every authored file."
+            )}
+          </p>
+          <div className="wide">
+            <Table
+              columns={cols}
+              data={rows}
+              rowKey={(s) => s.guest}
+              selectedKey={open >= 0 ? rows[open].guest : null}
+              onRowClick={(s) => choose(rows.indexOf(s))}
+            />
+          </div>
+        </Card>
+      </div>
       {rows.map((s, k) => (
         <div key={s.guest} ref={(el) => void (docs.current[k] = el)} className="doc-anchor">
           <Card

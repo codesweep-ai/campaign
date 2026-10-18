@@ -96,6 +96,8 @@ export const short = (digest?: string) => (digest ? digest.slice(0, 12) : "");
 export const count = (n: number) => n.toLocaleString("en-US");
 export const plural = (n: number, one: string, many = one + "s") => `${count(n)} ${n === 1 ? one : many}`;
 export const home = (guest: string) => "~/" + guest;
+// A view as a link. Slashes stay readable, because a view names a path.
+export const toHash = (view: string) => "#" + encodeURIComponent(view).replace(/%2F/g, "/");
 
 // Whole KiB, as the tool's own seed warning counts them.
 export function size(bytes: number) {

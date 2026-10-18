@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppShell, Card, Header, SectionedTree, ThemeToggle } from "@codesweep-ai/ui";
-import { changesSince, fileAt, readPacket } from "./model";
+import { changesSince, fileAt, readPacket, toHash } from "./model";
 import {
   AccessMatrix,
   ChangesView,
@@ -18,7 +18,9 @@ import {
 export const THEME_KEY = "cs-campaign-packet-theme";
 
 // The view lives in the hash, so a link to one member's page survives a reload
-// and the browser's back button walks the reader's own path.
+// and the browser's back button walks the reader's own path. A member's page
+// takes a focus after its name, `member/<name>/<focus>`, which the page itself
+// scrolls to.
 function useView(): [string, (v: string) => void] {
   const read = () => decodeURIComponent(location.hash.slice(1)) || "overview";
   const [view, setView] = useState(read);
@@ -30,8 +32,7 @@ function useView(): [string, (v: string) => void] {
   return [
     view,
     (v) => {
-      location.hash = encodeURIComponent(v).replace(/%2F/g, "/");
-      document.querySelector("main")?.scrollTo(0, 0);
+      location.hash = toHash(v);
     },
   ];
 }
@@ -44,6 +45,16 @@ export default function App() {
   useEffect(() => {
     if (p) document.title = `${p.campaign.name} · campaign packet`;
   }, [p]);
+  // A member's name is a DNS label, so the first slash after it starts the focus.
+  const [memberName, ...focus] = view.startsWith("member/") ? view.slice("member/".length).split("/") : [];
+  const member = memberName ? p?.members.find((m) => m.name === memberName) : undefined;
+  // A new page starts at the top, however it was reached, unless its hash names
+  // a place on it. Child effects run first, so this cannot undo that scroll.
+  const page = member ? "member/" + member.name : view;
+  const placed = focus.length > 0;
+  useEffect(() => {
+    if (!placed) document.querySelector("main")?.scrollTo(0, 0);
+  }, [page]);
 
   if (!p) {
     return (
@@ -87,10 +98,9 @@ export default function App() {
     },
   ];
 
-  const member = view.startsWith("member/") ? p.members.find((m) => "member/" + m.name === view) : undefined;
   const file = view.startsWith("file/") ? fileAt(p, view.slice("file/".length)) : undefined;
   let body;
-  if (member) body = <MemberView key={member.name} p={p} m={member} />;
+  if (member) body = <MemberView key={member.name} p={p} m={member} focus={focus.join("/")} />;
   else if (file) body = <FileView p={p} f={file} />;
   else if (view === "profile") body = <ProfileView p={p} />;
   else if (view === "plan") body = <PlanView p={p} />;
@@ -122,7 +132,7 @@ export default function App() {
           <nav className="packet-nav" aria-label="Packet contents">
             <SectionedTree
               sections={sections}
-              selectedId={member || file || ["profile", "plan", "changes"].includes(view) ? view : "overview"}
+              selectedId={member ? "member/" + member.name : file || ["profile", "plan", "changes"].includes(view) ? view : "overview"}
               onSelect={(node) => go(node.id)}
               filterable={false}
               expandAllControl={false}
