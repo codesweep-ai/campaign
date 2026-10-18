@@ -223,6 +223,12 @@ you reviewed, and pass it the next time.
 `--set` and `--credentials` take the values `create` will be given, so the page shows the campaign
 that command line would build. With `--json`, the packet's data is printed instead of the page.
 
+A packet can also be written for a campaign that `create` has already made. The page then shows
+the inputs as they are on disk now. They are what the members were given only if nobody has changed
+them since. **The page's digests are the ones `create` records**, so comparing the two settles it.
+`cs-campaign ls --json` prints them for a live campaign, as `profileDigest` and each member's
+`seededInputs`. An archive keeps them in its `campaign.json`.
+
 The page follows the two review passes in `cs-campaign playbook`. Its overview and file pages serve
 the fleet pass, and each member's page serves that member's pass.
 

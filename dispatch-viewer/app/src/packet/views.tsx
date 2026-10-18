@@ -69,7 +69,7 @@ export function Findings({ p }: { p: Packet }) {
   const snaps = treeColumns(p).length - repos;
   return (
     <Card
-      header={<Title>Before you create</Title>}
+      header={<Title>What create finds</Title>}
       variant={p.findings.some((f) => f.level === "refusal") ? "danger" : p.findings.length ? "warning" : "default"}
     >
       <ul className="checks">
@@ -509,15 +509,15 @@ export function PlanView({ p }: { p: Packet }) {
     <div className="stack">
       <p className="lede">
         The campaign record <code>plan</code> resolves, exactly as <code>cs-campaign plan</code> prints it. Its names and
-        branches are predictions, and <code>create</code> records the real ones.
+        branches are planned ones, and <code>create</code> records the ones it makes in the campaign's own record.
       </p>
       <p className="lede">
         <code>plan</code> reads no clock, so <code>createdAt</code> and <code>updatedAt</code> show the zero time,{" "}
         <code>0001-01-01T00:00:00Z</code>.{" "}
         {p.deadline ? (
           <>
-            <code>deadline</code> is that zero time plus the profile's deadline of <code>{p.deadline}</code>. At create it
-            becomes the create time plus {p.deadline}.
+            <code>deadline</code> is that zero time plus the profile's deadline of <code>{p.deadline}</code>.{" "}
+            <code>create</code> sets it to the create time plus {p.deadline}.
           </>
         ) : (
           "The profile sets no deadline."

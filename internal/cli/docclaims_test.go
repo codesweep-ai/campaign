@@ -515,3 +515,60 @@ func TestTheOrientationTeachesPush(t *testing.T) {
 		}
 	}
 }
+
+// MANUAL.md: "**The page's digests are the ones `create` records**". A reader
+// holding a packet of a campaign already created settles whether it shows what
+// the members were given by comparing the page against the campaign record, so
+// every digest create records has to appear on the page as the same string.
+func TestTheDocumentedPacketDigestsAreTheOnesCreateRecords(t *testing.T) {
+	if !strings.Contains(campaign.ManualMD, "**The page's digests are the ones `create` records**") {
+		t.Errorf("MANUAL.md no longer states that the packet's digests are create's; this test names the sentence it keeps true")
+	}
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", t.TempDir())
+	profile := filepath.Join(root, "testdata", "example-campaign", "profile.yaml")
+	page := filepath.Join(t.TempDir(), "review.html")
+	if _, err := runPacket(t, false, "example", "--profile", profile, "--file", page); err != nil {
+		t.Fatal(err)
+	}
+	data, err := readPacket(page)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := &app{store: store.Store{Dir: t.TempDir()}}
+	run, decoded, err := a.planCampaign(createOpts{profile: profile}, "example", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inputs, err := loadCampaignInputs(profile, decoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if data.Campaign.ProfileDigest != run.ProfileDigest || data.Profile.Digest != run.ProfileDigest {
+		t.Errorf("create records profile %s, and the page shows %s and %s", run.ProfileDigest, data.Campaign.ProfileDigest, data.Profile.Digest)
+	}
+	onPage := map[string]string{}
+	for _, f := range data.Files {
+		onPage[f.Path] = f.Digest
+	}
+	for _, m := range run.Members {
+		recorded := inputs.digests(m)
+		if len(recorded) == 0 {
+			t.Fatalf("%s: create records no seeded inputs, so this test proves nothing", m.Name)
+		}
+		for name, digest := range recorded {
+			// A member's own brief is recorded by its file name, and the page
+			// keys it by its path beside the profile.
+			shown, ok := onPage[name]
+			if !ok {
+				shown = onPage[rolesDirName+"/"+name]
+			}
+			if shown != digest {
+				t.Errorf("%s: create records %s as %s, and the page shows %q", m.Name, name, digest, shown)
+			}
+		}
+	}
+}
