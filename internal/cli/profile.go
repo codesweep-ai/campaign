@@ -507,7 +507,11 @@ func requireKeyEnv(members []model.Member) error {
 // Checked here rather than in validateProfile because `init` scaffolds a
 // profile that has no repository yet: adding one is the first edit an author
 // makes, and refusing to scaffold it would refuse the ordinary path.
-func requireRepositories(p model.Profile) error {
+//
+// fromFlags says which fix the operator can act on. --repo builds a fleet from
+// flags and no command takes it beside --profile, so a profile's author is
+// sent to `repos:` alone (SAC-093).
+func requireRepositories(p model.Profile, fromFlags bool) error {
 	bare := make([]string, 0, len(p.Agents)+1)
 	if len(p.Orchestrator.Repos) == 0 {
 		bare = append(bare, "orchestrator")
@@ -520,13 +524,16 @@ func requireRepositories(p model.Profile) error {
 	if len(bare) == 0 {
 		return nil
 	}
+	fix := "Declare one under `repos:` for each member in the profile."
+	if fromFlags {
+		fix = "Pass --repo to give every member the same one."
+	}
 	return fmt.Errorf("no repository for %s\n\n"+
 		"A member commits its work to a clone of a repository it was given, and that branch is\n"+
 		"the only thing harvesting can read. A member without one has nowhere to put its work.\n\n"+
-		"Declare one under `repos:` for each member, or pass --repo to give every member the same\n"+
-		"one. For an application that does not exist yet, name the path it should live at: plan\n"+
-		"pins a first commit and creates nothing, and create makes the repository",
-		strings.Join(bare, ", "))
+		"%s For an application that does not exist yet, name the path it\n"+
+		"should live at: plan pins a first commit and creates nothing, and create makes the repository",
+		strings.Join(bare, ", "), fix)
 }
 
 // resolveSnapshots refuses a frozen tree that is not there, before anything is

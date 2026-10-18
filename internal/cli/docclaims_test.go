@@ -171,7 +171,9 @@ func TestTheDocumentedNewRepositoryPathIsWhatPlanDoes(t *testing.T) {
 // example or the transcript, so the block showed a run that exits 0 when the
 // command had started refusing. This is what makes the sentence true. It pins
 // the digests too, because SPEC prints them: editing the profile or the mission
-// without updating the block is the drift this catches.
+// without updating the block is the drift this catches. Since SAC-093 the
+// example names a repository that need not exist, so the run ends at exit 0
+// and orientation and plan can render it.
 func TestTheExampleCampaignValidatesAsTheSpecShows(t *testing.T) {
 	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
 	root, err := covmap.FindRepoRoot(".")
@@ -180,10 +182,7 @@ func TestTheExampleCampaignValidatesAsTheSpecShows(t *testing.T) {
 	}
 	// The two lines the example is there to prove: the profile decodes, and the
 	// mission and both briefs are found beside it.
-	const stdout = "valid CampaignProfile ee13c41a4d1e\nmission e6802c6e662f, 2 role briefs\n"
-	// It declares no `repos:` on purpose — the repository is the operator's to
-	// supply — so the refusal is the documented end of this run, not a failure.
-	const refusal = "no repository for orchestrator, worker"
+	const stdout = "valid CampaignProfile dc6986ba9118\nmission e6802c6e662f, 2 role briefs\n"
 
 	var out, errOut strings.Builder
 	c := (&app{}).validateCmd()
@@ -194,15 +193,30 @@ func TestTheExampleCampaignValidatesAsTheSpecShows(t *testing.T) {
 	c.SetOut(&out)
 	c.SetErr(&errOut)
 	c.SetArgs([]string{filepath.Join(root, "testdata", "example-campaign", "profile.yaml")})
-	err = c.Execute()
-	if err == nil {
-		t.Fatal("the example declares no repository, so validate must refuse it")
-	}
-	if got, _, _ := strings.Cut(err.Error(), "\n"); got != refusal {
-		t.Errorf("validate refused with %q; SPEC.md's console block shows %q", got, refusal)
+	if err = c.Execute(); err != nil {
+		t.Fatalf("validate refused the example, and SPEC.md's console block shows it passing: %v", err)
 	}
 	if out.String() != stdout {
 		t.Errorf("validate printed:\n%s\nSPEC.md's console block shows:\n%s", out.String(), stdout)
+	}
+
+	// SPEC says orientation and plan run on it too, and that nothing is made.
+	profile := filepath.Join(root, "testdata", "example-campaign", "profile.yaml")
+	t.Setenv("HOME", t.TempDir())
+	if text, _, err := runOrientation(t, "example", "--profile", profile); err != nil || !strings.Contains(text, "===== worker (agent)") {
+		t.Errorf("orientation did not render the example's members (%v):\n%s", err, text)
+	}
+	plan := (&app{store: store.Store{Dir: t.TempDir()}}).createCmd(true)
+	plan.SilenceUsage, plan.SilenceErrors = true, true
+	var planned strings.Builder
+	plan.SetOut(&planned)
+	plan.SetErr(new(strings.Builder))
+	plan.SetArgs([]string{"example", "--profile", profile})
+	if err := plan.Execute(); err != nil || !strings.Contains(planned.String(), `"initialize": true`) {
+		t.Errorf("plan did not plan the example's absent repository as a first commit (%v):\n%s", err, planned.String())
+	}
+	if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), "src", "report-generator")); !os.IsNotExist(err) {
+		t.Errorf("planning the example made its repository: %v", err)
 	}
 
 	// And the document itself, so the block cannot drift away from the run.
@@ -211,7 +225,7 @@ func TestTheExampleCampaignValidatesAsTheSpecShows(t *testing.T) {
 		t.Fatal(readErr)
 	}
 	for _, claim := range []string{
-		"$ cs-campaign validate --profile testdata/example-campaign/profile.yaml\n" + stdout + "cs-campaign: " + refusal,
+		"$ cs-campaign validate --profile testdata/example-campaign/profile.yaml\n" + stdout + "```",
 		"It allocates nothing, and `make check` validates it",
 	} {
 		if !strings.Contains(string(spec), claim) {

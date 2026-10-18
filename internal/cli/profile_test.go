@@ -1081,7 +1081,7 @@ func TestAFleetWithNoRepositoryIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = requireRepositories(bare)
+	err = requireRepositories(bare, true)
 	if err == nil {
 		t.Fatal("a fleet no member can commit from was accepted")
 	}
@@ -1093,7 +1093,7 @@ func TestAFleetWithNoRepositoryIsRefused(t *testing.T) {
 	// One member short is still refused, because every member commits its own work.
 	partial := bare
 	partial.Orchestrator.Repos = []model.Repo{{Path: "/srv/app"}}
-	if err := requireRepositories(partial); err == nil || strings.Contains(err.Error(), "orchestrator") {
+	if err := requireRepositories(partial, true); err == nil || strings.Contains(err.Error(), "orchestrator") {
 		t.Fatalf("a fleet whose agents have no repository must be refused by agent name: %v", err)
 	}
 	// And a whole fleet passes.
@@ -1101,8 +1101,47 @@ func TestAFleetWithNoRepositoryIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := requireRepositories(whole); err != nil {
+	if err := requireRepositories(whole, true); err != nil {
 		t.Fatalf("a fleet with a repository everywhere must pass: %v", err)
+	}
+}
+
+// TestAProfileWithNoRepositoryIsSentToReposAlone is SAC-093. The refusal used
+// to end by offering --repo, which builds a fleet from flags. No command takes
+// it beside --profile: validate and orientation do not know the flag, and plan
+// and create refuse it as a fleet flag. A profile's author has one fix, so the
+// refusal names that one, from validate and from the planning path alike.
+func TestAProfileWithNoRepositoryIsSentToReposAlone(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "profile.yaml")
+	body := "apiVersion: codesweep.ai/v1alpha1\nkind: CampaignProfile\n" +
+		"orchestrator:\n  cli: codex\n  auth:\n    apiKey: [openai]\n" +
+		"agents:\n  worker:\n    cli: codex\n    auth:\n      apiKey: [openai]\n"
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	seedBriefsFor(t, path, "worker")
+
+	validate := (&app{}).validateCmd()
+	validate.SilenceUsage, validate.SilenceErrors = true, true
+	validate.SetOut(new(bytes.Buffer))
+	validate.SetErr(new(bytes.Buffer))
+	validate.SetArgs([]string{path})
+	_, _, orientErr := runOrientation(t, "demo", "--profile", path)
+	for command, err := range map[string]error{"validate": validate.Execute(), "orientation": orientErr} {
+		if err == nil {
+			t.Fatalf("%s accepted a profile no member can commit from", command)
+		}
+		if !strings.Contains(err.Error(), "no repository for orchestrator, worker") {
+			t.Errorf("%s refused for another reason: %v", command, err)
+		}
+		if !strings.Contains(err.Error(), "under `repos:`") {
+			t.Errorf("%s does not name the profile's fix:\n%v", command, err)
+		}
+		if strings.Contains(err.Error(), "--repo") {
+			t.Errorf("%s offers --repo, which no command takes beside --profile:\n%v", command, err)
+		}
 	}
 }
 
