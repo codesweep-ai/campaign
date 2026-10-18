@@ -1,0 +1,22 @@
+{
+  "id": "SAC-093",
+  "title": "The no-repository refusal sends a profile's author to --repo, which no command takes beside --profile",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, rendering the example campaign's orientations; the user asked for the fix",
+  "opened": "2026-10-18",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "A campaign whose members have no repository is refused with advice to \"pass --repo to give every member the same one\". That advice only works for a fleet built from flags. With a profile, `orientation` and `validate` answer `unknown flag: --repo`, and `plan` and `create` answer `--profile is mutually exclusive with fleet flags`. An author holding a profile is sent to a flag that every command refuses.\n\nThe example campaign meets the same wall. `testdata/example-campaign/profile.yaml` declares no repository on purpose, so `validate` ends in this refusal, and `orientation` and `plan` cannot render it at all. The example is meant to be the smallest complete campaign, and an author cannot use it to see what a member is told or what create would build.\n\nTo reproduce, run `cs-campaign orientation example --profile testdata/example-campaign/profile.yaml`. It prints the refusal. Add `--repo <path>` and it prints `unknown flag: --repo`.",
+  "notes": [],
+  "links": [
+    "SAC-023"
+  ]
+}

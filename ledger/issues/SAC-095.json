@@ -1,0 +1,22 @@
+{
+  "id": "SAC-095",
+  "title": "Nothing assembles a campaign's profile, mission, briefs and orientations into one packet to review before create",
+  "type": "feature-idea",
+  "severity": "med",
+  "status": "in-progress",
+  "foundBy": "user request (host): \"a nice single html file using the design system that has a full packet of the campaign that i can review\"",
+  "opened": "2026-10-18",
+  "resolved": null,
+  "stint": "review-packet-2026-10-18",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The playbook asks for two reviews before create. The fleet pass reads the mission, every brief and each member's orientation together. The member pass reads one member's brief and orientation and nothing else. The tool supplies only part of that. `orientation` prints every member's orientation with a header per member, and `plan` prints the resolved campaign as JSON. The author gathers the mission and briefs by hand and splits them per member.\n\nSeveral things a reviewer needs are printed once and then lost. They include the warnings `validate` writes about large seed sets, invented outcome names and unset credential variables. They also include each repository's base commit and the set of files each member is handed.\n\nWhat would help is a `cs-campaign packet <campaign> --profile <profile>` command. It takes the flags `plan` takes and writes one self-contained HTML page built on `@codesweep-ai/ui`, as `cs-dispatch-viewer` does. The page has a fleet view and one view per member holding exactly the files that member is seeded with. It shows the profile, the mission, the briefs, the orientations, the resolved plan, each repository's base commit, each seeded file's digest, and the warnings.",
+  "notes": [],
+  "links": [
+    "SAC-093"
+  ]
+}

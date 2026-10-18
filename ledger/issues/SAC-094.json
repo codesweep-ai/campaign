@@ -1,0 +1,20 @@
+{
+  "id": "SAC-094",
+  "title": "A relative repository path in a profile resolves against the shell's directory, not the profile's",
+  "type": "improvement",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, while choosing a repository path for the example campaign",
+  "opened": "2026-10-18",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "A profile finds its mission and briefs beside itself, wherever it is read from. A repository declared as `path: ./app` resolves through `expandPath` in `internal/cli/profile.go`, which takes it relative to the current directory instead. The same profile therefore names a different repository depending on where the operator stands.\n\nThe cost lands at create. When the path does not exist, plan pins a first commit and create makes the repository. A relative path therefore makes a new repository in whatever directory the shell was in. A profile copied with its briefs into another directory keeps its briefs and loses its repository.\n\nTo reproduce, write a profile whose members declare `path: ./app`, and run `cs-campaign plan <name> --profile <dir>/profile.yaml --dry-run` from a different directory. Each `repos[].path` in the plan names `./app` under the shell's directory, not under `<dir>`.\n\nNeither the manual nor SPEC.md says which base a relative path takes. Resolving it beside the profile, as the briefs are, would make a profile directory self-contained.",
+  "notes": [],
+  "links": []
+}
