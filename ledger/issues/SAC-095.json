@@ -3,17 +3,19 @@
   "title": "Nothing assembles a campaign's profile, mission, briefs and orientations into one packet to review before create",
   "type": "feature-idea",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "user request (host): \"a nice single html file using the design system that has a full packet of the campaign that i can review\"",
   "opened": "2026-10-18",
-  "resolved": null,
+  "resolved": "2026-10-18",
   "stint": "review-packet-2026-10-18",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "e47d184"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "Six tests pass under `go test ./internal/cli/ -count=1 -run 'Packet|ABriefCannot|SinceCompares'`. TestThePacketHoldsWhatCreateWouldDeliver holds the example campaign's seeds against seedFiles and its orientations against buildOrientation. Dropping the mission from the packet's seeds fails it, and turning off HTML escaping fails TestABriefCannotEscapeThePage. `make check` and `make viewer-check` pass, and the page rebuilds byte for byte from a clean install. The page was read in a browser for the example campaign. It was also read for a synthetic one with an unwritten brief, an unset key, withheld paths and script tags in a brief. The script did not run. The page was also read in the dark theme and at 420 pixels wide."
   },
-  "resolution": null,
+  "resolution": "`cs-campaign packet <campaign> --profile <profile>` writes one self-contained page built on `@codesweep-ai/ui`, from a second entry in the dispatch viewer's app. It draws only on what create resolves: the plan, the authored files, each member's orientation, and create's refusals and warnings in its own words (SPEC R85a). It renders a campaign whose briefs are not all written, and shows each missing one as a refusal. `--since` compares with an earlier packet of the same campaign, and `--json` prints the data instead of the page. A new `seedSet` carries the rule `seedFiles` applies, so the page and create list the same files. The design system's syntax theme gives an added diff line the keyword colour and a removed line none, so the page colours its own diff.",
   "details": "The playbook asks for two reviews before create. The fleet pass reads the mission, every brief and each member's orientation together. The member pass reads one member's brief and orientation and nothing else. The tool supplies only part of that. `orientation` prints every member's orientation with a header per member, and `plan` prints the resolved campaign as JSON. The author gathers the mission and briefs by hand and splits them per member.\n\nSeveral things a reviewer needs are printed once and then lost. They include the warnings `validate` writes about large seed sets, invented outcome names and unset credential variables. They also include each repository's base commit and the set of files each member is handed.\n\nWhat would help is a `cs-campaign packet <campaign> --profile <profile>` command. It takes the flags `plan` takes and writes one self-contained HTML page built on `@codesweep-ai/ui`, as `cs-dispatch-viewer` does. The page has a fleet view and one view per member holding exactly the files that member is seeded with. It shows the profile, the mission, the briefs, the orientations, the resolved plan, each repository's base commit, each seeded file's digest, and the warnings.",
   "notes": [],
   "links": [
