@@ -185,7 +185,8 @@ func scaffoldCampaign(out io.Writer, dir, name string, profile model.Profile) er
 		fmt.Fprintf(out, "  %s\n", path)
 	}
 	fmt.Fprintf(out, "\nWhat goes in each one:\n  cs-campaign playbook\n\n"+
-		"Then:\n  cs-campaign validate %s\n", profilePath)
+		"Then check it, and read it whole before create:\n  cs-campaign validate %s\n  cs-campaign packet %s --profile %s\n",
+		profilePath, name, profilePath)
 	return nil
 }
 

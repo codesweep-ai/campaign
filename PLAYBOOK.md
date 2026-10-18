@@ -426,6 +426,9 @@ cs-campaign orientation acme --profile acme/profile.yaml --member backend   # wh
 cs-campaign plan acme --profile acme/profile.yaml                           # what the host resolved
 ```
 
+`cs-campaign packet` puts both halves on one page, and lists each member's files in the order the
+member reads them.
+
 ## Gates, numbers, and the letter of the law
 
 The product never grades output. Whether the work is good is the orchestrator's judgement and then

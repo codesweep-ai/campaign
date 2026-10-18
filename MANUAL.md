@@ -71,9 +71,11 @@ line quoted here.
    orientation`, then write the mission and one brief per member in `roles/`, beside the profile,
    covering what that text does not. Nothing scaffolds those, on purpose. `create` seeds each member its own brief, and the orchestrator the mission
    and every agent's brief. Nothing is copied into the product repository.
-4. **Create and dispatch.** One mission prompt, then hands off. All judgement lives in the
+4. **Review it before you spend.** `cs-campaign packet` writes the profile, the mission, every
+   brief and every member's orientation as one page. Read it, or have someone else read it.
+5. **Create and dispatch.** One mission prompt, then hands off. All judgement lives in the
    orchestrator; the host observes, archives and verifies.
-5. **Archive before destroy,** and re-run the gates yourself from a fresh clone. That independent
+6. **Archive before destroy,** and re-run the gates yourself from a fresh clone. That independent
    check is the point of the exercise.
 
 Those are the mechanics. Run `cs-campaign playbook` for the decisions inside them: scoping a
@@ -154,8 +156,9 @@ Then write these, which nothing scaffolds for you:
 What goes in each one:
   cs-campaign playbook
 
-Then:
+Then check it, and read it whole before create:
   cs-campaign validate acme/profile.yaml
+  cs-campaign packet acme --profile acme/profile.yaml
 ```
 
 `init` refuses to overwrite an existing file and names what is in the way.
@@ -1441,6 +1444,7 @@ cs-campaign init acme --orchestrator codex --agent backend=claude --agent qa=cod
 $EDITOR acme/mission.md acme/roles/*.md acme/profile.yaml
 cs-campaign validate acme/profile.yaml
 cs-campaign plan acme --profile acme/profile.yaml | head -40
+cs-campaign packet acme --profile acme/profile.yaml --file acme-packet.html
 ```
 
 **Run one campaign end to end.**

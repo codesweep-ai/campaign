@@ -1148,12 +1148,12 @@ Files a campaign reads or writes are listed in [`MANUAL.md`](MANUAL.md).
 | `internal/protocol` | The dispatch protocol: channel paths, dispatch identity, the reply and log shapes, the probe, and the node-state computation. |
 | `internal/model` | The profile, campaign and member types, and the adapter list every surface derives from. |
 | `internal/store` | Campaign state on disk: atomic saves, the per-campaign lock, the schema version. |
-| `internal/cli` | Every host command, the sandbox shell-out, briefs, orientation, archive, audit, doctor and the upstream check. |
+| `internal/cli` | Every host command, the sandbox shell-out, briefs, orientation, the review packet, archive, audit, doctor and the upstream check. |
 | `internal/covmap` | The behaviour map: the rubric, the run records, and the rendered page. |
 | `cmd/cs-campaign` | The host binary. |
 | `cmd/cs-campaign-member` | The guest binary: the member verbs, the dispatcher verbs, and the family guard. |
 | `cmd/covmap` | Folds the run buffer into the map and re-renders it. |
-| `dispatch-viewer` | The archive viewer, its frame model and its findings registry. |
+| `dispatch-viewer` | The archive viewer, its frame model and its findings registry. Its app also builds the page `packet` writes. |
 
 Dependencies run one way: `cli` and the guest binary both depend on `protocol` and `model`;
 `protocol` depends on neither. *Both ends of every channel build on the same package, so the two

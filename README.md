@@ -47,10 +47,13 @@ orchestrator included. An agent's brief names what it owns, what it must not tou
 its work has to carry. The orchestrator's brief is how to run this team. It sets the rework rounds
 to allow, what to do with a teammate that keeps failing, and what to verify before answering.
 
-`cs-campaign init` scaffolds the profile, the mission and every brief as blanks to fill in.
-[`testdata/example-campaign/`](testdata/example-campaign/) is a small complete one. This project's
-own checks validate it on every change, so it stays true. Your campaign's files live in a directory
-of your own, outside this repository.
+`cs-campaign init` scaffolds the profile and names the mission and the briefs, which you write
+yourself. [`testdata/example-campaign/`](testdata/example-campaign/) is a small complete one. This
+project's own checks validate it on every change, so it stays true. Your campaign's files live in a
+directory of your own, outside this repository.
+
+Before you create, `cs-campaign packet` writes all of it as one page to review. The page shows what
+each member is given, what it can reach, and what `create` would refuse or warn about.
 
 ## While the campaign runs
 
