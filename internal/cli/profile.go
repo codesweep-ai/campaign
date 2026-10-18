@@ -531,8 +531,8 @@ func requireRepositories(p model.Profile, fromFlags bool) error {
 	return fmt.Errorf("no repository for %s\n\n"+
 		"A member commits its work to a clone of a repository it was given, and that branch is\n"+
 		"the only thing harvesting can read. A member without one has nowhere to put its work.\n\n"+
-		"%s For an application that does not exist yet, name the path it\n"+
-		"should live at: plan pins a first commit and creates nothing, and create makes the repository",
+		"%s\nFor an application that does not exist yet, name the path it should live at: plan\n"+
+		"pins a first commit and creates nothing, and create makes the repository",
 		strings.Join(bare, ", "), fix)
 }
 
