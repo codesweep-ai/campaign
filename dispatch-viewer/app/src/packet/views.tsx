@@ -74,7 +74,7 @@ export function Findings({ p }: { p: Packet }) {
       <ul className="checks">
         <li>
           <StatusBadge label="resolved" status="success" size="sm" /> <code>plan</code> resolves {plural(p.members.length, "member")},{" "}
-          {plural(repos, "repository", "repositories")} and {plural(snaps, "snapshot")}.
+          {plural(repos, "repo")} and {plural(snaps, "snapshot")}.
         </li>
         {p.findings.map((f, k) => (
           <li key={k}>
@@ -139,7 +139,7 @@ export function MembersTable({ p, go }: { p: Packet; go: Go }) {
 
 export function AccessMatrix({ p }: { p: Packet }) {
   const cols = treeColumns(p);
-  if (!cols.length) return <p className="muted">No member is given a repository or a snapshot.</p>;
+  if (!cols.length) return <p className="muted">No member is given a repo or a snapshot.</p>;
   const held = p.members.flatMap((m) =>
     m.trees.filter((t) => t.withhold?.length).map((t) => ({ member: m.name, tree: t })),
   );
@@ -154,7 +154,7 @@ export function AccessMatrix({ p }: { p: Packet }) {
               </th>
               {cols.map((c) => (
                 <th key={c.kind + c.path} scope="col" title={c.path}>
-                  <span className="muted">{c.kind === "repo" ? "repository" : "snapshot"}</span>
+                  <span className="muted">{c.kind}</span>
                   <br />~/{c.name}
                 </th>
               ))}
@@ -207,7 +207,7 @@ export function TreesTable({ p }: { p: Packet }) {
   const rows = treeColumns(p);
   if (!rows.length) return null;
   const cols: TableColumn<(typeof rows)[number]>[] = [
-    { id: "kind", header: "Kind", cell: (t) => (t.kind === "repo" ? "repository" : "snapshot") },
+    { id: "kind", header: "Kind", cell: (t) => <code>{t.kind}</code> },
     { id: "name", header: "In a member's home", cell: (t) => <code>~/{t.name}</code> },
     { id: "path", header: "On this host", cell: (t) => <code>{t.path}</code>, wrap: true },
     {
@@ -273,8 +273,11 @@ function auth(p: Packet, name: string) {
 }
 
 function MemberTrees({ m }: { m: PacketMember }) {
-  if (!m.trees.length) return <p className="lede">No repository or snapshot.</p>;
+  if (!m.trees.length) return <p className="lede">No repo or snapshot.</p>;
+  // Kind is the profile's own word: the entry came from the member's repos: or
+  // snapshots: list.
   const cols: TableColumn<Tree>[] = [
+    { id: "kind", header: "Kind", cell: (t) => <code>{t.kind}</code> },
     { id: "name", header: "In its home", cell: (t) => <code>~/{t.name}</code> },
     { id: "access", header: "Access", cell: (t) => (t.kind === "repo" ? "clones, commits to its branch" : "reads a frozen copy"), wrap: true },
     { id: "path", header: "On this host", cell: (t) => <code>{t.path}</code>, wrap: true },
@@ -338,7 +341,7 @@ export function MemberView({ p, m }: { p: Packet; m: PacketMember }) {
   const [jump, setJump] = useState(false);
   const docs = useRef<(HTMLDivElement | null)[]>([]);
   useEffect(() => {
-    if (jump) docs.current[open]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (jump) docs.current[open]?.scrollIntoView({ behavior: "instant", block: "start" });
     setJump(false);
   }, [open, jump]);
 
@@ -388,7 +391,7 @@ export function MemberView({ p, m }: { p: Packet; m: PacketMember }) {
           </dd>
         </dl>
       </Card>
-      <Card header={<Title>Trees in {m.name}'s home</Title>}>
+      <Card header={<Title>Repos and snapshots in {m.name}'s home</Title>}>
         <MemberTrees m={m} />
       </Card>
       <Card header={<Title>What {m.name} is given at create</Title>}>

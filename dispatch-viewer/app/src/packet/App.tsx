@@ -97,7 +97,7 @@ export default function App() {
         <Card header={<span className="section-title">Who can reach what</span>}>
           <AccessMatrix p={p} />
         </Card>
-        <Card header={<span className="section-title">Repositories and snapshots</span>}>
+        <Card header={<span className="section-title">Repos and snapshots</span>}>
           <TreesTable p={p} />
         </Card>
         <Card header={<span className="section-title">Plan</span>}>
