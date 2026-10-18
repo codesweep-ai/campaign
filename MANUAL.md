@@ -200,8 +200,9 @@ nothing else. The page opens from disk in any browser and needs no network.
 The page holds the profile, the mission, every brief and every member's orientation, each exactly as
 `create` will use it. It also holds the resolved plan, and the repositories and snapshots each
 member can reach, with any paths withheld from it. Each member has a page of its own. That page
-lists the files the member is seeded with, where each one lands in its home, and their digests. It
-also names the authored files the member is not given.
+lists the files the member is given in the order it reads them, the orientation first, with where
+each one lands and its digest. Choosing one opens it below. The page also names the authored files
+the member is not given.
 
 The page opens on what `create` would refuse and what it would warn about, in the tool's own words.
 Unlike `validate`, it does not require every brief to exist, so it can be read while a campaign is

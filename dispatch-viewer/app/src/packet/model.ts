@@ -125,10 +125,6 @@ export function givenTo(p: Packet, path: string): string[] {
   return p.members.filter((m) => m.seeds.some((s) => s.source === path)).map((m) => m.name);
 }
 
-export function briefOf(p: Packet, m: PacketMember): PacketFile | undefined {
-  return fileAt(p, `roles/${m.name}.md`);
-}
-
 // One column per distinct tree, in the order members declare them.
 export function treeColumns(p: Packet): Tree[] {
   const seen = new Map<string, Tree>();

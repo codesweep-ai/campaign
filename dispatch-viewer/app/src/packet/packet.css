@@ -17,6 +17,7 @@
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 code { font-family: var(--font-family-mono); font-size: 0.92em; overflow-wrap: anywhere; }
+code.nowrap { white-space: nowrap; overflow-wrap: normal; }
 .muted { color: var(--muted); }
 .banner { padding: var(--space-4); }
 
@@ -49,6 +50,9 @@ code { font-family: var(--font-family-mono); font-size: 0.92em; overflow-wrap: a
   font-size: var(--font-size-xs); line-height: var(--line-height-normal);
 }
 .absent { margin: 0; font-size: var(--font-size-sm); }
+.doc-head { display: inline-flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; font-size: var(--font-size-sm); }
+.doc-anchor { scroll-margin-top: var(--space-4); }
+.held-list { display: inline-flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
 
 .facts { display: grid; grid-template-columns: 10rem minmax(0, 1fr); gap: var(--space-1) var(--space-3); margin: 0; font-size: var(--font-size-sm); }
 .facts dt { color: var(--muted); font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: var(--letter-spacing-wide); padding-top: 2px; overflow-wrap: anywhere; }

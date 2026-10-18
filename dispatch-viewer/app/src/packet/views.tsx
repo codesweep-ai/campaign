@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Card, StatusBadge, Table, type TableColumn } from "@codesweep-ai/ui";
 import { CodeBlock } from "@codesweep-ai/ui/code";
 import { MarkdownViewer } from "@codesweep-ai/ui/markdown";
@@ -11,7 +11,7 @@ import {
   type PacketFile,
   type PacketMember,
   type Seed,
-  briefOf,
+  type Tree,
   byteLength,
   count,
   fileAt,
@@ -272,13 +272,77 @@ function auth(p: Packet, name: string) {
   return (grants.join("; ") || "none") + (verb ? ` · ${verb}` : "");
 }
 
+function MemberTrees({ m }: { m: PacketMember }) {
+  if (!m.trees.length) return <p className="lede">No repository or snapshot.</p>;
+  const cols: TableColumn<Tree>[] = [
+    { id: "name", header: "In its home", cell: (t) => <code>~/{t.name}</code> },
+    { id: "access", header: "Access", cell: (t) => (t.kind === "repo" ? "clones, commits to its branch" : "reads a frozen copy"), wrap: true },
+    { id: "path", header: "On this host", cell: (t) => <code>{t.path}</code>, wrap: true },
+    {
+      id: "base",
+      header: "Base",
+      cell: (t) =>
+        t.kind === "snapshot" ? (
+          <span className="muted">none</span>
+        ) : t.created ? (
+          "not created yet; create makes it"
+        ) : (
+          <span>
+            {t.ref ? (
+              <>
+                <code>{t.ref}</code> at{" "}
+              </>
+            ) : null}
+            <code className="nowrap">{short(t.commit)}</code>
+          </span>
+        ),
+      wrap: true,
+    },
+    {
+      id: "held",
+      header: "Withheld from it",
+      cell: (t) =>
+        t.withhold?.length ? (
+          <span className="held-list">
+            {t.withhold.map((w) => (
+              <code key={w}>{w}</code>
+            ))}
+          </span>
+        ) : (
+          <span className="muted">nothing</span>
+        ),
+      wrap: true,
+    },
+  ];
+  return (
+    <div className="wide">
+      <Table columns={cols} data={m.trees} rowKey={(t) => t.kind + t.path} />
+    </div>
+  );
+}
+
+// A document shows an outline only when it has enough headings to navigate.
+const headings = (md: string) => (md.match(/^#{1,6} /gm) ?? []).length;
+
 export function MemberView({ p, m }: { p: Packet; m: PacketMember }) {
-  const [open, setOpen] = useState(false);
   const pm = planned(p, m.name);
-  const brief = briefOf(p, m);
   const missing = notGiven(p, m);
-  const rows: (Seed & { orientation?: boolean })[] = [{ guest: p.orientationGuest, source: "", orientation: true }, ...m.seeds];
-  const cols: TableColumn<(typeof rows)[number]>[] = [
+  type Row = Seed & { orientation?: boolean; label: string; file?: PacketFile };
+  const rows: Row[] = [
+    { guest: p.orientationGuest, source: "", orientation: true, label: p.orientationGuest.split("/").pop()!, file: m.orientation },
+    ...m.seeds.map((s) => ({ ...s, label: s.source, file: fileAt(p, s.source) })),
+  ];
+  // One file is open at a time, the orientation first: the order the member
+  // reads them in. Choosing a row opens its file and brings it into view.
+  const [open, setOpen] = useState(0);
+  const [jump, setJump] = useState(false);
+  const docs = useRef<(HTMLDivElement | null)[]>([]);
+  useEffect(() => {
+    if (jump) docs.current[open]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setJump(false);
+  }, [open, jump]);
+
+  const cols: TableColumn<Row>[] = [
     { id: "n", header: "#", cell: (s) => String(rows.indexOf(s) + 1), width: "2.5rem" },
     { id: "guest", header: "In its home", cell: (s) => <code>{home(s.guest)}</code>, wrap: true },
     {
@@ -287,7 +351,7 @@ export function MemberView({ p, m }: { p: Packet; m: PacketMember }) {
       cell: (s) =>
         s.orientation ? (
           <span className="muted">written by cs-campaign</span>
-        ) : fileAt(p, s.source)?.absent ? (
+        ) : s.file?.absent ? (
           <span>
             <code>{s.source}</code> <StatusBadge label="not written" status="error" size="sm" />
           </span>
@@ -296,18 +360,10 @@ export function MemberView({ p, m }: { p: Packet; m: PacketMember }) {
         ),
       wrap: true,
     },
-    {
-      id: "words",
-      header: "Words",
-      align: "right",
-      cell: (s) => count(words(s.orientation ? m.orientation.content : (fileAt(p, s.source)?.content ?? ""))),
-    },
-    {
-      id: "digest",
-      header: "sha256",
-      cell: (s) => <code className="muted">{short(s.orientation ? m.orientation.digest : fileAt(p, s.source)?.digest)}</code>,
-    },
+    { id: "words", header: "Words", align: "right", cell: (s) => count(words(s.file?.content ?? "")) },
+    { id: "digest", header: "sha256", cell: (s) => <code className="muted">{short(s.file?.digest)}</code> },
   ];
+
   return (
     <div className="stack">
       <Card header={<Title>{m.name} · {pm?.role}</Title>}>
@@ -325,18 +381,6 @@ export function MemberView({ p, m }: { p: Packet; m: PacketMember }) {
           <dd>{pm?.stallSeconds ?? "?"} seconds without output before it is prodded</dd>
           <dt>Credential</dt>
           <dd>{auth(p, m.name)}</dd>
-          <dt>Trees</dt>
-          <dd>
-            {m.trees.length
-              ? m.trees.map((t, k) => (
-                  <span key={t.kind + t.path}>
-                    {k ? ", " : ""}
-                    <code>~/{t.name}</code> ({t.kind === "repo" ? "clone" : "read-only"}
-                    {t.withhold?.length ? `, ${count(t.withhold.length)} withheld` : ""})
-                  </span>
-                ))
-              : "none"}
-          </dd>
           <dt>Environment</dt>
           <dd>
             {(pm?.profile?.env ?? []).map((e) => e.split("=")[0]).join(", ") || "none"}
@@ -344,9 +388,12 @@ export function MemberView({ p, m }: { p: Packet; m: PacketMember }) {
           </dd>
         </dl>
       </Card>
+      <Card header={<Title>Trees in {m.name}'s home</Title>}>
+        <MemberTrees m={m} />
+      </Card>
       <Card header={<Title>What {m.name} is given at create</Title>}>
         <p className="lede">
-          Its orientation and {plural(m.seeds.length, "seeded file")}.{" "}
+          Its orientation and {plural(m.seeds.length, "seeded file")}, read in this order. Choose one to read it below.{" "}
           {missing.length ? (
             <>
               It is not given{" "}
@@ -363,24 +410,42 @@ export function MemberView({ p, m }: { p: Packet; m: PacketMember }) {
           )}
         </p>
         <div className="wide">
-          <Table columns={cols} data={rows} rowKey={(s) => s.guest} />
+          <Table
+            columns={cols}
+            data={rows}
+            rowKey={(s) => s.guest}
+            selectedKey={open >= 0 ? rows[open].guest : null}
+            onRowClick={(s) => {
+              setOpen(rows.indexOf(s));
+              setJump(true);
+            }}
+          />
         </div>
       </Card>
-      <Card header={<Title>Brief · {brief?.path ?? `roles/${m.name}.md`}{brief && !brief.absent ? ` · ${plural(words(brief.content), "word")}` : ""}</Title>}>
-        {!brief || brief.absent ? (
-          <Absent path={`roles/${m.name}.md`} why="create refuses a member with no brief." />
-        ) : (
-          <MarkdownViewer content={brief.content} outline />
-        )}
-      </Card>
-      <Card
-        collapsible
-        collapsed={!open}
-        onToggle={() => setOpen((v) => !v)}
-        header={<Title>Orientation · {plural(words(m.orientation.content), "word")}, written by cs-campaign</Title>}
-      >
-        <MarkdownViewer content={m.orientation.content} />
-      </Card>
+      {rows.map((s, k) => (
+        <div key={s.guest} ref={(el) => void (docs.current[k] = el)} className="doc-anchor">
+          <Card
+            collapsible
+            collapsed={open !== k}
+            onToggle={() => setOpen(open === k ? -1 : k)}
+            header={
+              <span className="doc-head">
+                <b>{k + 1}</b> <code>{s.label}</code>
+                <span className="muted">
+                  {s.file && !s.file.absent ? ` · ${plural(words(s.file.content), "word")}` : ""}
+                  {s.orientation ? " · written by cs-campaign" : ""}
+                </span>
+              </span>
+            }
+          >
+            {!s.file || s.file.absent ? (
+              <Absent path={s.source} why={s.source.startsWith("roles/") ? "create refuses a member with no brief." : "create refuses a campaign without it."} />
+            ) : (
+              <MarkdownViewer content={s.file.content} outline={headings(s.file.content) >= 3} />
+            )}
+          </Card>
+        </div>
+      ))}
     </div>
   );
 }
