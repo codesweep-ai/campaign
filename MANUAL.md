@@ -980,8 +980,14 @@ attaches reasoning options to a named model, not to the session. `repos[].ref` p
 `snapshots` gives it a frozen tree it can read.
 
 Every member needs at least one repository, and `validate` refuses one without it. A member commits
-to its clone, and that branch is the only thing `fetch` can read. A repository path is resolved in
-one of three ways:
+to its clone, and that branch is the only thing `fetch` can read.
+
+A relative repository or snapshot path in a profile is read beside the profile, as the mission and
+briefs are. A profile directory therefore names the same trees wherever you run it from. `--repo`
+and `--snapshot` on the command line are relative to your shell, and `init` writes them into the
+profile as absolute paths.
+
+A repository path is resolved in one of three ways:
 
 | The path | What happens |
 |---|---|

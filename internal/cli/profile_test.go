@@ -1145,6 +1145,85 @@ func TestAProfileWithNoRepositoryIsSentToReposAlone(t *testing.T) {
 	}
 }
 
+// TestARelativeTreeResolvesBesideTheProfile is SAC-094. A profile finds its
+// mission and briefs beside itself, and a relative repository or snapshot path
+// used to resolve against the shell's directory instead. The same profile then
+// named different trees depending on where it was run, and create made a
+// missing repository wherever the shell happened to be.
+func TestARelativeTreeResolvesBesideTheProfile(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	root := t.TempDir()
+	camp := filepath.Join(root, "camp")
+	if err := os.MkdirAll(filepath.Join(camp, "specs"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	body := "apiVersion: codesweep.ai/v1alpha1\nkind: CampaignProfile\n" +
+		"orchestrator:\n  cli: codex\n  auth:\n    apiKey: [openai]\n  repos:\n    - path: app\n  snapshots:\n    - path: ./specs\n" +
+		"agents:\n  worker:\n    cli: codex\n    auth:\n      apiKey: [openai]\n    repos:\n      - path: ../shared\n"
+	profile := filepath.Join(camp, "profile.yaml")
+	if err := os.WriteFile(profile, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	seedBriefsFor(t, profile, "worker")
+	elsewhere := filepath.Join(root, "elsewhere")
+	if err := os.Mkdir(elsewhere, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(elsewhere)
+
+	a := &app{store: store.Store{Dir: t.TempDir()}}
+	campaign, _, err := a.planCampaign(createOpts{profile: filepath.Join("..", "camp", "profile.yaml")}, "rel", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var orchestrator, worker model.Member
+	for _, m := range campaign.Members {
+		if m.Name == "orchestrator" {
+			orchestrator = m
+		} else {
+			worker = m
+		}
+	}
+	for got, want := range map[string]string{
+		orchestrator.Profile.Repos[0].Path:     filepath.Join(camp, "app"),
+		orchestrator.Profile.Snapshots[0].Path: filepath.Join(camp, "specs"),
+		worker.Profile.Repos[0].Path:           filepath.Join(root, "shared"),
+	} {
+		if got != want {
+			t.Errorf("a relative path resolved to %s, and beside the profile it is %s", got, want)
+		}
+	}
+	if entries, _ := os.ReadDir(elsewhere); len(entries) != 0 {
+		t.Errorf("planning from another directory wrote into it: %v", entries)
+	}
+}
+
+// The other half of SAC-094. A path given to init is relative to the shell,
+// and the profile init writes is read beside itself, so init writes the path
+// down absolute. Otherwise --dir would move what the path names.
+func TestInitWritesTheTreesItWasGivenAsAbsolutePaths(t *testing.T) {
+	covmap.ProveCoreOnPass(t, "profile-validation", covmap.TierUnit)
+	shell := t.TempDir()
+	t.Chdir(shell)
+	a := &app{store: store.Store{Dir: t.TempDir()}}
+	cmd := a.initCmd()
+	cmd.SetOut(new(bytes.Buffer))
+	cmd.SetArgs([]string{"demo", "--orchestrator", "codex", "--agent", "worker=codex", "--repo", "./app", "--snapshot", "docs", "--dir", "sub/demo"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	p, _, err := decodeProfile(filepath.Join(shell, "sub", "demo", "profile.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := p.Agents["worker"].Repos[0].Path; got != filepath.Join(shell, "app") {
+		t.Errorf("init --repo ./app names %s, and the shell meant %s", got, filepath.Join(shell, "app"))
+	}
+	if got := p.Agents["worker"].Snapshots[0].Path; got != filepath.Join(shell, "docs") {
+		t.Errorf("init --snapshot docs names %s, and the shell meant %s", got, filepath.Join(shell, "docs"))
+	}
+}
+
 // SAC-025. A ref beside a path that does not exist used to fall through to
 // git's own exit code, because the recovery that plans an absent path as an
 // empty repository only ran when the operator had written no ref. Two agents in

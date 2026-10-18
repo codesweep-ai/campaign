@@ -71,8 +71,35 @@ func decodeProfile(path string) (model.Profile, string, error) {
 	if err = d.Decode(&p); err != nil {
 		return p, "", fmt.Errorf("decode profile: %w", err)
 	}
+	besideProfile(&p, filepath.Dir(path))
 	h := sha256.Sum256(b)
 	return p, hex.EncodeToString(h[:]), nil
+}
+
+// besideProfile resolves a relative repository or snapshot path against the
+// profile's own directory, where its mission and briefs are found, rather than
+// against the shell's (SAC-094). A profile directory then names the same trees
+// wherever it is read from. A ~/ or absolute path is left to expandPath.
+func besideProfile(p *model.Profile, dir string) {
+	beside := func(path string) string {
+		if path == "" || filepath.IsAbs(path) || path == "~" || strings.HasPrefix(path, "~/") {
+			return path
+		}
+		return filepath.Join(dir, path)
+	}
+	resolve := func(m *model.MemberProfile) {
+		for i := range m.Repos {
+			m.Repos[i].Path = beside(m.Repos[i].Path)
+		}
+		for i := range m.Snapshots {
+			m.Snapshots[i].Path = beside(m.Snapshots[i].Path)
+		}
+	}
+	resolve(&p.Orchestrator)
+	for name, m := range p.Agents {
+		resolve(&m)
+		p.Agents[name] = m
+	}
 }
 
 // readProfile is decodeProfile plus validation, for the callers that take a

@@ -92,6 +92,15 @@ func (a *app) initCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			name := args[0]
+			// A path typed here is relative to the shell, and a profile's
+			// paths are read beside the profile (SAC-094). Written down
+			// absolute, it means what was typed wherever --dir puts it.
+			if opts.repo != "" {
+				opts.repo = expandPath(opts.repo)
+			}
+			if opts.snapshot != "" {
+				opts.snapshot = expandPath(opts.snapshot)
+			}
 			// The fleet is parsed by the SAME function create uses, so a
 			// scaffolded profile cannot describe a fleet create would reject.
 			profile, err := profileFromFlags(opts.orchestrator, opts.agents, opts.agentCLI, opts.count, opts.repo, opts.snapshot)

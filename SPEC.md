@@ -892,9 +892,9 @@ agents:
 | `env` | `defaults`, member | `KEY=VALUE` injected into the sandbox, or a bare `KEY` to inherit the host's value. |
 | `cli` | member | One of `claude`, `codex`, `opencode`. |
 | `model`, `effort` | member | Passed to that member's CLI verbatim. `opencode` requires `model` whenever `effort` is set. |
-| `repos[].path`, `.ref`, `.name` | member | A host repository cloned into the member. |
+| `repos[].path`, `.ref`, `.name` | member | A host repository cloned into the member. A relative path resolves beside the profile. |
 | `repos[].withhold` | member | Paths this member must never receive from that repository: files, directories or globs, relative to its root. See R120a and R120c. |
-| `snapshots[].path`, `.name` | member | A frozen tree the member can read. |
+| `snapshots[].path`, `.name` | member | A frozen tree the member can read. A relative path resolves beside the profile. |
 | `snapshots[].withhold` | member | The same declaration for a snapshot, held against the tree as it stands. |
 | `imageStores` | `defaults`, member | Shared image stores the member's podman reads, made on the host with `cs-sandbox create-store` and `seed-store`. A member's own list replaces the defaults'. |
 | `credentials` | `defaults` | The verb every member takes unless it spells one: `lend` or `inherit`. Default `lend`. |
