@@ -1,0 +1,16 @@
+{
+  "id": "SAC-098",
+  "title": "A fixture re-record drops other rows' approval blocks and stamps one reason on every gated row",
+  "type": "improvement",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, re-recording CF-05 for SAC-097",
+  "opened": "2026-10-19",
+  "resolved": null,
+  "stint": null,
+  "evidence": { "commits": [], "integrated": [], "verified": null },
+  "resolution": null,
+  "details": "`make fixtures FIXTURE_ARGS=\"--update --approve <id> --reason <sentence>\"` rewrites every row the run measures, in `dispatch-viewer/fixtures/run.mjs`. A measured row whose value is unchanged loses its `approval` or `origin` block, so re-recording one row deletes the permission slips of others. Every row whose value changed gets the one `--reason`, even when it changed for another cause. Re-recording CF-05 this way dropped five earlier blocks. It also gave the size rows CF-40 and CF-41 a reason about the legend, though they drifted because the page grew. Their checks pass on the size budget alone. A re-record that kept unchanged rows verbatim, and could name the rows it may change, would let a diff carry only the change it approves.",
+  "notes": [],
+  "links": ["SAC-097"]
+}
