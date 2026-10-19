@@ -1,0 +1,16 @@
+{
+  "id": "SAC-097",
+  "title": "The viewer fixture CF-05 still expects the log legend from before push entries were added",
+  "type": "defect",
+  "severity": "low",
+  "status": "in-progress",
+  "foundBy": "session agent, running `make fixtures` with a local browser",
+  "opened": "2026-10-19",
+  "resolved": null,
+  "stint": "review-packet-2026-10-18",
+  "evidence": { "commits": [], "integrated": [], "verified": null },
+  "resolution": null,
+  "details": "`make fixtures` fails one check, CF-05, which records the dispatch viewer's legend rows. In all four synthetic archives the orchestrator-log row now ends with \"push delivered\" and \"push refused\". Commit 4513d85 added those entries for SAC-092, and the expectation was not re-recorded with it. Every other check passes or meets its target. The suite needs a browser and CI does not run it, so nothing reported the failure.",
+  "notes": [],
+  "links": ["SAC-092"]
+}
