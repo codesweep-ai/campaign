@@ -239,14 +239,15 @@ func KeepHandoffScript(path string) string {
 // A node names a commit by its hash, and the first seven characters are what
 // any abbreviation of it holds, so that is what the handoff is searched for.
 // Fields are separated by tabs, because a repository's name and a path may
-// hold spaces.
+// hold spaces. The count is stripped of the spaces BSD wc pads it with, so
+// the same script prints a bare number on macOS and on Linux.
 func HandoffCheckScript(repos map[string]string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, `h="$HOME/%s"; [ -f "$h" ] || echo NOHANDOFF`, HandoffFile)
 	for _, name := range slices.Sorted(maps.Keys(repos)) {
 		q := shellWord(name)
 		fmt.Fprintf(&b, `; d="$HOME/"%s; if [ -d "$d" ]; then `+
-			`n="$(git -C "$d" status --porcelain 2>/dev/null | wc -l)"; `+
+			`n="$(git -C "$d" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"; `+
 			`[ "$n" -gt 0 ] && printf 'DIRTY\t%%s\t%%s\t%%s\n' %s "$n" "$(git -C "$d" status --porcelain 2>/dev/null | head -n 1 | cut -c4-)"; `+
 			`c="$(git -C "$d" rev-parse HEAD 2>/dev/null)"; `+
 			`if [ -n "$c" ] && [ "$c" != %s ]; then s="$(printf %%.7s "$c")"; grep -qiF "$s" "$h" 2>/dev/null || printf 'UNNAMED\t%%s\t%%s\n' %s "$s"; fi; fi`,
@@ -262,6 +263,9 @@ func ParseHandoffCheck(out string) []string {
 	var problems []string
 	for line := range strings.SplitSeq(out, "\n") {
 		fields := strings.SplitN(strings.TrimSpace(line), "\t", 4)
+		for i, f := range fields {
+			fields[i] = strings.TrimSpace(f)
+		}
 		switch {
 		case fields[0] == "NOHANDOFF":
 			problems = append(problems, "there is no handoff at ~/"+HandoffFile)

@@ -686,8 +686,17 @@ func TestTheHandoffCheckReadsGitAndTheHandoff(t *testing.T) {
 					"your handoff does not name the commit ~/my app is at, " + head[:7]}
 		}},
 	} {
-		for _, shell := range []string{"sh", "bash"} {
-			t.Run(tc.name+"/"+shell, func(t *testing.T) {
+		// The check runs on the member, a Linux guest with GNU wc, and in this
+		// test on whatever the host has. BSD wc, which macOS ships, pads its
+		// count with spaces; the third run fronts PATH with a wc that does the
+		// same, so the script is held to a bare number on both.
+		for _, run := range []struct{ shell, wc string }{{"sh", ""}, {"bash", ""}, {"sh", "padded"}} {
+			shell := run.shell
+			name := tc.name + "/" + shell
+			if run.wc != "" {
+				name += "/" + run.wc + "-wc"
+			}
+			t.Run(name, func(t *testing.T) {
 				if _, err := exec.LookPath(shell); err != nil {
 					t.Skipf("%s is not installed", shell)
 				}
@@ -695,6 +704,9 @@ func TestTheHandoffCheckReadsGitAndTheHandoff(t *testing.T) {
 				repos, want, problems := tc.setup(t, home)
 				cmd := exec.Command(shell, "-c", HandoffCheckScript(repos))
 				cmd.Env = gitEnv(home)
+				if run.wc != "" {
+					cmd.Env = append(cmd.Env, "PATH="+paddingWC(t)+":"+os.Getenv("PATH"))
+				}
 				var stderr strings.Builder
 				cmd.Stderr = &stderr
 				out, err := cmd.Output()
@@ -712,12 +724,30 @@ func TestTheHandoffCheckReadsGitAndTheHandoff(t *testing.T) {
 	}
 }
 
+// paddingWC returns a directory holding a wc that pads its output with spaces,
+// as BSD wc does, in front of the real one.
+func paddingWC(t *testing.T) string {
+	t.Helper()
+	real, err := exec.LookPath("wc")
+	if err != nil {
+		t.Skip("wc is not installed")
+	}
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "wc"), "#!/bin/sh\n"+real+" \"$@\" | sed 's/^/       /'\n")
+	if err := os.Chmod(filepath.Join(dir, "wc"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
 // A line the reader does not know is passed over, so a newer check, or a
 // login banner on the member, never refuses a hand-off by itself.
 func TestTheHandoffCheckIsReadALineAtATime(t *testing.T) {
-	out := "Welcome to the box\nDIRTY\tapp\t3\nSOMETHING new here\nDIRTY\tapp\nUNNAMED\tlib\tabc1234\n\nNOHANDOFF\n"
+	// The second DIRTY line carries the count as BSD wc pads it.
+	out := "Welcome to the box\nDIRTY\tapp\t3\nDIRTY\tapp\t       1\ta.txt\nSOMETHING new here\nDIRTY\tapp\nUNNAMED\tlib\tabc1234\n\nNOHANDOFF\n"
 	want := []string{
 		"~/app has work not committed (3 paths)",
+		"~/app has work not committed (1 path, the first a.txt)",
 		"your handoff does not name the commit ~/lib is at, abc1234",
 		"there is no handoff at ~/" + HandoffFile,
 	}
