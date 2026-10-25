@@ -1,0 +1,20 @@
+{
+  "id": "SAC-099",
+  "title": "A long campaign member compacts on its own and re-orients by guesswork",
+  "type": "improvement",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "repository owner, asking for a way to manage context in long-running campaign members",
+  "opened": "2026-10-25",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "An orchestrator on a long mission, or an agent that reads a large corpus, fills its context. Its CLI then compacts the conversation by itself, one to three times in a long campaign, and the member carries on from a summary it did not write. Nothing in the dispatch protocol sees it coming or helps the member recover. An agent that keeps one session across many dispatches carries every earlier dispatch's context into the next.\n\nWanted, off unless a profile asks for it. A per-seat context line, past which the member writes its own handoff and is started in a fresh session on it, spending no rung. A bound on how many times that may happen, and a record of every one. A check that the member's work is committed and named before its session is replaced. A per-agent switch that starts each dispatch in a fresh session. A seat without either must run exactly as it does now, its orientation and member document included.",
+  "notes": [],
+  "links": []
+}
