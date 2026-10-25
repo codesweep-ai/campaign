@@ -3,14 +3,22 @@
   "title": "The hand-off check pads its count on macOS, so a dirty repository reads as \"       2 paths\"",
   "type": "defect",
   "severity": "low",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "campaign CI on f1eb71f: build-test failed on macos-15-intel and macos-arm64, and passed on Linux and WSL2",
   "opened": "2026-10-25",
-  "resolved": null,
+  "resolved": "2026-10-25",
   "stint": "context hand-off, 2026-10-17 to 2026-10-25",
-  "evidence": { "commits": [], "integrated": [], "verified": null },
-  "resolution": null,
+  "evidence": {
+    "commits": [
+      "13e9a53"
+    ],
+    "integrated": [],
+    "verified": "`TestTheHandoffCheckReadsGitAndTheHandoff` now runs every case a third time behind a `wc` that pads its output as BSD's does. With the script's fix removed, the three cases that print a count fail that run, as they failed on both macOS runners; with it, all 24 runs pass. `TestTheHandoffCheckIsReadALineAtATime` reads a padded count as `1 path`. `go test ./internal/protocol/ -count=1` ok, and `make check` passed every gate on the fix."
+  },
+  "resolution": "`HandoffCheckScript` strips the spaces from the count with `tr -d ' '`, so it prints a bare number on BSD and GNU `wc` alike. `ParseHandoffCheck` trims every field it reads.",
   "details": "`HandoffCheckScript` counts a repository's uncommitted paths with `wc -l`. BSD `wc`, which macOS ships, pads the count with spaces, so the check printed `DIRTY\\tapp\\t       2\\ta.txt` and the member read `~/app has work not committed (       2 paths, the first a.txt)`. GNU `wc` prints a bare number, so Linux, where every member runs, was right. `TestTheHandoffCheckReadsGitAndTheHandoff` failed on both macOS runners, in six of its sixteen cases: every one that prints a count.\n\nThe member reads the sentence and the campaign decides on the count, so a padded count is a wrong sentence and nothing worse. The script should print a bare number on either `wc`, and the reader should trim what it is given.",
   "notes": [],
-  "links": ["SAC-099"]
+  "links": [
+    "SAC-099"
+  ]
 }
