@@ -3,17 +3,19 @@
   "title": "A long campaign member compacts on its own and re-orients by guesswork",
   "type": "improvement",
   "severity": "med",
-  "status": "open",
+  "status": "closed",
   "foundBy": "repository owner, asking for a way to manage context in long-running campaign members",
   "opened": "2026-10-25",
-  "resolved": null,
-  "stint": null,
+  "resolved": "2026-10-25",
+  "stint": "context hand-off, 2026-10-17 to 2026-10-25",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "27a653c"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "A copy of a real six-member campaign, run twice: once as recorded, once with lines set. With lines, the orchestrator ran 8 sessions with 7 hand-offs, 1 commit ask and 0 compactions. The modeller ran one fresh session per dispatch. The outcome was campaign-met, against campaign-converged before, and the as-recorded run compacted twice. Two small live campaigns of three OpenCode members, every one with a line, made 4 hand-offs each: orchestrator 1, agents 3. Every handoff was kept under output/handoffs and swapped for a fresh session with no rung spent, and both campaigns met their mission. `cs-campaign orientation`, `create --dry-run` and `plan` for a profile with no line are byte-identical to main's. `TestTenRapidHandoffsInARowTripTheBound` and `TestALongMissionsHandoffsNeverTripTheBound` fail without the rapid window. `TestHostHandoffKeepsTheHandoffBeforeTheKill` fails without the commit check. `TestAwaitReplyStartsAHandedOffMemberFresh` and `TestResumeStartsAHandedOffOrchestratorFresh` fail without the fresh start. `make check` passed on the feature commit, with every package `ok`."
   },
-  "resolution": null,
+  "resolution": "A seat's policy may carry `handoffTokens`, a context line the sandbox asks the member to hand off at. The member writes its handoff with its own tools and ends its turn. The campaign checks the work is committed and named in the handoff, and asks the member to commit if not. Then it ends the session and starts it fresh on the handoff, spending no rung. Every handoff is kept. The `handoffs` bound counts only rapid hand-offs in a row, within `rapidHandoffSeconds` of a fresh start. An agent may carry `freshPerDispatch`, which starts each dispatch in a fresh session. A seat with neither runs as before, its orientation and member document byte for byte.",
   "details": "An orchestrator on a long mission, or an agent that reads a large corpus, fills its context. Its CLI then compacts the conversation by itself, one to three times in a long campaign, and the member carries on from a summary it did not write. Nothing in the dispatch protocol sees it coming or helps the member recover. An agent that keeps one session across many dispatches carries every earlier dispatch's context into the next.\n\nWanted, off unless a profile asks for it. A per-seat context line, past which the member writes its own handoff and is started in a fresh session on it, spending no rung. A bound on how many times that may happen, and a record of every one. A check that the member's work is committed and named before its session is replaced. A per-agent switch that starts each dispatch in a fresh session. A seat without either must run exactly as it does now, its orientation and member document included.",
   "notes": [],
   "links": []
