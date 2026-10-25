@@ -66,6 +66,19 @@ func (a *app) hostResumeOrchestrator(ctx context.Context, member model.Member, p
 			return "", err
 		}
 		return o.Dispatch + " resumed: its last turn never ran, no rung spent", nil
+	case o.State == protocol.StateStopped && o.NextMove == "handoff":
+		// A hand-off is the orchestrator doing as asked, and the fresh session
+		// is the host's to start, as a resume is (PROTOCOL.md §9).
+		problems, err := a.hostHandoff(ctx, member, facts, o.Dispatch)
+		if err != nil {
+			return "", err
+		}
+		if len(problems) > 0 {
+			return "kept the orchestrator's session: its work and its handoff do not agree (" + strings.Join(problems, "; ") + ")\n" +
+				o.Dispatch + " carried on in the same session, asked to commit first, no rung spent; resume again when observe says fresh session next", nil
+		}
+		return "ended the orchestrator's session; starting it fresh on its handoff\n" +
+			o.Dispatch + " carried on in a fresh session on the orchestrator's handoff, no rung spent", nil
 	case o.State == protocol.StateRefused:
 		return "", fmt.Errorf("%s; the wait its provider asked for is still running, and nothing was sent", where)
 	case o.State == protocol.StateStopped:

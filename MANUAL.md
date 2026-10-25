@@ -391,6 +391,24 @@ seconds, or what `CS_CAMPAIGN_WAIT_SECONDS` sets. The orchestrator's orientation
 `wait` in the foreground, where a provider error ends a turn the driver records and `cs-campaign
 resume` can carry it on.
 
+Every line also says how full the node's conversation is, when the node's tools can say, as in
+`open 4210s · 1 cont, 0 restarts · context 142k · compacted 2 times, last 38m ago`. The member's turn
+driver reads it from the agent's own session record. It gives the context the latest model call
+carried, the window when the agent's CLI records one, and how many times the CLI has compacted the
+conversation. A CLI compacts a long conversation by itself, and an orchestrator on a long mission
+does so several times. The reading shows that coming and shows that it happened. It is evidence
+beside the state, and it changes no state and no ladder move. A member whose tools are older than
+the reading shows no note. With `--json` each node carries the same reading as a `context` object,
+with `tokens`, `window`, `compactions`, `compacted` and `model`.
+
+A seat with a hand-off line (**Hand-offs**, under **Configuration**) adds up to two notes to the
+reading. `hands off at 60k` names the line. `this session began over the line, at 72k, and will not
+be asked` means the line is below what a fresh session costs. In the `context` object they are
+`handoff` and `floor`. The notes are for you: nothing the member reads states its line or its
+reading. A node that has handed off reads `node-stopped`, and its line says `fresh session next, no
+rung spent`. When a hand-off was not taken until the member committed its work, the line also
+counts those asks, as in `2 hand-offs, 1 asked to commit`.
+
 **CLAIMED** is the orchestrator's own append-only log. A claim beside the facts: "orchestrator says
 qa is working" next to "qa is unreachable" is the line this command exists for. `observe` also
 mirrors the log beside the campaign record, so the claim survives a lost orchestrator machine.
@@ -457,6 +475,26 @@ This is the one host instrument a tending loop may call. Poll `observe --json`, 
 orchestrator's line says `resume next`, run it. The pacing and the bound come
 from the same computation, so a call made early does nothing. An agent's refusal is the
 orchestrator's to resume, and the command refuses an agent by name.
+
+It also starts the orchestrator fresh after a hand-off, when its line says `fresh session next`.
+The old session is ended, and a new one carries the open dispatch on from the orchestrator's
+handoff. No rung is spent. A tending loop runs it on that line too.
+
+```console
+$ cs-campaign resume acme
+ended the orchestrator's session; starting it fresh on its handoff
+m1 carried on in a fresh session on the orchestrator's handoff, no rung spent
+```
+
+When the orchestrator's work and its handoff do not agree, `resume` keeps its session instead, and
+asks it to commit first (**Hand-offs**, under **Configuration**). Run it again when the line next
+says `fresh session next`.
+
+```console
+$ cs-campaign resume acme
+kept the orchestrator's session: its work and its handoff do not agree (~/product has work not committed (2 paths, the first notes.md))
+m1 carried on in the same session, asked to commit first, no rung spent; resume again when observe says fresh session next
+```
 
 ### ssh
 
@@ -537,7 +575,9 @@ cs-campaign destroy <campaign> [--archive] [--archive-output DIR] [--force] [--d
 ```
 
 It tears down every member, then reclaims the group's network, keys and gateway. Teardown is re-runnable
-and tolerates a resource that is already gone.
+and tolerates a resource that is already gone. When it removes the group, it ends on the line `group
+<name> removed, with its network and gateway`. The sandbox's report on the last member, just above
+it, describes the group before that removal.
 
 With `--archive`, the archive runs first and an incomplete collection stops the destroy. Without
 `--force`, a member that refuses to go leaves the campaign state in place rather than orphaning it.
@@ -684,6 +724,11 @@ dispatch and the agent's state. With it, a send to an agent that has replied is 
 reply that closed the dispatch. Nothing is delivered on a refusal, and the exit status is 1. An
 approval therefore always travels under the dispatch its sender meant.
 
+A send that opens a dispatch on an agent with `freshPerDispatch` (**The policy numbers**, under
+**Configuration**) ends the agent's session first, and says so: `backend/d004 opened in a fresh
+session`. The agent's first turn of that dispatch re-reads `member.json` and its inputs, as after a
+restart, and spends no rung.
+
 `push` delivers one commit and its history: the one `--commit` names, or HEAD. Before anything
 travels, it holds what the push would newly deliver against the paths the profile withholds from
 that agent (`repos[].withhold`, under **Configuration**). What it would newly deliver is every
@@ -822,6 +867,8 @@ files alone. Every mark's colour is a design token from one palette map
 | dot | `--color-warning` | continue |
 | dot | `--color-cat-8-mid` | restart re-anchor |
 | dot | `--color-cat-6-mid` | resume: the same session carried on after its provider refused a turn, no rung spent |
+| dot | `--color-cat-7` | hand-off: a fresh session started on the node's own handoff, no rung spent |
+| dot | `--color-cat-10` | asked to commit: a hand-off not taken, the same session asked to commit its work first, no rung spent |
 | dot | `--color-success` | reply, phase `done` |
 | dot | `--color-error` | reply, phase `blocked` or `needs-input` |
 | dot, haloed | `--color-link` with a `--color-accent-bg` halo | the mission verdict; `--color-severe` with a `--color-severe-bg` halo when the campaign was not met |
@@ -1187,13 +1234,38 @@ set.
 | `settlingSeconds` | 300 | Grace after any send before a driverless node counts as stopped. |
 | `providerWaitSeconds` | 3600 | How long one dispatch may sit behind a provider's refusals, or behind turn launches that fail, before the node is `node-stuck`. |
 | `stallSeconds` | 180 for agents, 1800 for the orchestrator | The turn driver's own idle threshold. |
+| `handoffTokens` | none | The context line a member hands off at; off when unset. Per seat. |
+| `handoffs` | 10 when any seat has a line, else absent | Rapid hand-offs in a row one dispatch may take before the node is `node-stuck`. An explicit value is kept. |
+| `rapidHandoffSeconds` | 300 when any seat has a line, else absent | The window that makes a hand-off rapid: its session began on a `.handoff` or `.commit` message less than this long before it. An explicit value is kept. |
+| `freshPerDispatch` | off | A switch, per agent: each dispatch that opens on the agent starts it in a fresh session. |
 
-`stallSeconds` is the one number resolved per seat, which is how the orchestrator gets a longer
-threshold than the agents. A member's own `policy:` block sets it for that member, else
+`stallSeconds` and `handoffTokens` are the two numbers resolved per seat. The first is how the
+orchestrator gets a longer threshold than the agents. A member's own `policy:` block sets it for that member, else
 `defaults.policy.stallSeconds` for the campaign, else the compiled-in default for that role. The
 resolved value is recorded on that member and delivered to its turn driver through the sandbox
 environment. `validate` refuses any other number in a member's `policy:` block, naming it: those
 belong under `defaults.policy`, which is where the dispatch machine reads them.
+
+`handoffTokens` resolves in the same order, without the last step, and reaches the member the same
+way. It has no compiled-in default, so a seat whose profile names none has no line. Every other
+number in the table, `handoffs` and `rapidHandoffSeconds` included, governs the whole campaign.
+
+`freshPerDispatch` is per seat too. Set `policy: {freshPerDispatch: true}` on an agent, or under
+`defaults.policy` for every agent. It is on for an agent when either sets it. A send that opens a
+dispatch on the agent ends its session and forgets it, and the dispatch starts in a fresh session.
+That session re-reads `member.json` and every input before the dispatch, as after a restart, and
+reads no handoff. No rung is spent. The agent's orientation gains a section, **Each dispatch in a
+fresh session**. It says to commit before replying, and to write what a later dispatch needs to a
+file in the output channel. The switch is recorded on the member and in the orchestrator's
+`manifest.json`, only when on.
+
+The orchestrator never has it, because its one dispatch is the mission. `validate` refuses it in
+`orchestrator.policy`:
+
+```console
+$ cs-campaign validate acme/profile.yaml
+cs-campaign: orchestrator: policy.freshPerDispatch acts on an agent's dispatches, and the orchestrator holds one, the mission; set it on an agent, or under defaults.policy for every agent
+```
 
 `CS_CAMPAIGN_POLL_SECONDS` overrides `pollSeconds` at the wait itself, for the host and for every
 member. It is not profile configuration, and it never reaches the campaign record. The campaign ID is the
@@ -1224,6 +1296,97 @@ The campaign record keeps every create attempt, with when it started and the dea
 `observe` prints the live deadline above its two panes, and after a resume names the attempt
 that moved it and the deadlines it replaced. `ls` adds the attempt to its `DEADLINE` column once
 there has been more than one.
+
+### Hand-offs
+
+A long turn fills a member's context, and its CLI then compacts the conversation by itself. A
+compaction keeps a summary the CLI chose. A seat with a hand-off line stops before that point
+instead, writes down what it needs, and carries on in a fresh session that reads it.
+
+The line is `handoffTokens`, in a member's own `policy:` block or under `defaults.policy`. A seat
+with no line runs exactly as it did before lines existed, and its orientation is unchanged. A seat
+with one gets three more sections in its orientation. They say how to run long work so that nothing
+is lost at a hand-off, what a handoff holds, and how to start fresh from one. `cs-campaign
+orientation` prints them. They tell the member never to ration its context, and to use its CLI's
+own sub-agents rather than a second CLI session. They tell it to commit before it writes the
+handoff, and to re-read only what the handoff names. They also tell it to trust git over the
+handoff.
+
+Nothing the member reads states its line or its reading. A member that knows how far it is from
+its line rations its context against it, and cuts work short to stay under. `observe` shows both to
+you.
+
+`create` delivers the line to the member's machine as `CS_HANDOFF_TOKENS`, through the sandbox
+environment. Beside it go `CS_HANDOFF_FILE`, which is `~/.local/share/cs-campaign/output/handoff.md`,
+and `CS_HANDOFF_ASK`, the sentence the member is asked with. The sentence states no number:
+
+```text
+[context] Your context is full. Hand off now, as your orientation describes under the heading When you are asked to hand off, then end your turn.
+```
+
+A Claude Code seat also gets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`. A sub-agent left running in
+the background ends with the session a hand-off replaces.
+
+Once the context is over the line, the member's next tool result asks it to hand off and end its
+turn. It writes the handoff with its own tools. Its turn driver records that ending with class
+`handoff`, and the node reads `node-stopped` with a fresh session as its next move. The old session
+is ended and forgotten, as for a restart, once the check below passes. The new one reads a
+`.handoff` message, such as `d007.003.handoff.md`. It points the session at `member.json` and its
+inputs, every message of the open dispatch, the orchestrator's log for the orchestrator, and then
+the handoff.
+
+**A hand-off is taken only when the work and the handoff agree.** Before the old session is ended,
+a check runs on the member's machine. The handoff file must exist. Every repository the member
+holds must show nothing in `git status --porcelain`, so an untracked file counts unless git ignores
+it. A repository whose HEAD has moved from its base must have that commit named in the handoff by
+its hash. The check searches the handoff for the hash's first seven characters.
+
+When any of this fails, the old session is kept. It reads a `.commit` message, such as
+`d007.005.commit.md`, which lists what is missing. The message asks it to commit its work, to put a
+file that is not work in the repository's `.git/info/exclude`, and to write the handoff again
+naming each commit. The member ends its turn once that is done. A `.commit` message spends no rung. The member's machine
+asks a kept session again in a later turn while it is still over its line, so the turn that commits
+ends as a hand-off too. A check that cannot run is an error, and the move is tried again at the
+next look.
+
+Each version of the handoff is kept. Before the old session is ended, the handoff is copied to
+`~/.local/share/cs-campaign/output/handoffs/<dispatch>-<n>.md`, where `n` counts that dispatch's
+hand-offs from 1. A fresh session never reads these copies, and `archive` collects them.
+
+A hand-off spends no rung. The orchestrator's `wait` performs it for an agent. When the check
+fails, `wait` prints a line such as this one:
+
+```text
+kept backend's session on d003: its work and its handoff do not agree (~/product has work not committed (2 paths, the first notes.md)); asked it to commit first, no rung spent
+```
+
+For the orchestrator it is the host's move, and `cs-campaign resume` performs it, with the lines
+under **resume**. During `create`, the host waits on each member's readback and
+performs a hand-off there itself, with the same check. Once every readback has passed, the host
+ends the readback session of each agent with a line. The orchestrator's `wait` starts that agent's
+first dispatch in a new session, and a readback session left running would leave that one with no
+line. A turn the provider refused is never a hand-off, and a turn that ends any other way is read
+as what it was.
+
+A line below what a fresh session costs would hand off forever, and two guards stop it. A session
+whose first reading is already over the line is never asked, and `observe` says so beside the
+reading. `handoffs` bounds the rapid hand-offs in a row on one dispatch, and past it the node is
+`node-stuck`. A hand-off is rapid when the session that made it began on a `.handoff` or `.commit`
+message less than `rapidHandoffSeconds` before it. A dispatch's first session is never rapid, and a
+session that works longer ends the run. So a long dispatch, such as the orchestrator's mission,
+hands off as often as its work needs. Both numbers are recorded only when some seat has a line, as
+10 and 300 unless the profile names them.
+
+The hand-off after a `.commit` message counts in the same run. The turn that message starts is
+short, so its hand-off is rapid. A member that keeps handing off with its work uncommitted ends
+`node-stuck` too, and its line in `observe` counts the asks in the run:
+
+```text
+handed off 10 times in a row, each within 5m of a fresh start, 4 of them after an ask to commit first — hand-off bound tripped
+```
+
+The CLI's own compaction stays on as a safety net. `cs-campaign playbook` says how to size the
+line.
 
 ### Overriding at create
 
@@ -1264,6 +1427,8 @@ Everything else a campaign declares lives in the profile alone.
 | `~/.local/share/cs-campaign/input/` | the member's driver | Dispatch messages. |
 | `~/.local/share/cs-campaign/output/replies/<id>.json` | the member | The reply that closes a dispatch. |
 | `~/.local/share/cs-campaign/output/log.jsonl` | the orchestrator | Its append-only plan, assessment, accept and delivery record. |
+| `~/.local/share/cs-campaign/output/handoff.md` | a member with a hand-off line | What a fresh session of it carries on from. `archive` collects it with the rest of the output channel. |
+| `~/.local/share/cs-campaign/output/handoffs/<dispatch>-<n>.md` | the host or the orchestrator's `wait`, in a member that handed off | The handoff the member wrote before its `n`th hand-off on that dispatch, copied before its session was ended. |
 | `~/.local/bin/cs-campaign-member` | host, in each member | The guest binary. |
 
 ## Environment
@@ -1427,6 +1592,11 @@ was declared.
 
 `cs-campaign playbook` carries the reasoning behind the rules below, and the operator judgement this
 manual does not state.
+
+A `.handoff` message in a member's input channel is not a recovery. The member crossed the context
+line its profile gave it, wrote its handoff and was started fresh on it, as **Hand-offs** under
+**Configuration** describes. A `.commit` message is not one either. The member handed off with its
+work not committed, or with a handoff that did not name its commit, and was kept to fix that.
 
 **Never type into a live session.** Keystrokes land in the member's terminal interface. Observe with
 read-only probes: `observe`, transcript growth, `git log` on the member's branch.

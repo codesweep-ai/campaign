@@ -8,8 +8,11 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -570,5 +573,479 @@ func TestTheDocumentedPacketDigestsAreTheOnesCreateRecords(t *testing.T) {
 				t.Errorf("%s: create records %s as %s, and the page shows %q", m.Name, name, digest, shown)
 			}
 		}
+	}
+}
+
+// MANUAL.md quotes an observe line that carries the node's context reading, and
+// SPEC.md says the reading decides no state. An operator reads the note to see
+// a compaction coming, so the quoted line has to be the one Compute prints, and
+// the reading must leave the state where it was.
+func TestTheDocumentedContextNoteIsOnTheLine(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const line = "open 4210s · 1 cont, 0 restarts · context 142k · compacted 2 times, last 38m ago"
+	for doc, want := range map[string]string{
+		"MANUAL.md": line,
+		"SPEC.md":   "That report **MUST NOT** decide a state or a ladder move.",
+	} {
+		body, err := os.ReadFile(filepath.Join(root, doc))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Prose is wrapped where its lines happen to fall, so compare words.
+		if !strings.Contains(strings.Join(strings.Fields(string(body)), " "), want) {
+			t.Errorf("%s no longer carries %q", doc, want)
+		}
+	}
+	now := int64(1_700_000_000)
+	facts := protocol.Facts{
+		Msgs: []protocol.Msg{
+			{ID: "m1", MTime: now - 4210, Name: "m1.md"},
+			{ID: "m1", Seq: 1, MTime: now - 3000, Name: "m1.001.md"},
+		},
+		Replies: map[string]bool{},
+		Drivers: 1,
+		Context: &protocol.ContextReading{Tokens: 142_000, Compactions: 2, Compacted: now - 38*60},
+	}
+	o := protocol.Compute(facts, false, protocol.Blind{}, map[string]bool{}, protocol.Policy{}, now)
+	if o.State != protocol.StateWorking {
+		t.Fatalf("a context reading must not move the state: %+v", o)
+	}
+	if o.Detail != line {
+		t.Errorf("the working line reads %q, and MANUAL.md quotes %q", o.Detail, line)
+	}
+}
+
+// docWords reads one document from the tree with its whitespace collapsed,
+// because prose is wrapped where its lines happen to fall.
+func docWords(t *testing.T, root, doc string) string {
+	t.Helper()
+	body, err := os.ReadFile(filepath.Join(root, doc))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.Join(strings.Fields(string(body)), " ")
+}
+
+// MANUAL.md quotes the sentence a member is asked to hand off with, and says it
+// states no number. SPEC.md R146 holds the same of everything a member reads,
+// because a member that knows how far it is from its line rations its context
+// against it. So the quote has to be the ask, the ask has to carry no figure,
+// and a lined seat's orientation must state its line in no spelling while it
+// says what R146 asks it to say instead.
+func TestTheDocumentedAskStatesNoNumber(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for doc, want := range map[string]string{
+		"MANUAL.md": handoffAsk,
+		"SPEC.md":   "**R146.** What a member reads **MUST NOT** state its context line or its context reading.",
+	} {
+		if !strings.Contains(docWords(t, root, doc), want) {
+			t.Errorf("%s no longer carries %q", doc, want)
+		}
+	}
+	if strings.ContainsAny(handoffAsk, "0123456789{}") {
+		t.Errorf("the ask states a number, or keeps a placeholder for one: %s", handoffAsk)
+	}
+	run := &model.Campaign{Name: "acme", Members: []model.Member{
+		{Name: "orchestrator", Role: "orchestrator", CLI: "claude", HandoffTokens: 61_234},
+		{Name: "dev", Role: "agent", CLI: "claude", HandoffTokens: 61_234},
+	}}
+	for _, member := range run.Members {
+		text, _, err := buildOrientation(run, member, campaignInputs{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, figure := range []string{"61234", "61,234", "61k", "61.2k"} {
+			if strings.Contains(text, figure) {
+				t.Errorf("%s's orientation states its line as %q", member.Name, figure)
+			}
+		}
+		flat := strings.Join(strings.Fields(text), " ")
+		for _, want := range []string{"never ration your context", "commit your work on your branch", "trust git"} {
+			if !strings.Contains(flat, want) {
+				t.Errorf("%s's orientation no longer says %q, which SPEC.md R146 asks of a lined seat", member.Name, want)
+			}
+		}
+	}
+}
+
+// MANUAL.md and SPEC.md name the message a member reads when its hand-off was
+// not taken, and MANUAL.md quotes what that message lists and what the check
+// reads. An operator goes by the name in a member's input channel, and by the
+// sentence in `wait`'s and `resume`'s lines, so each has to be what the code
+// writes.
+func TestTheDocumentedCommitAskIsTheOneSent(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	manual := docWords(t, root, "MANUAL.md")
+	for doc, body := range map[string]string{"MANUAL.md": manual, "SPEC.md": docWords(t, root, "SPEC.md")} {
+		if !strings.Contains(body, "`d007.005.commit.md`") {
+			t.Errorf("%s no longer names the .commit message `d007.005.commit.md`", doc)
+		}
+	}
+	var msgs []protocol.Msg
+	for i, name := range []string{"d007.md", "d007.001.md", "d007.002.restart.md", "d007.003.resume.md", "d007.004.handoff.md"} {
+		m, ok := protocol.ParseMsgName(name, int64(100*(i+1)))
+		if !ok {
+			t.Fatalf("%s is not read as a message", name)
+		}
+		msgs = append(msgs, m)
+	}
+	if got := protocol.NextCommitName(msgs, "d007"); got != "d007.005.commit.md" {
+		t.Errorf("the documents name d007.005.commit.md, and the code mints %s", got)
+	}
+	if m, ok := protocol.ParseMsgName("d007.005.commit.md", 600); !ok || !m.Commit {
+		t.Errorf("d007.005.commit.md is not read as a commit ask: %+v", m)
+	}
+	const dirty = "~/product has work not committed (2 paths, the first notes.md)"
+	if got := protocol.ParseHandoffCheck("DIRTY\tproduct\t2\tnotes.md\n"); len(got) != 1 || got[0] != dirty {
+		t.Fatalf("MANUAL.md quotes %q, and the check reads as %q", dirty, got)
+	}
+	body := protocol.CommitBody("d007", []string{dirty})
+	for _, want := range []string{dirty, ".git/info/exclude", "No rung is spent."} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the .commit message does not say %q, which MANUAL.md promises:\n%s", want, body)
+		}
+	}
+	script := protocol.HandoffCheckScript(map[string]string{"product": "0123456789abcdef"})
+	for want, said := range map[string]string{
+		"git -C \"$d\" status --porcelain": "`git status --porcelain`",
+		"printf %.7s":                      "the hash's first seven characters",
+	} {
+		if !strings.Contains(script, want) {
+			t.Errorf("MANUAL.md says the check reads %s, and the script has no %q", said, want)
+		}
+		if !strings.Contains(manual, said) {
+			t.Errorf("MANUAL.md no longer carries %q", said)
+		}
+	}
+}
+
+// MANUAL.md quotes what `resume` prints when it keeps the orchestrator's
+// session, and tells the operator to run it again at the next `fresh session
+// next`. This runs the host's move against a member whose check finds work not
+// committed. The lines are the quoted ones, the session is carried on rather
+// than ended, and the message it reads is a .commit one.
+func TestTheDocumentedKeptSessionLinesAreWhatResumePrints(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	calls, remote := filepath.Join(dir, "calls"), filepath.Join(dir, "remote")
+	now := time.Now().Unix()
+	probe := fmt.Sprintf(`MSG %d m1.md\nDRIVERS 0\nAGENT idle\nTURNEND %d 0 handoff - context full\n`, now-700, now-5)
+	sandbox := filepath.Join(dir, "fake-sandbox")
+	fake := "#!/bin/sh\ncase \"$5\" in\n" +
+		"  *DRIVERS*) printf '" + probe + "' ;;\n" +
+		"  *NOHANDOFF*) printf 'DIRTY\\tproduct\\t2\\tnotes.md\\n' ;;\n" +
+		"  *) echo \"$5\" >> " + calls + "; cat > /dev/null ;;\nesac\n"
+	if err := os.WriteFile(sandbox, []byte(fake), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	orch := model.Member{Name: "orchestrator", Role: "orchestrator", CLI: "claude", Sandbox: "box", Ref: "orch.g", Session: model.Session{Name: "camp-orch"}}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	sessions := filepath.Join(home, ".cs-claude-remote-sessions")
+	if err := os.MkdirAll(sessions, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sessions, orch.Session.Name), []byte("live\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	bin := t.TempDir()
+	for _, tool := range []string{"cs-claude-remote", "cs-claude-remote-forget"} {
+		stub := "#!/bin/sh\necho \"" + tool + " $*\" >> " + remote + "\n"
+		if err := os.WriteFile(filepath.Join(bin, tool), []byte(stub), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+"/usr/bin"+string(os.PathListSeparator)+"/bin")
+	a := &app{store: store.Store{Dir: filepath.Join(dir, "state")}, sandbox: sandboxCLI{Bin: sandbox}}
+	pol := protocol.Policy{ContinueAttempts: 2, Restarts: 1, ElapsedSeconds: 100_000, ProviderWaitSeconds: 3600, BlindProbes: 1, PollSeconds: 1, SettlingSeconds: 1, Handoffs: 10}
+
+	said, err := a.hostResumeOrchestrator(t.Context(), orch, pol)
+	if err != nil {
+		t.Fatalf("resume: %v", err)
+	}
+	want := "kept the orchestrator's session: its work and its handoff do not agree (~/product has work not committed (2 paths, the first notes.md))\n" +
+		"m1 carried on in the same session, asked to commit first, no rung spent; resume again when observe says fresh session next"
+	if said != want {
+		t.Errorf("resume said %q, and MANUAL.md quotes %q", said, want)
+	}
+	manual := docWords(t, root, "MANUAL.md")
+	for line := range strings.SplitSeq(want, "\n") {
+		if !strings.Contains(manual, line) {
+			t.Errorf("MANUAL.md no longer quotes %q", line)
+		}
+	}
+	// A file nothing wrote reads as empty, which fails the checks below.
+	sent, _ := os.ReadFile(calls)
+	if !strings.Contains(string(sent), "m1.001.commit.md") {
+		t.Errorf("the kept session must read m1.001.commit.md; the host wrote:\n%s", sent)
+	}
+	ranBytes, _ := os.ReadFile(remote)
+	ran := string(ranBytes)
+	if strings.Contains(ran, "--kill") || strings.Contains(ran, "-forget") || !strings.Contains(ran, "--resume "+orch.Session.Name) {
+		t.Errorf("a kept session is carried on, never ended:\n%s", ran)
+	}
+}
+
+// handedOffAt observes dispatch id under pol. Its first session worked first
+// seconds, and each later one began on a message of the kind given, 5s after
+// the hand-off before it, and worked secs before it handed off too. The look
+// is 10s after the newest hand-off.
+func handedOffAt(t *testing.T, pol protocol.Policy, id string, first, secs int64, kinds ...string) protocol.Observation {
+	t.Helper()
+	at := int64(1_700_000_000)
+	msgs := []protocol.Msg{{ID: id, MTime: at, Name: id + ".md"}}
+	at += first
+	ends := []protocol.TurnEnd{{At: at, Class: protocol.ClassHandoff}}
+	for i, kind := range kinds {
+		at += 5
+		name := fmt.Sprintf("%s.%03d.%s.md", id, i+1, kind)
+		m, ok := protocol.ParseMsgName(name, at)
+		if !ok {
+			t.Fatalf("%s is not read as a message", name)
+		}
+		msgs = append(msgs, m)
+		at += secs
+		ends = append(ends, protocol.TurnEnd{At: at, Class: protocol.ClassHandoff})
+	}
+	facts := protocol.Facts{Msgs: msgs, Replies: map[string]bool{}, Agent: "idle", TurnEnds: ends}
+	return protocol.Compute(facts, false, protocol.Blind{}, map[string]bool{}, pol, at+10)
+}
+
+// lineBoundPolicy is the policy of a campaign with a line, as create records
+// it, with every other bound out of reach.
+var lineBoundPolicy = protocol.Policy{ContinueAttempts: 2, Restarts: 1, ElapsedSeconds: 100_000, ProviderWaitSeconds: 3600,
+	BlindProbes: 1, PollSeconds: 1, SettlingSeconds: 1}.WithHandoffBound(true)
+
+// MANUAL.md quotes the observe line of a member that keeps handing off with
+// its work not committed, and the count a pending hand-off carries once one was
+// not taken. SPEC.md R142 bounds the rapid hand-offs in a row, and R144 counts
+// the rapid hand-off of a kept session among them. Both quotes have to be
+// what Compute prints for sessions that each handed off a minute in.
+func TestTheDocumentedCommitCountsAreOnTheLine(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const stuck = "handed off 10 times in a row, each within 5m of a fresh start, 4 of them after an ask to commit first — hand-off bound tripped"
+	const pending = "2 hand-offs, 1 asked to commit"
+	manual := docWords(t, root, "MANUAL.md")
+	for _, want := range []string{stuck, pending} {
+		if !strings.Contains(manual, want) {
+			t.Errorf("MANUAL.md no longer carries %q", want)
+		}
+	}
+	spec := docWords(t, root, "SPEC.md")
+	for _, want := range []string{
+		"The rapid hand-offs in a row at the tail of one dispatch **MUST** be bounded by `handoffs`.",
+		"The hand-off its turn ends in counts against `handoffs` when it is rapid, as any other does (R142).",
+	} {
+		if !strings.Contains(spec, want) {
+			t.Errorf("SPEC.md no longer says %q", want)
+		}
+	}
+	kinds := append(slices.Repeat([]string{"handoff", "commit"}, 4), "handoff", "handoff")
+	if o := handedOffAt(t, lineBoundPolicy, "d003", 3600, 60, kinds...); o.State != protocol.StateStuck || !strings.HasPrefix(o.Detail, stuck) {
+		t.Errorf("six rapid hand-offs and four rapid commit asks read %s (%s); MANUAL.md quotes %q", o.State, o.Detail, stuck)
+	}
+	if o := handedOffAt(t, lineBoundPolicy, "d003", 3600, 60, "handoff", "commit", "handoff"); o.State != protocol.StateStopped || o.NextMove != "handoff" || !strings.Contains(o.Detail, pending) {
+		t.Errorf("a pending hand-off after one ask reads %s (%s); MANUAL.md quotes %q", o.State, o.Detail, pending)
+	}
+}
+
+// The documents say the hand-off bound counts only rapid hand-offs in a row,
+// give its two numbers, and say what a long mission and a member that never
+// commits do against it. Each claim is held to what create records and what
+// Compute prints.
+func TestTheDocumentedHandoffBoundCountsOnlyRapidHandoffs(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	says := func(doc string, sentences ...string) {
+		t.Helper()
+		words := docWords(t, root, doc)
+		for _, want := range sentences {
+			if !strings.Contains(words, want) {
+				t.Errorf("%s no longer says %q", doc, want)
+			}
+		}
+	}
+
+	// The numbers: recorded only with a line, as 10 and 300.
+	rows := []string{"| `handoffs` | 10 when any seat has a line, else absent |", "| `rapidHandoffSeconds` | 300 when any seat has a line, else absent |"}
+	says("MANUAL.md", append(rows, "Both numbers are recorded only when some seat has a line, as 10 and 300 unless the profile names them.")...)
+	says("SPEC.md", append(rows, "When any seat has a line, `handoffs` defaults to 10 and `rapidHandoffSeconds` to 300, and an explicit value of either is kept.")...)
+	resolved := protocol.Policy{}.Resolve()
+	if got := resolved.WithHandoffBound(true); got.Handoffs != 10 || got.RapidHandoffSeconds != 300 {
+		t.Errorf("a campaign with a line records handoffs %d and rapidHandoffSeconds %d; the documents say 10 and 300", got.Handoffs, got.RapidHandoffSeconds)
+	}
+	if got := resolved.WithHandoffBound(false); got.Handoffs != 0 || got.RapidHandoffSeconds != 0 {
+		t.Errorf("a campaign with no line records handoffs %d and rapidHandoffSeconds %d; the documents say neither", got.Handoffs, got.RapidHandoffSeconds)
+	}
+
+	// A long mission: fifteen hand-offs, each after twenty minutes of work.
+	says("MANUAL.md", "So a long dispatch, such as the orchestrator's mission, hands off as often as its work needs.")
+	says("PROTOCOL.md", "So a long dispatch hands off as often as its work needs.")
+	says("PLAYBOOK.md", "A long mission's hand-offs each follow a session's work, so they do not count.")
+	if o := handedOffAt(t, lineBoundPolicy, "m1", 1200, 1200, slices.Repeat([]string{"handoff"}, 15)...); o.State != protocol.StateStopped || o.NextMove != "handoff" {
+		t.Errorf("a mission of fifteen long sessions reads %s (%s); the documents say it hands off as often as it needs", o.State, o.Detail)
+	}
+
+	// A dispatch's first session: at a bound of one, its quick hand-off moves.
+	says("MANUAL.md", "A dispatch's first session is never rapid, and a session that works longer ends the run.")
+	says("SPEC.md", "A dispatch's first session began on neither, so its hand-off is never rapid.")
+	one := lineBoundPolicy
+	one.Handoffs = 1
+	if o := handedOffAt(t, one, "d003", 30, 0); o.State != protocol.StateStopped || o.NextMove != "handoff" {
+		t.Errorf("a first session that handed off 30s in reads %s (%s) at a bound of one; the documents say it is never rapid", o.State, o.Detail)
+	}
+
+	// A member that never commits is asked on every hand-off.
+	says("PLAYBOOK.md", "A seat that never commits is asked again on every hand-off, and each ask's turn is rapid, so it still trips the `handoffs` bound.")
+	says("PROTOCOL.md", "A node that never commits what its handoff describes is asked again at every hand-off. Each ask's turn is rapid, so that node ends there too.")
+	if o := handedOffAt(t, lineBoundPolicy, "d003", 1200, 30, slices.Repeat([]string{"commit"}, 10)...); o.State != protocol.StateStuck ||
+		!strings.Contains(o.Detail, "10 of them after an ask to commit first — hand-off bound tripped") {
+		t.Errorf("ten asks in a row read %s (%s); the documents say they trip the bound", o.State, o.Detail)
+	}
+}
+
+// keptAgentLine is the line the guest's `wait` prints when it keeps an agent's
+// session, as MANUAL.md quotes it.
+const keptAgentLine = "kept %s's session on %s: its work and its handoff do not agree (%s); asked it to commit first, no rung spent"
+
+// MANUAL.md quotes two lines the guest binary prints: `send`'s receipt for a
+// dispatch opened in a fresh session, and `wait`'s line when it keeps an
+// agent's session. The guest is its own package, so its lines are held here by
+// their text in its source. The send line must still hold the receipt
+// `<member>/dNNN opened`, which the viewer joins a trace on.
+func TestTheDocumentedGuestLinesAreTheOnesItPrints(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := os.ReadFile(filepath.Join(root, "cmd", "cs-campaign-member", "dispatcher.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`line += " opened"`, `line += " in a fresh session"`, `"` + keptAgentLine + `"`} {
+		if !strings.Contains(string(src), want) {
+			t.Errorf("the guest no longer prints %s, which MANUAL.md quotes", want)
+		}
+	}
+	manual := docWords(t, root, "MANUAL.md")
+	const sent = "backend/d004 opened in a fresh session"
+	if !strings.Contains(manual, "`"+sent+"`") || !strings.HasPrefix(sent, "backend/d004 opened") ||
+		!strings.Contains(manual, "`<member>/dNNN opened` from `send`") {
+		t.Errorf("MANUAL.md no longer quotes %q beside the receipt the viewer joins on", sent)
+	}
+	kept := fmt.Sprintf(keptAgentLine, "backend", "d003", "~/product has work not committed (2 paths, the first notes.md)")
+	if !strings.Contains(manual, kept) {
+		t.Errorf("MANUAL.md no longer quotes %q", kept)
+	}
+}
+
+// MANUAL.md quotes the refusal `validate` prints for freshPerDispatch on the
+// orchestrator, and says the switch is on for an agent when its own policy or
+// defaults.policy sets it. SPEC.md R145 says the orchestrator never has it, so
+// a default under defaults.policy must not reach it either.
+func TestTheDocumentedFreshPerDispatchIsWhatValidateAndCreateDo(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := profileFromFlags("codex", []string{"backend=codex", "qa=codex"}, "", 0, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Orchestrator.Policy.FreshPerDispatch = true
+	refused := validateProfile(p)
+	if refused == nil {
+		t.Fatal("validate must refuse freshPerDispatch on the orchestrator")
+	}
+	if !strings.Contains(docWords(t, root, "MANUAL.md"), "cs-campaign: "+refused.Error()) {
+		t.Errorf("MANUAL.md does not quote the refusal as validate prints it: %v", refused)
+	}
+	if !strings.Contains(docWords(t, root, "SPEC.md"), "`validate` **MUST** refuse the switch on the orchestrator") {
+		t.Error("SPEC.md R145 no longer says validate refuses the switch on the orchestrator")
+	}
+	p.Orchestrator.Policy.FreshPerDispatch = false
+	backend := p.Agents["backend"]
+	backend.Policy.FreshPerDispatch = true
+	p.Agents["backend"] = backend
+	fresh := func() map[string]bool {
+		if err := validateProfile(p); err != nil {
+			t.Fatalf("an agent may have freshPerDispatch, on its own or by default: %v", err)
+		}
+		got := map[string]bool{}
+		for _, m := range buildCampaign("acme", p, "", "", time.Unix(1_800_000_000, 0)).Members {
+			got[m.Name] = m.FreshPerDispatch
+		}
+		return got
+	}
+	if got := fresh(); !got["backend"] || got["qa"] || got["orchestrator"] {
+		t.Errorf("an agent's own switch must reach that agent alone: %v", got)
+	}
+	p.Defaults.Policy.FreshPerDispatch = true
+	if got := fresh(); !got["backend"] || !got["qa"] || got["orchestrator"] {
+		t.Errorf("defaults.policy must reach every agent and never the orchestrator: %v", got)
+	}
+}
+
+// A comment that cites a SPEC.md rule sends its reader to that rule. A rule
+// cited before it is written, or after it is renumbered, sends them nowhere.
+// cs-lint refs holds section citations, and this holds rule citations.
+func TestEverySpecRuleTheSourceCitesIsWritten(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, err := os.ReadFile(filepath.Join(root, "SPEC.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cite := regexp.MustCompile(`SPEC\.md,? (R[0-9]+[a-z]?)\b`)
+	seen := 0
+	for _, dir := range []string{"internal", "cmd", "dispatch-viewer"} {
+		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() && d.Name() == "node_modules" {
+				return filepath.SkipDir
+			}
+			if d.IsDir() || !strings.HasSuffix(path, ".go") {
+				return nil
+			}
+			body, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			for _, m := range cite.FindAllStringSubmatch(string(body), -1) {
+				seen++
+				if !bytes.Contains(spec, []byte("**"+m[1]+".**")) {
+					rel, _ := filepath.Rel(root, path)
+					t.Errorf("%s cites SPEC.md %s, which SPEC.md does not write", rel, m[1])
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if seen == 0 {
+		t.Fatal("the source cites no SPEC.md rule, so this test proves nothing")
 	}
 }

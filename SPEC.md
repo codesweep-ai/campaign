@@ -499,6 +499,14 @@ own, so a node can read `node-stopped` while it works. The record's age lets an 
 It is output, and output is the wrong measure of silent work. A long model call or a long tool call
 leaves the record still.*
 
+An observation **SHOULD** also report how full the node's conversation is. Its family's turn driver
+reads that from the node's own session record. The report gives the context the latest model call
+carried, the window when the CLI records one, and the number of compactions. That report **MUST
+NOT** decide a state or a ladder move. *A CLI compacts a long conversation by itself, and an
+orchestrator on a long mission does so several times. A compaction is the CLI's own act and not a
+failure. The reading lets an operator see one coming, and it is the measure a member's handoff is
+timed against.*
+
 Take an orchestrator on its mission whose turn driver is absent and whose agent answers that it is
 idle. Once its session record has been still for longer than one `wait` chunk (R126) plus the
 settling window, it **MUST** read `node-stuck`, and the line **MUST** say why. *The age is read only where two
@@ -566,6 +574,73 @@ orchestrator's log that it reported the node, and a later `wait` names the node 
 for it. *This is R125's fault again, in the other state. A stuck node never clears, so every later
 `wait` returned on its first look and the orchestrator could not block for the rest of the
 campaign.*
+
+**R141.** A node **MAY** be given a context line, past which its own machine asks it to write a
+handoff and end its turn. A turn end of class `handoff` **MUST** be read as a hand-off, and only when
+it is newer than the node's newest message (R128). A turn the provider refused **MUST NOT** be read
+as one, and a turn that ended any other way is what it was. The move **MUST** be a fresh session.
+The old session is ended and forgotten, as for a restart. The new one reads a `.handoff` message
+that re-anchors it by mechanical replay and ends at the node's handoff. That message **MUST NOT**
+spend a rung, and **MUST** be counted apart from continues, restarts and resumes. The dispatcher's
+`wait` performs the move for an agent, and the host performs it for the orchestrator (R78a). Once
+every readback at create has passed, the host **MUST** end the readback session of each agent with
+a line. *The node did what it was asked, so a rung would charge it for the line. A compaction keeps
+a summary the CLI chose. A handoff keeps what the node says it needs to carry on. The orchestrator
+starts an agent's first dispatch in a new session. A readback still running beside it reads to the
+member's machine as the driven one, and every later turn would run with no line.*
+
+**R142.** The rapid hand-offs in a row at the tail of one dispatch **MUST** be bounded by
+`handoffs`. A hand-off is rapid when the session that made it began on a `.handoff` message, or on a
+`.commit` message (R144), less than `rapidHandoffSeconds` before it. A dispatch's first session
+began on neither, so its hand-off is never rapid. A session that works longer ends the run. Each
+session before the latest ends at its own hand-off in the turn log. Past the log's reach it ends at
+the next message, so it can read longer and never shorter. Past the bound the node is `node-stuck`.
+Its line in `observe` names the run and the window, and counts the commit asks in the run when there
+were any. When any seat has a line, `handoffs` defaults to 10 and `rapidHandoffSeconds` to 300, and
+an explicit value of either is kept. A campaign with no line **MUST NOT** record either. A session
+whose first context reading is already over its line **MUST NOT** be asked to hand off, and its
+reading **MUST** report that floor. *A line below what a fresh session costs is crossed on the first
+call of every session, so the node would hand off soon after every fresh start, forever. The floor
+guard catches that on the node's own machine. The bound is the backstop a dispatcher counts from the
+messages and the turn log, and it also stops a node that never commits. It counts only rapid
+hand-offs, because the orchestrator's whole mission is one dispatch. A long mission hands off many
+times, and each of its sessions does a session's work.*
+
+**R143.** Every handoff a member writes **MUST** be kept in its output channel as
+`handoffs/<dispatch>-<n>.md`, where `n` is the ordinal of the hand-off on that dispatch, counted
+from 1. The copy **MUST** be made before the session that wrote it is ended. A failed copy **MUST**
+be reported and **MUST NOT** stop the hand-off. A fresh session **MUST NOT** be pointed at the
+copies. *Each session rewrites the handoff, so without the copies the archive holds only the last
+one. The copies are a record for a reader, and pointing a session at them would grow the cost of
+every fresh start.*
+
+**R144.** A hand-off **MUST** be taken only when the node's work and its handoff agree. Before the
+old session is ended, a check on the node's own machine **MUST** find three things. The handoff
+exists. No repository the node holds has work uncommitted, an untracked file included unless git
+ignores it. Each repository whose HEAD has left its base is at a commit the handoff names by its
+hash. When any is missing, the old session **MUST** be kept and sent a `.commit` message. That
+message lists what is missing, and asks the node to commit and write its handoff again. It **MUST
+NOT** spend a rung. The hand-off its turn ends in counts against `handoffs` when it is rapid, as any
+other does (R142). A check that cannot run **MUST NOT** pass, and the move is tried again at the
+next look. *A fresh session starts from its handoff and from git. Uncommitted work stays on the
+disk, but a fresh session cannot tell what it was or whether it is finished. Only the session that
+did it knows.*
+
+**R145.** An agent **MAY** start each dispatch in a fresh session, through `freshPerDispatch`. When
+a send opens a dispatch on such an agent, its session **MUST** be ended and forgotten after the
+message is written and before the turn starts. A session still in a turn after its reply is ended
+too. The turn **MUST** then start as a first turn does. It re-anchors the agent on its member
+document and every input, then on the dispatch, as a restart does. It **MUST NOT** spend a rung,
+and no handoff is read. An agent without the switch **MUST NOT** lose its session to a new dispatch,
+and its orientation **MUST NOT** change. `validate` **MUST** refuse the switch on the orchestrator,
+whose one dispatch is the mission. *An agent whose dispatches share little gains nothing from a
+session that remembers them, and every later turn pays for the context that session carries.*
+
+**R146.** What a member reads **MUST NOT** state its context line or its context reading. That
+covers its orientation and the ask its machine sends at the line. `observe` still shows both to the
+operator (R64). A lined seat's orientation **MUST** instead tell it never to ration its context, to
+commit before it writes a handoff, and to trust git over the handoff. *A member that knows how far
+it is from its line rations its context against it, and cuts work short to stay under.*
 
 **R125.** The dispatcher's blocking `wait` **MUST** return only on a judgment. A judgment is a
 **world event** that needs a decision no code can make: `node-replied` and `node-stuck`, those two
@@ -638,6 +713,8 @@ NOT** become a loop.
 
 **R78a.** `resume` against the orchestrator **MUST** perform only the move the state computation
 derives as a resume: a provider refusal whose wait has elapsed, or a turn that never ran. It
+**MUST** also perform the hand-off move the computation derives for the orchestrator (R141), its
+commit check included (R144). It
 **MUST** refuse every other state by name and send nothing, and it **MUST** refuse an agent. *It is
 the one host instrument a loop may call: its pacing and its bound come from the computation, so a
 caller cannot make refused load return early.*
@@ -930,7 +1007,8 @@ campaign deadline.
 `~/.config/cs-campaign/manifest.json` exists only in the orchestrator. It carries the campaign
 name, the network, and the policy its `wait` loop runs on. One roster row per agent follows, with
 that agent's CLI, bare sandbox name, session name, repositories with branches, base commits,
-snapshots and the paths withheld from it per repository.
+snapshots and the paths withheld from it per repository. The row also carries `freshPerDispatch`
+when the agent has it on (R145).
 
 ### 5.4 Dispatch messages
 
@@ -942,6 +1020,8 @@ Files in a node's input channel, under `~/.local/share/cs-campaign/input/`:
 | `d007.001.md` | its first continuation |
 | `d007.002.restart.md` | a restart re-anchor, counted as a restart rather than a continue |
 | `d007.003.resume.md` | a continuation that spends no rung: the provider refused the last turn, or the turn never ran |
+| `d007.004.handoff.md` | the first message of a fresh session after the node handed off; it re-anchors the session, ends at the node's handoff and spends no rung |
+| `d007.005.commit.md` | a hand-off not taken: the kept session reads what is missing and is asked to commit and write its handoff again; it spends no rung (R144) |
 | `m1.md`, `m1.001.md` | the mission and its continuations |
 
 IDs run `d001` to `d999` per node, so lexical order is chronological order in every listing. The
@@ -1080,12 +1160,28 @@ member document and in the orchestrator's manifest, and every node is computed a
 | `settlingSeconds` | 300 | Grace after any send before a driverless node counts as stopped. |
 | `providerWaitSeconds` | 3600 | How long one dispatch may sit behind a provider's refusals, or behind launches that fail, before the node is `node-stuck`. No rung is spent meanwhile (R129, R132). |
 | `stallSeconds` | 180 for agents, 1800 for the orchestrator | The turn driver's own idle threshold, delivered at create through the sandbox environment. |
+| `handoffTokens` | none | The context line a member hands off at, delivered at create through the sandbox environment. Off when unset (R141). |
+| `handoffs` | 10 when any seat has a line, else absent | Rapid hand-offs in a row one dispatch may take before the node is `node-stuck`. A session that works longer than `rapidHandoffSeconds` ends the run. An explicit value is kept (R142). |
+| `rapidHandoffSeconds` | 300 when any seat has a line, else absent | The window that makes a hand-off rapid. A hand-off is rapid when its session began on a `.handoff` or `.commit` message less than this long before it. An explicit value is kept (R142). |
+| `freshPerDispatch` | off | A switch, per agent. Each dispatch that opens on the agent starts it in a fresh session. The orchestrator never has it (R145). |
 
-`stallSeconds` is the one number resolved per seat, because it is the one number that is not the
-machine's. It belongs to a member's own turn driver, and long quiet means something different for a
+`stallSeconds` and `handoffTokens` are the two numbers resolved per seat, because they are the two
+that are not the machine's. `stallSeconds` belongs to a member's own turn driver, and long quiet means something different for a
 supervisor than for a worker. A member's `policy:` block sets it for that member, `defaults.policy`
 for the campaign, and otherwise the role's compiled-in default applies. The resolved value is
 recorded on that member's record.
+
+`handoffTokens` belongs to the member's own machine, which reads the context against it. It
+resolves the same way, and is recorded the same way, but has no compiled-in default. A line is sized
+from a seat's measured growth, and a seat with none **MUST** run exactly as it did before lines
+existed, its orientation included. The line reaches the machine through the sandbox environment,
+with the path of the handoff file and the sentence the member is asked with. That sentence states
+no number (R146).
+
+`freshPerDispatch` is a switch rather than a number, and it is per seat for the same reason: it
+acts on one agent's sessions. It is on for an agent when the agent's own `policy:` block or
+`defaults.policy` sets it. It is recorded on that member's record and in the orchestrator's roster,
+only when on.
 
 `CS_CAMPAIGN_POLL_SECONDS` overrides `pollSeconds` where the wait sleeps, and nowhere else. It is deliberately
 outside the policy an implementation records. A replay tier needs a shorter interval than a real
@@ -1111,13 +1207,16 @@ only as the `elapsedSeconds` default.
 
 ### 6.2 Resolution order
 
-Each member field, and `stallSeconds`, resolves in this order:
+Each member field, and `stallSeconds` and `handoffTokens`, resolves in this order:
 
 1. Take the member's own declaration in the profile.
 2. Otherwise take the profile's `defaults` block.
 3. Otherwise take the compiled-in default.
 
 A member that declares a key replaces the default rather than merging with it (R92).
+`handoffTokens` has no step 3, so a seat with no line of its own and none under `defaults` has none.
+`freshPerDispatch` has no step 3 either, and is on for an agent when either step sets it. The
+orchestrator never takes it from `defaults` (R145).
 
 The rest of the policy numbers have no step 1: they resolve once, from `defaults.policy` over the
 compiled-in defaults, and govern every node (§6.1). A member that declares one is refused by

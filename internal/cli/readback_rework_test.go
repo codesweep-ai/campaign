@@ -145,3 +145,50 @@ func TestASubstantiveReadbackFailureIsNotAskedAgain(t *testing.T) {
 		t.Fatal("a member that was never briefed was asked to read back again")
 	}
 }
+
+// An agent with a context line gives its readback in a session only the host
+// knows, and the orchestrator's dispatcher starts the agent's first dispatch
+// in a new one. Left running, the readback's session reads to the agent's
+// machine as the driven one, and every later turn runs with no line. So once
+// the readbacks pass, the host ends it. A seat without a line, and the
+// orchestrator, whose readback session carries on into the mission, keep
+// theirs.
+func TestTheReadbackSessionOfALinedAgentIsEnded(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		edit  func(*model.Member)
+		ended bool
+	}{
+		{"an agent with a line", func(m *model.Member) { m.HandoffTokens = 250000 }, true},
+		{"an agent without one", func(*model.Member) {}, false},
+		{"an orchestrator with a line", func(m *model.Member) { m.Role, m.HandoffTokens = "orchestrator", 140000 }, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a, _ := readbackMemberApp(t, strings.Replace(goodReadback, `"role":"agent"`, `"role":"`+map[bool]string{true: "orchestrator", false: "agent"}[tc.name == "an orchestrator with a line"]+`"`, 1))
+			bin, _, _ := strings.Cut(os.Getenv("PATH"), string(os.PathListSeparator))
+			calls := filepath.Join(bin, "calls")
+			for _, tool := range []string{"cs-codex-remote", "cs-codex-remote-forget"} {
+				stub := "#!/bin/sh\necho " + tool + " \"$@\" >> " + calls + "\nexit 0\n"
+				if err := os.WriteFile(filepath.Join(bin, tool), []byte(stub), 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			campaign, _ := readbackCampaign()
+			tc.edit(&campaign.Members[0])
+			var out strings.Builder
+			if err := a.runReadback(context.Background(), &out, campaign); err != nil {
+				t.Fatalf("readback failed: %v\n%s", err, out.String())
+			}
+			log, _ := os.ReadFile(calls)
+			kill := "cs-codex-remote -H dev.g --kill probe-dev"
+			forget := "cs-codex-remote-forget probe-dev"
+			ended := strings.Contains(string(log), kill) && strings.Contains(string(log), forget)
+			if ended != tc.ended {
+				t.Fatalf("readback session ended = %v, want %v; the tools ran:\n%s", ended, tc.ended, log)
+			}
+			if !tc.ended && (strings.Contains(string(log), "--kill") || strings.Contains(string(log), "-forget")) {
+				t.Fatalf("a session that carries on was ended:\n%s", log)
+			}
+		})
+	}
+}

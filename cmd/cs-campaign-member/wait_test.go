@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -28,6 +29,9 @@ type fakeAgent struct {
 	msgs    map[string]int64 // input-channel basename -> mtime
 	replies map[string]bool
 	drivers int
+	// tail is further probe lines, served after DRIVERS as the turn drivers
+	// print them: AGENT, CONTEXT and TURNEND.
+	tail []string
 }
 
 type delivery struct {
@@ -50,6 +54,21 @@ type fakeWorld struct {
 	// delivery to such a name materialises the winner's file and fails with
 	// the collision marker, as the noclobber script does.
 	collide map[string]bool
+	// kept records each handoff copy the dispatcher asks for, with how many
+	// session commands had run by then: a copy made after the kill would
+	// read a file the next session may already be rewriting.
+	kept []keptCopy
+	// check is what the hand-off check prints, and checkErr how it fails to
+	// run. Nothing printed is a node whose work and handoff agree. checks
+	// records each check script asked for.
+	check    string
+	checkErr error
+	checks   []string
+}
+
+type keptCopy struct {
+	command       string
+	sessionBefore int
 }
 
 // putRe matches the delivery fragment of PutMsgScript: the $HOME-relative
@@ -73,11 +92,22 @@ func (w *fakeWorld) sshOut(host, command, payload string) ([]byte, error) {
 			}
 		}
 		fmt.Fprintf(&b, "DRIVERS %d\n", a.drivers)
+		for _, line := range a.tail {
+			b.WriteString(line + "\n")
+		}
 		w.probes++
 		if w.afterProbe != nil {
 			w.afterProbe()
 		}
 		return []byte(b.String()), nil
+	}
+	if strings.Contains(command, "NOHANDOFF") {
+		w.checks = append(w.checks, command)
+		return []byte(w.check), w.checkErr
+	}
+	if strings.Contains(command, protocol.HandoffsDir+"/") {
+		w.kept = append(w.kept, keptCopy{command, len(w.sessionCmds)})
+		return nil, nil
 	}
 	if m := putRe.FindStringSubmatch(command); m != nil {
 		body, err := base64.StdEncoding.DecodeString(payload)
@@ -384,6 +414,114 @@ func TestSendOutputNamesRaceAndSkippedStart(t *testing.T) {
 	}
 	if len(w.started) != 0 {
 		t.Fatalf("no turn may start here: %v", w.started)
+	}
+}
+
+// freshSendWorld is dev, a codex agent whose session has run a turn: its
+// marker is in the dispatcher's sessions directory, as the remote tool leaves
+// it. Turns start through the real startTurn, against a stand-in launcher that
+// writes its arguments to log. The session commands write there too, so the
+// order of all three can be read, and the forget removes the marker as the
+// real one does.
+func freshSendWorld(t *testing.T, a *fakeAgent, fresh bool) (w *fakeWorld, env *envState, log string) {
+	t.Helper()
+	if _, err := exec.LookPath("setsid"); err != nil {
+		t.Skip("setsid is not installed")
+	}
+	realStart := startTurn
+	w = &fakeWorld{agents: map[string]*fakeAgent{"dev-box": a}}
+	installFakeWorld(t, w)
+	startTurn = realStart
+	env = waitEnv(t, w)
+	rec := env.Manifest.Agents["dev"]
+	rec.FreshPerDispatch = fresh
+	env.Manifest.Agents["dev"] = rec
+
+	sessions := filepath.Join(env.Home, ".cs-codex-remote-sessions")
+	if err := os.MkdirAll(sessions, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sessions, "sess-dev"), []byte("live\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	log = filepath.Join(t.TempDir(), "log")
+	runSessionCmd = func(name string, args ...string) error {
+		line := name + " " + strings.Join(args, " ")
+		w.sessionCmds = append(w.sessionCmds, line)
+		f, err := os.OpenFile(log, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		fmt.Fprintln(f, line)
+		if strings.HasSuffix(name, "-forget") {
+			os.Remove(filepath.Join(sessions, args[0]))
+			os.Remove(filepath.Join(sessions, args[0]+".token"))
+		}
+		return nil
+	}
+	bin := t.TempDir()
+	launcher := "#!/bin/sh\nprintf '%s\\n' \"launch $*\" >> '" + log + "'\n"
+	if err := os.WriteFile(filepath.Join(bin, "cs-codex-remote"), []byte(launcher), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return w, env, log
+}
+
+// An agent whose policy starts each dispatch fresh loses its session when a
+// send opens a dispatch on it: ended, then forgotten, then a turn that starts
+// a new session on the first-turn trigger, which re-anchors it on its member
+// document. A continuation carries the same session on, and an agent without
+// the policy runs exactly as before it existed.
+func TestAFreshPerDispatchAgentOpensEachDispatchInAFreshSession(t *testing.T) {
+	launch := "launch -H dev-box -b --turn-timeout 0 "
+	for _, tc := range []struct {
+		name    string
+		fresh   bool
+		replied bool // d001 is replied, so the send opens d002
+		args    []string
+		out     string
+		log     []string
+	}{
+		{"an opening send with the policy", true, true, []string{"dev", "the next task"},
+			"dev/d002 opened in a fresh session\n", []string{
+				"cs-codex-remote -H dev-box --kill sess-dev",
+				"cs-codex-remote-forget sess-dev",
+				launch + "--new --name sess-dev " + protocol.Trigger(protocol.InputDir+"/d002.md", "d002", true),
+			}},
+		{"a continuation with the policy", true, false, []string{"dev", "--continue", "one more thing"},
+			"dev/d001 continued\n", []string{
+				launch + "--resume sess-dev " + protocol.Trigger(protocol.InputDir+"/d001.001.md", "d001", false),
+			}},
+		{"an opening send without the policy", false, true, []string{"dev", "the next task"},
+			"dev/d002 opened\n", []string{
+				launch + "--resume sess-dev " + protocol.Trigger(protocol.InputDir+"/d002.md", "d002", false),
+			}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a := settledAgent("d001.md")
+			a.replies["d001"] = tc.replied
+			w, env, log := freshSendWorld(t, a, tc.fresh)
+
+			out, err := captureStdout(t, func() error { return cmdSend(env, tc.args) })
+			if err != nil {
+				t.Fatalf("send: %v\n%s", err, out)
+			}
+			if out != tc.out {
+				t.Errorf("send printed %q, want %q", out, tc.out)
+			}
+			b, err := os.ReadFile(log)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.Split(strings.TrimSpace(string(b)), "\n"); !slices.Equal(got, tc.log) {
+				t.Errorf("the session commands and the launch, in order:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(tc.log, "\n"))
+			}
+			if len(w.delivered) != 1 {
+				t.Errorf("one message is delivered, whatever the policy: %+v", w.delivered)
+			}
+		})
 	}
 }
 

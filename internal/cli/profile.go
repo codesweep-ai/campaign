@@ -133,6 +133,9 @@ func validateProfile(p model.Profile) error {
 	if err := validateMemberPolicy(p.Orchestrator); err != nil {
 		return fmt.Errorf("orchestrator: %w", err)
 	}
+	if p.Orchestrator.Policy.FreshPerDispatch {
+		return errors.New("orchestrator: policy.freshPerDispatch acts on an agent's dispatches, and the orchestrator holds one, the mission; set it on an agent, or under defaults.policy for every agent")
+	}
 	if err := validateWithhold(p.Orchestrator); err != nil {
 		return fmt.Errorf("orchestrator: %w", err)
 	}
@@ -186,18 +189,21 @@ func validateProfile(p model.Profile) error {
 }
 
 // validateMemberPolicy refuses a policy number a member cannot have. One
-// resolved set governs the campaign, and stallSeconds is the only number
-// carried per seat — so a member declaring pollSeconds would run on the
-// campaign's value with its own profile saying otherwise, and nothing would
-// ever report the difference. Same rule as validateModelConfig below: fail on
-// a declaration that cannot be honoured, rather than write it and let the
-// member run on something else.
+// resolved set governs the campaign, and stallSeconds and handoffTokens are
+// the only numbers carried per seat, beside the freshPerDispatch switch — so
+// a member declaring pollSeconds would run on the campaign's value with its
+// own profile saying otherwise, and nothing would ever report the difference.
+// Same rule as validateModelConfig below: fail on a declaration that cannot be
+// honoured, rather than write it and let the member run on something else.
 func validateMemberPolicy(m model.MemberProfile) error {
+	if m.Policy.HandoffTokens < 0 {
+		return fmt.Errorf("policy.handoffTokens: must be positive, got %d", m.Policy.HandoffTokens)
+	}
 	fields := m.Policy.CampaignOnlyFields()
 	if len(fields) == 0 {
 		return nil
 	}
-	return fmt.Errorf("a member's policy: block carries stallSeconds alone; move %s under defaults.policy, which is where the dispatch machine reads it",
+	return fmt.Errorf("a member's policy: block carries stallSeconds, handoffTokens and freshPerDispatch alone; move %s under defaults.policy, which is where the dispatch machine reads it",
 		strings.Join(fields, ", "))
 }
 

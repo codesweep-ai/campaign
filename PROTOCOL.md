@@ -75,6 +75,12 @@ no message kinds, no supersede or replace semantics, and no separate "resume" co
 because anything sent then is a continuation. So "the current dispatch" is singular, and every
 reply belongs to exactly one dispatch without needing to say which.
 
+**Opening a dispatch can start a fresh session.** An operator may set an agent to start each
+dispatch fresh. Then the dispatcher ends the agent's session once the opening message is written,
+before its turn starts. The turn re-anchors the agent from its brief, as a restart does, and spends
+no rung. It suits an agent whose dispatches share little that a session must remember. The
+orchestrator is never set this way, because its one dispatch is the mission (§4).
+
 ## 4. The mission is a dispatch
 
 The host's dispatch to the orchestrator is the **mission itself**. One dispatch, held open
@@ -176,13 +182,14 @@ dearer one, and learns which failure it had from whichever worked.
 **A cause that can be looked up is not diagnosed either. It is read.** A node's machine records
 how each of its turns ended (§6). When that record says the node's provider ended the turn, the
 ladder is the wrong answer. Both of its instruments send the node's context again, and that is
-the load the provider refused. Three endings are read and not laddered:
+the load the provider refused. Four endings are read and not laddered:
 
 | The turn ended because | What it costs | Why |
 |---|---|---|
 | the provider throttled the node, was overloaded or down, or could not be reached | a wait, then the same session carries on; no rung | the node did nothing wrong, and retrying is the load |
 | the provider rejected the node's credential | nothing is sent; the node is `node-stuck` at the first look | no instrument of a dispatcher's repairs a credential (§9) |
 | the node's context is too long for its model | the restart, first | a continue sends the same context again, and only a restart shortens it |
+| the node handed off at the context line it was given | a fresh session on the node's handoff once its work is committed and named there, else the same session asked to commit first; no rung | the node did as it was asked, and its handoff carries the work on. Only the session that did the work knows what it was |
 
 Every other ending, and every ending the node's machine cannot explain, gets the ladder as
 before. **A reason older than the newest message is never used**: it describes an attempt that
@@ -193,6 +200,33 @@ spent nothing, and the dispatch is carried on without charge. Launching a turn c
 network and starts a program, so it fails under exactly the conditions recovery exists for. A
 ladder that counted messages could be spent by a bad connection, against a node that was never
 given a turn.
+
+**A hand-off is a move the node asked for.** A node may be given a context line. Past it, the
+node's own machine asks it to write a handoff and end its turn, before its CLI compacts the
+conversation by itself. The node's record then says it handed off, and the move is a fresh session.
+The old session is ended, as for a restart. The new one receives a hand-off continuation: a
+re-anchor by mechanical replay that ends at the handoff the node wrote. It spends no rung, and it is
+counted apart from every other kind of message. A turn the provider refused is never a hand-off.
+Before the old session is ended, its handoff is copied into the node's output channel, one file per
+hand-off. Every version survives the next session's rewrite, and no fresh session reads the copies.
+
+**A hand-off is taken only when the work and the handoff agree.** A fresh session starts from its
+handoff and from git, so before the old session ends the dispatcher checks the node's machine. The
+handoff must exist, and every repository the node holds must have its work committed. Each
+repository that has moved from its base must be at a commit the handoff names. When they disagree,
+the old session is kept, because only it knows what the work was. It receives a continuation that
+names what is missing and asks it to commit and write its handoff again. That continuation spends
+no rung. The hand-off its turn ends in counts against the hand-off bound below, as any other does. A
+check that cannot run is not a pass: the move is tried again at the next look.
+
+**Hand-offs are bounded too.** A line below what a fresh session costs is crossed at once by every
+session, so the node would hand off forever. The node's machine never asks a session whose first
+reading is already over the line. Behind that, an operator's number bounds the rapid hand-offs in a
+row on one dispatch, and past it the node is `node-stuck`. A hand-off is rapid when the session that
+made it began less than an operator's window earlier, on a hand-off continuation or an ask to
+commit. A dispatch's first session began on neither, and a session that works longer ends the run.
+So a long dispatch hands off as often as its work needs. A node that never commits what its handoff
+describes is asked again at every hand-off. Each ask's turn is rapid, so that node ends there too.
 
 **The budget is bounded by both attempts and elapsed time, whichever trips first.** The
 elapsed bound runs from the moment the dispatch opened; a continuation does not reset it.
@@ -408,6 +442,9 @@ Read the log, compute the node states (§6). Together those reconstruct everythi
 orchestrator knew, with nothing depending on it having remembered to save state for that
 purpose.
 
+An orchestrator that hands off (§5) loses its memory on purpose. Its handoff holds what the log
+does not, such as what it is waiting for from each teammate, and its fresh session reads both.
+
 ## 8. How the orchestrator stays alive
 
 A model is not a process: it runs when invoked and then ceases. It cannot be woken, so a
@@ -465,8 +502,11 @@ needs the host's judgment to keep it running has an orchestrator defect (§8). T
 a node too, and its provider can refuse its turn as it refuses any agent's. Nothing above it
 inside the campaign can carry it on. So the host performs for the orchestrator exactly what the
 orchestrator performs for a refused agent. After the provider's wait, it resumes the same session
-into the same dispatch, which spends no rung. The host derives that move the way it derives every
-state, and performs no other. A continue, a restart and the verdict remain a person's. The boundary
+into the same dispatch, which spends no rung. When the orchestrator hands off, the host starts its
+fresh session on its handoff, as the orchestrator does for an agent. It checks the orchestrator's
+work against that handoff first, in the same way, and keeps the session when they disagree. The
+host derives those moves
+the way it derives every state, and performs no other. A continue, a restart and the verdict remain a person's. The boundary
 sits at the machines themselves: a node whose machine is gone
 cannot be restarted by an orchestrator, which has no power to create or boot one. A credential
 the provider rejects is on the same side of that boundary, because an orchestrator cannot issue
@@ -487,6 +527,11 @@ Deliberately unspecified, because the protocol does not depend on the answers:
 - **How long to wait on a refusal, and how the return of a refused fleet is spread.** Only the
   properties are fixed: at least what the provider asked, longer on each repeat, not together,
   and bounded.
+- **Whether a node has a context line, and where.** Only the properties are fixed: a hand-off
+  spends no rung, a refused turn is never one, and the hand-offs one dispatch takes are bounded. A
+  hand-off is taken only once the work is committed and the handoff names it.
+- **Whether an agent starts each dispatch in a fresh session.** Only the properties are fixed: the
+  turn re-anchors as a restart does, and it spends no rung.
 - **How the log and the reply are represented on disk.** Any format works that lets a reader
   check for a reply's existence cheaply and append to the log without rewriting it.
 

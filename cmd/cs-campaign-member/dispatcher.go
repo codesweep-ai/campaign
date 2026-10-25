@@ -327,6 +327,9 @@ type sendResult struct {
 	Opened  bool
 	Raced   bool
 	Started bool
+	// Fresh says the agent's session was ended before the turn started,
+	// because its policy starts every dispatch in a fresh one.
+	Fresh bool
 }
 
 // sendBody delivers one message to one agent: opens if closed, continues if
@@ -384,6 +387,17 @@ func sendBody(env *envState, name, body string, cont bool) (sendResult, error) {
 		// and skipping there would strand fresh work behind the ladder.
 		if !res.Opened && facts.Drivers > 0 {
 			return res, nil
+		}
+		// An agent whose policy starts each dispatch fresh loses its session
+		// here, once its message is the one that opened the dispatch. The turn
+		// then starts as a first one, which re-anchors the agent on its member
+		// document and inputs before the dispatch, as a restart does. A new
+		// dispatch spends no rung, so neither does this.
+		if res.Opened && rec.FreshPerDispatch {
+			tool := "cs-" + rec.CLI + "-remote"
+			_ = runSessionCmd(tool, "-H", rec.Sandbox, "--kill", rec.Session)
+			_ = runSessionCmd(tool+"-forget", rec.Session)
+			res.Fresh = true
 		}
 		if err = startTurn(env.Home, rec, msgPath, res.ID); err != nil {
 			return res, err
@@ -518,6 +532,9 @@ func cmdSend(env *envState, args []string) error {
 	line := rest[0] + "/" + res.ID
 	if res.Opened {
 		line += " opened"
+		if res.Fresh {
+			line += " in a fresh session"
+		}
 	} else {
 		line += " continued"
 	}
@@ -673,6 +690,63 @@ func doRestartPrepared(env *envState, name string, rec protocol.AgentRecord, fac
 		return "", err
 	}
 	return fmt.Sprintf("restarted %s — session dropped, re-anchored against %s", name, d.ID), nil
+}
+
+// doHandoffPrepared starts an agent fresh on its handoff, against facts already
+// observed: the old session is ended and forgotten as a restart's is, and the
+// new one reads a .handoff message that points at the open dispatch and the
+// handoff the agent wrote. No rung is spent.
+//
+// The agent's work and its handoff are checked against each other first. When
+// they disagree the session is kept, because only it knows what the work was,
+// and a .commit message asks it to commit and write its handoff again.
+func doHandoffPrepared(env *envState, name string, rec protocol.AgentRecord, facts protocol.Facts) (string, error) {
+	d := protocol.Current(facts.Msgs)
+	if d == nil || facts.Replies[d.ID] {
+		return "", fmt.Errorf("%s has no open dispatch; a hand-off carries an open dispatch on, it does not assign work", name)
+	}
+	repos := map[string]string{}
+	for repo := range rec.Repos {
+		repos[repo] = rec.Bases[repo]
+	}
+	out, err := sshOut(rec.Sandbox, protocol.HandoffCheckScript(repos), "")
+	if err != nil {
+		return "", fmt.Errorf("check %s's work against its handoff: %v %s", name, err, strings.TrimSpace(string(out)))
+	}
+	if problems := protocol.ParseHandoffCheck(string(out)); len(problems) > 0 {
+		if _, _, err := deliverPrepared(env, rec, facts, protocol.NextCommitName(facts.Msgs, d.ID), d.ID,
+			protocol.CommitBody(d.ID, problems)); err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("kept %s's session on %s: its work and its handoff do not agree (%s); asked it to commit first, no rung spent",
+			name, d.ID, strings.Join(problems, "; ")), nil
+	}
+	// Keep this version of the handoff before the session that wrote it ends:
+	// the next one rewrites the file. A failed copy is said and passed over,
+	// because the fresh session matters more than the record.
+	kept := protocol.KeptHandoffPath(facts.Msgs, d.ID)
+	if out, err := sshOut(rec.Sandbox, protocol.KeepHandoffScript(kept), ""); err != nil {
+		fmt.Fprintf(os.Stderr, "%s's handoff was not kept as ~/%s: %v %s\n", name, kept, err, strings.TrimSpace(string(out)))
+	}
+	tool := "cs-" + rec.CLI + "-remote"
+	_ = runSessionCmd(tool, "-H", rec.Sandbox, "--kill", rec.Session)
+	_ = runSessionCmd(tool+"-forget", rec.Session)
+	var mine []protocol.Msg
+	for _, m := range facts.Msgs {
+		if m.ID == d.ID {
+			mine = append(mine, m)
+		}
+	}
+	protocol.SortMsgs(mine)
+	names := make([]string, 0, len(mine))
+	for _, m := range mine {
+		names = append(names, m.Name)
+	}
+	if _, _, err := deliverPrepared(env, rec, facts, protocol.NextHandoffName(facts.Msgs, d.ID), d.ID,
+		protocol.HandoffBody(d.ID, names, false)); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("started %s fresh on its handoff (%s), no rung spent", name, d.ID), nil
 }
 
 // sendRestartPrepared delivers a restart re-anchor (a .restart continuation)
@@ -890,6 +964,12 @@ func cmdWait(env *envState, args []string) error {
 				case "restart":
 					if msg, err := doRestartPrepared(env, n, rec, obs[n].Facts); err != nil {
 						acted = append(acted, fmt.Sprintf("restart %s FAILED: %v", n, err))
+					} else {
+						acted = append(acted, msg)
+					}
+				case "handoff":
+					if msg, err := doHandoffPrepared(env, n, rec, obs[n].Facts); err != nil {
+						acted = append(acted, fmt.Sprintf("hand-off %s FAILED: %v", n, err))
 					} else {
 						acted = append(acted, msg)
 					}

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -221,6 +222,86 @@ func PutFileScript(path string) string {
 	return fmt.Sprintf(`mkdir -p ~/%s && base64 -d > ~/%s && chmod 600 ~/%s`, dir, path, path)
 }
 
+// KeepHandoffScript copies the node's handoff to path, $HOME-relative, so the
+// version a session wrote outlives the next session's rewrite of it.
+func KeepHandoffScript(path string) string {
+	return fmt.Sprintf(`mkdir -p ~/%s && cp ~/%s ~/%s`, filepath.Dir(path), HandoffFile, path)
+}
+
+// HandoffCheckScript prints what stands between a node and a fresh session on
+// its handoff, one line each: no handoff at all, a repository with work not
+// committed, and a repository whose HEAD has left its base without the handoff
+// naming that commit. Nothing printed means git and the handoff agree. repos
+// maps each repository's guest name to its base commit, "" when unknown. A
+// repository missing from the machine is passed over: there is nothing of it
+// to commit.
+//
+// A node names a commit by its hash, and the first seven characters are what
+// any abbreviation of it holds, so that is what the handoff is searched for.
+// Fields are separated by tabs, because a repository's name and a path may
+// hold spaces.
+func HandoffCheckScript(repos map[string]string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, `h="$HOME/%s"; [ -f "$h" ] || echo NOHANDOFF`, HandoffFile)
+	for _, name := range slices.Sorted(maps.Keys(repos)) {
+		q := shellWord(name)
+		fmt.Fprintf(&b, `; d="$HOME/"%s; if [ -d "$d" ]; then `+
+			`n="$(git -C "$d" status --porcelain 2>/dev/null | wc -l)"; `+
+			`[ "$n" -gt 0 ] && printf 'DIRTY\t%%s\t%%s\t%%s\n' %s "$n" "$(git -C "$d" status --porcelain 2>/dev/null | head -n 1 | cut -c4-)"; `+
+			`c="$(git -C "$d" rev-parse HEAD 2>/dev/null)"; `+
+			`if [ -n "$c" ] && [ "$c" != %s ]; then s="$(printf %%.7s "$c")"; grep -qiF "$s" "$h" 2>/dev/null || printf 'UNNAMED\t%%s\t%%s\n' %s "$s"; fi; fi`,
+			q, q, shellWord(repos[name]), q)
+	}
+	return b.String()
+}
+
+// ParseHandoffCheck turns what HandoffCheckScript printed into the sentences a
+// node reads, and none when its work and its handoff agree. A line it does not
+// know is passed over, so an older reader never refuses a hand-off over it.
+func ParseHandoffCheck(out string) []string {
+	var problems []string
+	for line := range strings.SplitSeq(out, "\n") {
+		fields := strings.SplitN(strings.TrimSpace(line), "\t", 4)
+		switch {
+		case fields[0] == "NOHANDOFF":
+			problems = append(problems, "there is no handoff at ~/"+HandoffFile)
+		case fields[0] == "DIRTY" && len(fields) >= 3:
+			paths := "1 path"
+			if fields[2] != "1" {
+				paths = fields[2] + " paths"
+			}
+			first := ""
+			if len(fields) == 4 && fields[3] != "" {
+				first = ", the first " + fields[3]
+			}
+			problems = append(problems, fmt.Sprintf("~/%s has work not committed (%s%s)", fields[1], paths, first))
+		case fields[0] == "UNNAMED" && len(fields) >= 3:
+			problems = append(problems, fmt.Sprintf("your handoff does not name the commit ~/%s is at, %s", fields[1], fields[2]))
+		}
+	}
+	return problems
+}
+
+// CommitBody is what a node reads when its hand-off was not taken. The session
+// is kept: it holds what the work was, which a fresh session would have to
+// rebuild from a tree that does not match its handoff.
+func CommitBody(id string, problems []string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Your hand-off on dispatch %s was not taken, and this session is kept, because your work and your handoff do not agree:\n", id)
+	for _, p := range problems {
+		fmt.Fprintf(&b, "  - %s\n", p)
+	}
+	fmt.Fprintf(&b, "Commit your work on your branch first. A file that is not work goes in the repository's .git/info/exclude instead. ")
+	fmt.Fprintf(&b, "Then write ~/%s again so that it names the commit each repository you changed is at, and end your turn. ", HandoffFile)
+	fmt.Fprintf(&b, "A fresh session starts once they agree. No rung is spent.")
+	return b.String()
+}
+
+// shellWord quotes s as one word for a POSIX shell.
+func shellWord(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'"'"'`) + "'"
+}
+
 // PutPayload encodes what a Put*Script reads from stdin.
 func PutPayload(content string) string {
 	return base64.StdEncoding.EncodeToString([]byte(content))
@@ -296,6 +377,28 @@ func ResumeBody(id string, refused bool) string {
 	}
 	return fmt.Sprintf("%s Dispatch %s is still open. Carry on from where you were, and when the work is "+
 		"concluded run `cs-campaign-member reply --file <path-to-your-summary>`.", why, id)
+}
+
+// HandoffBody is what a fresh session reads after the node handed off. Like a
+// restart's re-anchor it is mechanical replay, and unlike one it ends at the
+// handoff the node wrote for itself, which is what makes the new session a
+// continuation rather than a cold start. The orchestrator is also pointed at
+// its log, which holds what it has sent and judged.
+func HandoffBody(id string, msgNames []string, orchestrator bool) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "You are starting a fresh session after a hand-off; your memory of this campaign is gone, but your machine, your work and your handoff are intact.\n")
+	fmt.Fprintf(&b, "Re-anchor: read ~/%s and every file it lists under \"inputs\". ", MemberDoc)
+	fmt.Fprintf(&b, "Then read every message of your open dispatch %s, in this order:\n", id)
+	for _, n := range msgNames {
+		fmt.Fprintf(&b, "  ~/%s/%s\n", InputDir, n)
+	}
+	if orchestrator {
+		fmt.Fprintf(&b, "Then read your log, ~/%s. ", LogFile)
+	}
+	fmt.Fprintf(&b, "Then read your handoff, ~/%s, and carry on from it as your orientation describes under \"When you start fresh\". ", HandoffFile)
+	fmt.Fprintf(&b, "Check every detached job it lists by its file before starting anything, and never start a job twice. ")
+	fmt.Fprintf(&b, "When the work is concluded, run `cs-campaign-member reply --file <path-to-your-summary>`.")
+	return b.String()
 }
 
 // RestartBody is the re-anchor a restarted session receives: mechanical

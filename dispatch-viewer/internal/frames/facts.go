@@ -95,16 +95,18 @@ type SessTot struct {
 }
 
 type DispatchTime struct {
-	Node      string `json:"node"`
-	Dispatch  string `json:"dispatch"`
-	Phase     string `json:"phase,omitempty"`
-	OpenedAt  string `json:"openedAt"`
-	RepliedAt string `json:"repliedAt,omitempty"`
-	Duration  Dur    `json:"duration"`
-	Continues int    `json:"continues"`
-	Restarts  int    `json:"restarts"`
-	Resumes   int    `json:"resumes"`
-	Addr      string `json:"addr"`
+	Node       string `json:"node"`
+	Dispatch   string `json:"dispatch"`
+	Phase      string `json:"phase,omitempty"`
+	OpenedAt   string `json:"openedAt"`
+	RepliedAt  string `json:"repliedAt,omitempty"`
+	Duration   Dur    `json:"duration"`
+	Continues  int    `json:"continues"`
+	Restarts   int    `json:"restarts"`
+	Resumes    int    `json:"resumes"`
+	Handoffs   int    `json:"handoffs"`
+	CommitAsks int    `json:"commitAsks"`
+	Addr       string `json:"addr"`
 }
 
 // StepRef names one step: where it is and what it was.
@@ -210,8 +212,8 @@ func ComputeFacts(run *Run) *Facts {
 			stop = parseTS(s.RepliedAt)
 		}
 		f.Dispatches = append(f.Dispatches, DispatchTime{Node: s.Node, Dispatch: s.ID, Phase: s.Phase,
-			OpenedAt: s.OpenedAt, RepliedAt: s.RepliedAt, Continues: s.Continues, Restarts: s.Restarts, Resumes: s.Resumes,
-			Addr: s.Addr, Duration: dur(max(0, stop.Sub(parseTS(s.OpenedAt)).Milliseconds()))})
+			OpenedAt: s.OpenedAt, RepliedAt: s.RepliedAt, Continues: s.Continues, Restarts: s.Restarts, Resumes: s.Resumes, Handoffs: s.Handoffs,
+			CommitAsks: s.CommitAsks, Addr: s.Addr, Duration: dur(max(0, stop.Sub(parseTS(s.OpenedAt)).Milliseconds()))})
 	}
 	slices.SortStableFunc(f.Dispatches, func(a, b DispatchTime) int {
 		return cmp.Or(cmp.Compare(b.Duration.Ms, a.Duration.Ms), cmp.Compare(a.Node, b.Node), cmp.Compare(a.Dispatch, b.Dispatch))
@@ -271,7 +273,7 @@ func ComputeFacts(run *Run) *Facts {
 	})
 
 	for _, e := range run.Events {
-		if e.Type != "continue" && e.Type != "restart" && e.Type != "resume" {
+		if e.Type != "continue" && e.Type != "restart" && e.Type != "resume" && e.Type != "handoff" && e.Type != "commit" {
 			continue
 		}
 		ev := RecoveryEvent{Type: e.Type, Node: e.Node, Dispatch: e.Dispatch, At: e.At, Addr: e.Addr}

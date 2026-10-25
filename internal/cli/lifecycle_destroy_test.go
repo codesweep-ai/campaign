@@ -53,9 +53,10 @@ exit 0`)
 	if err := a.store.Save(campaign); err != nil {
 		t.Fatal(err)
 	}
+	var out strings.Builder
 	run := func(args ...string) error {
+		out.Reset()
 		cmd := a.destroyCmd()
-		var out strings.Builder
 		cmd.SetOut(&out)
 		cmd.SetErr(&out)
 		cmd.SetArgs(args)
@@ -75,6 +76,9 @@ exit 0`)
 	if _, err := os.Stat(groupCalls); !os.IsNotExist(err) {
 		t.Fatalf("group reclaimed while a member survives: %v", err)
 	}
+	if strings.Contains(out.String(), "removed") {
+		t.Fatalf("a group still in place must not be said to be removed:\n%s", out.String())
+	}
 	// Forced: the fake removes the sandbox; state deletion is now legitimate.
 	if err := run("gone", "-f"); err != nil {
 		t.Fatalf("forced destroy: %v", err)
@@ -85,6 +89,12 @@ exit 0`)
 	b, err := os.ReadFile(groupCalls)
 	if err != nil || !strings.Contains(string(b), "group rm gone-grp") {
 		t.Fatalf("group not reclaimed after the last member went: %v: %s", err, b)
+	}
+	// The removal is the last line, so nothing the sandbox said before it
+	// about the group's network is what the operator reads last.
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if last := lines[len(lines)-1]; last != "group gone-grp removed, with its network and gateway" {
+		t.Fatalf("destroy must end by saying the group is removed; it ended with %q:\n%s", last, out.String())
 	}
 }
 
@@ -122,6 +132,9 @@ exit 0`)
 	}
 	if _, err := a.store.Load("gone"); err == nil {
 		t.Fatal("campaign state should be deleted once members and group are gone")
+	}
+	if strings.Contains(out.String(), "removed") {
+		t.Fatalf("a group this run did not remove must not be said to be removed:\n%s", out.String())
 	}
 }
 

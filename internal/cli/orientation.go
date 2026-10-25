@@ -45,19 +45,33 @@ type orientationData struct {
 	Snapshots      []string
 	Inputs         []string
 	Teammates      []orientationPeer
+	// Handoff is set for a seat with a context line. The sections it gates
+	// are absent for every other seat, so what those seats read is the same
+	// bytes as before lines existed. The line itself is not stated: the
+	// member is told when to hand off, never how far away that is.
+	Handoff     bool
+	HandoffFile string
+	LogFile     string
+	// FreshPerDispatch gates the section for an agent that starts each
+	// dispatch in a fresh session, the same way.
+	FreshPerDispatch bool
 }
 
 // buildOrientation renders one member's orientation and its manifest from the
 // same data, so the prose and the machine-readable copy cannot disagree.
 func buildOrientation(campaign *model.Campaign, member model.Member, inputs campaignInputs) (string, protocol.Member, error) {
 	data := orientationData{
-		Campaign:       campaign.Name,
-		Member:         member.Name,
-		Role:           member.Role,
-		IsOrchestrator: member.Role == "orchestrator",
-		InputDir:       guestInputDir,
-		OutputDir:      guestOutputDir,
-		Inputs:         inputs.seededNames(member),
+		Campaign:         campaign.Name,
+		Member:           member.Name,
+		Role:             member.Role,
+		IsOrchestrator:   member.Role == "orchestrator",
+		InputDir:         guestInputDir,
+		OutputDir:        guestOutputDir,
+		Inputs:           inputs.seededNames(member),
+		Handoff:          member.HandoffTokens > 0,
+		HandoffFile:      protocol.HandoffFile,
+		LogFile:          protocol.LogFile,
+		FreshPerDispatch: member.FreshPerDispatch,
 	}
 	// The manifest lists EVERYTHING this member must read, orientation first;
 	// the prose above lists only what the operator placed here. They differ on

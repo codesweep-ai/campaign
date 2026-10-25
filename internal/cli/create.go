@@ -104,10 +104,11 @@ func buildCampaign(name string, profile model.Profile, profilePath, digest strin
 	campaign.Members = append(campaign.Members, model.Member{
 		Name: "orchestrator", Role: "orchestrator", CLI: profile.Orchestrator.CLI,
 		Sandbox: orchestratorSandbox, Ref: memberRef(orchestratorSandbox, group),
-		Branch:       memberBranch(group, orchestratorSandbox),
-		Session:      model.Session{Name: id + "-orchestrator"},
-		Profile:      profile.Orchestrator,
-		StallSeconds: resolveStall(profile, profile.Orchestrator, true),
+		Branch:        memberBranch(group, orchestratorSandbox),
+		Session:       model.Session{Name: id + "-orchestrator"},
+		Profile:       profile.Orchestrator,
+		StallSeconds:  resolveStall(profile, profile.Orchestrator, true),
+		HandoffTokens: resolveHandoff(profile, profile.Orchestrator),
 	})
 	for _, agentName := range sortedNames(profile.Agents) {
 		agent := profile.Agents[agentName]
@@ -119,11 +120,17 @@ func buildCampaign(name string, profile model.Profile, profilePath, digest strin
 			// Session names live in the HOST's ~/.cs-<cli>-remote-{logs,pids,
 			// sessions}, which no group scopes, so they keep the full campaign
 			// ID. They are not path components of a socket.
-			Session:      model.Session{Name: id + "-" + agentName},
-			Profile:      agent,
-			StallSeconds: resolveStall(profile, agent, false),
+			Session:          model.Session{Name: id + "-" + agentName},
+			Profile:          agent,
+			StallSeconds:     resolveStall(profile, agent, false),
+			HandoffTokens:    resolveHandoff(profile, agent),
+			FreshPerDispatch: agent.Policy.FreshPerDispatch || profile.Defaults.Policy.FreshPerDispatch,
 		})
 	}
+	// The hand-off bound is recorded only when a seat has a line, so a
+	// campaign without one writes the policy it always wrote.
+	anyLine := slices.ContainsFunc(campaign.Members, func(m model.Member) bool { return m.HandoffTokens > 0 })
+	campaign.Policy = campaign.Policy.WithHandoffBound(anyLine)
 	return campaign
 }
 
@@ -142,6 +149,17 @@ func resolveStall(profile model.Profile, member model.MemberProfile, orchestrato
 		return protocol.DefaultOrchestratorStallSeconds
 	}
 	return protocol.DefaultPolicy().StallSeconds
+}
+
+// resolveHandoff is the seat's context line: the member's own, else the
+// campaign's, else none. There is no compiled-in default on purpose: a line
+// is sized from a seat's measured growth, and a seat with none runs exactly as
+// it did before lines existed.
+func resolveHandoff(profile model.Profile, member model.MemberProfile) int {
+	if member.Policy.HandoffTokens > 0 {
+		return member.Policy.HandoffTokens
+	}
+	return profile.Defaults.Policy.HandoffTokens
 }
 
 // memberRef renders the host-global reference cs-sandbox accepts.

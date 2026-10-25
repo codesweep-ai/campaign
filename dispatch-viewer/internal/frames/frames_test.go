@@ -1,6 +1,7 @@
 package frames
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -351,5 +352,87 @@ func TestDeliveriesAreLogEvents(t *testing.T) {
 	}
 	if len(run.Log) != 2 || run.Log[1].Member != "dev" || run.Log[1].Commit == "" {
 		t.Errorf("the raw log lost the delivery fields: %+v", run.Log)
+	}
+}
+
+// Each member carries its own resolved line from campaign.json. The policy's
+// handoffTokens is only the default, so a seat whose own policy set another
+// line would otherwise read as handing off at the default.
+func TestNodesCarryTheirOwnHandoffLine(t *testing.T) {
+	root := t.TempDir()
+	at := time.Date(2026, 8, 18, 9, 0, 0, 0, time.UTC)
+	write(t, filepath.Join(root, "campaign.json"), `{
+	  "name":"h1","id":"h1-1","createdAt":"2026-08-18T09:00:00Z","updatedAt":"2026-08-18T09:30:00Z",
+	  "policy":{"handoffTokens":20000},
+	  "members":[
+	    {"name":"orchestrator","role":"orchestrator","cli":"opencode","handoffTokens":40000},
+	    {"name":"dev","role":"agent","cli":"opencode","handoffTokens":20000},
+	    {"name":"qa","role":"agent","cli":"claude"}
+	  ]}`, at)
+	write(t, filepath.Join(root, "orchestrator", "input", "d001.md"), "# readback", at)
+	write(t, filepath.Join(root, "agents", "dev", "input", "d001.md"), "# readback", at)
+	write(t, filepath.Join(root, "agents", "qa", "input", "d001.md"), "# readback", at)
+	run, err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]int{}
+	for _, n := range run.Nodes {
+		got[n.Name] = n.HandoffTokens
+	}
+	if got["orchestrator"] != 40000 || got["dev"] != 20000 || got["qa"] != 0 {
+		t.Fatalf("lines %v, want orchestrator 40000, dev 20000, qa 0", got)
+	}
+	if run.Campaign.Policy.HandoffTokens != 20000 {
+		t.Fatalf("policy line %d, want the default 20000 kept", run.Campaign.Policy.HandoffTokens)
+	}
+	b, err := json.Marshal(run.Nodes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var nodes []map[string]any
+	if err := json.Unmarshal(b, &nodes); err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range nodes {
+		_, has := n["handoffTokens"]
+		if want := n["name"] != "qa"; has != want {
+			t.Errorf("%v: handoffTokens present %v, want %v", n["name"], has, want)
+		}
+	}
+}
+
+// freshPerDispatch is per seat in campaign.json, like the hand-off line, and
+// absent from the payload for a seat without it.
+func TestNodesCarryFreshPerDispatch(t *testing.T) {
+	root := t.TempDir()
+	at := time.Date(2026, 10, 24, 9, 0, 0, 0, time.UTC)
+	write(t, filepath.Join(root, "campaign.json"), `{
+	  "name":"f1","id":"f1-1","createdAt":"2026-10-24T09:00:00Z","updatedAt":"2026-10-24T09:30:00Z",
+	  "members":[
+	    {"name":"orchestrator","role":"orchestrator","cli":"claude"},
+	    {"name":"dev","role":"agent","cli":"claude","freshPerDispatch":true},
+	    {"name":"qa","role":"agent","cli":"claude"}
+	  ]}`, at)
+	write(t, filepath.Join(root, "orchestrator", "input", "d001.md"), "# readback", at)
+	write(t, filepath.Join(root, "agents", "dev", "input", "d001.md"), "# readback", at)
+	write(t, filepath.Join(root, "agents", "qa", "input", "d001.md"), "# readback", at)
+	run, err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := json.Marshal(run.Nodes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var nodes []map[string]any
+	if err := json.Unmarshal(b, &nodes); err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range nodes {
+		v, has := n["freshPerDispatch"]
+		if want := n["name"] == "dev"; has != want || (has && v != true) {
+			t.Errorf("%v: freshPerDispatch %v (present %v), want present %v", n["name"], v, has, want)
+		}
 	}
 }

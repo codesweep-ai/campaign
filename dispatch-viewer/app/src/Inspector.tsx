@@ -4,7 +4,7 @@ import { MarkdownViewer } from "@codesweep-ai/ui/markdown";
 import { CodeBlock } from "@codesweep-ai/ui/code";
 import json from "highlight.js/lib/languages/json";
 import type { Anchor, IndexedEvent, LogEntry, Run } from "./types";
-import { dur, fmtElapsed, fmtMs, fmtT } from "./format";
+import { dur, fmtElapsed, fmtMs, fmtT, fmtTokens } from "./format";
 import { spanOf, stepLabel, typeLabel, type StepMark } from "./model";
 
 export type DocMode = "rendered" | "raw";
@@ -95,11 +95,21 @@ export function Inspector({ run, event, mark, marks, logEntry, docMode, onDocMod
 const elapsedOf = (run: Run, iso: string | undefined): string =>
   iso ? fmtElapsed((+new Date(iso) - +new Date(run.campaign.createdAt)) / 1000) : "";
 
+/* The node row, and under it the member's own hand-off line and whether each
+   dispatch starts it fresh, when it has them. */
+const nodeRows = (run: Run, node: string): [string, ReactNode][] => {
+  const n = run.nodes.find((x) => x.name === node);
+  const rows: [string, ReactNode][] = [["node", node]];
+  if (n?.handoffTokens) rows.push(["hands off at", fmtTokens(n.handoffTokens)]);
+  if (n?.freshPerDispatch) rows.push(["fresh session per dispatch", "yes"]);
+  return rows;
+};
+
 function EventBody({
   run, e, docMode, marks, onSelect,
 }: { run: Run; e: IndexedEvent; docMode: DocMode; marks: StepMark[]; onSelect: (i: number) => void }) {
   const rows: [string, ReactNode][] = [
-    ["node", e.node],
+    ...nodeRows(run, e.node),
     ["event", typeLabel(e)],
     ["at", elapsedOf(run, e.at) + " · " + fmtT(e.at)],
   ];
@@ -111,8 +121,8 @@ function EventBody({
       const wait = s.repliedAt ? dur(s.repliedAt, s.acceptedAt) : "";
       rows.push(["accepted at", fmtT(s.acceptedAt) + (wait ? " · " + wait + " after the reply" : "")]);
     }
-    if (s.continues || s.restarts || s.resumes)
-      rows.push(["recovery", s.continues + " cont · " + s.restarts + " restarts" + (s.resumes ? " · " + s.resumes + " resumes" : "")]);
+    if (s.continues || s.restarts || s.resumes || s.handoffs || s.commitAsks)
+      rows.push(["recovery", s.continues + " cont · " + s.restarts + " restarts" + (s.resumes ? " · " + s.resumes + " resumes" : "") + (s.handoffs ? " · " + s.handoffs + " hand-offs" : "") + (s.commitAsks ? " · " + s.commitAsks + " asked to commit" : "")]);
   }
 
   let body: ReactNode = null;
@@ -168,7 +178,7 @@ function EventBody({
         </>
       );
     }
-  } else if (e.type === "open" || e.type === "continue" || e.type === "restart" || e.type === "resume") {
+  } else if (e.type === "open" || e.type === "continue" || e.type === "restart" || e.type === "resume" || e.type === "handoff" || e.type === "commit") {
     const m = ((run.messages || {})[e.node] || {})[e.file as string];
     body = <DocBlock kind="md" content={m || "(message body unavailable)"} docMode={docMode} />;
   } else if (e.type === "plan" || e.type === "assessment" || e.type === "delivered" || e.type === "refused") {
@@ -290,7 +300,7 @@ function StepBody({ run, m, marks, onSelect }: { run: Run; m: StepMark; marks: S
     );
   const ms = m.idle ? s.idleMs : s.workMs;
   const rows: [string, ReactNode][] = [
-    ["node", m.session.node],
+    ...nodeRows(run, m.session.node),
     ["session", m.session.id.slice(0, 20) + (m.session.parent ? " (fork)" : "")],
     ["step", stepLabel(m) + " · #" + s.i],
     ["at", elapsedOf(run, s.ts) + " · " + fmtT(s.ts)],

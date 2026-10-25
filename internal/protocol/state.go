@@ -3,6 +3,7 @@ package protocol
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -40,6 +41,11 @@ const (
 	// all: the node's network was down, or the proxy in front of its provider
 	// was gone.
 	ClassUnreachable = "unreachable"
+	// ClassHandoff is a turn that ended well because the node handed off: its
+	// context crossed the line it was given, it wrote its handoff and ended
+	// its turn as asked. The move is a fresh session on that handoff, and no
+	// rung is spent (SPEC.md R141).
+	ClassHandoff = "handoff"
 )
 
 // TurnEnd is one line of the node's own turn log: how a turn ended, written on
@@ -76,6 +82,32 @@ type Facts struct {
 	Agent string
 	// TurnEnds is the tail of the node's turn log, oldest first.
 	TurnEnds []TurnEnd
+	// Context is how full the agent's conversation is, as the family's turn
+	// driver reads it from the agent's own record. nil means the record is
+	// absent or the node's tools are too old to say. It is reported beside the
+	// state and decides none (contextNote).
+	Context *ContextReading
+}
+
+// ContextReading is one answer of `cs-<cli>-turn --context`. A CLI compacts a
+// long conversation by itself, and this is how an observer sees it coming and
+// sees that it happened.
+type ContextReading struct {
+	// Tokens is the context the latest model call carried, or -1 when no call
+	// has run since the newest compaction.
+	Tokens int64 `json:"tokens"`
+	// Window is the window the CLI records, or 0 when it records none.
+	Window      int64 `json:"window,omitempty"`
+	Compactions int   `json:"compactions"`
+	// Compacted is when the newest compaction happened, in epoch seconds, or 0.
+	Compacted int64  `json:"compacted,omitempty"`
+	Model     string `json:"model,omitempty"`
+	// Handoff is the line the node hands off at, or 0 when it has none.
+	Handoff int64 `json:"handoff,omitempty"`
+	// Floor is the session's first reading when that was already over the
+	// line, or 0. Such a session is never asked to hand off: the line is
+	// below what a fresh session costs.
+	Floor int64 `json:"floor,omitempty"`
 }
 
 // knowsTurns says the node's tools keep a turn log, so the absence of a line
@@ -110,9 +142,11 @@ var recordGlob = map[string][2]string{
 // from matching the probe's own command line.
 //
 // Output lines: "MSG <mtime> <name>", "REPLY <id>", "DRIVERS <n>",
-// "RECORD <mtime>", "AGENT <word> [word]", "TURNEND <epoch> <exit> <class>
-// <retry_after> <reason>", or "NOCHANNELS" when the channel root does not exist
-// yet. AGENT and TURNEND come from the sandbox's turn drivers. A node whose
+// "RECORD <mtime>", "AGENT <word> [word]", "CONTEXT <key=value>...", "TURNEND
+// <epoch> <exit> <class> <retry_after> <reason>", or "NOCHANNELS" when the
+// channel root does not exist yet. AGENT, CONTEXT and TURNEND come from the
+// sandbox's turn drivers. A driver too old to know --context refuses it with
+// nothing on stdout, so CONTEXT is then empty and parses as not known. A node whose
 // tools are older prints an empty AGENT and no TURNEND, and is computed as before.
 // RECORD is left out for a family with no known record, and it reads 0 when the
 // member has written none, so an older probe and a newer parser agree.
@@ -121,16 +155,17 @@ func ProbeScript(cli string) string {
 	script := `cd "$HOME/` + ChannelsDir + `" 2>/dev/null || { echo NOCHANNELS; exit 0; }; ` +
 		`for f in input/*.md; do [ -e "$f" ] || continue; printf 'MSG %s %s\n' "$(stat -c %Y "$f" 2>/dev/null || echo 0)" "${f#input/}"; done; ` +
 		`for r in output/replies/*.json; do [ -e "$r" ] || continue; b="${r#output/replies/}"; printf 'REPLY %s\n' "${b%.json}"; done; ` +
-		// A driver asked for --state is a question and not a turn. It matches the
-		// pattern, and a second observer's probe can be running one at this moment,
-		// so it is left out of the count.
-		`printf 'DRIVERS %s\n' "$(pgrep -fa '` + pattern + ` ' 2>/dev/null | grep -vc -- ' --state' || true)"`
+		// A driver asked for --state or --context is a question and not a turn. It
+		// matches the pattern, and a second observer's probe can be running one at
+		// this moment, so it is left out of the count.
+		`printf 'DRIVERS %s\n' "$(pgrep -fa '` + pattern + ` ' 2>/dev/null | grep -vcE -- ' --(state|context)' || true)"`
 	if g, ok := recordGlob[cli]; ok {
 		script += `; printf 'RECORD %s\n' "$(find "$HOME/` + g[0] + `" -type f -name '` + g[1] + `' -printf '%T@\n' 2>/dev/null | sort -n | tail -1 | cut -d. -f1 | grep . || echo 0)"`
 	}
 	driver := "cs-" + cli + "-turn"
 	script += `; d="$HOME/.local/bin/` + driver + `"; [ -x "$d" ] || d=` + driver +
 		`; printf 'AGENT %s\n' "$("$d" --state 2>/dev/null | head -n 1)"` +
+		`; printf 'CONTEXT %s\n' "$("$d" --context 2>/dev/null | head -n 1)"` +
 		`; tail -n 16 "$HOME/.cs-turns/` + cli + `.log" 2>/dev/null | cut -c1-240 | sed 's/^/TURNEND /'`
 	return script
 }
@@ -156,6 +191,8 @@ func ParseProbe(out string) Facts {
 			f.Record, _ = strconv.ParseInt(fields[1], 10, 64)
 		case len(fields) >= 2 && fields[0] == "AGENT":
 			f.Agent = strings.Join(fields[1:], " ")
+		case len(fields) >= 2 && fields[0] == "CONTEXT":
+			f.Context = parseContext(fields[1:])
 		case len(fields) >= 5 && fields[0] == "TURNEND":
 			at, err1 := strconv.ParseInt(fields[1], 10, 64)
 			exit, err2 := strconv.Atoi(fields[2])
@@ -182,8 +219,9 @@ type Observation struct {
 	Dispatch string // current dispatch ID, "" when none
 	Detail   string
 	// NextMove is the mechanical move the state calls for: "continue",
-	// "restart", "resume" (carry on and spend no rung), or "" when the next
-	// arrow is nothing, a wait, or a judgment.
+	// "restart", "resume" (carry on and spend no rung), "handoff" (a fresh
+	// session on the node's handoff, no rung), or "" when the next arrow is
+	// nothing, a wait, or a judgment.
 	NextMove string
 }
 
@@ -208,6 +246,14 @@ type Blind struct {
 // the reply check precedes the liveness check — a node that replied and then
 // exited is node-replied, not node-stopped.
 func Compute(f Facts, probeFailed bool, blind Blind, accepted map[string]bool, pol Policy, now int64) Observation {
+	o := compute(f, probeFailed, blind, accepted, pol, now)
+	if !probeFailed {
+		o.Detail += contextNote(f.Context, now)
+	}
+	return o
+}
+
+func compute(f Facts, probeFailed bool, blind Blind, accepted map[string]bool, pol Policy, now int64) Observation {
 	pol = pol.Resolve()
 	if probeFailed {
 		goneAfter := int64(pol.BlindProbes) * int64(pol.PollSeconds)
@@ -284,6 +330,30 @@ func Compute(f Facts, probeFailed bool, blind Blind, accepted map[string]bool, p
 			}
 			return Observation{State: StateRefused, Dispatch: d.ID, NextMove: "resume",
 				Detail: detail + " · resume next, no rung spent"}
+		case last.Class == ClassHandoff:
+			// The node did as asked, and the move is a fresh session on its
+			// handoff, at no cost to it. The bound is the one guard against a
+			// line set below what a fresh session costs, and against a node
+			// that never commits what its handoff describes: both hand off
+			// soon after every fresh start. It counts only those, in a row,
+			// so a long mission's hand-offs never trip it. It is read through
+			// handoffBound, because a campaign with no line records none, and
+			// a zero here must not mean unbounded.
+			if n, asks := rapidHandoffs(d, f, last, pol.rapidWindow()); n >= pol.handoffBound() {
+				run := fmt.Sprintf("handed off %d times in a row, each within %s of a fresh start", n, shortAge(pol.rapidWindow()))
+				if asks > 0 {
+					return Observation{State: StateStuck, Dispatch: d.ID,
+						Detail: run + fmt.Sprintf(", %d of them after an ask to commit first — hand-off bound tripped", asks) + reasonNote(last)}
+				}
+				return Observation{State: StateStuck, Dispatch: d.ID,
+					Detail: run + " — hand-off bound tripped; the line is below what a fresh session costs" + reasonNote(last)}
+			}
+			asks := ""
+			if d.CommitAsks > 0 {
+				asks = fmt.Sprintf(", %d asked to commit", d.CommitAsks)
+			}
+			return Observation{State: StateStopped, Dispatch: d.ID, NextMove: "handoff",
+				Detail: fmt.Sprintf("%d cont, %d restarts, %d hand-offs%s · handed off %s ago · fresh session next, no rung spent", continues, restarts, d.Handoffs, asks, ago) + reasonNote(last)}
 		case last.Class == ClassContext:
 			// A continue re-sends the context that was too long. A restart is
 			// the one remedy that shortens it.
@@ -380,6 +450,45 @@ func RefusalBackoff(n int) int64 {
 	return min(hold, 600)
 }
 
+// rapidHandoffs counts the rapid hand-offs in a row at the tail of dispatch
+// d, the latest one, last, included: a hand-off is rapid when the session or
+// turn that made it began on a .handoff or a .commit message less than window
+// seconds before. asks counts the ones that began on a .commit message. A
+// dispatch's first session never began on either, so its hand-off is never
+// rapid. An earlier session's end is the hand-off turn end between its
+// message and the next; past the reach of the turn log it is the next
+// message, which is later, so an old session reads as longer, never shorter.
+func rapidHandoffs(d *Dispatch, f Facts, last *TurnEnd, window int64) (n, asks int) {
+	var starts []Msg
+	for _, m := range d.Msgs {
+		if m.Seq > 0 && (m.Handoff || m.Commit) {
+			starts = append(starts, m)
+		}
+	}
+	for i, start := range slices.Backward(starts) {
+		end := last.At
+		if i < len(starts)-1 {
+			end = starts[i+1].MTime
+			// After the start, strictly: the hand-off this message answered
+			// can end in the same second, and is the session before.
+			for _, e := range f.TurnEnds {
+				if e.Class == ClassHandoff && e.At > start.MTime && e.At <= starts[i+1].MTime {
+					end = e.At
+					break
+				}
+			}
+		}
+		if end-start.MTime >= window {
+			break
+		}
+		n++
+		if start.Commit {
+			asks++
+		}
+	}
+	return n, asks
+}
+
 // refusedRun finds the run of refused turns at the tail of the log, no older
 // than since: when it began, and how many turns it holds.
 func refusedRun(ends []TurnEnd, since int64) (first int64, n int) {
@@ -401,7 +510,7 @@ func Charged(d *Dispatch, f Facts) (continues, restarts int) {
 	}
 	oldest := f.TurnEnds[0].At
 	for i, m := range d.Msgs {
-		if m.Seq == 0 || m.Resume {
+		if m.Seq == 0 || m.Resume || m.Handoff || m.Commit {
 			continue
 		}
 		ran := true
@@ -454,6 +563,103 @@ func recordNote(f Facts, now int64) string {
 		return ""
 	}
 	return " · session record changed " + shortAge(clampAge(now-f.Record)) + " ago"
+}
+
+// parseContext reads the key=value words of a CONTEXT line. Anything but a
+// reading, such as "absent" or "unknown", is not known and returns nil. An
+// unknown key is ignored, so a newer driver can add one.
+func parseContext(words []string) *ContextReading {
+	c := ContextReading{Tokens: -1}
+	seen := false
+	for _, w := range words {
+		k, v, ok := strings.Cut(w, "=")
+		if !ok {
+			return nil
+		}
+		n, err := strconv.ParseInt(v, 10, 64)
+		switch k {
+		case "tokens":
+			if err == nil {
+				c.Tokens = n
+			}
+		case "window":
+			if err == nil {
+				c.Window = n
+			}
+		case "compactions":
+			if err != nil {
+				return nil
+			}
+			c.Compactions, seen = int(n), true
+		case "compacted":
+			if err == nil {
+				c.Compacted = n
+			}
+		case "model":
+			if v != "-" {
+				c.Model = v
+			}
+		case "handoff":
+			if err == nil {
+				c.Handoff = n
+			}
+		case "floor":
+			if err == nil {
+				c.Floor = n
+			}
+		}
+	}
+	if !seen {
+		return nil
+	}
+	return &c
+}
+
+// contextNote says how full a node's conversation is and when its CLI last
+// compacted it. It is evidence beside the state and decides nothing: a
+// compaction is the CLI's own act, not a failure, so no ladder move follows
+// from it.
+func contextNote(c *ContextReading, now int64) string {
+	if c == nil {
+		return ""
+	}
+	note := " · context "
+	switch {
+	case c.Tokens < 0:
+		note += "not read since the last compaction"
+	case c.Window > 0:
+		note += fmt.Sprintf("%s of %s", kTokens(c.Tokens), kTokens(c.Window))
+	default:
+		note += kTokens(c.Tokens)
+	}
+	switch {
+	case c.Compactions == 1:
+		note += " · compacted once"
+	case c.Compactions > 1:
+		note += fmt.Sprintf(" · compacted %d times", c.Compactions)
+	}
+	if c.Compactions > 0 && c.Compacted > 0 {
+		note += ", last " + shortAge(clampAge(now-c.Compacted)) + " ago"
+	}
+	if c.Handoff > 0 {
+		note += " · hands off at " + kTokens(c.Handoff)
+	}
+	if c.Floor > 0 {
+		note += fmt.Sprintf(" · this session began over the line, at %s, and will not be asked", kTokens(c.Floor))
+	}
+	return note
+}
+
+// kTokens prints a token count the way an operator reads one: 840, 62k, 1.2M.
+func kTokens(n int64) string {
+	switch {
+	case n < 1000:
+		return strconv.FormatInt(n, 10)
+	case n < 1_000_000:
+		return fmt.Sprintf("%dk", (n+500)/1000)
+	default:
+		return fmt.Sprintf("%.1fM", float64(n)/1_000_000)
+	}
 }
 
 // shortAge prints an age the way an operator reads one: 40s, 12m, 3h.

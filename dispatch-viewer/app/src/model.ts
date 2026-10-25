@@ -10,6 +10,8 @@ export type Kind =
   | "continue"
   | "restart"
   | "resume"
+  | "handoff"
+  | "commit"
   | "reply-done"
   | "reply-bad"
   | "verdict-ok"
@@ -44,6 +46,13 @@ export const palette: Record<Kind, EventToken> = {
   continue: "--color-warning",
   restart: "--color-cat-8-mid",
   resume: "--color-cat-6-mid",
+  // A hand-off is the node's own doing, not the harness's judgment of a
+  // stall, so it takes a colour of its own beside resume's.
+  handoff: "--color-cat-7",
+  // An ask to commit is a hand-off held back, so it takes lime, a hue family
+  // nothing else here draws in, beside hand-off's emerald. Teal, the other
+  // free family, would sit on the accent an accept is drawn in.
+  commit: "--color-cat-10",
   "reply-done": "--color-success",
   "reply-bad": "--color-error",
   "verdict-ok": "--color-link",
@@ -139,6 +148,10 @@ export function kindOf(e: IndexedEvent): Kind {
       return "restart";
     case "resume":
       return "resume";
+    case "handoff":
+      return "handoff";
+    case "commit":
+      return "commit";
     case "reply":
       return e.phase === "done" ? "reply-done" : "reply-bad";
     case "accept":
@@ -170,7 +183,7 @@ export function shapeOf(e: IndexedEvent): EventShape {
 // the channel marks too: a box's edges are its opening and its reply.
 export const LOGKINDS: ReadonlySet<Kind> = new Set(["accept", "plan", "assessment", "delivered", "refused"]);
 export const PROTOCOLKINDS: ReadonlySet<Kind> = new Set([
-  "open", "continue", "restart", "resume", "reply-done", "reply-bad", "verdict-ok", "verdict-bad",
+  "open", "continue", "restart", "resume", "commit", "reply-done", "reply-bad", "verdict-ok", "verdict-bad",
 ]);
 
 export const spanOf = (run: Run, e: IndexedEvent): Span | undefined =>
@@ -188,7 +201,9 @@ export const typeLabel = (e: IndexedEvent): string =>
       ? "verdict · " + qual(e) + " · " + e.outcome
       : e.type === "accept"
         ? "accept · " + (e.text ? e.text + "/" : "") + e.dispatch
-        : e.type + (e.dispatch ? " · " + qual(e) : "");
+        : e.type === "commit"
+          ? "asked to commit · " + qual(e)
+          : e.type + (e.dispatch ? " · " + qual(e) : "");
 
 // Log-derived marks live on their own sub-lane under the orchestrator, so the
 // orchestrator lane stays purely channel traffic (it is a node too).

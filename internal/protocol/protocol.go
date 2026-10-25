@@ -27,6 +27,15 @@ const (
 	OutputDir   = ChannelsDir + "/output"
 	RepliesDir  = OutputDir + "/replies"
 	LogFile     = OutputDir + "/log.jsonl"
+	// HandoffFile is where a member with a hand-off line writes its handoff,
+	// and what a fresh session is pointed at. In the output channel, so it is
+	// harvested with the rest of what the member leaves behind.
+	HandoffFile = OutputDir + "/handoff.md"
+	// HandoffsDir keeps every version of a member's handoff, one file per
+	// hand-off, copied there before the session that wrote it is ended.
+	// Fresh sessions never read it; it is the record of what each one was
+	// handed.
+	HandoffsDir = OutputDir + "/handoffs"
 
 	ConfigDir    = ".config/cs-campaign"
 	MemberDoc    = ConfigDir + "/member.json"
@@ -57,7 +66,20 @@ const MaxDispatchSeq = 999
 // The .resume marker is a continuation that spends no rung. It carries on a
 // dispatch whose node did nothing wrong: its provider refused the last turn and
 // the wait is over, or the turn for the message before it never launched.
-var msgName = regexp.MustCompile(`^(d[0-9]{3}|m1)(?:\.([0-9]{3})(\.restart|\.resume)?)?\.md$`)
+//
+// The .handoff marker is the message a fresh session reads after the node
+// handed off: its context crossed the line it was given, it wrote its handoff
+// and ended its turn as asked, and the session that read this message is new.
+// It spends no rung either, and is counted apart, because a bound of its own
+// holds it (SPEC.md R142).
+//
+// The .commit marker is the message a node reads when its hand-off was not
+// taken: its work was uncommitted, or its handoff did not name the commit its
+// branch is at. The session is kept, because only it knows what the work was,
+// and the message asks it to commit and write its handoff again. It spends no
+// rung, and its turn counts toward the same bound as a hand-off's session
+// when it hands off again within the rapid window (SPEC.md R142, R144).
+var msgName = regexp.MustCompile(`^(d[0-9]{3}|m1)(?:\.([0-9]{3})(\.restart|\.resume|\.handoff|\.commit)?)?\.md$`)
 
 // Msg is one message file in a node's input channel, as observed.
 type Msg struct {
@@ -65,6 +87,8 @@ type Msg struct {
 	Seq     int  // 0 for the opening message
 	Restart bool // this continuation is a restart's re-anchor
 	Resume  bool // this continuation spends no rung
+	Handoff bool // this continuation starts a fresh session on the node's handoff
+	Commit  bool // this continuation asks the node to commit before its hand-off is taken
 	MTime   int64
 	Name    string
 }
@@ -80,7 +104,7 @@ func ParseMsgName(name string, mtime int64) (Msg, bool) {
 	if m[2] != "" {
 		seq, _ = strconv.Atoi(m[2])
 	}
-	return Msg{ID: m[1], Seq: seq, Restart: m[3] == ".restart", Resume: m[3] == ".resume", MTime: mtime, Name: name}, true
+	return Msg{ID: m[1], Seq: seq, Restart: m[3] == ".restart", Resume: m[3] == ".resume", Handoff: m[3] == ".handoff", Commit: m[3] == ".commit", MTime: mtime, Name: name}, true
 }
 
 // Dispatch is the reconstructed view of one dispatch from its messages.
@@ -91,6 +115,11 @@ type Dispatch struct {
 	Continues int   // plain continuations
 	Restarts  int   // restart re-anchors
 	Resumes   int   // continuations that spent no rung
+	Handoffs  int   // fresh sessions started on the node's handoff
+	// CommitAsks are hand-offs not taken, each a .commit message asking the
+	// kept session to commit first. A rapid one counts toward the hand-off
+	// bound (rapidHandoffs).
+	CommitAsks int
 	// Msgs is every message of the dispatch, oldest first.
 	Msgs []Msg
 }
@@ -119,6 +148,10 @@ func Current(msgs []Msg) *Dispatch {
 					d.Restarts++
 				case m.Resume:
 					d.Resumes++
+				case m.Handoff:
+					d.Handoffs++
+				case m.Commit:
+					d.CommitAsks++
 				default:
 					d.Continues++
 				}
@@ -173,6 +206,28 @@ func NextMsgName(msgs []Msg, id string, restart bool) string {
 // NextResumeName names the next continuation of dispatch id that spends no rung.
 func NextResumeName(msgs []Msg, id string) string { return nextMsgName(msgs, id, ".resume") }
 
+// NextHandoffName names the message a fresh session reads after the node
+// handed off on dispatch id.
+func NextHandoffName(msgs []Msg, id string) string { return nextMsgName(msgs, id, ".handoff") }
+
+// NextCommitName names the message that asks a node to commit its work before
+// its hand-off on dispatch id is taken.
+func NextCommitName(msgs []Msg, id string) string { return nextMsgName(msgs, id, ".commit") }
+
+// KeptHandoffPath is where the handoff a node wrote is kept at its next
+// hand-off on dispatch id: handoffs/<id>-<n>.md, where n is that hand-off's
+// ordinal on the dispatch, so the first is 1. It is counted from the .handoff
+// messages already delivered, as Current counts Handoffs.
+func KeptHandoffPath(msgs []Msg, id string) string {
+	n := 1
+	for _, m := range msgs {
+		if m.ID == id && m.Seq > 0 && m.Handoff {
+			n++
+		}
+	}
+	return fmt.Sprintf("%s/%s-%d.md", HandoffsDir, id, n)
+}
+
 func nextMsgName(msgs []Msg, id, kind string) string {
 	seq := 0
 	for _, m := range msgs {
@@ -226,6 +281,30 @@ type Policy struct {
 	// the orchestrator seat defaults far higher — long quiet is normal for a
 	// supervisor and suspicious for everyone else.
 	StallSeconds int `json:"stallSeconds,omitempty" yaml:"stallSeconds,omitempty"`
+	// HandoffTokens is the context line a member hands off at, in tokens, and
+	// reaches its machine as CS_HANDOFF_TOKENS the same way. Per member, and
+	// off when unset: a seat with no line runs as it always has. It is sized
+	// from the seat's measured growth (`observe`), never from the window.
+	HandoffTokens int `json:"handoffTokens,omitempty" yaml:"handoffTokens,omitempty"`
+	// Handoffs bounds the rapid hand-offs in a row on one dispatch before the
+	// node is node-stuck. A hand-off is rapid when the session that made it
+	// began, on a .handoff or a .commit message, less than
+	// RapidHandoffSeconds before it. A line below what a fresh session costs
+	// hands off rapidly forever, and this is the backstop behind the hook's
+	// own guard; a session that works longer than the window resets the count,
+	// so a long mission's healthy hand-offs never trip it (SPEC.md R142). It
+	// is recorded only when some seat has a line (WithHandoffBound), and read
+	// as the default when zero.
+	Handoffs int `json:"handoffs,omitempty" yaml:"handoffs,omitempty"`
+	// RapidHandoffSeconds is the window that makes a hand-off rapid, recorded
+	// and read the same way as Handoffs.
+	RapidHandoffSeconds int `json:"rapidHandoffSeconds,omitempty" yaml:"rapidHandoffSeconds,omitempty"`
+	// FreshPerDispatch starts an agent in a fresh session at each dispatch
+	// that opens on it, re-anchored as a restart is, and spends no rung. Per
+	// seat and off when unset, like HandoffTokens. An agent whose dispatches
+	// share nothing a session must remember runs each on a clean context
+	// (SPEC.md R145).
+	FreshPerDispatch bool `json:"freshPerDispatch,omitempty" yaml:"freshPerDispatch,omitempty"`
 }
 
 // DefaultPolicy is what a campaign gets for saying nothing; MANUAL.md's
@@ -243,6 +322,8 @@ func DefaultPolicy() Policy {
 		SettlingSeconds:     300,
 		ProviderWaitSeconds: 3600,
 		StallSeconds:        180,
+		Handoffs:            10,
+		RapidHandoffSeconds: 300,
 	}
 }
 
@@ -250,11 +331,11 @@ func DefaultPolicy() Policy {
 const DefaultOrchestratorStallSeconds = 1800
 
 // CampaignOnlyFields names the set numbers in p that only a campaign may
-// declare, in profile spelling. StallSeconds is absent because it is the one
-// number resolved per seat: it belongs to a member's own turn driver, and
-// reaches it as CS_<CLI>_STALL_SECS. Every other number governs the whole
-// campaign — one resolved set, recorded on the campaign and in every
-// member.json, that every node is computed against.
+// declare, in profile spelling. StallSeconds and HandoffTokens are absent
+// because they are the numbers resolved per seat: each belongs to a member's
+// own machine, and reaches it through the sandbox environment. Every other
+// number governs the whole campaign — one resolved set, recorded on the
+// campaign and in every member.json, that every node is computed against.
 //
 // It exists so validation can REFUSE a member that declares one, rather than
 // writing a number nothing reads. That member would run on the campaign's
@@ -272,6 +353,8 @@ func (p Policy) CampaignOnlyFields() []string {
 		{"pollSeconds", p.PollSeconds},
 		{"settlingSeconds", p.SettlingSeconds},
 		{"providerWaitSeconds", p.ProviderWaitSeconds},
+		{"handoffs", p.Handoffs},
+		{"rapidHandoffSeconds", p.RapidHandoffSeconds},
 	} {
 		if field.value != 0 {
 			out = append(out, "policy."+field.name)
@@ -280,7 +363,9 @@ func (p Policy) CampaignOnlyFields() []string {
 	return out
 }
 
-// Resolve fills every zero field of p from DefaultPolicy.
+// Resolve fills every zero field of p from DefaultPolicy, except Handoffs and
+// RapidHandoffSeconds. The hand-off bound is filled by WithHandoffBound alone,
+// so a campaign with no context line carries no hand-off number anywhere.
 func (p Policy) Resolve() Policy {
 	d := DefaultPolicy()
 	if p.ContinueAttempts == 0 {
@@ -308,6 +393,37 @@ func (p Policy) Resolve() Policy {
 		p.StallSeconds = d.StallSeconds
 	}
 	return p
+}
+
+// WithHandoffBound fills Handoffs and RapidHandoffSeconds from DefaultPolicy
+// when some seat has a context line and the profile named neither. Without a
+// line it leaves p alone, so every member.json stays the bytes it was before
+// lines existed. An explicit value is kept either way.
+func (p Policy) WithHandoffBound(anySeatHasLine bool) Policy {
+	if anySeatHasLine && p.Handoffs == 0 {
+		p.Handoffs = DefaultPolicy().Handoffs
+	}
+	if anySeatHasLine && p.RapidHandoffSeconds == 0 {
+		p.RapidHandoffSeconds = DefaultPolicy().RapidHandoffSeconds
+	}
+	return p
+}
+
+// handoffBound is the bound the machine computes against. A zero reads as
+// the default, so a policy that missed WithHandoffBound is never unbounded.
+func (p Policy) handoffBound() int {
+	if p.Handoffs == 0 {
+		return DefaultPolicy().Handoffs
+	}
+	return p.Handoffs
+}
+
+// rapidWindow is the window that makes a hand-off rapid, read the same way.
+func (p Policy) rapidWindow() int64 {
+	if p.RapidHandoffSeconds == 0 {
+		return int64(DefaultPolicy().RapidHandoffSeconds)
+	}
+	return int64(p.RapidHandoffSeconds)
 }
 
 // RepoRef is one repository a member holds: its guest directory name and the
@@ -359,6 +475,9 @@ type AgentRecord struct {
 	// agent must never receive. A push holds what it would newly deliver
 	// against it.
 	Withhold map[string][]string `json:"withhold,omitempty"`
+	// FreshPerDispatch is the agent's resolved policy: a dispatch that opens
+	// on it starts a fresh session.
+	FreshPerDispatch bool `json:"freshPerDispatch,omitempty"`
 }
 
 // Manifest is manifest.json: the orchestrator's roster and the campaign

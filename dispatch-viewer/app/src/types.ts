@@ -7,11 +7,13 @@ export interface Node {
   cli: string;
   model?: string;
   effort?: string;
+  handoffTokens?: number; // the member's resolved context line; absent for a seat with none
+  freshPerDispatch?: boolean; // an agent started in a fresh session at each dispatch; absent otherwise
 }
 
 export interface RunEvent {
   node: string;
-  type: string; // open|continue|restart|resume|reply|accept|plan|assessment|delivered|refused|verdict
+  type: string; // open|continue|restart|resume|handoff|commit|reply|accept|plan|assessment|delivered|refused|verdict
   at: string; // RFC3339
   dispatch?: string;
   seq?: number;
@@ -36,6 +38,8 @@ export interface Span {
   continues: number;
   restarts: number;
   resumes?: number;
+  handoffs?: number;
+  commitAsks?: number;
 }
 
 export interface Issue {

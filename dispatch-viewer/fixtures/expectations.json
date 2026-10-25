@@ -462,7 +462,7 @@
     "value": {
       "healthy": {
         "legend": [
-          "channels dispatch open continue restart resume reply done reply blocked/needs-input verdict",
+          "channels dispatch open continue restart resume hand-off asked to commit reply done reply blocked/needs-input verdict",
           "orchestrator log accept (log) plan assessment push delivered push refused"
         ],
         "sections": [
@@ -474,7 +474,7 @@
       },
       "clobbered": {
         "legend": [
-          "channels dispatch open continue restart resume reply done reply blocked/needs-input verdict",
+          "channels dispatch open continue restart resume hand-off asked to commit reply done reply blocked/needs-input verdict",
           "orchestrator log accept (log) plan assessment push delivered push refused"
         ],
         "sections": [
@@ -486,7 +486,7 @@
       },
       "name-mismatch": {
         "legend": [
-          "channels dispatch open continue restart resume reply done reply blocked/needs-input verdict",
+          "channels dispatch open continue restart resume hand-off asked to commit reply done reply blocked/needs-input verdict",
           "orchestrator log accept (log) plan assessment push delivered push refused"
         ],
         "sections": [
@@ -498,7 +498,7 @@
       },
       "create-phase": {
         "legend": [
-          "channels dispatch open continue restart resume reply done reply blocked/needs-input verdict",
+          "channels dispatch open continue restart resume hand-off asked to commit reply done reply blocked/needs-input verdict",
           "orchestrator log accept (log) plan assessment push delivered push refused"
         ],
         "sections": [
@@ -511,13 +511,13 @@
     },
     "note": "",
     "approval": {
-      "id": "SAC-097",
-      "reason": "Push deliveries and refusals now appear on the log row, so its legend names them.",
+      "id": "owner",
+      "reason": "The channels legend now names the ask to commit, the message a member reads when its hand-off is not taken, so its row gains an asked to commit entry after hand-off.",
       "previous": {
         "healthy": {
           "legend": [
-            "channels dispatch open continue restart resume reply done reply blocked/needs-input verdict",
-            "orchestrator log accept (log) plan assessment"
+            "channels dispatch open continue restart resume hand-off reply done reply blocked/needs-input verdict",
+            "orchestrator log accept (log) plan assessment push delivered push refused"
           ],
           "sections": [
             "Timeline",
@@ -528,8 +528,8 @@
         },
         "clobbered": {
           "legend": [
-            "channels dispatch open continue restart resume reply done reply blocked/needs-input verdict",
-            "orchestrator log accept (log) plan assessment"
+            "channels dispatch open continue restart resume hand-off reply done reply blocked/needs-input verdict",
+            "orchestrator log accept (log) plan assessment push delivered push refused"
           ],
           "sections": [
             "Timeline",
@@ -540,8 +540,8 @@
         },
         "name-mismatch": {
           "legend": [
-            "channels dispatch open continue restart resume reply done reply blocked/needs-input verdict",
-            "orchestrator log accept (log) plan assessment"
+            "channels dispatch open continue restart resume hand-off reply done reply blocked/needs-input verdict",
+            "orchestrator log accept (log) plan assessment push delivered push refused"
           ],
           "sections": [
             "Timeline",
@@ -552,8 +552,8 @@
         },
         "create-phase": {
           "legend": [
-            "channels dispatch open continue restart resume reply done reply blocked/needs-input verdict",
-            "orchestrator log accept (log) plan assessment"
+            "channels dispatch open continue restart resume hand-off reply done reply blocked/needs-input verdict",
+            "orchestrator log accept (log) plan assessment push delivered push refused"
           ],
           "sections": [
             "Timeline",
@@ -566,7 +566,7 @@
       "measured": {
         "healthy": {
           "legend": [
-            "channels dispatch open continue restart resume reply done reply blocked/needs-input verdict",
+            "channels dispatch open continue restart resume hand-off asked to commit reply done reply blocked/needs-input verdict",
             "orchestrator log accept (log) plan assessment push delivered push refused"
           ],
           "sections": [
@@ -578,7 +578,7 @@
         },
         "clobbered": {
           "legend": [
-            "channels dispatch open continue restart resume reply done reply blocked/needs-input verdict",
+            "channels dispatch open continue restart resume hand-off asked to commit reply done reply blocked/needs-input verdict",
             "orchestrator log accept (log) plan assessment push delivered push refused"
           ],
           "sections": [
@@ -590,7 +590,7 @@
         },
         "name-mismatch": {
           "legend": [
-            "channels dispatch open continue restart resume reply done reply blocked/needs-input verdict",
+            "channels dispatch open continue restart resume hand-off asked to commit reply done reply blocked/needs-input verdict",
             "orchestrator log accept (log) plan assessment push delivered push refused"
           ],
           "sections": [
@@ -602,7 +602,7 @@
         },
         "create-phase": {
           "legend": [
-            "channels dispatch open continue restart resume reply done reply blocked/needs-input verdict",
+            "channels dispatch open continue restart resume hand-off asked to commit reply done reply blocked/needs-input verdict",
             "orchestrator log accept (log) plan assessment push delivered push refused"
           ],
           "sections": [
@@ -1531,20 +1531,20 @@
       "bytes": 500000
     },
     "value": {
-      "bytes": 345416,
-      "gzip": 103511
+      "bytes": 350850,
+      "gzip": 105391
     },
     "note": "budget 300,000 bytes for the shell; gzip is zlib's default level",
     "approval": {
       "id": "owner",
-      "reason": "The timeline has a protocol view, the default, with the log row first and shown, and a member traces view; the log checkbox is gone.",
+      "reason": "The page grew with the ask-to-commit kind and its legend row, and the inspector's fresh session per dispatch row.",
       "previous": {
-        "bytes": 341978,
-        "gzip": 102209
+        "bytes": 350544,
+        "gzip": 105270
       },
       "measured": {
-        "bytes": 345416,
-        "gzip": 103511
+        "bytes": 350850,
+        "gzip": 105391
       }
     }
   },
@@ -1557,84 +1557,84 @@
     },
     "value": {
       "healthy": {
-        "bytes": 354539,
-        "gzip": 105891,
-        "payloadBytes": 9138,
-        "shellBytes": 345416
+        "bytes": 360825,
+        "gzip": 107953,
+        "payloadBytes": 9990,
+        "shellBytes": 350850
       },
       "clobbered": {
-        "bytes": 354530,
-        "gzip": 105903,
-        "payloadBytes": 9129,
-        "shellBytes": 345416
+        "bytes": 360816,
+        "gzip": 107961,
+        "payloadBytes": 9981,
+        "shellBytes": 350850
       },
       "name-mismatch": {
-        "bytes": 356154,
-        "gzip": 106129,
-        "payloadBytes": 10753,
-        "shellBytes": 345416
+        "bytes": 362508,
+        "gzip": 108206,
+        "payloadBytes": 11673,
+        "shellBytes": 350850
       },
       "create-phase": {
-        "bytes": 349885,
-        "gzip": 105144,
-        "payloadBytes": 4484,
-        "shellBytes": 345416
+        "bytes": 355824,
+        "gzip": 107162,
+        "payloadBytes": 4989,
+        "shellBytes": 350850
       }
     },
     "note": "shellBytes = bytes − the run-data block + the marker; budgeted like CF-40. Payload size is the archive's, not the viewer's",
     "approval": {
       "id": "owner",
-      "reason": "The timeline has a protocol view, the default, with the log row first and shown, and a member traces view; the log checkbox is gone.",
+      "reason": "The page grew with the ask-to-commit kind and its legend row, and the inspector's fresh session per dispatch row; every span in the payload now carries a commitAsks count.",
       "previous": {
         "healthy": {
-          "bytes": 351101,
-          "gzip": 104596,
-          "payloadBytes": 9138,
-          "shellBytes": 341978
+          "bytes": 360444,
+          "gzip": 107825,
+          "payloadBytes": 9915,
+          "shellBytes": 350544
         },
         "clobbered": {
-          "bytes": 351092,
-          "gzip": 104606,
-          "payloadBytes": 9129,
-          "shellBytes": 341978
+          "bytes": 360435,
+          "gzip": 107833,
+          "payloadBytes": 9906,
+          "shellBytes": 350544
         },
         "name-mismatch": {
-          "bytes": 352716,
-          "gzip": 104834,
-          "payloadBytes": 10753,
-          "shellBytes": 341978
+          "bytes": 362112,
+          "gzip": 108078,
+          "payloadBytes": 11583,
+          "shellBytes": 350544
         },
         "create-phase": {
-          "bytes": 346447,
-          "gzip": 103852,
-          "payloadBytes": 4484,
-          "shellBytes": 341978
+          "bytes": 355473,
+          "gzip": 107034,
+          "payloadBytes": 4944,
+          "shellBytes": 350544
         }
       },
       "measured": {
         "healthy": {
-          "bytes": 354539,
-          "gzip": 105891,
-          "payloadBytes": 9138,
-          "shellBytes": 345416
+          "bytes": 360825,
+          "gzip": 107953,
+          "payloadBytes": 9990,
+          "shellBytes": 350850
         },
         "clobbered": {
-          "bytes": 354530,
-          "gzip": 105903,
-          "payloadBytes": 9129,
-          "shellBytes": 345416
+          "bytes": 360816,
+          "gzip": 107961,
+          "payloadBytes": 9981,
+          "shellBytes": 350850
         },
         "name-mismatch": {
-          "bytes": 356154,
-          "gzip": 106129,
-          "payloadBytes": 10753,
-          "shellBytes": 345416
+          "bytes": 362508,
+          "gzip": 108206,
+          "payloadBytes": 11673,
+          "shellBytes": 350850
         },
         "create-phase": {
-          "bytes": 349885,
-          "gzip": 105144,
-          "payloadBytes": 4484,
-          "shellBytes": 345416
+          "bytes": 355824,
+          "gzip": 107162,
+          "payloadBytes": 4989,
+          "shellBytes": 350850
         }
       }
     }

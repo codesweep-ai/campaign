@@ -26,13 +26,20 @@ type Node struct {
 	CLI    string `json:"cli"`
 	Model  string `json:"model,omitempty"`
 	Effort string `json:"effort,omitempty"`
+	// HandoffTokens is the member's resolved context line, read from its
+	// entry in campaign.json, or 0 for a seat with none. The campaign's
+	// policy holds only the default, which a seat's own policy overrides.
+	HandoffTokens int `json:"handoffTokens,omitempty"`
+	// FreshPerDispatch says the agent started each dispatch in a fresh
+	// session, read the same way.
+	FreshPerDispatch bool `json:"freshPerDispatch,omitempty"`
 }
 
 // Event is one observed protocol artifact, timestamped from content (replies,
 // log) or from preserved guest mtimes (messages).
 type Event struct {
 	Node     string `json:"node"`
-	Type     string `json:"type"` // open|continue|restart|resume|reply|accept|plan|assessment|delivered|refused|verdict
+	Type     string `json:"type"` // open|continue|restart|resume|handoff|commit|reply|accept|plan|assessment|delivered|refused|verdict
 	At       string `json:"at"`   // RFC3339
 	Dispatch string `json:"dispatch,omitempty"`
 	Seq      int    `json:"seq,omitempty"`
@@ -56,6 +63,13 @@ type Span struct {
 	// Resumes carried the same session on after its provider refused a
 	// turn. They spend no rung, so they are not continues.
 	Resumes int `json:"resumes"`
+	// Handoffs started a fresh session on the node's own handoff, after its
+	// context crossed its line. They spend no rung either.
+	Handoffs int `json:"handoffs"`
+	// CommitAsks are hand-offs not taken: the session was kept and asked to
+	// commit its work and name the commit in its handoff. They spend no rung,
+	// and a rapid one counts toward the hand-off bound.
+	CommitAsks int `json:"commitAsks"`
 	// Addr is the address that picks the dispatch and zooms to it.
 	Addr string `json:"addr,omitempty"`
 }
@@ -310,11 +324,17 @@ func loadMessages(run *Run, node, dir string) ([]protocol.Msg, error) {
 		run.Messages[node][e.Name()] = string(body)
 		typ := "open"
 		if m.Seq > 0 {
-			typ = "continue"
-			if m.Restart {
+			switch {
+			case m.Restart:
 				typ = "restart"
-			} else if m.Resume {
+			case m.Resume:
 				typ = "resume"
+			case m.Handoff:
+				typ = "handoff"
+			case m.Commit:
+				typ = "commit"
+			default:
+				typ = "continue"
 			}
 		}
 		run.Events = append(run.Events, Event{Node: node, Type: typ,
@@ -528,6 +548,10 @@ func buildEventsAndSpans(run *Run) {
 			s.Restarts++
 		case "resume":
 			s.Resumes++
+		case "handoff":
+			s.Handoffs++
+		case "commit":
+			s.CommitAsks++
 		case "reply", "verdict":
 			s.RepliedAt = ev.At
 			s.Phase = ev.Phase

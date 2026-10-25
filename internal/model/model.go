@@ -284,6 +284,13 @@ type Member struct {
 	// StallSeconds is the resolved CS_<CLI>_STALL_SECS this member's turn
 	// driver runs under, delivered via cs-sandbox create --env.
 	StallSeconds int `json:"stallSeconds,omitempty"`
+	// HandoffTokens is the resolved context line this member hands off at,
+	// delivered the same way as CS_HANDOFF_TOKENS, or 0 for a seat with none.
+	HandoffTokens int `json:"handoffTokens,omitempty"`
+	// FreshPerDispatch is the resolved policy that starts this agent in a
+	// fresh session at each dispatch that opens on it. The orchestrator never
+	// has it: its one dispatch is the mission.
+	FreshPerDispatch bool `json:"freshPerDispatch,omitempty"`
 }
 
 // Readback is what a member answers when asked to restate its job. The fields

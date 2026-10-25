@@ -96,7 +96,26 @@ func (a *app) runReadback(ctx context.Context, out io.Writer, campaign *model.Ca
 		return fmt.Errorf("readback FAILED — %d member(s) could not confirm their briefing; do not dispatch:\n  %s",
 			len(dead), strings.Join(dead, "\n  "))
 	}
+	a.endReadbackSessions(ctx, campaign)
 	return nil
+}
+
+// endReadbackSessions ends the session each agent with a context line gave
+// its readback in. Only the host holds a record of that session, so the
+// orchestrator's dispatcher starts the agent's first dispatch in a new one,
+// and the readback's lives on beside it. Its machine then reads every later
+// turn as a session the agent started itself, and runs it with no line
+// (cs-sandbox's turn drivers: a live driven session other than the turn's
+// own). The orchestrator's readback session carries on into the mission, so
+// it is left alone, as is every seat without a line.
+func (a *app) endReadbackSessions(ctx context.Context, campaign *model.Campaign) {
+	for _, member := range campaign.Members {
+		if member.Role == "orchestrator" || member.HandoffTokens == 0 {
+			continue
+		}
+		_ = a.sandbox.killSessionQuiet(ctx, member)
+		a.sandbox.forgetSession(ctx, member)
+	}
 }
 
 // readbackOne asks one member for its readback and awaits the reply. Returns

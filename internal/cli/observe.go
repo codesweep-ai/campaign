@@ -28,6 +28,9 @@ type nodeView struct {
 	State    string `json:"state"`
 	Dispatch string `json:"dispatch,omitempty"`
 	Detail   string `json:"detail"`
+	// Context is how full the node's conversation is, when its tools can say.
+	// The detail line carries the same reading for a person.
+	Context *protocol.ContextReading `json:"context,omitempty"`
 }
 
 type observation struct {
@@ -104,12 +107,14 @@ func (a *app) observeCampaign(ctx context.Context, campaign *model.Campaign) (ob
 		o := protocol.Compute(facts, failed, protocol.Blind{Looks: blindRun}, acc, pol, now)
 		// A resume of the orchestrator is the host's to perform (PROTOCOL.md §9),
 		// so the line names the instrument, as it names restart for a credential.
-		if member.Role == "orchestrator" && o.NextMove == "resume" {
+		// The fresh session after a hand-off is the same instrument's.
+		if member.Role == "orchestrator" && (o.NextMove == "resume" || o.NextMove == "handoff") {
 			o.Detail += " · the host's move: cs-campaign resume"
 		}
 		obs.Derived = append(obs.Derived, nodeView{
 			Name: member.Name, Role: member.Role,
 			State: string(o.State), Dispatch: o.Dispatch, Detail: o.Detail,
+			Context: contextUnlessFailed(facts.Context, failed),
 		})
 		if member.Role == "orchestrator" && o.State == protocol.StateReplied && o.Dispatch == protocol.MissionID {
 			r, err := a.readReply(ctx, member, protocol.MissionID)
@@ -127,6 +132,15 @@ func (a *app) observeCampaign(ctx context.Context, campaign *model.Campaign) (ob
 		return obs.Derived[i].Name < obs.Derived[j].Name
 	})
 	return obs, nil
+}
+
+// contextUnlessFailed keeps a reading only from a look that succeeded. A failed
+// look learned nothing about the node, its context included.
+func contextUnlessFailed(c *protocol.ContextReading, failed bool) *protocol.ContextReading {
+	if failed {
+		return nil
+	}
+	return c
 }
 
 // observeBurstDelay spaces the re-probes of a failing node. A variable so

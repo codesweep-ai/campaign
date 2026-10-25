@@ -47,6 +47,10 @@ export const parseClock = (text: string): number | null => {
   return text.split(":").reduce((acc, part) => acc * 60 + Number(part), 0);
 };
 
+/** A token count as 840, 62k or 1.2M, the way cs-campaign observe prints one. */
+export const fmtTokens = (n: number): string =>
+  n < 1000 ? String(n) : n < 1_000_000 ? Math.floor((n + 500) / 1000) + "k" : (n / 1_000_000).toFixed(1) + "M";
+
 /** A duration in ms as 1h02m, 4m30s, 12s or 350ms. */
 export const fmtMs = (ms: number): string => {
   if (ms < 1000) return Math.round(ms) + "ms";

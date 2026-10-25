@@ -122,6 +122,51 @@ func (a *app) deliverNamed(ctx context.Context, member model.Member, msgName, id
 	return a.sandbox.startTurn(ctx, member, msgPath, id)
 }
 
+// hostHandoff starts the orchestrator fresh on its handoff: the old session is
+// ended and forgotten as a restart's is, and the new one is pointed at the
+// open dispatch and the handoff the node wrote. No rung is spent.
+//
+// First the member's work and its handoff are checked against each other. When
+// they disagree the session is kept, and a .commit message asks it to commit
+// and write its handoff again; the problems it was told are returned. A check
+// that cannot run is an error, and the move is tried again at the next look.
+//
+// The handoff is copied aside before the swap, because the next session
+// rewrites it. A failed copy is said and passed over: the fresh session
+// matters more.
+func (a *app) hostHandoff(ctx context.Context, member model.Member, facts protocol.Facts, id string) ([]string, error) {
+	repos := map[string]string{}
+	for _, repo := range member.Profile.Repos {
+		repos[repoGuestName(repo)] = repo.ResolvedCommit
+	}
+	out, err := a.sandbox.memberOutput(ctx, member, protocol.HandoffCheckScript(repos))
+	if err != nil {
+		return nil, fmt.Errorf("check %s's work against its handoff: %w", member.Name, err)
+	}
+	if problems := protocol.ParseHandoffCheck(string(out)); len(problems) > 0 {
+		return problems, a.deliverNamed(ctx, member, protocol.NextCommitName(facts.Msgs, id), id, protocol.CommitBody(id, problems))
+	}
+	kept := protocol.KeptHandoffPath(facts.Msgs, id)
+	if _, err := a.sandbox.memberOutput(ctx, member, protocol.KeepHandoffScript(kept)); err != nil {
+		fmt.Fprintf(a.sandbox.stderr(), "%s's handoff was not kept as ~/%s: %v\n", member.Name, kept, err)
+	}
+	_ = a.sandbox.killSessionQuiet(ctx, member)
+	a.sandbox.forgetSession(ctx, member)
+	var mine []protocol.Msg
+	for _, m := range facts.Msgs {
+		if m.ID == id {
+			mine = append(mine, m)
+		}
+	}
+	protocol.SortMsgs(mine)
+	names := make([]string, 0, len(mine))
+	for _, m := range mine {
+		names = append(names, m.Name)
+	}
+	return nil, a.deliverNamed(ctx, member, protocol.NextHandoffName(facts.Msgs, id), id,
+		protocol.HandoffBody(id, names, member.Role == "orchestrator"))
+}
+
 // hostRestart is rung two of the ladder, host-side: kill the wedged session,
 // forget it, re-anchor a fresh one against the open dispatch by mechanical
 // replay.
@@ -220,6 +265,16 @@ func (a *app) awaitReply(ctx context.Context, out io.Writer, member model.Member
 				fmt.Fprintf(out, "…  %s: no turn ran for its last message — resumed, no rung spent\n", member.Name)
 				if err := a.hostResume(ctx, member, facts, obs.Dispatch, false); err != nil {
 					fmt.Fprintf(out, "…  %s: resume failed and will be tried again: %v\n", member.Name, err)
+				}
+			case "handoff":
+				problems, err := a.hostHandoff(ctx, member, facts, obs.Dispatch)
+				switch {
+				case err != nil:
+					fmt.Fprintf(out, "…  %s: the hand-off failed and will be tried again: %v\n", member.Name, err)
+				case len(problems) > 0:
+					fmt.Fprintf(out, "…  %s handed off — session kept and asked to commit first (%s), no rung spent\n", member.Name, strings.Join(problems, "; "))
+				default:
+					fmt.Fprintf(out, "…  %s handed off — started fresh on its handoff, no rung spent\n", member.Name)
 				}
 			case "continue":
 				fmt.Fprintf(out, "…  %s stopped without replying — continued (%s)\n", member.Name, obs.Detail)

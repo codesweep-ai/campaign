@@ -622,6 +622,83 @@ it writes anything.
 No setting removes the underlying trade. Recovery cannot tell a wedged model from a slow one, so a
 short ladder abandons live members and a long one burns turns on dead ones.
 
+### A line to hand off at
+
+A long turn fills a member's context, and its CLI then compacts the conversation by itself. The
+compaction keeps what the CLI chose to keep. A context line, `handoffTokens`, has the member write
+its own handoff first and carry on in a fresh session that reads it. Give a seat a line when its
+dispatches run long enough to compact, and what it would lose is expensive to rebuild. An
+orchestrator on a long mission is the usual case. A seat without a line runs exactly as before.
+
+Size the line from what `observe` shows for that seat in a real run, never from the model's window.
+Context grows with how the model reads, not with how big its inputs are. The line has two bounds:
+
+- **Above what a fresh session costs.** A fresh session re-reads the orientation, every input,
+  the dispatch's messages and the handoff before it does any work. Its cost is the reading once
+  those reads are done, which `observe` shows a few calls into the session. With many inputs,
+  that reading is several times the session's first call. The line needs room above it for the
+  work of one session, or the seat hands off again almost at once and trips the bound.
+
+  A session whose first call is already over the line is never asked, and `observe` says so
+  beside the reading. That guard sees only the first call, so a line between the first call
+  and the re-read cost is not caught there. The cost differs by CLI, and Claude Code's own
+  instructions make its first call the largest. Claude Code records a model call only once its
+  whole response has ended. The member's machine also counts what the call has read so far,
+  so the line needs no margin for that.
+- **Below the CLI's own compaction point.** Compaction stays on as a safety net behind the line.
+
+A seat with a line gets three more sections in its orientation. They tell it to run sub-agents as
+one foreground batch, with its CLI's own sub-agents and never a second CLI session. Shell work over
+a minute runs detached with its output in a file, and the member waits on it in steps under a
+minute. The sections also say what a handoff holds for its role, and how to start fresh from one.
+They tell the member never to ration its context, and they never state the line. A member that
+knows its distance from the line rations against it and cuts work short. Read the sections with
+`cs-campaign orientation` before writing the brief. The brief may add what a handoff for that member
+must hold, such as which fixtures it has yet to re-record.
+
+A hand-off spends no rung. The orchestrator's `wait` starts an agent's fresh session. For the
+orchestrator it is your move: run `cs-campaign resume` when its line says `fresh session next`, as
+after a refusal. `handoffs` bounds only rapid hand-offs in a row. A hand-off is rapid when its
+session began on a `.handoff` or `.commit` message less than `rapidHandoffSeconds` before it. A
+long mission's hand-offs each follow a session's work, so they do not count. The two numbers are 10
+and 300 when any seat has a line, absent otherwise, and an explicit value is kept. A node that trips
+the bound with no commit asks on its line is `node-stuck` because its line sits below what a fresh
+session costs. Raise the line, not the bound.
+
+### Commit before the hand-off
+
+A hand-off is taken only when the member's work is committed and its handoff names each commit. The
+orientation tells a seat with a line to commit first, and the harness checks that it did. A brief
+must not fight that check. Tell the member where scratch files go: under its output channel, or in
+the repository's `.git/info/exclude`. Name any generated file it must never commit.
+
+When the check fails, the member keeps its session and reads a `.commit` message that names what is
+missing. It commits, writes its handoff again, and the next hand-off is taken. `observe` shows the
+seat working again in the same session, and its line later counts the asks, as in `1 asked to
+commit`. For the orchestrator, `resume` says it kept the session, and you run it again at the next
+`fresh session next`.
+
+One ask is ordinary. A seat that never commits is asked again on every hand-off, and each ask's
+turn is rapid, so it still trips the `handoffs` bound. Its line says how many of the run were asks
+to commit first. Read its `.commit` messages in its input channel to see what it keeps leaving out.
+A file it writes on every turn and never commits belongs in the repository's `.gitignore`, or in
+the brief as a file to exclude. Fix that before the next run, rather than raising the bound.
+
+### A fresh session per dispatch
+
+`freshPerDispatch` starts an agent in a fresh session at each dispatch that opens on it. Turn it on
+for an agent whose dispatches share little that a session must remember. An agent that reads a
+large corpus at each dispatch is the usual case. Its context then never accumulates across
+dispatches. The cost is a re-read of its orientation and brief at each dispatch.
+
+Leave it off for an agent whose next dispatch builds on what it learned in the last. A fresh
+session keeps the machine, the branch and the output channel, and loses everything else. Its
+orientation tells it to commit before it replies, and to write what a later dispatch needs to a
+file in its output channel. Write each dispatch so it carries what the agent needs, which every
+dispatch must do anyway. The orchestrator never has the switch, because its one dispatch is the
+mission, and `validate` refuses it there. An agent may have both a line and the switch: the line
+covers one long dispatch, and the switch covers the gap between two.
+
 ### Harvest early
 
 Do not wait for the end to find out whether anything is landing:

@@ -202,11 +202,23 @@ func (s sandboxCLI) startTurn(ctx context.Context, member model.Member, msgPath,
 
 // killSession kills a member's warm session; the first half of a restart.
 func (s sandboxCLI) killSession(ctx context.Context, member model.Member) error {
+	return s.killSessionTo(ctx, member, s.stderr())
+}
+
+// killSessionQuiet is killSession without the kill tool's own report, for a
+// caller that says what it did in its own words. The tool's report says the
+// next turn resumes the session, which is untrue once the session is also
+// forgotten. Its errors still reach stderr.
+func (s sandboxCLI) killSessionQuiet(ctx context.Context, member model.Member) error {
+	return s.killSessionTo(ctx, member, io.Discard)
+}
+
+func (s sandboxCLI) killSessionTo(ctx context.Context, member model.Member, stdout io.Writer) error {
 	tool, err := agentTool(member.CLI, "")
 	if err != nil {
 		return err
 	}
-	return runTool(ctx, s.stderr(), s.stderr(), tool, "-H", member.Ref, "--kill", member.Session.Name)
+	return runTool(ctx, stdout, s.stderr(), tool, "-H", member.Ref, "--kill", member.Session.Name)
 }
 
 // forgetSession discards the session record so the next turn is --new; the
@@ -569,6 +581,7 @@ func (s sandboxCLI) configureOrchestrator(ctx context.Context, campaign *model.C
 		manifest.Agents[member.Name] = protocol.AgentRecord{
 			CLI: member.CLI, Sandbox: member.Sandbox, Session: member.Session.Name,
 			Repos: repos, Bases: bases, Snapshots: snapshots, Withhold: withheld,
+			FreshPerDispatch: member.FreshPerDispatch,
 		}
 	}
 	if orchestrator == nil {
@@ -753,25 +766,26 @@ func (s sandboxCLI) groups(ctx context.Context) ([]Group, error) {
 }
 
 // removeGroup reclaims a campaign's group and everything it owns, verified
-// from the inventory rather than by matching error prose.
-func (s sandboxCLI) removeGroup(ctx context.Context, group string) error {
+// from the inventory rather than by matching error prose. removed says whether
+// this call removed it; an absent group is no error.
+func (s sandboxCLI) removeGroup(ctx context.Context, group string) (removed bool, err error) {
 	if s.Dry {
-		return nil
+		return false, nil
 	}
 	groups, err := s.groups(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 	for _, g := range groups {
 		if g.Name == group {
 			cmd := exec.CommandContext(ctx, s.Bin, "group", "rm", group)
 			if out, rmErr := cmd.CombinedOutput(); rmErr != nil {
-				return fmt.Errorf("%s group rm %s: %w: %s", s.Bin, group, rmErr, strings.TrimSpace(string(out)))
+				return false, fmt.Errorf("%s group rm %s: %w: %s", s.Bin, group, rmErr, strings.TrimSpace(string(out)))
 			}
-			return nil
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 func (s sandboxCLI) list(ctx context.Context) ([]model.Sandbox, error) {
@@ -807,6 +821,15 @@ var shellTimeoutVar = map[string]string{
 	"claude":   "BASH_DEFAULT_TIMEOUT_MS",
 	"opencode": "OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS",
 }
+
+// handoffAsk is what a member reads in the tool result that crosses its line.
+// It names the orientation section that says what a handoff holds, and nothing
+// else: the content is the orientation's and the brief's, per role and per
+// member, and the hook that carries this sentence knows none of it. It states
+// no number. A member that knows how far it is from the line rations its
+// context against it, and cuts work short to stay under.
+const handoffAsk = "[context] Your context is full. " +
+	"Hand off now, as your orientation describes under the heading When you are asked to hand off, then end your turn."
 
 // createArgs builds the cs-sandbox create invocation. The stall threshold —
 // the turn drivers' own idle definition — travels here as create-time env,
@@ -845,6 +868,20 @@ func createArgs(campaign *model.Campaign, member model.Member) []string {
 	}
 	if member.StallSeconds > 0 {
 		args = append(args, "--env", fmt.Sprintf("CS_%s_STALL_SECS=%d", strings.ToUpper(member.CLI), member.StallSeconds))
+	}
+	// The hand-off line travels the same way, with the file the member writes
+	// its handoff to and the sentence the sandbox's hook asks with: the sandbox
+	// holds no campaign words, so the campaign supplies them. Only a seat with
+	// a line gets any of this, so a seat without one runs as it always has.
+	// Claude Code's Agent tool runs in the background unless told otherwise,
+	// and a sub-agent left running ends with the session a hand-off replaces.
+	if member.HandoffTokens > 0 {
+		args = append(args, "--env", fmt.Sprintf("CS_HANDOFF_TOKENS=%d", member.HandoffTokens),
+			"--env", "CS_HANDOFF_FILE=~/"+protocol.HandoffFile,
+			"--env", "CS_HANDOFF_ASK="+handoffAsk)
+		if member.CLI == "claude" {
+			args = append(args, "--env", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1")
+		}
 	}
 	// The poll override travels the same way, when the host has one. It is not
 	// profile configuration: it must not reach the campaign ID or a member's

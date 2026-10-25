@@ -104,7 +104,7 @@ func (a *app) destroyCmd() *cobra.Command {
 		// artifacts the members do not — its network, its SSH trust and its
 		// gateway. Unforced on purpose: a second, independent check that the
 		// group really is empty.
-		if err = a.reclaimGroup(c.Context(), campaign); err != nil {
+		if err = a.reclaimGroup(c.Context(), c.OutOrStdout(), campaign); err != nil {
 			return err
 		}
 		return a.store.Delete(campaign.Name)
@@ -251,12 +251,20 @@ func hostSessionRecords(campaign *model.Campaign) (int, []string) {
 
 // reclaimGroup removes the campaign's cs-sandbox group once its members are
 // gone. An absent group is success: teardown must be re-runnable.
-func (a *app) reclaimGroup(ctx context.Context, campaign *model.Campaign) error {
+//
+// A removal is said. The last member's destroy has just printed that the
+// group's network and gateway are still up, and without a line after it that
+// is the last thing the operator reads.
+func (a *app) reclaimGroup(ctx context.Context, out io.Writer, campaign *model.Campaign) error {
 	if campaign.Group == "" {
 		return nil
 	}
-	if err := a.sandbox.removeGroup(ctx, campaign.Group); err != nil {
+	removed, err := a.sandbox.removeGroup(ctx, campaign.Group)
+	if err != nil {
 		return fmt.Errorf("reclaim campaign group %s: %w", campaign.Group, err)
+	}
+	if removed {
+		fmt.Fprintf(out, "group %s removed, with its network and gateway\n", campaign.Group)
 	}
 	return nil
 }
