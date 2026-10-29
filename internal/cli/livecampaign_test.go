@@ -457,6 +457,10 @@ func (s scenario) clis() []string {
 // podman on hosted runners, podman again on the self-hosted Mac — and a
 // scenario added to one list and not the others is the same silence in a
 // smaller place.
+//
+// Only the scenarios with a committed cassette. One with none is skipped by the
+// tier, so its leg would replay nothing and report green, and a scenario nobody
+// can sign in for cannot be recorded.
 func TestWorkflowRunsEveryScenario(t *testing.T) {
 	root, err := covmap.FindRepoRoot(".")
 	if err != nil {
@@ -489,7 +493,9 @@ func TestWorkflowRunsEveryScenario(t *testing.T) {
 	}
 	var want []string
 	for _, sc := range scenarios() {
-		want = append(want, sc.name)
+		if recorded, _ := filepath.Glob(filepath.Join(cassetteStore(t, sc), "*", "index.jsonl")); len(recorded) > 0 {
+			want = append(want, sc.name)
+		}
 	}
 	slices.Sort(want)
 	if len(matrices) == 0 {
@@ -499,7 +505,7 @@ func TestWorkflowRunsEveryScenario(t *testing.T) {
 		listed := slices.Clone(m.listed)
 		slices.Sort(listed)
 		if !slices.Equal(listed, want) {
-			t.Errorf("the smoke matrix at ci.yml:%d runs %v, but scenarios() defines %v.\n"+
+			t.Errorf("the smoke matrix at ci.yml:%d runs %v, but scenarios() has cassettes for %v.\n"+
 				"A scenario missing from the workflow is never replayed in CI, and its leg does not exist to say so.", m.line, listed, want)
 		}
 	}

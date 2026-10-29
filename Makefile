@@ -684,7 +684,7 @@ test-integration: setup-smoke
 ## result with the code: CI replays what this records.
 ##
 ## Re-record one at a time when an agent version moves:
-##   make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/codex-api-key'
+##   make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/codex-subscription'
 ##
 ## Re-record when an agent version moves, when the profile the driver renders
 ## changes, or when a replay starts missing. A cassette is bound to the profile

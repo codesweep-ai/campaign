@@ -91,7 +91,7 @@ func TestLiveHeterogeneousFleet(t *testing.T) {
 // It records every scenario by default. Narrow it with -run when re-recording
 // one, since each costs a real campaign:
 //
-//	make fixtures FIXTURE_TESTS='TestLiveRecordsACassette/codex-api-key'
+//	make fixtures FIXTURE_TESTS='TestLiveRecordsACassette/codex-subscription'
 func TestLiveRecordsACassette(t *testing.T) {
 	if os.Getenv("CS_CAMPAIGN_RECORD") == "" {
 		t.Skip("recording spends tokens and overwrites a committed cassette: set CS_CAMPAIGN_RECORD=1")

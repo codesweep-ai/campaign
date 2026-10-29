@@ -4,22 +4,22 @@
 one cassette per campaign member, recorded by `make record-fixtures` through a cs-vcr on
 the campaign's own fabric.
 
-One directory per scenario in `scenarios()`, two cassettes in each — ten in all,
+One directory per recorded scenario in `scenarios()`, two cassettes in each,
 because every campaign has an orchestrator and a dev:
 
 ```text
 test/cassettes/
   claude-subscription/   csrclaude-orchestrator/  csrclaude-dev/
-  claude-api-key/        csrclkey-orchestrator/   csrclkey-dev/
   codex-subscription/    csrcxsub-orchestrator/   csrcxsub-dev/
-  codex-api-key/         csrcxkey-orchestrator/   csrcxkey-dev/
   opencode-fireworks/    csrocfw-orchestrator/    csrocfw-dev/
+  claude-inherit/        csrclinh-orchestrator/   csrclinh-dev/
 ```
 
-Both Claude rows are there on purpose, and neither covers the other. Claude Code
+`claude-api-key`, `codex-api-key` and the four fault scenarios sign in with an
+Anthropic or OpenAI API key, and have no cassette until one is recorded with a
+working key. Neither API-key row is covered by its subscription row. Claude Code
 takes an API key in a header where a subscription takes OAuth, so the two send
-different requests, and only recording both covers the pair. The same holds for
-the two codex rows.
+different requests, and the same holds for codex.
 
 A scenario with no directory here is skipped by the smoke tier rather than
 failed: a recording that was never made cannot have a broken replay. CI skips
@@ -34,7 +34,7 @@ invalidates the recording, so re-record rather than hand-editing a cassette.
 Re-record one scenario at a time — each costs a real campaign:
 
 ```bash
-make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/codex-api-key'
+make record-fixtures FIXTURE_TESTS='TestLiveRecordsACassette/codex-subscription'
 ```
 
 ## Ruleset compatibility
