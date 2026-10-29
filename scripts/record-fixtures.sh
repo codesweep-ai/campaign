@@ -3,10 +3,13 @@
 # credentials.
 #
 # Each scenario is a real campaign: two microVMs, a fabric, a dispatch ladder
-# and real model turns. This checks what they need before any of that starts, and
-# `make record-fixtures-strict` fails on a scenario it cannot sign in for rather than
-# skipping it. Recording all but one and reporting green is the outcome worth
-# refusing.
+# and real model turns. This checks what they need before any of that starts.
+# With every key present it runs `make record-fixtures-strict`, which fails on a
+# scenario it cannot sign in for rather than skipping it. An API key .env does
+# not set skips the scenarios that need it instead, under `make
+# record-fixtures`, and a cassette one of them is left holding from another
+# version of its agent is dropped afterwards. The logins are still required:
+# each is one command away.
 #
 #   ./scripts/record-fixtures.sh          record every scenario
 #   ./scripts/record-fixtures.sh --check  say what would run, record nothing
@@ -37,7 +40,7 @@ check_only=0
 # wants: the rest are already committed, and re-recording a cassette that is
 # fine spends money to replace it with a different recording of the same thing.
 #
-#   ./scripts/record-fixtures.sh codex-api-key opencode-fireworks
+#   ./scripts/record-fixtures.sh codex-subscription opencode-fireworks
 #
 # It goes through this script rather than through `make record-fixtures` so the
 # credential tree below is staged either way. Without it the lent scenarios find
@@ -51,13 +54,18 @@ fi
 fail() { printf '\n%s\n' "$*" >&2; exit 1; }
 ok()   { printf '  ok    %s\n' "$*"; }
 bad()  { printf '  MISS  %s\n' "$*"; }
+skip() { printf '  SKIP  %s\n' "$*"; }
 
-# The three API keys, from the .env this repository already keeps them in.
-[[ -f .env ]] || fail ".env not found in $repo — it holds the three API keys."
-set -a
-# shellcheck disable=SC1091
-. ./.env
-set +a
+# The API keys, from the .env this repository keeps them in, and from nowhere
+# else: a key the shell happens to export is not one this repository chose, and
+# an expired one fails the preflight rather than skipping its scenarios.
+unset ANTHROPIC_API_KEY OPENAI_API_KEY FIREWORKS_API_KEY
+if [[ -f .env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+fi
 
 # Where this host keeps its own credentials. cs-sandbox reads a login from
 # <tree>/.cs-<agent> and a provider key from <tree>/.cs-keys/<provider>, and
@@ -102,7 +110,12 @@ lend_tree() {
     [[ -e $source_home/.cs-$agent ]] && cp -a "$source_home/.cs-$agent" "$creds_tree/.cs-$agent"
   done
   mkdir -m 700 "$creds_tree/.cs-keys"
-  write_key() { printf %s "${!2}" > "$creds_tree/.cs-keys/$1"; chmod 600 "$creds_tree/.cs-keys/$1"; }
+  # Only a key .env sets. One it does not is left out of the tree, and the
+  # scenarios that need it skip for want of it.
+  write_key() {
+    [[ -n ${!2:-} ]] || return 0
+    printf %s "${!2}" > "$creds_tree/.cs-keys/$1"; chmod 600 "$creds_tree/.cs-keys/$1"
+  }
   write_key anthropic ANTHROPIC_API_KEY
   write_key openai    OPENAI_API_KEY
   write_key fireworks FIREWORKS_API_KEY
@@ -127,6 +140,7 @@ echo "  image            ${image:-MISSING} (slim — what test-smoke replays on)
 echo
 
 missing=0
+skipped=0
 
 # Still .env, as they always were. What changed is where they are read: the
 # three key scenarios lend now, and a lender reads a file rather than the
@@ -135,7 +149,9 @@ missing=0
 # on this host against its real provider before it clears a cassette.
 echo "API keys (.env):"
 for v in ANTHROPIC_API_KEY OPENAI_API_KEY FIREWORKS_API_KEY; do
-  if [[ -n ${!v:-} ]]; then ok "$v is set"; else bad "$v is not set"; missing=1; fi
+  if [[ -n ${!v:-} ]]; then ok "$v is set"
+  else skip "$v is not set — the scenarios that need it are skipped"; skipped=1
+  fi
 done
 
 echo
@@ -230,14 +246,19 @@ fi
 
 echo
 if (( missing )); then
-  fail "Something above is missing. record-fixtures-strict fails on it rather than
-skipping, so fix it before a campaign starts."
+  fail "Something above is missing. Fix it before a campaign starts: a login, the
+engine or the upstream is not something a scenario can skip around."
 fi
+
+# Strict when every key is here, so a scenario that skips for any other reason
+# still fails the run.
+target=record-fixtures-strict
+(( skipped )) && target=record-fixtures
 
 if (( check_only )); then
   echo "--check: everything every scenario needs is present. Nothing recorded,"
   echo "and no credential written: the scratch tree is built by a real run."
-  echo "would run: go test -run '$fixture_tests'"
+  echo "would run: make $target FIXTURE_TESTS='$fixture_tests'"
   exit 0
 fi
 
@@ -258,10 +279,33 @@ echo
 lend_tree
 echo "Credentials for this run: $CS_SANDBOX_AGENT_HOME"
 echo "  .cs-claude, .cs-codex   copied from $source_home"
-echo "  .cs-keys/*              written from .env"
+echo "  .cs-keys/*              written from .env, the keys it sets"
 echo "  the whole tree           mode 700, removed when this exits"
 echo
-make record-fixtures-strict FIXTURE_TESTS="$fixture_tests"
+make "$target" FIXTURE_TESTS="$fixture_tests"
+
+# A scenario skipped for want of a key keeps the cassette it had. Once the image
+# carries another version of its agent, that cassette is obsolete: its members
+# send what the new agent sends, and nothing in it matches. Dropped, the
+# scenario is one with no directory, which the smoke tier skips. The image is
+# the one the members booted, asked the way sandbox's replay asks it.
+versions=$(podman run --rm --pull=never --entrypoint sh "$image" -c \
+  'for a in claude codex opencode; do v=$("$a" --version 2>/dev/null | head -1); printf "%s %s\n" "$a" "$v"; done')
+VERSIONS=$versions python3 - <<'PY'
+import json, os, pathlib, re, shutil
+
+image = {}
+for line in os.environ["VERSIONS"].splitlines():
+    name, _, rest = line.strip().partition(" ")
+    m = re.search(r"[0-9]+\.[0-9]+\.[0-9]+", rest)
+    image[name] = m.group(0) if m else ""
+for claim in sorted(pathlib.Path("test/cassettes").glob("*/recorded.json")):
+    c = json.loads(claim.read_text())
+    if c.get("cli_version") != image.get(c.get("cli"), ""):
+        shutil.rmtree(claim.parent)
+        print(f"dropped {claim.parent.name}: recorded with {c.get('cli')} {c.get('cli_version')}, "
+              f"and the image carries {image.get(c.get('cli')) or 'none'}")
+PY
 
 cat <<'AFTER'
 

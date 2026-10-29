@@ -1368,7 +1368,10 @@ It does not verify the work that campaign delivered.
 
 `make record-fixtures` records what this host can sign in for and skips the rest, saying which credential
 was missing. `make record-fixtures-strict` fails on that skip instead, which is what a host holding all
-five wants. `scripts/record-fixtures.sh` checks the environment first and runs the strict form.
+five wants. `scripts/record-fixtures.sh` checks the environment first, and runs the strict form
+when `.env` sets every key. A key it does not set skips the scenarios that need it. A cassette one of
+them is left holding from another version of its agent is dropped, and its scenario leaves the
+workflow's matrices.
 
 Recording asks each scenario's agent for a single word, on this host and against the real provider,
 before it clears a cassette. A campaign is two microVMs, a fabric and a dispatch ladder.
