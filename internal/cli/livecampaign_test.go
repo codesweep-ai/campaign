@@ -926,6 +926,33 @@ func writeFabricatedCredentials(home, token string) error {
 		return err
 	}
 
+	// And the account the login belongs to, for the LENT scenarios. The lender
+	// carries oauthAccount from this file in beside the loan, and a recording
+	// carries the operator's real one. A member with no account behaves as a
+	// gateway client and asks for less: Claude Code 2.1.312 left out tool
+	// search and the thinking display, so every turn after the first missed.
+	// Fabricated like the token, with the categorical fields a client might
+	// read set to what a Max subscription carries.
+	account, err := json.Marshal(map[string]any{"oauthAccount": map[string]any{
+		"accountUuid":               "00000000-0000-4000-8000-000000000001",
+		"emailAddress":              "test@example.invalid",
+		"displayName":               "campaign test",
+		"organizationUuid":          "00000000-0000-4000-8000-000000000002",
+		"organizationName":          "campaign test",
+		"organizationRole":          "admin",
+		"organizationType":          "claude_max",
+		"organizationRateLimitTier": "default_claude_max_20x",
+		"billingType":               "stripe_subscription",
+		"hasExtraUsageEnabled":      false,
+	}})
+	if err != nil {
+		return err
+	}
+	err = writeSecret(filepath.Join(home, ".cs-claude", ".claude.json"), account)
+	if err != nil {
+		return err
+	}
+
 	// Codex reads its tokens as JWTs, so these have to parse: three base64url
 	// parts carrying the account claims it looks for. Nothing this run reaches
 	// checks the signature.

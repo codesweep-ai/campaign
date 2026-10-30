@@ -1351,7 +1351,9 @@ cassettes, and the traffic never leaves the podman bridge.
 It skips, saying which, when the host has no `/dev/kvm`, no podman, no `cs-vcr`, or no cassette. It
 does not skip for want of a login. Every member is given a fabricated credential. For a key
 scenario that is the variable the profile names. For a subscription it is the credential file the
-agent reads, written into a profile tree `CS_SANDBOX_AGENT_HOME` points cs-sandbox at.
+agent reads, written into a profile tree `CS_SANDBOX_AGENT_HOME` points cs-sandbox at. The tree
+names a fabricated account too. A lent Claude login carries its account into the member beside the
+loan, as a recording carries the real one, and Claude Code with no account asks for less.
 
 That works because no member reaches a provider that could refuse it. A base URL aims the model
 calls at cs-vcr, and these agents also contact hosts of their own: Claude Code checks its OAuth
