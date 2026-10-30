@@ -1,21 +1,33 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfShSUMs5bdthccdhZZM8","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":339,"cache_read_input_tokens":52076,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":339},"output_tokens":20,"service_tier":"standard","inference_geo":"not_available"},"diagnostics":null,"context_management":null}  }
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CgXaH4UM9p7MAtEsFEPxC","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":348,"cache_read_input_tokens":43073,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":348},"output_tokens":4,"service_tier":"standard","inference_geo":"global","speed":"standard"},"diagnostics":null,"context_management":null}            }
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01SVsvWret1XQXpCh34MJwBX","name":"Bash","input":{},"caller":{"type":"direct"}}         }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}       }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member accept dev\", \"description\": \"Accept dev's work\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"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"}     }
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0  }
+data: {"type":"content_block_stop","index":0            }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01CSQuiDaGeStPZVSp5TuABr","name":"Bash","input":{},"caller":{"type":"direct"}}     }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cat \u003e /tmp/assessment1.md \u003c\u003c'EOF'\\ndev delivered d002 on first attempt. Independently fetched\\nrefs/remotes/campaign/dev/subject (commit 22127ab on\\ncs-sandbox/<DEV:1>.<GROUP:1>, parent = base 1053761),\\ninspected the diff (src/greet.py, tests/test_greet.py only, no scope\\ncreep), and ran `python3 -m unittest discover -s tests` myself in an\\nisolated worktree: 2 tests, OK, exit 0. All three mission criteria\\n(greet.py with correct return format, tests covering a normal name and\\nthe empty string, unittest discover exiting 0) are independently\\nconfirmed, not just reported. Accepted dev's reply. No rework needed.\\nEOF\\ncs-campaign-member note assessment --file /tmp/assessment1.md\", \"description\": \"Record assessment note of accepted work\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1         }
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":339,"cache_read_input_tokens":52076,"output_tokens":85,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}            }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":348,"cache_read_input_tokens":43073,"output_tokens":647,"output_tokens_details":{"thinking_tokens":279}},"context_management":{"applied_edits":[]}        }
 
 event: message_stop
-data: {"type":"message_stop"             }
+data: {"type":"message_stop"   }
 

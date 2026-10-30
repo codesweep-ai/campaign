@@ -1,21 +1,33 @@
 event: message_start
-data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CfShLC88kYTFvq5eddQGF","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":561,"cache_read_input_tokens":47858,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":561},"output_tokens":21,"service_tier":"standard","inference_geo":"not_available"},"diagnostics":null,"context_management":null}}
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CgXaArtfqsomkVVSCYgwX","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":636,"cache_read_input_tokens":37662,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":636},"output_tokens":2,"service_tier":"standard","inference_geo":"global","speed":"standard"},"diagnostics":null,"context_management":null}}
 
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01PMUpcZBN3m5HYYdj2fmVxr","name":"Bash","input":{},"caller":{"type":"direct"}}    }
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}               }
 
 event: ping
 data: {"type": "ping"}
 
 event: content_block_delta
-data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member note plan --file /tmp/plan.md\", \"description\": \"Record plan note\"}","type":"input_json_delta"},"index":0,"type":"content_block_delta"}
+data: {"delta":{"estimated_tokens":50,"thinking":"","type":"thinking_delta"},"index":0,"type":"content_block_delta"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"Es4GCo8ECBMYAipA4UxDoP7f9mr4ID//OSLlkRshmU/Xq//iYudqlv9smf0A0sOpQopRPu7NABk1c0zA4WDPQaT+9JCUpiQ/Xsq40DIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiQzNjk2ZGJhYi0xMjcxLTRmZWUtOWI0Zi03ZmNmMmJlNDcxZjFyEIle/Y6fFH0MZ5XOv8YWdVuIAQGaAREKD2NsYXVkZS1zb25uZXQtNagBk+yP1wawAQLCAasBCEIQHRpvBCatBaK+CmALA083CyybEQ5dBCatCqTZA083C6ZpEcwYBCatBTuTA083BQ9AETAPBCatCjvKA083C8aKEZI8BCatCjEZA083Czs2EWJBBCatCt74A083Cx8TEa2hBCatCrClA083CzpcEXbQBCatIAMqDANPNwWyAAX7EgXzCjIEldQhqDoEcp4vf0IEU/SygEoEruYRNFAMWgTZBeFWYBhoAXAC2gGgAQoWcHJlZml4X2JlZm9yZV9ibG9ja192MRIgNR1PEM/teUAJzWKu70ajbbqdGPeDvsBZrvHxhHPPKnoiQAxDsuxoyB9eW3Ps8mEYFvvqWnVKmmccDHcVDbm0uoHZBvD+iJxnilp1h8K5sM5XiAEfnlTyK5J/3MUnC7vAl98yIMLAE8hqnJLiL5ZvPYYXdo+LekTJAq3MCXv6HgmK+04fSAMSDLfGOQuPycV6deYYVBoM9o8S4zZIjrDOGr3nIjAjDdRlKHvEQYD07AnYM8r7D27/6TAi9r66zn40qmdrLOlo1FUOt7fTfjpEjQKfrgkq6wGDralHWzR2EHdrJiIxMtyijlT0Zv7k5hwPAPEoPtZjTetXh7Rc7fZOXQetx0WAWCseB+WpZxKr4vb2oCRw1Yi4Gi79vVSjhfQ/4+c43xL/W9+aG+eeOl5RrPKDRzpIKGOKJzHiwX7CcZlYeSrI3yUI9Eo+lY63+6BNLUdchrRWS9bNfnz9ecCB77mnaIdZpUpkY62S8Z3wObyqjhU2joQsa13xGzJd13aDYCt+TcyEdXFmzXBAUnb6rlydkSJfcd+RKq0hXD4brL01twpYZDACaaEWpmz8EnSZWYrWUVjD5OfYA+MZ5qW2FuxfGAE="}           }
 
 event: content_block_stop
-data: {"type":"content_block_stop","index":0           }
+data: {"type":"content_block_stop","index":0      }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01FGwtPzRW4iHRR1wmUgZRbb","name":"Bash","input":{},"caller":{"type":"direct"}} }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"command\": \"cs-campaign-member accept dev\", \"description\": \"Accept dev's briefing confirmation reply\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1}
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":561,"cache_read_input_tokens":47858,"output_tokens":93,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}      }
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":636,"cache_read_input_tokens":37662,"output_tokens":172,"output_tokens_details":{"thinking_tokens":78}},"context_management":{"applied_edits":[]}   }
 
 event: message_stop
-data: {"type":"message_stop"              }
+data: {"type":"message_stop"    }
 
