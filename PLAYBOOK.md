@@ -622,6 +622,15 @@ it writes anything.
 No setting removes the underlying trade. Recovery cannot tell a wedged model from a slow one, so a
 short ladder abandons live members and a long one burns turns on dead ones.
 
+### A provider that stalls
+
+A provider sometimes accepts a request and never starts its answer. OpenCode waits five minutes for
+the first byte and then retries. One stalled request can therefore hold a seat for half an hour
+while `observe` shows it busy. `providerHeaderTimeoutSeconds` shortens that wait for an `opencode` seat.
+Set it well above the slowest start that seat's model has shown in a real run. A value below a
+genuine start fails a healthy call and retries it, and the seat spends its turn on retries. The
+wait ends once the answer starts, so a long answer is never cut off.
+
 ### A line to hand off at
 
 A long turn fills a member's context, and its CLI then compacts the conversation by itself. The

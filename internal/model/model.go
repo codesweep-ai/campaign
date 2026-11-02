@@ -175,13 +175,18 @@ type MemberProfile struct {
 	// gets a longer one than its agents. Nothing else belongs here: every
 	// other number governs the whole campaign, and validation refuses a
 	// member that declares one (protocol.Policy.CampaignOnlyFields).
-	Policy    protocol.Policy `yaml:"policy,omitempty" json:"policy,omitzero"`
-	Model     string          `yaml:"model,omitempty" json:"model,omitempty"`
-	Effort    string          `yaml:"effort,omitempty" json:"effort,omitempty"`
-	Repos     []Repo          `yaml:"repos,omitempty" json:"repos,omitempty"`
-	Snapshots []Snapshot      `yaml:"snapshots,omitempty" json:"snapshots,omitempty"`
-	Auth      Auth            `yaml:"auth,omitempty" json:"auth,omitzero"`
-	Resources Resources       `yaml:"resources,omitempty" json:"resources,omitzero"`
+	Policy protocol.Policy `yaml:"policy,omitempty" json:"policy,omitzero"`
+	Model  string          `yaml:"model,omitempty" json:"model,omitempty"`
+	Effort string          `yaml:"effort,omitempty" json:"effort,omitempty"`
+	// ProviderHeaderTimeoutSeconds is how long this seat's CLI waits for the
+	// provider's response to start before it fails the call, in seconds. Only
+	// opencode takes it, as provider.<id>.options.headerTimeout; a seat
+	// without it keeps its CLI's own wait.
+	ProviderHeaderTimeoutSeconds int        `yaml:"providerHeaderTimeoutSeconds,omitempty" json:"providerHeaderTimeoutSeconds,omitempty"`
+	Repos                        []Repo     `yaml:"repos,omitempty" json:"repos,omitempty"`
+	Snapshots                    []Snapshot `yaml:"snapshots,omitempty" json:"snapshots,omitempty"`
+	Auth                         Auth       `yaml:"auth,omitempty" json:"auth,omitzero"`
+	Resources                    Resources  `yaml:"resources,omitempty" json:"resources,omitzero"`
 	// ImageStores are shared image stores the member's own podman reads, made
 	// on the host with `cs-sandbox create-store` and `seed-store`. They are how
 	// an image built on the host reaches a member, which cannot build one: a
@@ -257,6 +262,8 @@ type Member struct {
 	// at all.
 	Model  string `json:"model,omitempty"`
 	Effort string `json:"effort,omitempty"`
+	// ProviderHeaderTimeoutSeconds is recorded the same way, once written.
+	ProviderHeaderTimeoutSeconds int `json:"providerHeaderTimeoutSeconds,omitempty"`
 	// Harness is the verdict for the tools THIS member runs, recorded for the
 	// same reason as Model/Effort: an archive that cannot answer "what harness
 	// did this seat run on?" leaves the question to be re-derived from

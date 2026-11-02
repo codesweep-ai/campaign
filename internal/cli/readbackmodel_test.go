@@ -84,6 +84,10 @@ func TestDeclaredSuffixSaysAVariantIsUnconfirmed(t *testing.T) {
 	if !strings.Contains(variant, "[1m]") || !strings.Contains(variant, "does not name") {
 		t.Errorf("a declared variant is not reported as unconfirmed: %q", variant)
 	}
+	timed := declaredSuffix(model.Member{CLI: "opencode", Model: "fireworks-ai/glm-5p3", ProviderHeaderTimeoutSeconds: 60})
+	if timed != " on model fireworks-ai/glm-5p3, header timeout 60s (model confirmed by the answering turn; the header timeout shows only when a call times out)" {
+		t.Errorf("a declared header timeout is not reported as unconfirmed: %q", timed)
+	}
 	plain := declaredSuffix(model.Member{CLI: "claude", Model: "claude-opus-5-5", Effort: "high"})
 	if plain != " on model claude-opus-5-5, effort high (confirmed by the answering turn)" {
 		t.Errorf("a plain declaration changed wording: %q", plain)

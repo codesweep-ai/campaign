@@ -956,6 +956,32 @@ func TestTheDocumentedGuestLinesAreTheOnesItPrints(t *testing.T) {
 	}
 }
 
+// MANUAL.md quotes the refusal `validate` prints for providerHeaderTimeoutSeconds
+// on a seat that is not opencode, and SPEC.md R147 says it is refused there.
+func TestTheDocumentedHeaderTimeoutRefusalIsWhatValidatePrints(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := profileFromFlags("codex", []string{"backend=claude", "qa=codex"}, "", 0, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	backend := p.Agents["backend"]
+	backend.ProviderHeaderTimeoutSeconds = 60
+	p.Agents["backend"] = backend
+	refused := validateProfile(p)
+	if refused == nil {
+		t.Fatal("validate must refuse providerHeaderTimeoutSeconds on a claude seat")
+	}
+	if !strings.Contains(docWords(t, root, "MANUAL.md"), "cs-campaign: "+refused.Error()) {
+		t.Errorf("MANUAL.md does not quote the refusal as validate prints it: %v", refused)
+	}
+	if !strings.Contains(docWords(t, root, "SPEC.md"), "`validate` **MUST** refuse it on any other CLI") {
+		t.Error("SPEC.md R147 no longer says validate refuses the timeout on another CLI")
+	}
+}
+
 // MANUAL.md quotes the refusal `validate` prints for freshPerDispatch on the
 // orchestrator, and says the switch is on for an agent when its own policy or
 // defaults.policy sets it. SPEC.md R145 says the orchestrator never has it, so

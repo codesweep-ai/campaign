@@ -38,6 +38,14 @@ func TestModelConfigValidation(t *testing.T) {
 		{"model with a substitution", model.MemberProfile{CLI: "claude", Model: "$(id)"}, "invalid model"},
 		{"effort with a substitution", model.MemberProfile{CLI: "codex", Effort: "$(id)"}, "invalid effort"},
 		{"model with a quote", model.MemberProfile{CLI: "codex", Model: `a"b`}, "invalid model"},
+		{"opencode header timeout", model.MemberProfile{CLI: "opencode", Model: "fireworks-ai/accounts/fireworks/models/glm-5p3", ProviderHeaderTimeoutSeconds: 60}, ""},
+		// Another CLI's nearest setting may bound the whole call rather than
+		// its first byte, so the number is refused there, never ignored.
+		{"claude header timeout", model.MemberProfile{CLI: "claude", Model: "claude-opus-5-5", ProviderHeaderTimeoutSeconds: 60}, "honoured only by opencode, and this seat runs claude"},
+		{"codex header timeout", model.MemberProfile{CLI: "codex", ProviderHeaderTimeoutSeconds: 60}, "honoured only by opencode, and this seat runs codex"},
+		{"opencode header timeout without model", model.MemberProfile{CLI: "opencode", ProviderHeaderTimeoutSeconds: 60}, "requires a model named as provider/model"},
+		{"opencode header timeout on a bare model", model.MemberProfile{CLI: "opencode", Model: "glm-5p3", ProviderHeaderTimeoutSeconds: 60}, "requires a model named as provider/model"},
+		{"negative header timeout", model.MemberProfile{CLI: "opencode", Model: "zai/glm-5.2", ProviderHeaderTimeoutSeconds: -1}, "must be positive"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validateModelConfig(tc.profile)
@@ -302,6 +310,66 @@ func TestApplyModelConfigOpenCodeAttachesEffortToItsModel(t *testing.T) {
 	}
 	if entry.Options["reasoningEffort"] != "high" {
 		t.Fatalf("reasoningEffort = %q: %s", entry.Options["reasoningEffort"], body)
+	}
+}
+
+// TestApplyModelConfigOpenCodeSetsHeaderTimeoutOnItsProvider: opencode reads
+// the wait from provider.<provider>.options.headerTimeout, in milliseconds.
+// Anywhere else the seat keeps the five-minute default with nothing to say so,
+// and the whole-request `timeout` beside it would cut off every long answer.
+func TestApplyModelConfigOpenCodeSetsHeaderTimeoutOnItsProvider(t *testing.T) {
+	for _, effort := range []string{"", "high"} {
+		t.Run("effort="+effort, func(t *testing.T) {
+			sandbox, capture := captureExecSandbox(t, `if [ "$1" = exec ]; then printf '%s' "$5" > "$CAPTURE"; fi`)
+			home := t.TempDir()
+			dir := filepath.Join(home, ".cs-opencode")
+			if err := os.MkdirAll(dir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			seeded := `{"model":"old","permission":{"*":"allow"},"provider":{"fireworks-ai":{"options":{"baseURL":"https://example.invalid"}}}}`
+			if err := os.WriteFile(filepath.Join(dir, "opencode.json"), []byte(seeded), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			member := model.Member{CLI: "opencode", Ref: "box.group", Profile: model.MemberProfile{
+				CLI: "opencode", Model: "fireworks-ai/accounts/fireworks/models/glm-5p3", Effort: effort,
+				ProviderHeaderTimeoutSeconds: 60,
+			}}
+			if err := sandbox.applyModelConfig(context.Background(), member); err != nil {
+				t.Fatal(err)
+			}
+			runGuestCommand(t, home, capturedCommand(t, capture))
+
+			body, err := os.ReadFile(filepath.Join(dir, "opencode.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got struct {
+				Model    string `json:"model"`
+				Provider map[string]struct {
+					Options map[string]any `json:"options"`
+					Models  map[string]struct {
+						Options map[string]string `json:"options"`
+					} `json:"models"`
+				} `json:"provider"`
+			}
+			if err = json.Unmarshal(body, &got); err != nil {
+				t.Fatalf("invalid JSON: %v: %s", err, body)
+			}
+			options := got.Provider["fireworks-ai"].Options
+			if options["headerTimeout"] != float64(60000) {
+				t.Fatalf("headerTimeout = %v, want 60000 ms on the provider: %s", options["headerTimeout"], body)
+			}
+			if _, ok := options["timeout"]; ok {
+				t.Fatalf("wrote the whole-request timeout: %s", body)
+			}
+			if options["baseURL"] != "https://example.invalid" {
+				t.Fatalf("the provider's other options were dropped: %s", body)
+			}
+			reasoning := got.Provider["fireworks-ai"].Models["accounts/fireworks/models/glm-5p3"].Options["reasoningEffort"]
+			if reasoning != effort {
+				t.Fatalf("reasoningEffort = %q, want %q: %s", reasoning, effort, body)
+			}
+		})
 	}
 }
 
