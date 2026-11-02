@@ -12,11 +12,14 @@ package cli
 // observation rather than parse the table it prints.
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -1414,7 +1417,64 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 	if findings := a.verifyFleetLive(context.Background(), campaign); len(findings) > 0 {
 		t.Fatalf("audit: %+v", findings)
 	}
+	assertOpenCodeExported(t, run.archive, campaign)
 	return run
+}
+
+// assertOpenCodeExported asks each OpenCode member's archived evidence for a
+// session export. Neither check above can tell: an export loop that exports
+// nothing leaves no INCOMPLETE marker, and the audit counts the raw database.
+// OpenCode 2 dropped the commands the loop used to call, and that went
+// unnoticed exactly this way.
+func assertOpenCodeExported(t *testing.T, root string, campaign *model.Campaign) {
+	t.Helper()
+	for _, member := range campaign.Members {
+		if member.CLI != "opencode" {
+			continue
+		}
+		base := filepath.Join(root, "agents", member.Name)
+		if member.Role == "orchestrator" {
+			base = filepath.Join(root, "orchestrator")
+		}
+		names, err := tgzEntryNames(filepath.Join(base, "transcript", "cli-evidence.tgz"))
+		if err != nil {
+			t.Fatalf("%s: read its evidence: %v", member.Name, err)
+		}
+		exported := slices.ContainsFunc(names, func(name string) bool {
+			return strings.HasPrefix(name, ".cs-opencode/export/ses_") && strings.HasSuffix(name, ".json")
+		})
+		if !exported {
+			t.Fatalf("%s (opencode) archived no session export; its evidence holds %v", member.Name, names)
+		}
+	}
+}
+
+// tgzEntryNames lists the regular files in a gzipped tar.
+func tgzEntryNames(path string) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return nil, err
+	}
+	defer gz.Close()
+	reader := tar.NewReader(gz)
+	var names []string
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			return names, nil
+		}
+		if err != nil {
+			return names, err
+		}
+		if header.Typeflag == tar.TypeReg {
+			names = append(names, header.Name)
+		}
+	}
 }
 
 // fleetMember returns the campaign's member of that name, or a zero member.
