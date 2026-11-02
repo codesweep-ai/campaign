@@ -1,0 +1,20 @@
+{
+  "id": "SAC-101",
+  "title": "An OpenCode seat waits five minutes on every stalled provider call",
+  "type": "improvement",
+  "severity": "med",
+  "status": "in-progress",
+  "foundBy": "repository owner, from a task-tracker campaign whose modeller lost most of a lap to provider stalls",
+  "opened": "2026-11-02",
+  "resolved": null,
+  "stint": "provider header timeout, 2026-11-02",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "OpenCode waits 300 seconds for a provider's response headers before it gives up on a call. It then retries the call silently, up to six attempts with backoff, so one stuck call costs about 31 minutes before the turn ends and the campaign resumes the seat. In a task-tracker campaign, a modeller on glm-5p3 at Fireworks lost about 85 of 92 minutes this way, to 24 header timeouts. Other seats on the same machine were healthy. The seat read plain `busy` throughout. The modeller's slowest genuine call over three stores took 34.6 seconds to start answering, and the median was 1.0 to 1.4 seconds.\n\nOpenCode reads the wait from `provider.<id>.options.headerTimeout`, in milliseconds. A profile has no way to set it. Wanted: a per-seat number, in seconds, that the campaign writes there for an OpenCode seat. A seat without it must run exactly as it does now. A seat on another CLI must be refused rather than have the number ignored.",
+  "notes": [],
+  "links": []
+}
