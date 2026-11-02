@@ -348,6 +348,9 @@ func declaredSummary(member model.Member) string {
 	if member.Effort != "" {
 		parts = append(parts, "effort "+member.Effort)
 	}
+	if member.ProviderHeaderTimeoutSeconds > 0 {
+		parts = append(parts, fmt.Sprintf("header timeout %ds", member.ProviderHeaderTimeoutSeconds))
+	}
 	return strings.Join(parts, ", ")
 }
 
@@ -367,6 +370,11 @@ func declaredSuffix(member model.Member) string {
 	var unconfirmed []string
 	if member.Effort != "" && !turnEffortReadable(member.CLI) {
 		unconfirmed = append(unconfirmed, "this adapter does not name its effort")
+	}
+	// The log names the wait only in the error a timed-out call raises, so a
+	// healthy seat never shows it.
+	if member.ProviderHeaderTimeoutSeconds > 0 {
+		unconfirmed = append(unconfirmed, "the header timeout shows only when a call times out")
 	}
 	if _, variant := contextVariant(member.Model); variant != "" {
 		unconfirmed = append(unconfirmed, "the transcript does not name the "+variant+" context variant")

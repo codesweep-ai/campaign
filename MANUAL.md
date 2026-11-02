@@ -304,7 +304,9 @@ A member that declares a `model` or an `effort` has it confirmed here, against t
 answering turn was served by. `create` fails a member whose declaration did not take. One part
 cannot be confirmed: a bracketed context variant such as `claude-opus-5-5[1m]` selects the session
 rather than the model, so the transcript records the plain model id. That seat passes on its model
-id and the line says the variant was not confirmed.
+id and the line says the variant was not confirmed. A `providerHeaderTimeoutSeconds` cannot be
+confirmed either, because opencode's log names the wait only when a call times out. The line names
+the number and says it shows only then.
 
 A readback that cannot be read is asked for once more. When a member's answer does not parse as
 JSON, or leaves out a required sentence, `create` sends that member one more dispatch that quotes
@@ -1035,6 +1037,22 @@ A bracketed variant such as `claude-opus-5-5[1m]` is one of them: it asks that m
 million-token context window. For `opencode`, `effort` requires `model` beside it, because it
 attaches reasoning options to a named model, not to the session. `repos[].ref` picks the branch or tag cloned into the member, and
 `snapshots` gives it a frozen tree it can read.
+
+`providerHeaderTimeoutSeconds` is the number of seconds to wait for the provider's response to
+start. OpenCode waits 300 seconds and then retries the call. A provider that accepts a call and
+never answers can therefore hold a seat for half an hour. With the number set, that call fails sooner and the
+seat's recovery starts sooner. The campaign writes it into the seat's `opencode.json` as
+`provider.<provider>.options.headerTimeout`, in milliseconds, for the provider named before the
+first `/` of `model`. The wait covers only the start of the response, so a long answer is never cut
+off once it has begun. A seat without the number keeps opencode's own wait.
+
+Only an `opencode` seat takes it, and that seat must name its `model` as `provider/model`. `validate`
+refuses it on any other CLI, rather than ignore it:
+
+```console
+$ cs-campaign validate acme/profile.yaml
+cs-campaign: agent backend: providerHeaderTimeoutSeconds is honoured only by opencode, and this seat runs claude; remove it from the seat
+```
 
 Every member needs at least one repository, and `validate` refuses one without it. A member commits
 to its clone, and that branch is the only thing `fetch` can read.

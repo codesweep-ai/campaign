@@ -337,7 +337,8 @@ func (s sandboxCLI) prepareAuth(ctx context.Context, member model.Member) error 
 // guest's own config is the only channel.
 func (s sandboxCLI) applyModelConfig(ctx context.Context, member model.Member) error {
 	declaredModel, effort := member.Profile.Model, member.Profile.Effort
-	if declaredModel == "" && effort == "" {
+	headerTimeout := member.Profile.ProviderHeaderTimeoutSeconds
+	if declaredModel == "" && effort == "" && headerTimeout == 0 {
 		return nil
 	}
 	var command string
@@ -369,14 +370,22 @@ func (s sandboxCLI) applyModelConfig(ctx context.Context, member model.Member) e
 	case "opencode":
 		// opencode resolves its model from opencode.json; effort attaches to a
 		// NAMED MODEL: provider.<provider>.models.<model>.options.reasoningEffort.
-		command = fmt.Sprintf(`umask 077 && mkdir -p "$HOME/.cs-opencode" && python3 -c '`+
-			`import json,pathlib,sys; p=pathlib.Path.home()/".cs-opencode/opencode.json"; `+
-			`c=json.loads(p.read_text()) if p.exists() else {}; slug=sys.argv[1]; effort=sys.argv[2]; `+
-			`c["model"]=slug if slug else c.get("model"); `+
-			`prov,_,mid=(slug or c.get("model","")).partition("/"); `+
-			`m=c.setdefault("provider",{}).setdefault(prov,{}).setdefault("models",{}).setdefault(mid,{}) if effort and mid else None; `+
-			`m.setdefault("options",{}).__setitem__("reasoningEffort",effort) if m is not None else None; `+
-			`p.write_text(json.dumps(c,indent=2)+"\n")' %s`, shellArgs([]string{declaredModel, effort}))
+		// The header timeout is the provider's, in milliseconds:
+		// provider.<provider>.options.headerTimeout. It is added only when
+		// declared, so a seat without it is sent the command it always was.
+		script := `import json,pathlib,sys; p=pathlib.Path.home()/".cs-opencode/opencode.json"; ` +
+			`c=json.loads(p.read_text()) if p.exists() else {}; slug=sys.argv[1]; effort=sys.argv[2]; ` +
+			`c["model"]=slug if slug else c.get("model"); ` +
+			`prov,_,mid=(slug or c.get("model","")).partition("/"); ` +
+			`m=c.setdefault("provider",{}).setdefault(prov,{}).setdefault("models",{}).setdefault(mid,{}) if effort and mid else None; ` +
+			`m.setdefault("options",{}).__setitem__("reasoningEffort",effort) if m is not None else None; `
+		args := []string{declaredModel, effort}
+		if headerTimeout > 0 {
+			script += `c.setdefault("provider",{}).setdefault(prov,{}).setdefault("options",{}).__setitem__("headerTimeout",int(sys.argv[3])); `
+			args = append(args, strconv.Itoa(headerTimeout*1000))
+		}
+		script += `p.write_text(json.dumps(c,indent=2)+"\n")`
+		command = fmt.Sprintf(`umask 077 && mkdir -p "$HOME/.cs-opencode" && python3 -c '%s' %s`, script, shellArgs(args))
 	default:
 		return nil
 	}

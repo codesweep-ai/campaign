@@ -617,6 +617,7 @@ func (a *app) provisionMember(ctx context.Context, campaign *model.Campaign, mem
 	// archive carry what this member was actually configured with rather than
 	// what was asked for.
 	member.Model, member.Effort = member.Profile.Model, member.Profile.Effort
+	member.ProviderHeaderTimeoutSeconds = member.Profile.ProviderHeaderTimeoutSeconds
 	if err := a.sandbox.configureChannels(ctx, campaign, *member, inputs); err != nil {
 		return a.failCreate(campaign, fmt.Errorf("configure %s channels: %w", member.Name, err))
 	}

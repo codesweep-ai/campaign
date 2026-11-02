@@ -783,6 +783,12 @@ nothing at all.*
 adapter's store cannot name the answering model, that **MUST** be said rather than papered over
 with the line a verified member gets.
 
+**R147.** A seat's `providerHeaderTimeoutSeconds` **MUST** reach an `opencode` seat as
+`provider.<provider>.options.headerTimeout`, in milliseconds, for the provider its `model` names, and
+`validate` **MUST** refuse it on any other CLI. A seat without it **MUST** be configured exactly as
+before. *Another CLI's nearest setting may bound the whole call rather than the wait for its first
+byte, so that CLI gets a mapping only once its setting is measured to mean the same.*
+
 **R96.** Profiles **MUST** contain secret references, never secret values. A reference is an
 environment variable name, a provider, or a login family.
 
@@ -969,6 +975,7 @@ agents:
 | `env` | `defaults`, member | `KEY=VALUE` injected into the sandbox, or a bare `KEY` to inherit the host's value. |
 | `cli` | member | One of `claude`, `codex`, `opencode`. |
 | `model`, `effort` | member | Passed to that member's CLI verbatim. `opencode` requires `model` whenever `effort` is set. |
+| `providerHeaderTimeoutSeconds` | member | Seconds to wait for the provider's response to start. `opencode` only, with `model` named as `provider/model`. See R147. |
 | `repos[].path`, `.ref`, `.name` | member | A host repository cloned into the member. A relative path resolves beside the profile. |
 | `repos[].withhold` | member | Paths this member must never receive from that repository: files, directories or globs, relative to its root. See R120a and R120c. |
 | `snapshots[].path`, `.name` | member | A frozen tree the member can read. A relative path resolves beside the profile. |
@@ -992,7 +999,7 @@ One JSON document per campaign, `version: 2`. It records:
 - one record per member.
 
 A member record carries its identity: role, CLI, bare sandbox name, qualified reference, address,
-branch, and whether it is `solo`. It carries the resolved model, effort and stall threshold, and
+branch, and whether it is `solo`. It carries the resolved model, effort, header timeout and stall threshold, and
 the per-member harness verdict. It also carries the sha256 of every seeded input, the readback, the
 session name and the member's own profile.
 

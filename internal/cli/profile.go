@@ -213,6 +213,9 @@ func validateModelConfig(m model.MemberProfile) error {
 	if m.Model != "" && !modelToken.MatchString(m.Model) {
 		return fmt.Errorf("invalid model %q", m.Model)
 	}
+	if err := validateHeaderTimeout(m); err != nil {
+		return err
+	}
 	if m.Effort == "" {
 		return nil
 	}
@@ -230,6 +233,26 @@ func validateModelConfig(m model.MemberProfile) error {
 	// only agrees until it changes.
 	if m.CLI == "opencode" && m.Model == "" {
 		return errors.New("effort requires model for opencode: reasoning options attach to a named model, not to the session")
+	}
+	return nil
+}
+
+// validateHeaderTimeout holds providerHeaderTimeoutSeconds to the one CLI that
+// has the setting. Another CLI's nearest knob may mean something else, a cap
+// on the whole call rather than on its first byte, so a seat on one is refused
+// rather than mapped. opencode keeps the wait per provider, and the provider
+// is the slug's first segment, so the model must be declared and qualified.
+func validateHeaderTimeout(m model.MemberProfile) error {
+	seconds := m.ProviderHeaderTimeoutSeconds
+	switch {
+	case seconds == 0:
+		return nil
+	case seconds < 0:
+		return fmt.Errorf("providerHeaderTimeoutSeconds: must be positive, got %d", seconds)
+	case m.CLI != "opencode":
+		return fmt.Errorf("providerHeaderTimeoutSeconds is honoured only by opencode, and this seat runs %s; remove it from the seat", m.CLI)
+	case !strings.Contains(m.Model, "/"):
+		return errors.New("providerHeaderTimeoutSeconds requires a model named as provider/model for opencode: the wait is set on the provider")
 	}
 	return nil
 }
