@@ -1,0 +1,57 @@
+event: message_start
+data: {"type":"message_start","message":{"model":"claude-sonnet-5","id":"msg_011CgdmXJvCi4dB2hxkV17cy","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":351,"cache_read_input_tokens":45105,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":351},"output_tokens":4,"service_tier":"standard","inference_geo":"global","speed":"standard"},"diagnostics":null,"context_management":null}              }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}              }
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Clean,"}       }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" work"}     }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" is committ"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ed to my"}    }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" own"}             }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" branch. Now"}     }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" writing the final m"}  }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ission"}     }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" summary file"} }
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"."}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0               }
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01X8E46fwqqMqub8ioe6qkPb","name":"Write","input":{},"caller":{"type":"direct"}}          }
+
+event: content_block_delta
+data: {"delta":{"partial_json":"{\"file_path\": \"/tmp/mission-summary.md\", \"content\": \"# Mission m1 \\\"greet, tested\\\" — concluded: campaign-met\\n\\nAll three required criteria are satisfied:\\n\\n1. `src/greet.py` defines `greet(name)` returning `\\\"Hello, \u003cname\u003e!\\\"`.\\n2. `tests/test_greet.py` covers a normal name and the empty string via\\n   `unittest`.\\n3. `python3 -m unittest discover -s tests` exits 0.\\n\\nWork was dispatched to `dev` (d002), who implemented both files and reported\\nsuccess on the first attempt. I did not take the report on faith: I fetched\\n`dev`'s branch, diffed it against the campaign base (confirming only the two\\nexpected files changed, nothing extra), read both files directly, and\\nre-ran `python3 -m unittest discover -s tests` myself in a fresh, isolated\\ngit worktree at `dev`'s commit — independent of dev's own test run. It passed\\n(2 tests, OK, exit 0). Only then did I accept d002.\\n\\nI fast-forward merged dev's accepted commit onto my own branch\\n(`cs-sandbox/<ORCHESTRATOR:1>.<GROUP:1>`), which now sits at\\n`1928a68497e4aa5c492187fdac5f9cc0830a711f`, one commit ahead of the campaign\\nbase — the surviving record of this work. A full report and assessment were\\nwritten to the output directory.\\n\\nNothing remains unmet.\\n\"}","type":"input_json_delta"},"index":1,"type":"content_block_delta"}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1           }
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":2,"cache_creation_input_tokens":351,"cache_read_input_tokens":45105,"output_tokens":564,"output_tokens_details":{"thinking_tokens":0}},"context_management":{"applied_edits":[]}              }
+
+event: message_stop
+data: {"type":"message_stop"      }
+
