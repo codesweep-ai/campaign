@@ -3,17 +3,19 @@
   "title": "An OpenCode seat waits five minutes on every stalled provider call",
   "type": "improvement",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "repository owner, from a task-tracker campaign whose modeller lost most of a lap to provider stalls",
   "opened": "2026-11-02",
-  "resolved": null,
+  "resolved": "2026-11-02",
   "stint": "provider header timeout, 2026-11-02",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "925f277"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "The campaign's own guest command, run for a seat with model fireworks-ai/accounts/fireworks/models/glm-5p3, effort high and providerHeaderTimeoutSeconds 60, wrote provider.fireworks-ai.options.headerTimeout = 60000 beside the model's reasoningEffort. OpenCode 1.19.5, the version the pinned sandbox image ships, downloaded and checked against the image's digest, loaded that config with cs-opencode's variables: `opencode debug config` exited 0 and printed headerTimeout 60000. The same config with headerTimeout 0 was refused: \"Expected a value greater than 0\". A third run set the wait to 3000 ms and pointed the provider at a local server that accepts and never answers. `opencode run` failed each of its 7 attempts after 3000 ms and exited in 82 seconds. For a profile with no timeout, `validate`, `plan`, `plan --json`, `create --dry-run` and `orientation` print the same 571 lines as main, and the OpenCode guest command is byte-identical to main's. `validate` refuses the field on a codex seat by name. `TestApplyModelConfigOpenCodeSetsHeaderTimeoutOnItsProvider` fails when the key is written as `timeout`. `make check` passed on 925f277, with every package `ok`."
   },
-  "resolution": null,
+  "resolution": "A seat may carry providerHeaderTimeoutSeconds, the seconds to wait for the provider's response to start. The campaign writes it into an OpenCode seat's opencode.json as provider.<id>.options.headerTimeout, in milliseconds, for the provider its model names. `validate` refuses it on any other CLI, and on an OpenCode seat whose model is not named as provider/model. A seat without it is configured exactly as before.",
   "details": "OpenCode waits 300 seconds for a provider's response headers before it gives up on a call. It then retries the call silently, up to six attempts with backoff, so one stuck call costs about 31 minutes before the turn ends and the campaign resumes the seat. In a task-tracker campaign, a modeller on glm-5p3 at Fireworks lost about 85 of 92 minutes this way, to 24 header timeouts. Other seats on the same machine were healthy. The seat read plain `busy` throughout. The modeller's slowest genuine call over three stores took 34.6 seconds to start answering, and the median was 1.0 to 1.4 seconds.\n\nOpenCode reads the wait from `provider.<id>.options.headerTimeout`, in milliseconds. A profile has no way to set it. Wanted: a per-seat number, in seconds, that the campaign writes there for an OpenCode seat. A seat without it must run exactly as it does now. A seat on another CLI must be refused rather than have the number ignored.",
   "notes": [],
   "links": []
