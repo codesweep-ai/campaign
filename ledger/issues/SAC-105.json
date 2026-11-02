@@ -3,26 +3,35 @@
   "title": "Three things campaign does for an OpenCode member stop working on OpenCode 2",
   "type": "improvement",
   "severity": "high",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, porting campaign to OpenCode 2.2.5 at the user's request, by running OpenCode 2.2.5 against a stub provider",
   "opened": "2026-11-01",
-  "resolved": null,
+  "resolved": "2026-11-02",
   "stint": "opencode-v2.x",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "f44bd90",
+      "cd343ff",
+      "eded081",
+      "4285952"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`make test-integration` on the pin: TestLiveMatrix/opencode-fireworks PASS in 226 seconds, and TestLiveHeterogeneousFleet PASS in 238 seconds. Each created its OpenCode member, so the declared model was confirmed from the session store. Each archived it with no INCOMPLETE marker and passed the audit. `make test-smoke SMOKE_TESTS=TestSmokeReplay/opencode-fireworks` PASS in 50 seconds, with the new check that the member's archived evidence holds a `.cs-opencode/export/ses_*.json`. `make check` passes. No scenario runs an OpenCode orchestrator, so the shell bound rests on the direct runs on 2.2.5 in the first note."
   },
-  "resolution": null,
+  "resolution": "campaign reads the model and the list of sessions from OpenCode 2's database, and exports each one with `cs-opencode session export`. An OpenCode orchestrator gets `cs-shell-bound.ts`, a plugin that sets the bound on any shell call that names none. A live run now fails when an OpenCode member archives no session export, which is how the dead export loop would have shown.",
   "details": "cs-sandbox's opencode-v2.x branch ships OpenCode 2.2.5. Measured on 2.2.5 under a profile laid out as `cs-opencode` lays it out, three things campaign relies on are gone.\n\n- **The orchestrator's wait is killed again.** `createArgs` raises an orchestrator's bound on one shell call with `OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS`. OpenCode 2 reads no such variable. A shell call asking for `sleep 10` with it set to 3000 ran the full ten seconds. The bound is 120 seconds again, and the wait chunk is 240, so an OpenCode orchestrator's wait fails halfway, as PROTOCOL.md §8 describes. The shell tool now takes a `timeout` on each call, and nothing in the configuration sets its default.\n- **A declared model is never confirmed.** `turnConfigCommand` reads `providerID=` and `modelID=` from `~/.local/share/opencode/log/*.log`. OpenCode 2's log names neither, so `create` finds no model and fails every OpenCode member that declares one.\n- **The archive holds no readable transcript.** The archive lists sessions with `cs-opencode db` and exports each with `cs-opencode export`. OpenCode 2 has neither command. The export loop exports nothing, and only the raw database reaches the archive.\n\nThe rest still holds on 2.2.5. The key file `~/.cs-opencode/env` is read, the database is `~/.cs-opencode/opencode.db`, and `provider.<p>.models.<m>.options.reasoningEffort` reaches the request as `reasoning_effort`.",
   "notes": [
     {
       "date": "2026-11-02",
-      "text": "Commit dc303a0 pins cs-sandbox at fdcdd0e, the build that ships OpenCode 2.2.5. Commit 01c3b74 reads the model and the session list from the session store. It also adds `cs-shell-bound.ts`, which configureOrchestrator installs in an OpenCode orchestrator. Commit b786ad3 re-records opencode-fireworks, and `make test-smoke` replays all four cassettes with no miss. No scenario runs an OpenCode orchestrator. The plugin's evidence is direct runs on 2.2.5. A shell call with no timeout was killed at the bound, and one naming its own timeout kept it."
+      "text": "Commit f44bd90 pins cs-sandbox at fdcdd0e, the build that ships OpenCode 2.2.5. Commit cd343ff reads the model and the session list from the session store. It also adds `cs-shell-bound.ts`, which configureOrchestrator installs in an OpenCode orchestrator. Commit eded081 re-records opencode-fireworks, and `make test-smoke` replays all four cassettes with no miss. No scenario runs an OpenCode orchestrator. The plugin's evidence is direct runs on 2.2.5. A shell call with no timeout was killed at the bound, and one naming its own timeout kept it."
     },
     {
       "date": "2026-11-02",
       "text": "In about 20 probe runs with a plugin in the profile, OpenCode's server twice stalled at start and never booted. In about 10 runs without one it never did. That is too few to blame the plugin, and sandbox's context hook is loaded the same way."
+    },
+    {
+      "date": "2026-11-02",
+      "text": "The same live run failed codex-api-key, codex-fault-throttled and codex-fault-unauthorized. Every turn on the OpenAI key was refused with `Quota exceeded. Check your plan and billing details`, so no member confirmed its briefing. codex-subscription passed on the same image."
     }
   ],
   "links": []
