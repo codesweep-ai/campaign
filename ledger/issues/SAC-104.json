@@ -1,0 +1,16 @@
+{
+  "id": "SAC-104",
+  "title": "The recording script asks an image it never built for agent versions, so a fresh host skips the cleanup and exits 125",
+  "type": "defect",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "session agent, re-recording opencode-fireworks with `./scripts/record-fixtures.sh opencode-fireworks` on a host that held no image for the new sandbox pin",
+  "opened": "2026-11-02",
+  "resolved": null,
+  "stint": null,
+  "evidence": { "commits": [], "integrated": [], "verified": null },
+  "resolution": null,
+  "details": "`scripts/record-fixtures.sh` resolves `$image` before `make` runs, from `cs-sandbox version --images`, as the published `ghcr.io/codesweep-ai/sandbox-slim:<version>`. On a host that holds no image for that version and no registry has one, `setup-smoke` builds it under the local name `localhost/codesweep-ai/sandbox-slim:<version>`. After the recording, the script runs `podman run --pull=never` on the published name to read the agent versions, and podman answers `image not known`.\n\nThe recording itself is kept, because the test has already passed and written the cassette. The script exits 125, though, and its cleanup never runs. That cleanup drops a cassette whose agent version the image no longer carries, so a stale cassette stays in the tree.\n\nThe script should ask for the image after `make`, the way `scripts/sandbox-image.sh` resolves it, which prefers the local name when only that one exists.",
+  "notes": [],
+  "links": []
+}
