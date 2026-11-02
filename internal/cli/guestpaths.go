@@ -51,6 +51,12 @@ const (
 	// in a subdirectory so an agent named "mission" cannot collide with the
 	// mission file itself.
 	guestRolesDir = guestInputDir + "/roles"
+
+	// The profile cs-sandbox's cs-opencode wrapper keeps. cs-campaign reads its
+	// session store, and installs the orchestrator's shell-bound plugin into
+	// the plugins directory opencode loads from it.
+	opencodeDB               = ".cs-opencode/opencode.db"
+	opencodeShellBoundPlugin = ".cs-opencode/plugins/cs-shell-bound.ts"
 )
 
 // reservedInputNames are basenames the product owns inside a member's input

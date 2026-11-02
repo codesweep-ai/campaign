@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -406,9 +407,9 @@ func shellArgs(values []string) string {
 // naming the model it answered on.
 //
 // claude and codex write per-session transcripts. opencode does not: its
-// sessions live in a SQLite store. Its log names the provider and model of
-// every stream though, which is the same evidence read from a different file,
-// so a declaration there is confirmable after all.
+// sessions live in a SQLite store. Every assistant message there names the
+// provider and model it answered on though, which is the same evidence read
+// from a different file, so a declaration there is confirmable after all.
 func turnConfigReadable(cli string) bool {
 	return cli == "claude" || cli == "codex" || cli == "opencode"
 }
@@ -416,10 +417,9 @@ func turnConfigReadable(cli string) bool {
 // turnEffortReadable reports whether the adapter also names the reasoning
 // effort it answered on.
 //
-// opencode does not. Its log carries `reasoning=0`, which is a count rather
-// than the effort label a profile declares, so an effort on an opencode member
-// is applied and recorded but never confirmed. Checking it against nothing
-// would fail a correctly configured campaign.
+// opencode does not. Its messages name the model and no effort, so an effort
+// on an opencode member is applied and recorded but never confirmed. Checking
+// it against nothing would fail a correctly configured campaign.
 func turnEffortReadable(cli string) bool {
 	return cli == "claude" || cli == "codex"
 }
@@ -432,15 +432,20 @@ func turnEffortReadable(cli string) bool {
 // answered.
 func turnConfigCommand(cli string) string {
 	if cli == "opencode" {
-		// The log names both halves on the stream line, in the order seen here,
-		// but the fields are read by name rather than by position: a log format
-		// that reorders them must not silently stop confirming anything.
-		//
-		// Composed as provider/model, which is the form a profile declares.
-		return `set -- "$HOME"/.local/share/opencode/log/*.log; [ -e "$1" ] || exit 0; ` +
-			`awk '{p="";m="";for(i=1;i<=NF;i++){` +
-			`if($i ~ /^providerID=/){p=substr($i,12)}else if($i ~ /^modelID=/){m=substr($i,9)}} ` +
-			`if(p!=""&&m!=""){print "model=" p "/" m}}' "$@" | sort -u`
+		// Every assistant message of every session, sub-agents' included, read
+		// from the profile's store opened read-only, so a live server writing it
+		// is not disturbed. Composed as provider/model, which is the form a
+		// profile declares.
+		return `db="$HOME/` + opencodeDB + `"; [ -e "$db" ] || exit 0; ` +
+			`python3 - "file:$db?mode=ro" <<'PY'
+import json, sqlite3, sys
+seen = set()
+for (data,) in sqlite3.connect(sys.argv[1], uri=True).execute("SELECT data FROM session_message WHERE type = 'assistant'"):
+    m = (json.loads(data) or {}).get("model") or {}
+    if m.get("providerID") and m.get("id"):
+        seen.add("model=%s/%s" % (m["providerID"], m["id"]))
+print("\n".join(sorted(seen)))
+PY`
 	}
 	glob, effortKey := `"$HOME"/.cs-codex/sessions/*/*/*/*.jsonl`, "reasoning_effort"
 	if cli == "claude" {
@@ -553,6 +558,13 @@ func (s sandboxCLI) configureOrchestrator(ctx context.Context, campaign *model.C
 	orchestrator, err := s.writeManifest(ctx, campaign)
 	if err != nil {
 		return err
+	}
+	// Before the readback, which is the orchestrator's first turn: opencode
+	// loads its plugins when its server starts.
+	if orchestrator.CLI == "opencode" {
+		if err := s.putMemberFile(ctx, *orchestrator, opencodeShellBoundPlugin, openCodeShellBound); err != nil {
+			return err
+		}
 	}
 	return s.memberRun(ctx, orchestrator.Ref, seedLogScript+guardInstallLoop)
 }
@@ -838,11 +850,18 @@ const orchestratorShellTimeoutMs = (protocol.DefaultWaitSeconds + 60) * 1000
 
 // shellTimeoutVar is the variable that sets an adapter's bound on one shell
 // call, for each adapter whose default is under the wait chunk. Codex has no
-// such bound.
+// such bound. OpenCode reads no variable for it, so its name is the one the
+// shell-bound plugin reads, which configureOrchestrator installs.
 var shellTimeoutVar = map[string]string{
 	"claude":   "BASH_DEFAULT_TIMEOUT_MS",
-	"opencode": "OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS",
+	"opencode": "CS_OPENCODE_SHELL_TIMEOUT_MS",
 }
+
+// openCodeShellBound is the OpenCode plugin that gives a shell call the
+// orchestrator's bound when the call names none.
+//
+//go:embed assets/cs-shell-bound.ts
+var openCodeShellBound string
 
 // handoffAsk is what a member reads in the tool result that crosses its line.
 // It names the orientation section that says what a handoff holds, and nothing
@@ -922,8 +941,10 @@ func createArgs(campaign *model.Campaign, member model.Member) []string {
 	// the wait blocks for a whole chunk. Past its bound Claude Code moves the
 	// call to the background, and the orchestrator went on waiting in turns
 	// the host never started (PROTOCOL.md §8). OpenCode kills it, and the wait
-	// fails halfway. Raised for the orchestrator, the one member that waits.
-	// Before the profile's own env, so a profile can still set it.
+	// fails halfway. Raised for the orchestrator, the one member that waits:
+	// Claude Code reads the variable itself, and OpenCode through the plugin
+	// configureOrchestrator installs. Before the profile's own env, so a
+	// profile can still set it.
 	if v, ok := shellTimeoutVar[member.CLI]; ok && member.Role == "orchestrator" {
 		args = append(args, "--env", fmt.Sprintf("%s=%d", v, orchestratorShellTimeoutMs))
 	}

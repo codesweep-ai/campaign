@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -62,28 +63,53 @@ func TestTurnConfigOnAHomeWithNoTranscripts(t *testing.T) {
 	}
 }
 
-// opencode keeps its sessions in SQLite, so there is no transcript to read. Its
-// log names the provider and the model of every stream, which is the evidence a
-// declaration is checked against, and this reads it out of there.
+// writeOpenCodeStore writes the session store an OpenCode 2 profile keeps, at
+// ~/.cs-opencode/opencode.db, holding the named sessions and one message per
+// entry of messages, a type and the message's data, all in the first session.
+// The columns are OpenCode 2.2.5's own, cut to the ones cs-campaign reads.
+func writeOpenCodeStore(t *testing.T, home string, sessions []string, messages [][2]string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(home, ".cs-opencode"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := json.Marshal(map[string]any{"sessions": sessions, "messages": messages})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("python3", "-c", `
+import json, sqlite3, sys
+rows = json.loads(sys.argv[2])
+db = sqlite3.connect(sys.argv[1])
+db.execute("CREATE TABLE session_v2 (id TEXT PRIMARY KEY, parent_id TEXT)")
+db.execute("CREATE TABLE session_message (id TEXT PRIMARY KEY, session_id TEXT, type TEXT, seq INTEGER, data TEXT)")
+db.executemany("INSERT INTO session_v2 (id) VALUES (?)", [(s,) for s in rows["sessions"]])
+db.executemany("INSERT INTO session_message VALUES (?, ?, ?, ?, ?)",
+    [("msg_%d" % i, rows["sessions"][0], m[0], i, m[1]) for i, m in enumerate(rows["messages"] or [])])
+db.commit()
+`, filepath.Join(home, opencodeDB), string(rows))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("write the opencode store: %v\n%s", err, out)
+	}
+}
+
+// opencode keeps its sessions in SQLite, so there is no transcript to read.
+// Each assistant message there names the provider and the model it answered
+// on, which is the evidence a declaration is checked against, and this reads it
+// out of there.
 //
-// The lines below are copied from a member's own log, including the title
-// subagent that answers on a smaller model. Both are reported: the declaration
-// has to be PRESENT among what answered, not alone, or a campaign whose summariser
-// uses a different model would fail a readback it should pass.
-func TestTurnConfigReadsTheOpencodeLog(t *testing.T) {
+// The data below has OpenCode 2.2.5's shape, including a sub-agent answering on
+// a smaller model. Both are reported: the declaration has to be PRESENT among
+// what answered, not alone, or a campaign whose sub-agents use a different model
+// would fail a readback it should pass.
+func TestTurnConfigReadsTheOpencodeStore(t *testing.T) {
 	home := t.TempDir()
-	dir := filepath.Join(home, ".local", "share", "opencode", "log")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	body := strings.Join([]string{
-		`timestamp=2026-09-17T01:29:24.144Z level=INFO run=9fdcbe7c message=stream providerID=fireworks-ai modelID=accounts/fireworks/models/kimi-k2p7-code session.id=ses_a small=true agent=title mode=primary`,
-		`timestamp=2026-09-17T01:29:25.381Z level=INFO run=9fdcbe7c message=stream providerID=fireworks-ai modelID=accounts/fireworks/models/glm-5p2 session.id=ses_a small=false agent=build mode=primary`,
-		`timestamp=2026-09-17T01:29:26.002Z level=INFO run=9fdcbe7c message=loop session.id=ses_a step=3`,
-	}, "\n") + "\n"
-	if err := os.WriteFile(filepath.Join(dir, "opencode.log"), []byte(body), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	writeOpenCodeStore(t, home, []string{"ses_a"}, [][2]string{
+		{"user", `{"text":"read the briefing"}`},
+		{"assistant", `{"agent":"explore","model":{"id":"accounts/fireworks/models/kimi-k2p7-code","providerID":"fireworks-ai"},"content":[]}`},
+		{"assistant", `{"agent":"build","model":{"id":"accounts/fireworks/models/glm-5p2","providerID":"fireworks-ai"},"content":[]}`},
+		{"assistant", `{"agent":"build","content":[]}`},
+		{"idle", `{"outcome":"completed"}`},
+	})
 
 	cmd := exec.Command("sh", "-c", turnConfigCommand("opencode"))
 	cmd.Env = append(os.Environ(), "HOME="+home)
@@ -100,14 +126,14 @@ func TestTurnConfigReadsTheOpencodeLog(t *testing.T) {
 			t.Errorf("the reader did not report %q:\n%s", want, got)
 		}
 	}
-	// A line naming neither is not a model.
+	// A message naming no model is not a model.
 	if strings.Contains(got, "model=/") {
-		t.Errorf("a line with no provider or model was reported as one:\n%s", got)
+		t.Errorf("a message with no provider or model was reported as one:\n%s", got)
 	}
 }
 
-// An opencode member with no log is not a member answering on no model.
-func TestTurnConfigOnAnOpencodeHomeWithNoLog(t *testing.T) {
+// An opencode member with no store is not a member answering on no model.
+func TestTurnConfigOnAnOpencodeHomeWithNoStore(t *testing.T) {
 	cmd := exec.Command("sh", "-c", turnConfigCommand("opencode"))
 	cmd.Env = append(os.Environ(), "HOME="+t.TempDir())
 	out, err := cmd.Output()
@@ -119,12 +145,12 @@ func TestTurnConfigOnAnOpencodeHomeWithNoLog(t *testing.T) {
 	}
 }
 
-// opencode records a reasoning count rather than an effort label, so its effort
+// opencode records the model of each message and no effort, so its effort
 // cannot be confirmed. Checking a declared effort against nothing would fail a
 // campaign that is correctly configured.
 func TestOpencodeEffortIsNotClaimedReadable(t *testing.T) {
 	if !turnConfigReadable("opencode") {
-		t.Error("opencode names its model in its log, so the model is readable")
+		t.Error("opencode names its model in its session store, so the model is readable")
 	}
 	if turnEffortReadable("opencode") {
 		t.Error("opencode names no effort label, so effort must not be claimed readable")

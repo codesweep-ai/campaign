@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,19 +27,17 @@ func TestOpencodeExportCannotCostTheTarball(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	// The evidence that must survive: the raw db the audit reads.
-	ocDir := filepath.Join(home, ".cs-opencode")
-	if err := os.MkdirAll(ocDir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(ocDir, "opencode.db"), []byte("sqlite-ish"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	// The evidence that must survive: the raw db the audit reads, holding one
+	// session, so the export loop reaches the stub below.
+	writeOpenCodeStore(t, home, []string{"ses_one"}, nil)
 
-	// A cs-opencode that never returns, on PATH ahead of anything real.
+	// A cs-opencode whose export never returns, on PATH ahead of anything
+	// real. It records that it was asked, because a loop that listed no
+	// session would pass this test without bounding anything.
 	stub := t.TempDir()
+	asked := filepath.Join(t.TempDir(), "asked")
 	if err := os.WriteFile(filepath.Join(stub, "cs-opencode"),
-		[]byte("#!/bin/sh\nif [ \"$1\" = db ]; then echo ses_one; exit 0; fi\nsleep 600\n"), 0o700); err != nil {
+		[]byte("#!/bin/sh\necho \"$*\" >> "+asked+"\nsleep 600\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", stub+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -83,5 +82,8 @@ func TestOpencodeExportCannotCostTheTarball(t *testing.T) {
 	// bound this would have run for the stub's full 600s.
 	if elapsed >= archiveCollectBound {
 		t.Fatalf("collection took %s, past its own %s bound", elapsed, archiveCollectBound)
+	}
+	if got, _ := os.ReadFile(asked); strings.TrimSpace(string(got)) != "session export ses_one" {
+		t.Fatalf("the loop did not ask for the one session's export: %q", got)
 	}
 }

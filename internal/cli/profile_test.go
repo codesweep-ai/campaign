@@ -291,7 +291,9 @@ func TestCreateArgsPreserveIsolation(t *testing.T) {
 // blocks for a whole chunk. Claude Code and OpenCode bound a shell call at
 // 120s by default. Measured on Claude Code 2.1.258 and 2.1.283, a 150s
 // command was moved to the background at 120s. On OpenCode 1.18.32 it was
-// killed at 120s. Both ran it to completion with the bound raised.
+// killed at 120s. Both ran it to completion with the bound raised. OpenCode
+// 2.2.5 reads no variable for the bound, and its shell-bound plugin reads the
+// one named here: TestAnOpenCodeOrchestratorGetsTheShellBoundPlugin.
 func TestAnOrchestratorsWaitFitsItsShellTimeout(t *testing.T) {
 	c := &model.Campaign{Engine: "firecracker", Group: "campaign-grp", Network: groupNetwork("campaign-grp")}
 	timeout := func(m model.Member, name string) string {
@@ -302,7 +304,7 @@ func TestAnOrchestratorsWaitFitsItsShellTimeout(t *testing.T) {
 		}
 		return ""
 	}
-	for cli, name := range map[string]string{"claude": "BASH_DEFAULT_TIMEOUT_MS", "opencode": "OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS"} {
+	for cli, name := range map[string]string{"claude": "BASH_DEFAULT_TIMEOUT_MS", "opencode": "CS_OPENCODE_SHELL_TIMEOUT_MS"} {
 		orchestrator := model.Member{Sandbox: "o", Role: "orchestrator", CLI: cli}
 		got := timeout(orchestrator, name)
 		if got == "" {
@@ -324,9 +326,40 @@ func TestAnOrchestratorsWaitFitsItsShellTimeout(t *testing.T) {
 	}
 	// Codex has no such bound, and reads neither variable.
 	codex := model.Member{Sandbox: "x", Role: "orchestrator", CLI: "codex"}
-	for _, name := range []string{"BASH_DEFAULT_TIMEOUT_MS", "OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS"} {
+	for _, name := range []string{"BASH_DEFAULT_TIMEOUT_MS", "CS_OPENCODE_SHELL_TIMEOUT_MS"} {
 		if v := timeout(codex, name); v != "" {
 			t.Errorf("a codex orchestrator got %s=%s", name, v)
+		}
+	}
+}
+
+// OpenCode 2 reads no variable for its shell bound, so the variable createArgs
+// sets does nothing until a plugin reads it. The orchestrator is given that
+// plugin before its first turn, and it reads the very name createArgs sets: a
+// rename on one side only would leave the wait killed at 120s again, with
+// every unit test of either half still passing.
+func TestAnOpenCodeOrchestratorGetsTheShellBoundPlugin(t *testing.T) {
+	if !strings.Contains(openCodeShellBound, "process.env."+shellTimeoutVar["opencode"]) {
+		t.Fatalf("the plugin does not read %s, the variable createArgs sets", shellTimeoutVar["opencode"])
+	}
+	for _, cli := range []string{"opencode", "claude", "codex"} {
+		sandbox, capture := captureExecSandbox(t, capturePayloads)
+		campaign := &model.Campaign{Name: "camp", Network: "net", Members: []model.Member{
+			{Name: "orchestrator", Role: "orchestrator", CLI: cli, Sandbox: "orch"},
+		}}
+		if err := sandbox.configureOrchestrator(t.Context(), campaign); err != nil {
+			t.Fatal(err)
+		}
+		command, err := os.ReadFile(capture)
+		if err != nil {
+			t.Fatal(err)
+		}
+		installed := strings.Contains(string(command), opencodeShellBoundPlugin)
+		if installed != (cli == "opencode") {
+			t.Fatalf("%s orchestrator: plugin installed = %v:\n%s", cli, installed, command)
+		}
+		if installed && string(capturedPayload(t, capture, 1)) != openCodeShellBound {
+			t.Fatal("the file installed is not the plugin")
 		}
 	}
 }

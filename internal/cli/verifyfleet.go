@@ -47,10 +47,12 @@ var foreignSessionGlob = map[string][]string{
 // foreignCredLeaf is a family's credential/token file. A member carrying a
 // family's creds it was not declared for is the copy signature — the second
 // half of ctv4 (credentials pushed to the fixer to make the wrong family work).
+// OpenCode 2 keeps its sign-ins in its database, and ones carried from the host
+// arrive as credentials.json, which the wrapper imports.
 var foreignCredLeaf = map[string][]string{
 	"claude":   {".cs-claude/.credentials.json", ".claude/.credentials.json"},
 	"codex":    {".cs-codex/auth.json", ".codex/auth.json"},
-	"opencode": {".cs-opencode/auth.json"},
+	"opencode": {".cs-opencode/auth.json", ".cs-opencode/credentials.json"},
 }
 
 type fleetFinding struct {

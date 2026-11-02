@@ -312,7 +312,8 @@ func (a *app) archiveMemberChannels(ctx context.Context, base string, member mod
 // archiveTranscripts collects only the adapter-declared CLI evidence paths;
 // credentials and unrelated home state are excluded by this allowlist. For
 // opencode that means exactly the profile's SQLite trio plus per-session JSON
-// exports — never .cs-opencode/env or auth.json, which live beside them.
+// exports — never .cs-opencode/env, auth.json or credentials.json, which live
+// beside them.
 func (a *app) archiveTranscripts(ctx context.Context, base string, member model.Member) error {
 	var allow, pre string
 	switch member.CLI {
@@ -328,6 +329,10 @@ func (a *app) archiveTranscripts(ctx context.Context, base string, member model.
 		// carries prompts, replies, tool calls, and per-message error/completed
 		// evidence, and contains no credential material.
 		//
+		// The sessions are listed from the store, opened read-only, rather than
+		// by `session list`, which lists only the top-level sessions of the
+		// directory it runs in. Sub-agents' sessions are exported too.
+		//
 		// Bounded and niced, because this runs on the member's own machine and
 		// each session costs a whole opencode start. It shares one deadline
 		// with the tar below and runs first, so an export that takes the lot
@@ -342,11 +347,11 @@ func (a *app) archiveTranscripts(ctx context.Context, base string, member model.
 		if bound == 0 {
 			bound = archiveExportBound
 		}
-		pre = fmt.Sprintf(`umask 077; mkdir -p "$HOME/.cs-opencode/export"; timeout -k 5 %s sh -c 'for id in $(cs-opencode db "SELECT id FROM session" --format tsv 2>/dev/null); do case "$id" in ses_*) nice -n 10 cs-opencode export "$id" > "$HOME/.cs-opencode/export/$id.json" 2>/dev/null || rm -f "$HOME/.cs-opencode/export/$id.json" ;; esac; done' || true; `,
+		pre = fmt.Sprintf(`umask 077; mkdir -p "$HOME/.cs-opencode/export"; timeout -k 5 %s sh -c 'for id in $(python3 -c "import sqlite3, sys; [print(r[0]) for r in sqlite3.connect(sys.argv[1], uri=True).execute(sys.argv[2])]" "file:$HOME/%s?mode=ro" "SELECT id FROM session_v2" 2>/dev/null); do case "$id" in ses_*) nice -n 10 cs-opencode session export "$id" > "$HOME/.cs-opencode/export/$id.json" 2>/dev/null || rm -f "$HOME/.cs-opencode/export/$id.json" ;; esac; done' || true; `,
 			// Seconds with a fraction: timeout takes it, and a test bound of a
 			// few hundred milliseconds must not truncate to 0, which timeout
 			// reads as "no limit".
-			strconv.FormatFloat(bound.Seconds(), 'f', -1, 64))
+			strconv.FormatFloat(bound.Seconds(), 'f', -1, 64), opencodeDB)
 	}
 	// The member's turn log: how each of its turns ended, and why, in the turn
 	// driver's words. It is the one record of a provider's refusal that does not

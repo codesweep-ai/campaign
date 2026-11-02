@@ -163,7 +163,8 @@ func TestPrepareAuthPassesKeyNameNeverValue(t *testing.T) {
 
 // The opencode evidence tar allowlists exactly the profile SQLite trio plus the
 // per-session JSON export layer, and the guest command exports every session
-// before packing; the profile env file and auth.json must never be allowlisted.
+// before packing; the profile env file and the two credential files must never
+// be allowlisted.
 func TestArchiveTranscriptsOpenCodeAllowlistAndExport(t *testing.T) {
 	covmap.ProveOnPass(t, "archive-evidence", "opencode", "", covmap.TierUnit)
 	sandbox, capture := captureExecSandbox(t, `if [ "$1" = exec ]; then printf '%s' "$5" > "$CAPTURE"; tar -czf - --files-from /dev/null; fi`)
@@ -182,13 +183,13 @@ func TestArchiveTranscriptsOpenCodeAllowlistAndExport(t *testing.T) {
 	}
 	for _, want := range []string{
 		".cs-opencode/opencode.db", ".cs-opencode/opencode.db-wal", ".cs-opencode/opencode.db-shm",
-		".cs-opencode/export", "cs-opencode export", ".cs-turns/opencode.log",
+		".cs-opencode/export", "cs-opencode session export", ".cs-turns/opencode.log",
 	} {
 		if !strings.Contains(string(command), want) {
 			t.Fatalf("opencode evidence command missing %q: %q", want, command)
 		}
 	}
-	for _, banned := range []string{".cs-opencode/env", "auth.json"} {
+	for _, banned := range []string{".cs-opencode/env", "auth.json", "credentials.json"} {
 		if strings.Contains(string(command), banned) {
 			t.Fatalf("opencode evidence command must not touch %q: %q", banned, command)
 		}
