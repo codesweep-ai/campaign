@@ -3,18 +3,25 @@
   "title": "An orchestrator told its log's path overwrote the log, and the host's backup followed",
   "type": "defect",
   "severity": "high",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, from a live dispatch viewer run against the task-tracker campaign tt-v18-run19",
   "opened": "2026-11-03",
-  "resolved": null,
+  "resolved": "2026-11-03",
   "stint": "orchestrator log, 2026-11-03",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "4b32e80"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`cs-campaign orientation` was rendered for every seat of a three-seat profile, with and without a hand-off line, on main and on 4b32e80. The only text that differs is the orchestrator's with a line, which now names `cs-campaign-member log` and never the log's path, and the other five texts are byte-identical to main. `TestTheLogMirrorKeepsWhatTheLogLost` and `TestTheLogMirrorWaitsForALineToFinish` fail when the mirror is written as before. `TestTheLogMirrorTakesConcurrentObservesOnce` passes with eight merges at once. `TestAResumedCreateKeepsReadbacksAndMovesTheDeadline` shows a new create clearing an earlier campaign's copy, and a resumed create keeping its own. `TestNoteRefusesTheLogAsItsBody` refuses the log by path and through a symlink. `TestLogPrintsTheEntriesAndCountsWhatTheToolDidNotWrite` prints run19's kind of hand-written line as a count, not an entry. `make test-smoke` replayed 41, 50, 38 and 50 requests with 0 misses, the same counts as main at ee0e3ce, so no recording needs to be made again. `make check` passed on 4b32e80, with every package `ok`."
   },
-  "resolution": null,
+  "resolution": "`cs-campaign-member log` prints the orchestrator's log. The orientation and the message a fresh session reads after a hand-off name that verb, and never the log's path. `note` refuses the log as its input. The host's copy keeps every line it has copied, and a new campaign of the same name starts it empty.",
   "details": "In tt-v18-run19 the orchestrator wrote its own log with `cat > ~/.local/share/cs-campaign/output/log.jsonl`, which replaces the file. It wrote four lines in a format of its own, with invented minute-precision times. Then it ran `cs-campaign-member note assessment --file` on the log file itself. Its reasoning quotes the orientation: \"Your log, ~/.local/share/cs-campaign/output/log.jsonl, holds your notes and acceptances\", and decides \"Let me keep a light log.\"\n\nThe log is the only record of acceptance, so the overwrite lost five acceptances. Three surveyors went back to `node-replied`, so the orchestrator had to accept them again. The modeller's d001 and d002 acceptances are gone from the record for good. `observe` copies the log to `<name>.log-mirror.jsonl` on the host, so the claim survives a lost machine, but it replaces the copy on every look. The backup is missing the same lines.\n\nThe orientation and the restart message name the file because a fresh session must read its log, and no tool reads it. Wanted: a member verb that prints the log, and texts that name that tool rather than the path. Also wanted: a `note` that refuses the log as its input, and a host copy that keeps every line it has seen.",
-  "notes": [],
+  "notes": [
+    {
+      "date": "2026-11-03",
+      "text": "A live hello campaign on 4b32e80 gave the orchestrator a hand-off line of 40,000 tokens. It handed off once, at 40,584, and met its mission in about 15 minutes for $1.81. Its fresh session ran `cs-campaign-member log` and read every entry back. No tool call in either session wrote or named the log file. The log held 6 lines, all written by the tool, and the host's copy matched it line for line."
+    }
+  ],
   "links": []
 }
