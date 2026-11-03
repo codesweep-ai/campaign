@@ -1,0 +1,16 @@
+{
+  "id": "SAC-106",
+  "title": "The opencode export test fails on macOS, which has no timeout",
+  "type": "defect",
+  "severity": "med",
+  "status": "open",
+  "foundBy": "session agent, reading the failed ci run 41725331391 on main at 752af8c",
+  "opened": "2026-11-03",
+  "resolved": null,
+  "stint": null,
+  "evidence": { "commits": [], "integrated": [], "verified": null },
+  "resolution": null,
+  "details": "`TestOpencodeExportCannotCostTheTarball` fails on both macOS legs of ci with `the loop did not ask for the one session's export: \"\"`. Linux and WSL pass. The export loop runs under `timeout -k 5 ... || true`. macOS has no GNU `timeout`, so the loop never starts and the `|| true` hides it. The check that the stub was asked, added in cd343ff for SAC-105, is the first line that notices. Before it the test passed on macOS without testing anything. The collection itself runs in a Linux guest, which has `timeout`, so no campaign is affected. Hiding `timeout` from PATH on Linux gives the same failure.\n\nThe same run's macos-arm64 leg also failed `TestReplyStampsRepoEvidence` when the test's temporary directory was cleaned up: `unlinkat .../proj/.git/objects: directory not empty`. Every git call in the reply path waits for git to exit, and the last 15 failed ci runs show no other case of it. It is recorded here and not fixed.",
+  "notes": [],
+  "links": ["SAC-105"]
+}
