@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/codesweep-ai/campaign/internal/covmap"
+	"github.com/codesweep-ai/campaign/internal/protocol"
 	"github.com/codesweep-ai/campaign/internal/store"
 )
 
@@ -135,6 +137,25 @@ agents:
 	if !first.StartedAt.Equal(failed.CreatedAt) || !first.Deadline.Equal(first.StartedAt.Add(30*time.Minute)) {
 		t.Fatalf("attempt 1 = %+v, createdAt %s", first, failed.CreatedAt)
 	}
+	// The first attempt judged dev's readback before it opened the mission, so
+	// the orchestrator's roster already names it, and its tools read dev free
+	// (R150). The log is there, and empty: nobody has written to it.
+	var manifest protocol.Manifest
+	if b, err := os.ReadFile(filepath.Join(home, guestManifestJSON)); err != nil || json.Unmarshal(b, &manifest) != nil {
+		t.Fatalf("no manifest on the orchestrator: %q, %v", b, err)
+	}
+	if got := manifest.Agents["dev"].Readback; got != "d001" {
+		t.Fatalf("the manifest must name dev's judged readback d001, got %q: %+v", got, manifest.Agents)
+	}
+	guestLog := filepath.Join(home, guestLogFile)
+	if b, err := os.ReadFile(guestLog); err != nil || len(b) != 0 {
+		t.Fatalf("create must leave the orchestrator an empty log: %q, %v", b, err)
+	}
+	// The orchestrator's own entry, which a resumed create must keep.
+	entry := `{"at":"2026-11-03T00:00:00Z","kind":"plan","text":"the first attempt's plan"}` + "\n"
+	if err := os.WriteFile(guestLog, []byte(entry), 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	out, err = runCreate()
 	if err != nil {
@@ -146,6 +167,9 @@ agents:
 	}
 	if b, err := os.ReadFile(a.store.LogMirrorPath("resumed")); err != nil || !strings.Contains(string(b), "this campaign's claim") {
 		t.Fatalf("a resumed create dropped its own log backup: %q, %v", b, err)
+	}
+	if b, err := os.ReadFile(guestLog); err != nil || string(b) != entry {
+		t.Fatalf("a resumed create must keep the orchestrator's log as it was: %q, %v", b, err)
 	}
 
 	// The deadline is the second attempt's, and the first is kept as it was.

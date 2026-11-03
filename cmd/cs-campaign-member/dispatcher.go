@@ -177,6 +177,12 @@ func (e *envState) logEntries() []protocol.Entry {
 
 func (e *envState) policy() protocol.Policy { return e.Manifest.Policy.Resolve() }
 
+// judgedFor is what of one agent's work nobody owes a judgment: this
+// orchestrator's acceptances, and the readback create judged (R150).
+func (e *envState) judgedFor(entries []protocol.Entry, name string) map[string]bool {
+	return protocol.JudgedFor(entries, name, e.Manifest.Agents[name].Readback)
+}
+
 func cmdList(env *envState) {
 	names := sortedAgents(env)
 	for _, n := range names {
@@ -255,7 +261,7 @@ func snapshot(env *envState) map[string]nodeLook {
 			mem.Unseen[name] += max(step, 1)
 		}
 		out[name] = nodeLook{
-			Obs:   protocol.Compute(l.facts, l.failed, protocol.Blind{Seconds: mem.Unseen[name]}, protocol.AcceptedFor(entries, name), pol, now),
+			Obs:   protocol.Compute(l.facts, l.failed, protocol.Blind{Seconds: mem.Unseen[name]}, env.judgedFor(entries, name), pol, now),
 			Facts: l.facts,
 		}
 	}
@@ -414,7 +420,7 @@ func unexpectedSend(env *envState, name string, facts protocol.Facts, id string,
 	if !cont {
 		why := fmt.Sprintf("a concurrent send opened %s on %s first", id, name)
 		if !raced {
-			o := protocol.Compute(facts, false, protocol.Blind{}, protocol.AcceptedFor(env.logEntries(), name), env.policy(), clockNow().Unix())
+			o := protocol.Compute(facts, false, protocol.Blind{}, env.judgedFor(env.logEntries(), name), env.policy(), clockNow().Unix())
 			why = fmt.Sprintf("%s is %s on %s, which is still open", name, o.State, id)
 		}
 		return fmt.Errorf("%s: this message would continue %s, not open a new dispatch. Nothing was delivered. Wait for its reply, or pass --continue to add this message to %s", why, id, id)
@@ -604,6 +610,10 @@ func cmdAccept(env *envState, args []string) error {
 	d := protocol.Current(facts.Msgs)
 	if d == nil || !facts.Replies[d.ID] {
 		return fmt.Errorf("%s has no reply to accept — accepting work that has not arrived is how backlogs get blamed on the fleet", args[0])
+	}
+	if d.ID == rec.Readback {
+		fmt.Printf("%s/%s is %s's readback, which create judged and accepted: %s is free for its next dispatch\n", args[0], d.ID, args[0], args[0])
+		return nil
 	}
 	if protocol.AcceptedFor(env.logEntries(), args[0])[d.ID] {
 		fmt.Printf("%s/%s was already accepted\n", args[0], d.ID)

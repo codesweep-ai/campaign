@@ -336,6 +336,33 @@ func TestAcceptanceIsPerNode(t *testing.T) {
 	}
 }
 
+// TestAJudgedReadbackReadsFree pins R150: create sent the readback and judged
+// its answer, so an agent whose only dispatch is its replied readback is free,
+// not waiting on an orchestrator for a judgment it cannot add. An empty
+// readback (none passed, or an older manifest) frees nothing, and the readback
+// of one node never frees another's dispatch of the same number.
+func TestAJudgedReadbackReadsFree(t *testing.T) {
+	entries := []Entry{{Kind: "accepted", Text: "backend/d003"}}
+	got := JudgedFor(entries, "frontend", "d001")
+	if !got["d001"] || got["d003"] || len(got) != 1 {
+		t.Fatalf("frontend's judged set is its readback alone: %v", got)
+	}
+	if back := JudgedFor(entries, "backend", ""); !back["d003"] || len(back) != 1 {
+		t.Fatalf("an empty readback adds nothing to backend's acceptances: %v", back)
+	}
+	pol := Policy{ContinueAttempts: 2, Restarts: 1, ElapsedSeconds: 1000, BlindProbes: 3, SettlingSeconds: 100}
+	f := Facts{Msgs: msgs("d001.md@9000"), Replies: map[string]bool{"d001": true}}
+	if o := Compute(f, false, Blind{}, JudgedFor(entries, "frontend", "d001"), pol, 10000); o.State != StateFree {
+		t.Fatalf("a replied readback create judged reads free: %+v", o)
+	}
+	if o := Compute(f, false, Blind{}, JudgedFor(entries, "frontend", ""), pol, 10000); o.State != StateReplied {
+		t.Fatalf("with no readback recorded the reply still surfaces for judgment: %+v", o)
+	}
+	if o := Compute(f, false, Blind{}, JudgedFor(entries, "backend", "d002"), pol, 10000); o.State != StateReplied {
+		t.Fatalf("backend's readback d002 must not free its d001: %+v", o)
+	}
+}
+
 // The wait chunk resolves like the poll interval: the caller's number unless
 // the environment overrides it. SPEC.md R126.
 func TestWaitChunkResolution(t *testing.T) {

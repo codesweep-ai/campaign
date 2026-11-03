@@ -280,15 +280,17 @@ cs-campaign create <campaign> --orchestrator CLI --agent NAME=CLI... --repo PATH
 ```
 
 Provisions each member's microVM and waits for it to accept a command. Then it seeds the briefs
-and the orientation, installs the guest binary into every member, arms the family guard in the
-orchestrator, and runs the campaign doctor. A machine reports itself created before its guest
-accepts connections, so `create` prints `waiting for <member> to accept commands` when it has to
-wait, and gives up on that member after two minutes.
+and the orientation, and installs the guest binary into every member. In the orchestrator it makes
+the log, empty, and arms the family guard. Last, it runs the campaign doctor. A machine reports
+itself created before its guest accepts connections, so `create` prints `waiting for <member> to
+accept commands` when it has to wait, and gives up on that member after two minutes.
 Then the protocol starts:
 
 1. **Dispatch `d001`, the readback.** Every member is asked to restate its job and reply. The
    restatement is checked mechanically for identity, branch, missing inputs and obligations, and
    printed for you to read. A member that cannot confirm its briefing fails `create` by name.
+   `create` judges each answer itself, so a passed readback is accepted: an agent whose newest
+   dispatch is its readback reads `node-free`, and the orchestrator owes it no `accept`.
 2. **Dispatch `m1`, the mission,** opened on the orchestrator and held open for the campaign's
    whole duration. From here the campaign is running, and running means exactly that `m1` is open.
 
@@ -354,7 +356,7 @@ observe its own death and you can.
 
 | State | Meaning |
 |---|---|
-| `node-free` | No dispatch is open, or the open one was replied to and accepted. |
+| `node-free` | No dispatch is open, or the open one was replied to and accepted. A readback `create` passed counts as accepted. |
 | `node-working` | A dispatch is open, and this node's turn driver is alive or its agent says it is in a turn. |
 | `node-stopped` | A dispatch is open, the node is not in a turn, and the ladder has a move left. |
 | `node-replied` | The reply exists and the orchestrator has not accepted it. |
@@ -716,10 +718,10 @@ help.
 | `read <agent> [path]` | The agent's reply to its current dispatch, or a file from its output channel. |
 | `read <agent> --list [dir]` | Every file in the agent's output channel, or in one directory of it, with its size, as the paths `read` takes. |
 | `restart <agent>` | Drops its session and re-anchors it against its open dispatch. |
-| `accept <agent>` | Records its current reply as accepted, which frees the agent. |
+| `accept <agent>` | Records its current reply as accepted, which frees the agent. On a readback it records nothing, and says `create` judged and accepted it. |
 | `note plan\|assessment --file F\|-` | Appends to the log. Re-planning is another `plan` entry. The log itself is refused as `F`. |
 | `log` | Prints the log, oldest first. It counts any line `cs-campaign-member` did not write, and shows none of them. |
-| `wait [--for SECS]` | Blocks. Recovery runs itself. Returns when a judgement is due — a reply to judge, or a node gone stuck — or when the chunk elapses: `--for` seconds, 240 by default. A free teammate is not a judgement; it is named on the elapsed line instead. |
+| `wait [--for SECS]` | Blocks. Recovery runs itself. Returns when a judgement is due — a reply to judge, or a node gone stuck — or when the chunk elapses: `--for` seconds, 240 by default. A free teammate is not a judgement; it is named on the elapsed line instead. A replied readback is not one either, because `create` judged it. |
 | `fetch <agent> [repo]` | Fetches its branch to `refs/remotes/campaign/<agent>/<repo>`. The build store `CS_BUILD_STORE` names is merged into the orchestrator's clone at once. |
 | `push <agent> [repo] [--commit C]` | Pushes `C`, HEAD by default, to it at `refs/campaign/orchestrator`, and logs the delivery. Refused, and logged, when it would deliver a path the profile withholds from that agent. |
 
@@ -953,7 +955,7 @@ Severity reflects the kind of problem.
 | `reply-name-mismatch` | error | a reply's filename and its content name different dispatches; the filename wins |
 | `reply-before-open` | error | a reply is timestamped before its dispatch opened |
 | `accept-unknown` | error | the log accepts a dispatch that does not exist |
-| `log-missing` | severe | the orchestrator's `log.jsonl` is absent |
+| `log-missing` | severe | the orchestrator's `log.jsonl` is absent. `create` makes it, so an absent one was lost |
 | `no-reply` | severe | a dispatch was opened and never answered |
 | `no-verdict` | severe | the mission has no outcome-bearing reply |
 | `campaign-not-met` | severe | the verdict is anything other than `campaign-met` |
@@ -961,7 +963,7 @@ Severity reflects the kind of problem.
 | `continues-exceed-policy` / `restarts-exceed-policy` | warning | recovery spent more rungs than the policy allows |
 | `accept-before-reply` | warning | an acceptance logged before the reply it judges: clock skew, or judgement of unanswered work |
 | `readback-absent` | warning | a member never restated its briefing |
-| `accept-of-readback` | info | the log accepts a create-time readback, a host-issued and host-judged dispatch: `d001`, or a later one a resumed `create` opened |
+| `accept-of-readback` | info | the log accepts a create-time readback, a host-issued and host-judged dispatch: `d001`, or a later one a resumed `create` opened. `accept` records no such entry |
 | `accept-of-own-channel` | info | the log accepts a dispatch on the orchestrator's own channel, which the host judges |
 | `accept-ambiguous` | info | a bare accept matches several nodes' dispatches; shown attached to all of them |
 | `accepted-twice` | info | the same dispatch accepted twice; the later entry is shown |
@@ -1444,10 +1446,10 @@ Everything else a campaign declares lives in the profile alone.
 | `<archive>/member-harness.json` | `archive` | Each member's tool surface, measured again at archive time. |
 | `~/.local/share/cs-campaign/input/ORIENTATION.md` | host, in each member | The standing context the product gives every member. `cs-campaign orientation` prints it before create. |
 | `~/.config/cs-campaign/member.json` | host, in each member | What that member was given. |
-| `~/.config/cs-campaign/manifest.json` | host, in the orchestrator | The roster its `wait` loop runs on. |
+| `~/.config/cs-campaign/manifest.json` | host, in the orchestrator | The roster its `wait` loop runs on. Each agent's row names the readback `create` judged, as `readback`. |
 | `~/.local/share/cs-campaign/input/` | the member's driver | Dispatch messages. |
 | `~/.local/share/cs-campaign/output/replies/<id>.json` | the member | The reply that closes a dispatch. |
-| `~/.local/share/cs-campaign/output/log.jsonl` | `cs-campaign-member`, for the orchestrator | Its append-only plan, assessment, accept and delivery record. The orchestrator reads it with `cs-campaign-member log`. |
+| `~/.local/share/cs-campaign/output/log.jsonl` | `create` makes it empty, and `cs-campaign-member` writes every entry, for the orchestrator | Its append-only plan, assessment, accept and delivery record. The orchestrator reads it with `cs-campaign-member log`. |
 | `~/.local/share/cs-campaign/output/handoff.md` | a member with a hand-off line | What a fresh session of it carries on from. `archive` collects it with the rest of the output channel. |
 | `~/.local/share/cs-campaign/output/handoffs/<dispatch>-<n>.md` | the host or the orchestrator's `wait`, in a member that handed off | The handoff the member wrote before its `n`th hand-off on that dispatch, copied before its session was ended. |
 | `~/.local/bin/cs-campaign-member` | host, in each member | The guest binary. |

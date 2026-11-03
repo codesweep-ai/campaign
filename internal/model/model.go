@@ -334,6 +334,17 @@ func (r Readback) Empty() bool {
 		r.Goal == "" && r.Scope == "" && r.Obligations == "" && len(r.Missing) == 0
 }
 
+// JudgedReadback is the dispatch this member's readback closed, when create
+// judged the answer and it passed, and "" otherwise. Create accepts that
+// dispatch itself, so the orchestrator owes it no judgment (R150).
+func (m Member) JudgedReadback() string {
+	r := m.Readback
+	if r == nil || r.Empty() || r.Detail != "" {
+		return ""
+	}
+	return r.Dispatch
+}
+
 type Session struct {
 	Name string `json:"name"`
 }

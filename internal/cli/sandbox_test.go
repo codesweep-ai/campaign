@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -571,5 +572,80 @@ esac
 		if m.IP != "10.89.0.55" {
 			t.Errorf("member %s recorded ip %q; the gateway needs the address", m.Name, m.IP)
 		}
+	}
+}
+
+// The orchestrator's roster names the readback create judged on each agent,
+// and only one that passed (R150). A failed readback is no judgment create
+// made, and a member with none recorded has nothing to name.
+func TestTheManifestNamesEachPassedReadback(t *testing.T) {
+	dir := t.TempDir()
+	tool, capture := filepath.Join(dir, "fake-sandbox"), filepath.Join(dir, "exec-args")
+	body := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$CAPTURE\"\ncat >> \"$CAPTURE.stdin\"; echo >> \"$CAPTURE.stdin\"\n"
+	if err := os.WriteFile(tool, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CAPTURE", capture)
+	campaign := &model.Campaign{Name: "demo", Group: "demo-grp", Network: groupNetwork("demo-grp"), Members: []model.Member{
+		{Name: "orchestrator", Role: "orchestrator", CLI: "codex", Sandbox: "demo-orchestrator", Ref: "demo-orchestrator.demo-grp",
+			Readback: &model.Readback{Member: "orchestrator", Dispatch: "d001"}},
+		{Name: "backend", Role: "agent", CLI: "claude", Sandbox: "demo-backend", Ref: "demo-backend.demo-grp",
+			Readback: &model.Readback{Member: "backend", Goal: "ship it", Dispatch: "d001"}},
+		{Name: "frontend", Role: "agent", CLI: "claude", Sandbox: "demo-frontend", Ref: "demo-frontend.demo-grp",
+			Readback: &model.Readback{Member: "frontend", Dispatch: "d002", Detail: "named the wrong branch"}},
+		{Name: "docs", Role: "agent", CLI: "claude", Sandbox: "demo-docs", Ref: "demo-docs.demo-grp"},
+	}}
+	orchestrator, err := (sandboxCLI{Bin: tool}).writeManifest(context.Background(), campaign)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if orchestrator == nil || orchestrator.Name != "orchestrator" {
+		t.Fatalf("writeManifest must return the orchestrator it wrote to: %+v", orchestrator)
+	}
+	var manifest struct {
+		Agents map[string]map[string]any `json:"agents"`
+	}
+	if err := json.Unmarshal(capturedPayload(t, capture, 0), &manifest); err != nil {
+		t.Fatalf("no manifest payload: %v", err)
+	}
+	if got := manifest.Agents["backend"]["readback"]; got != "d001" {
+		t.Errorf("backend's passed readback must be named d001, got %v", manifest.Agents["backend"])
+	}
+	for _, name := range []string{"frontend", "docs"} {
+		if v, has := manifest.Agents[name]["readback"]; has {
+			t.Errorf("%s has no passed readback, yet the manifest names %v", name, v)
+		}
+	}
+}
+
+// The seed makes the orchestrator's log, empty and private, when there is none,
+// so an absent log is a lost one (R149). Run again, as a resumed create runs it,
+// it leaves every byte of an existing log where it was.
+func TestTheSeedMakesAnEmptyLogAndKeepsAnExistingOne(t *testing.T) {
+	home := t.TempDir()
+	seed := func() {
+		t.Helper()
+		cmd := exec.Command("sh", "-c", seedLogScript+"true")
+		cmd.Env = append(os.Environ(), "HOME="+home)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("seed: %v\n%s", err, out)
+		}
+	}
+	seed()
+	log := filepath.Join(home, guestLogFile)
+	info, err := os.Stat(log)
+	if err != nil {
+		t.Fatalf("the seed made no log: %v", err)
+	}
+	if info.Size() != 0 || info.Mode().Perm() != 0o600 {
+		t.Fatalf("the seeded log must be empty and 0600, got %d bytes, %v", info.Size(), info.Mode().Perm())
+	}
+	entry := `{"at":"2026-11-03T00:00:00Z","kind":"plan","text":"keep me"}` + "\n"
+	if err := os.WriteFile(log, []byte(entry), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	seed()
+	if b, err := os.ReadFile(log); err != nil || string(b) != entry {
+		t.Fatalf("a second seed must leave the log as it was: %q, %v", b, err)
 	}
 }

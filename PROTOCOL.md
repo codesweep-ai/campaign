@@ -19,8 +19,8 @@ Two roles, and one participant holds both.
 
 Everything below describes **one dispatcher–worker pair**. The host/operator follows the
 dispatch-and-reply part of it with the orchestrator: it opens a dispatch, and the
-orchestrator's reply closes it. Acceptance and the recovery ladder are the orchestrator's
-alone.
+orchestrator's reply closes it. Once the mission is open, acceptance and the recovery ladder are
+the orchestrator's alone (§6).
 
 This still matters: rules written only for agents would leave the orchestrator with no
 defined obligations at all. It is a node here: it has states, and it owes a reply. What it
@@ -332,7 +332,7 @@ stored.** Look, act, discard, the way you run `ps`.
 | did it come back? | whether its reply exists |
 | is it alive, and for how long? | its process table, and the agent's own word on whether it is in a turn |
 | how did its last turn end? | the node's own record of its turns |
-| has the orchestrator accepted its reply? | **the orchestrator's acceptance record** (§7) |
+| has its dispatcher accepted its reply? | **the orchestrator's acceptance record** (§7), or the host's, for a dispatch the host judged |
 
 All but the last live inside the node's own machine. A node cannot reach out, so nothing it
 produces ever travels on its own. Computing a state means: connect, ask, done. One round trip.
@@ -341,13 +341,18 @@ produces ever travels on its own. Computing a state means: connect, ask, done. O
 dispatch appears, a reply appears, a process vanishes. `accept` leaves nothing, because it is
 not an action on the node. It is the orchestrator judging the work good enough, and afterwards
 the node's machine is byte-identical to before. So `node-free` and `node-replied`
-are indistinguishable there, and only the orchestrator's acceptance record settles it. **That
-is the only place node state depends on anything outside the node.**
+are indistinguishable there, and only an acceptance record settles it. **That is the only place
+node state depends on anything outside the node.**
 
-**Acceptance is the orchestrator's alone.** The host never accepts: its single dispatch is the
-mission, and when the orchestrator replies the campaign is over. There is no next assignment
-to free it up for. So the `accept` arrow is taken only on the orchestrator→agent leg, and the
-orchestrator's own machine ends at `node-replied`.
+**Once the mission is open, acceptance is the orchestrator's alone.** The host never accepts the
+mission: when the orchestrator replies the campaign is over, and there is no next assignment to
+free it up for. So the orchestrator's own machine ends at `node-replied`.
+
+**Before the mission, the host may dispatch an agent itself**, to have the agent restate its job.
+That dispatch is the host's readback. The host is its dispatcher, so the host judges the reply,
+accepts it, and gives the orchestrator a record of which dispatch that was. An agent whose newest
+dispatch is its readback is therefore `node-free` when the mission opens. Every later `accept`
+arrow is on the orchestrator→agent leg.
 
 **A dispatcher computes every node's state before acting on any of them.** Recomputing one
 node at a time while acting makes it react to states its own actions produced, and states that

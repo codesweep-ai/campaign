@@ -547,11 +547,26 @@ func (s sandboxCLI) installGuestBinary(ctx context.Context, ref string) error {
 	return nil
 }
 
-// configureOrchestrator installs the campaign manifest and arms the family
-// guard. Every address in the manifest is a GUEST address: the orchestrator
-// reaches agents across the group's own network, where members resolve by
-// bare name.
+// configureOrchestrator installs the campaign manifest, makes the
+// orchestrator's log, and arms the family guard.
 func (s sandboxCLI) configureOrchestrator(ctx context.Context, campaign *model.Campaign) error {
+	orchestrator, err := s.writeManifest(ctx, campaign)
+	if err != nil {
+		return err
+	}
+	return s.memberRun(ctx, orchestrator.Ref, seedLogScript+guardInstallLoop)
+}
+
+// seedLogScript makes the orchestrator's log, empty, unless it exists. The log
+// is there from create on, so an absent one was lost, not merely never
+// written (R149). A resumed create keeps every entry.
+var seedLogScript = "umask 077; mkdir -p ~/" + guestOutputDir + " && { [ -e ~/" + guestLogFile + " ] || : > ~/" + guestLogFile + "; }; "
+
+// writeManifest installs the campaign manifest on the orchestrator. Every
+// address in it is a GUEST address: the orchestrator reaches agents across the
+// group's own network, where members resolve by bare name. Create writes it
+// again once every readback has passed, to name each agent's (R150).
+func (s sandboxCLI) writeManifest(ctx context.Context, campaign *model.Campaign) (*model.Member, error) {
 	manifest := protocol.Manifest{
 		Campaign: campaign.Name, Network: campaign.Network,
 		Policy: campaign.Policy,
@@ -591,19 +606,17 @@ func (s sandboxCLI) configureOrchestrator(ctx context.Context, campaign *model.C
 			CLI: member.CLI, Sandbox: member.Sandbox, Session: member.Session.Name,
 			Repos: repos, Bases: bases, Snapshots: snapshots, Withhold: withheld,
 			FreshPerDispatch: member.FreshPerDispatch,
+			Readback:         member.JudgedReadback(),
 		}
 	}
 	if orchestrator == nil {
-		return errors.New("campaign has no orchestrator")
+		return nil, errors.New("campaign has no orchestrator")
 	}
 	encoded, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if err := s.putMemberFile(ctx, *orchestrator, guestManifestJSON, string(encoded)+"\n"); err != nil {
-		return err
-	}
-	return s.memberRun(ctx, orchestrator.Ref, guardInstallLoop)
+	return orchestrator, s.putMemberFile(ctx, *orchestrator, guestManifestJSON, string(encoded)+"\n")
 }
 
 // guardInstallLoop moves each real cs-*-remote tool aside and symlinks its
