@@ -37,16 +37,19 @@ func TestOpencodeExportCannotCostTheTarball(t *testing.T) {
 	// session, so the export loop reaches the stub below.
 	writeOpenCodeStore(t, home, []string{"ses_one"}, nil)
 
-	// A cs-opencode whose export never returns, on PATH ahead of anything
-	// real. It records that it was asked, because a loop that listed no
-	// session would pass this test without bounding anything.
-	stub := t.TempDir()
+	// A cs-opencode whose export never returns, where the member keeps it and
+	// not on PATH, which under podman does not hold it. It records that it was
+	// asked, because a loop that listed no session would pass this test
+	// without bounding anything.
+	stub := filepath.Join(home, guestBinDir)
+	if err := os.MkdirAll(stub, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	asked := filepath.Join(t.TempDir(), "asked")
 	if err := os.WriteFile(filepath.Join(stub, "cs-opencode"),
 		[]byte("#!/bin/sh\necho \"$*\" >> "+asked+"\nsleep 600\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("PATH", stub+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	// A sandbox that runs the collection command here, the shape memberOutput
 	// calls it with: `exec <ref> sh -lc <command>`.

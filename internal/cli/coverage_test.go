@@ -183,7 +183,7 @@ func TestArchiveTranscriptsOpenCodeAllowlistAndExport(t *testing.T) {
 	}
 	for _, want := range []string{
 		".cs-opencode/opencode.db", ".cs-opencode/opencode.db-wal", ".cs-opencode/opencode.db-shm",
-		".cs-opencode/export", "cs-opencode session export", ".cs-turns/opencode.log",
+		".cs-opencode/export", `/.local/bin/cs-opencode" session export`, ".cs-turns/opencode.log",
 	} {
 		if !strings.Contains(string(command), want) {
 			t.Fatalf("opencode evidence command missing %q: %q", want, command)

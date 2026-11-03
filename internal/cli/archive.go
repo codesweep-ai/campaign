@@ -333,6 +333,9 @@ func (a *app) archiveTranscripts(ctx context.Context, base string, member model.
 		// by `session list`, which lists only the top-level sessions of the
 		// directory it runs in. Sub-agents' sessions are exported too.
 		//
+		// The wrapper is called by its path. PATH in the member depends on the
+		// engine, and under podman it does not hold ~/.local/bin.
+		//
 		// Bounded and niced, because this runs on the member's own machine and
 		// each session costs a whole opencode start. It shares one deadline
 		// with the tar below and runs first, so an export that takes the lot
@@ -347,11 +350,11 @@ func (a *app) archiveTranscripts(ctx context.Context, base string, member model.
 		if bound == 0 {
 			bound = archiveExportBound
 		}
-		pre = fmt.Sprintf(`umask 077; mkdir -p "$HOME/.cs-opencode/export"; timeout -k 5 %s sh -c 'for id in $(python3 -c "import sqlite3, sys; [print(r[0]) for r in sqlite3.connect(sys.argv[1], uri=True).execute(sys.argv[2])]" "file:$HOME/%s?mode=ro" "SELECT id FROM session_v2" 2>/dev/null); do case "$id" in ses_*) nice -n 10 cs-opencode session export "$id" > "$HOME/.cs-opencode/export/$id.json" 2>/dev/null || rm -f "$HOME/.cs-opencode/export/$id.json" ;; esac; done' || true; `,
+		pre = fmt.Sprintf(`umask 077; mkdir -p "$HOME/.cs-opencode/export"; timeout -k 5 %s sh -c 'for id in $(python3 -c "import sqlite3, sys; [print(r[0]) for r in sqlite3.connect(sys.argv[1], uri=True).execute(sys.argv[2])]" "file:$HOME/%s?mode=ro" "SELECT id FROM session_v2" 2>/dev/null); do case "$id" in ses_*) nice -n 10 "$HOME/%s/cs-opencode" session export "$id" > "$HOME/.cs-opencode/export/$id.json" 2>/dev/null || rm -f "$HOME/.cs-opencode/export/$id.json" ;; esac; done' || true; `,
 			// Seconds with a fraction: timeout takes it, and a test bound of a
 			// few hundred milliseconds must not truncate to 0, which timeout
 			// reads as "no limit".
-			strconv.FormatFloat(bound.Seconds(), 'f', -1, 64), opencodeDB)
+			strconv.FormatFloat(bound.Seconds(), 'f', -1, 64), opencodeDB, guestBinDir)
 	}
 	// The member's turn log: how each of its turns ended, and why, in the turn
 	// driver's words. It is the one record of a provider's refusal that does not
