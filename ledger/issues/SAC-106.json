@@ -3,14 +3,22 @@
   "title": "The opencode export test fails on macOS, which has no timeout",
   "type": "defect",
   "severity": "med",
-  "status": "open",
+  "status": "closed",
   "foundBy": "session agent, reading the failed ci run 41725331391 on main at 752af8c",
   "opened": "2026-11-03",
-  "resolved": null,
+  "resolved": "2026-11-03",
   "stint": null,
-  "evidence": { "commits": [], "integrated": [], "verified": null },
-  "resolution": null,
+  "evidence": {
+    "commits": [
+      "3fb83e6"
+    ],
+    "integrated": [],
+    "verified": "ci run 41729523750 on ad2cc27 passed every job. Both macOS legs of build-test passed, where run 41725331391 had failed `TestOpencodeExportCannotCostTheTarball` on each. Locally, with `timeout` hidden from PATH, the test is skipped, and with it present the test passes. The same test fails without the skip under that PATH, with the error ci reported."
+  },
+  "resolution": "The test skips itself where `timeout` is not installed, as the `setsid` tests in cmd/cs-campaign-member do. The bounded loop runs only in a Linux guest, so on macOS there is nothing for it to test. `TestReplyStampsRepoEvidence` passed in both later runs, and is left as it is.",
   "details": "`TestOpencodeExportCannotCostTheTarball` fails on both macOS legs of ci with `the loop did not ask for the one session's export: \"\"`. Linux and WSL pass. The export loop runs under `timeout -k 5 ... || true`. macOS has no GNU `timeout`, so the loop never starts and the `|| true` hides it. The check that the stub was asked, added in cd343ff for SAC-105, is the first line that notices. Before it the test passed on macOS without testing anything. The collection itself runs in a Linux guest, which has `timeout`, so no campaign is affected. Hiding `timeout` from PATH on Linux gives the same failure.\n\nThe same run's macos-arm64 leg also failed `TestReplyStampsRepoEvidence` when the test's temporary directory was cleaned up: `unlinkat .../proj/.git/objects: directory not empty`. Every git call in the reply path waits for git to exit, and the last 15 failed ci runs show no other case of it. It is recorded here and not fixed.",
   "notes": [],
-  "links": ["SAC-105"]
+  "links": [
+    "SAC-105"
+  ]
 }
