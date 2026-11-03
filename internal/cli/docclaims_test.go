@@ -1075,3 +1075,46 @@ func TestEverySpecRuleTheSourceCitesIsWritten(t *testing.T) {
 		t.Fatal("the source cites no SPEC.md rule, so this test proves nothing")
 	}
 }
+
+// SPEC.md R148 says the log's mirror keeps every line it has copied and that a
+// new campaign starts it empty; R149 says a member is pointed at its log only
+// through `cs-campaign-member log`, never by path. MANUAL.md lists the verb.
+// Each claim is checked against what the code does.
+func TestTheDocumentedLogMirrorAndLogVerbAreWhatTheCodeDoes(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, manual := docWords(t, root, "SPEC.md"), docWords(t, root, "MANUAL.md")
+	for _, want := range []string{
+		"The mirror **MUST** keep every complete line it has copied, in the order first copied, and **MUST NOT** drop a line the log loses.",
+		"A create that starts a new campaign **MUST** start its mirror empty.",
+		"The orchestrator's log **MUST** be written only by `cs-campaign-member`.",
+		"**MUST** name the verb that prints the log, `cs-campaign-member log`, and **MUST NOT** name the log's path.",
+	} {
+		if !strings.Contains(spec, want) {
+			t.Errorf("SPEC.md no longer says %q", want)
+		}
+	}
+	if !strings.Contains(manual, "| `log` | Prints the log, oldest first.") {
+		t.Error("MANUAL.md's verb table does not list `log`")
+	}
+
+	s := store.Store{Dir: t.TempDir()}
+	for _, log := range []string{"a\nb\n", "b2\n"} {
+		if err := s.MergeLogMirror("acme", []byte(log)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if b, _ := os.ReadFile(s.LogMirrorPath("acme")); string(b) != "a\nb\nb2\n" {
+		t.Errorf("R148: the mirror dropped what the log lost: %q", b)
+	}
+
+	orch := renderOrientation(t, "orchestrator", 60000)
+	fresh := protocol.HandoffBody("m1", []string{"m1.md"}, true)
+	for name, text := range map[string]string{"the orientation": orch, "the fresh-session message": fresh} {
+		if !strings.Contains(text, "`cs-campaign-member log`") || strings.Contains(text, protocol.LogFile) {
+			t.Errorf("R149: %s must name `cs-campaign-member log` and never the log's path:\n%s", name, text)
+		}
+	}
+}

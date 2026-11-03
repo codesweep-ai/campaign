@@ -413,7 +413,9 @@ counts those asks, as in `2 hand-offs, 1 asked to commit`.
 
 **CLAIMED** is the orchestrator's own append-only log. A claim beside the facts: "orchestrator says
 qa is working" next to "qa is unreachable" is the line this command exists for. `observe` also
-mirrors the log beside the campaign record, so the claim survives a lost orchestrator machine.
+mirrors the log beside the campaign record, so the claim survives a lost orchestrator machine. The
+mirror keeps every line it has copied, even one the log later loses. A new campaign of the same
+name starts it empty.
 
 When the orchestrator has replied to `m1`, `observe` prints the mission reply, which is the campaign's
 verdict, one of `campaign-met`, `campaign-converged`, `campaign-exhausted` or `campaign-blocked`,
@@ -715,7 +717,8 @@ help.
 | `read <agent> --list [dir]` | Every file in the agent's output channel, or in one directory of it, with its size, as the paths `read` takes. |
 | `restart <agent>` | Drops its session and re-anchors it against its open dispatch. |
 | `accept <agent>` | Records its current reply as accepted, which frees the agent. |
-| `note plan\|assessment --file F\|-` | Appends to the log. Re-planning is another `plan` entry. |
+| `note plan\|assessment --file F\|-` | Appends to the log. Re-planning is another `plan` entry. The log itself is refused as `F`. |
+| `log` | Prints the log, oldest first. It counts any line `cs-campaign-member` did not write, and shows none of them. |
 | `wait [--for SECS]` | Blocks. Recovery runs itself. Returns when a judgement is due — a reply to judge, or a node gone stuck — or when the chunk elapses: `--for` seconds, 240 by default. A free teammate is not a judgement; it is named on the elapsed line instead. |
 | `fetch <agent> [repo]` | Fetches its branch to `refs/remotes/campaign/<agent>/<repo>`. The build store `CS_BUILD_STORE` names is merged into the orchestrator's clone at once. |
 | `push <agent> [repo] [--commit C]` | Pushes `C`, HEAD by default, to it at `refs/campaign/orchestrator`, and logs the delivery. Refused, and logged, when it would deliver a path the profile withholds from that agent. |
@@ -1431,7 +1434,7 @@ Everything else a campaign declares lives in the profile alone.
 |---|---|---|
 | `$XDG_CONFIG_HOME/cs-campaign/campaigns/<name>.json` | host | One campaign's record. |
 | `$XDG_CONFIG_HOME/cs-campaign/campaigns/.<name>.lock` | host | The per-campaign write lock. |
-| `$XDG_CONFIG_HOME/cs-campaign/campaigns/<name>.log-mirror.jsonl` | `observe` | A copy of the orchestrator's log, so the claim survives a lost machine. |
+| `$XDG_CONFIG_HOME/cs-campaign/campaigns/<name>.log-mirror.jsonl` | `observe` | A copy of the orchestrator's log that keeps every line it has copied, so the claim survives a lost machine or a rewritten log. |
 | `packet.html` | `packet` | The review page, in the current directory unless `--file` names another. |
 | `<archive>/campaign.json` | `archive` | The record as the campaign ended. |
 | `<archive>/campaign-profile.yaml` | `archive` | The profile the campaign was declared with. |
@@ -1444,7 +1447,7 @@ Everything else a campaign declares lives in the profile alone.
 | `~/.config/cs-campaign/manifest.json` | host, in the orchestrator | The roster its `wait` loop runs on. |
 | `~/.local/share/cs-campaign/input/` | the member's driver | Dispatch messages. |
 | `~/.local/share/cs-campaign/output/replies/<id>.json` | the member | The reply that closes a dispatch. |
-| `~/.local/share/cs-campaign/output/log.jsonl` | the orchestrator | Its append-only plan, assessment, accept and delivery record. |
+| `~/.local/share/cs-campaign/output/log.jsonl` | `cs-campaign-member`, for the orchestrator | Its append-only plan, assessment, accept and delivery record. The orchestrator reads it with `cs-campaign-member log`. |
 | `~/.local/share/cs-campaign/output/handoff.md` | a member with a hand-off line | What a fresh session of it carries on from. `archive` collects it with the rest of the output channel. |
 | `~/.local/share/cs-campaign/output/handoffs/<dispatch>-<n>.md` | the host or the orchestrator's `wait`, in a member that handed off | The handoff the member wrote before its `n`th hand-off on that dispatch, copied before its session was ended. |
 | `~/.local/bin/cs-campaign-member` | host, in each member | The guest binary. |

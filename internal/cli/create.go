@@ -407,6 +407,15 @@ func (a *app) executeCreate(ctx context.Context, out io.Writer, campaign *model.
 		return err
 	}
 	resumed := campaign != planned
+	// A new campaign's backup of its orchestrator's log starts empty. The copy
+	// only ever grows, so one left by an earlier campaign of this name would
+	// otherwise carry that campaign's claims into this one. A resumed create is
+	// the same campaign, and keeps what it has.
+	if !resumed {
+		if err = a.store.ResetLogMirror(campaign.Name); err != nil {
+			return err
+		}
+	}
 	live, err := a.sandbox.list(ctx)
 	if err != nil {
 		return fmt.Errorf("cs-sandbox compatibility check failed (requires ls --json): %w", err)

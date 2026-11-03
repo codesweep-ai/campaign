@@ -310,6 +310,16 @@ does not have.*
 **R24.** The one permitted host-side copy is a mirror of the orchestrator's log. It **MUST** be
 treated as a backup of a claim and **MUST NOT** be an input to any computation.
 
+**R148.** The mirror **MUST** keep every complete line it has copied, in the order first copied,
+and **MUST NOT** drop a line the log loses. A create that starts a new campaign **MUST** start its
+mirror empty. *The log lives on a machine its member can write, and a backup that follows a
+rewrite backs nothing up.*
+
+**R149.** The orchestrator's log **MUST** be written only by `cs-campaign-member`. What a member reads
+**MUST** name the verb that prints the log, `cs-campaign-member log`, and **MUST NOT** name the
+log's path. `note` **MUST** refuse the log as its input. *A member told where the file lives
+takes it for a file to keep, and a rewritten log loses the acceptances computed from it.*
+
 **R25.** For a long or multiline instruction the sender **SHOULD** write a named file and then send
 a short single-line trigger to read it. *This avoids multiline paste failures in interactive
 terminal interfaces, and keeps asks visibly separate from products.*
@@ -1074,7 +1084,8 @@ so a torn write must never be observable.
 ```
 
 `kind` is `plan`, `accepted`, `assessment`, `reported`, `delivered` or `refused`, and nothing
-else. A `reported` entry is written by `wait` and never by hand. Its text is `<node>/<dispatch>`,
+else. Every entry is written by `cs-campaign-member`, and `cs-campaign-member log` prints them
+(R149). A `reported` entry is written by `wait` and never by hand. Its text is `<node>/<dispatch>`,
 and it says the orchestrator has been told that node is stuck (R134). A `delivered` or `refused`
 entry is written by `push` and never by hand. It carries `member`, `repo` and `commit` beside the
 text, which says what happened (R120d):

@@ -51,7 +51,6 @@ type orientationData struct {
 	// member is told when to hand off, never how far away that is.
 	Handoff     bool
 	HandoffFile string
-	LogFile     string
 	// FreshPerDispatch gates the section for an agent that starts each
 	// dispatch in a fresh session, the same way.
 	FreshPerDispatch bool
@@ -70,7 +69,6 @@ func buildOrientation(campaign *model.Campaign, member model.Member, inputs camp
 		Inputs:           inputs.seededNames(member),
 		Handoff:          member.HandoffTokens > 0,
 		HandoffFile:      protocol.HandoffFile,
-		LogFile:          protocol.LogFile,
 		FreshPerDispatch: member.FreshPerDispatch,
 	}
 	// The manifest lists EVERYTHING this member must read, orientation first;
