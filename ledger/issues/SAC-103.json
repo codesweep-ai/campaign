@@ -3,14 +3,22 @@
   "title": "An agent's readback reads as a reply the orchestrator still owes a judgment",
   "type": "defect",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, from a live dispatch viewer run against the task-tracker challenge campaign tt-live2b-challenge-2, and the ALERT loop-speed's watch wrote into its record",
   "opened": "2026-11-03",
-  "resolved": null,
+  "resolved": "2026-11-03",
   "stint": "readback reading, 2026-11-03",
-  "evidence": { "commits": [], "integrated": [], "verified": null },
-  "resolution": null,
+  "evidence": {
+    "commits": [
+      "cba4d79"
+    ],
+    "integrated": [],
+    "verified": "`go test -count=1 ./...` passes with ten new tests, and two existing tests gain checks. Making `JudgedFor` ignore the readback fails `TestWaitReadsAJudgedReadbackAsFree` and `TestObserveReadsAPassedReadbackAsAccepted`. A log seed that always truncates fails `TestTheSeedMakesAnEmptyLogAndKeepsAnExistingOne` and `TestAResumedCreateKeepsReadbacksAndMovesTheDeadline`, which drives a real create and then a resumed one. Dropping create's second manifest write fails that create test too. In `make test-smoke` on real machines, every replayed `dev` reads `node-free d001 d001 accepted` after create. A second full run replayed 50, 50, 38 and 41 requests with 0 misses, the same counts as main at b9e55b0. The first full run missed one request when opencode's `dev` turn exited early and `wait` continued it. Five solo runs of that case replayed with 0 misses, and nothing in the change runs on an agent's machine. `make check` passed on cba4d79."
+  },
+  "resolution": "Create writes each agent's passed readback into the orchestrator's manifest, and `observe` and the orchestrator's tools read that dispatch as accepted. `accept` on a readback records nothing and says create judged it. Create makes the orchestrator's log, empty, and a resumed create keeps it. SPEC R150 and R149 state both.",
   "details": "The readback is the dispatch create sends every member, usually `d001`, and create judges each answer itself. After create, `observe` still reads an agent whose newest dispatch is its readback as `node-replied`, \"reply present, not accepted\". The orchestrator's `wait` reads it the same way and says \"idle replied to d001: read it, then `accept idle`\". The dispatch viewer says the opposite: it notes an acceptance of a readback as `accept-of-readback`, because the orchestrator owes it no acceptance.\n\nIn most campaigns the orchestrator's first real dispatch replaces the reading within minutes. Orchestrators that run `wait` first are told to accept readbacks, and they do. SAC-102's record quotes a modeller's lost `d001` acceptance. The task-tracker challenge campaigns pair the orchestrator with an `idle` seat that is never sent a job, so the reading never clears. The watch that loop-speed runs alerted on it after 10 minutes in both such campaigns, tt-live2b-challenge-1 and -2.\n\nThe same campaign shape shows a second false alarm. That orchestrator worked alone and never wrote a log entry, so `output/log.jsonl` was never created, and the dispatch viewer reports `log-missing` as severe for its archive. The viewer cannot tell a log nobody wrote from one that was lost.\n\nWanted: once every readback has passed, an agent's readback reads as accepted, on the host and in the orchestrator's own tools. Also wanted: create makes an empty log, so an absent log means a lost one.",
   "notes": [],
-  "links": ["SAC-102"]
+  "links": [
+    "SAC-102"
+  ]
 }
