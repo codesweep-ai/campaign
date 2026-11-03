@@ -386,8 +386,9 @@ func ResumeBody(id string, refused bool) string {
 // HandoffBody is what a fresh session reads after the node handed off. Like a
 // restart's re-anchor it is mechanical replay, and unlike one it ends at the
 // handoff the node wrote for itself, which is what makes the new session a
-// continuation rather than a cold start. The orchestrator is also pointed at
-// its log, which holds what it has sent and judged.
+// continuation rather than a cold start. The orchestrator is also told to read
+// its log, which holds what it has sent and judged, through the verb that prints
+// it: never its path, which a member took as a file to keep (SAC-102).
 func HandoffBody(id string, msgNames []string, orchestrator bool) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "You are starting a fresh session after a hand-off; your memory of this campaign is gone, but your machine, your work and your handoff are intact.\n")
@@ -397,7 +398,7 @@ func HandoffBody(id string, msgNames []string, orchestrator bool) string {
 		fmt.Fprintf(&b, "  ~/%s/%s\n", InputDir, n)
 	}
 	if orchestrator {
-		fmt.Fprintf(&b, "Then read your log, ~/%s. ", LogFile)
+		fmt.Fprintf(&b, "Then read your log: run `cs-campaign-member log`. ")
 	}
 	fmt.Fprintf(&b, "Then read your handoff, ~/%s, and carry on from it as your orientation describes under \"When you start fresh\". ", HandoffFile)
 	fmt.Fprintf(&b, "Check every detached job it lists by its file before starting anything, and never start a job twice. ")

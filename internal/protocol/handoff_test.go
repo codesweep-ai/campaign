@@ -549,11 +549,12 @@ func TestTheHandoffBodyReplaysTheDispatchAndEndsAtTheHandoff(t *testing.T) {
 	}
 
 	// The orchestrator's sent dispatches and judgments are in its log, which
-	// it reads before its handoff.
+	// it reads before its handoff, through the verb that prints it. Its path
+	// is never given: a member told the path rewrote the file (SAC-102).
 	orch := HandoffBody("m1", []string{"m1.md", "m1.001.handoff.md"}, true)
-	log, handoff := strings.Index(orch, "~/"+LogFile), strings.Index(orch, "~/"+HandoffFile)
-	if log < 0 || handoff < log {
-		t.Errorf("the orchestrator reads its log, then its handoff:\n%s", orch)
+	log, handoff := strings.Index(orch, "`cs-campaign-member log`"), strings.Index(orch, "~/"+HandoffFile)
+	if log < 0 || handoff < log || strings.Contains(orch, LogFile) {
+		t.Errorf("the orchestrator reads its log with `cs-campaign-member log`, then its handoff, and is never given the log's path:\n%s", orch)
 	}
 }
 

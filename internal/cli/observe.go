@@ -12,8 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"sort"
 	"time"
 
@@ -185,10 +183,10 @@ func (a *app) probeWithBurst(ctx context.Context, member model.Member, pol proto
 }
 
 // mirrorLog keeps a host-side copy of the orchestrator's log beside the
-// campaign record. Best-effort: observation must never fail on its backup.
+// campaign record, adding what is new and never dropping a line it has copied.
+// Best-effort: observation must never fail on its backup.
 func (a *app) mirrorLog(campaign string, b []byte) {
-	_ = os.MkdirAll(a.store.Dir, 0o700)
-	_ = os.WriteFile(filepath.Join(a.store.Dir, campaign+".log-mirror.jsonl"), b, 0o600)
+	_ = a.store.MergeLogMirror(campaign, b)
 }
 
 // deadlineView is the campaign's live deadline and the create attempt that

@@ -622,6 +622,9 @@ func cmdNote(env *envState, args []string) error {
 	if len(args) < 1 || (args[0] != "plan" && args[0] != "assessment") {
 		return errors.New("note needs a kind: plan or assessment (acceptances come from `accept`, deliveries from `push`)")
 	}
+	if err := refuseLogAsBody(env, args[1:]); err != nil {
+		return err
+	}
 	body, _, err := readBody(args[1:])
 	if err != nil {
 		return err
@@ -633,6 +636,68 @@ func cmdNote(env *envState, args []string) error {
 		return err
 	}
 	fmt.Printf("recorded %s\n", args[0])
+	return nil
+}
+
+// refuseLogAsBody stops a note whose --file is the log itself. A note records
+// into the log, so recording the log turns every line of it into the text of
+// one entry, which is what an orchestrator that kept its own copy did (SAC-102).
+func refuseLogAsBody(env *envState, args []string) error {
+	logInfo, err := os.Stat(filepath.Join(env.Home, protocol.LogFile))
+	if err != nil {
+		return nil
+	}
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] != "--file" || args[i+1] == "-" {
+			continue
+		}
+		if fileInfo, err := os.Stat(args[i+1]); err == nil && os.SameFile(fileInfo, logInfo) {
+			return errors.New("--file names your log, and a note is written into it: put what you want to record in a file of its own, such as /tmp/note.md, and pass that. `cs-campaign-member log` prints the log")
+		}
+	}
+	return nil
+}
+
+// cmdLog prints the log for the orchestrator to read. It is how a fresh session
+// recovers what it planned, accepted and delivered (PROTOCOL.md §7), and it is
+// the only way a member is told to reach the log: a member given the file's
+// path took it as a file to keep, and rewrote it (SAC-102).
+//
+// A line the tool did not write is not an entry. It is counted rather than
+// shown, so the reader learns the log holds something else without taking it
+// for a record.
+func cmdLog(env *envState, args []string) error {
+	if len(args) > 0 {
+		return fmt.Errorf("log takes no arguments, got %q", strings.Join(args, " "))
+	}
+	b, err := os.ReadFile(filepath.Join(env.Home, protocol.LogFile))
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	entries := protocol.ParseLog(b)
+	if len(entries) == 0 {
+		fmt.Println("your log is empty")
+	}
+	for _, e := range entries {
+		head := fmt.Sprintf("%s  %-10s ", e.At.UTC().Format(time.RFC3339), e.Kind)
+		if e.Member != "" {
+			head += fmt.Sprintf("%s %s@%s: ", e.Member, e.Repo, e.Commit)
+		}
+		lines := strings.Split(strings.TrimRight(e.Text, "\n"), "\n")
+		fmt.Println(head + lines[0])
+		for _, l := range lines[1:] {
+			fmt.Println(strings.Repeat(" ", 33) + l)
+		}
+	}
+	lines := 0
+	for l := range strings.SplitSeq(string(b), "\n") {
+		if strings.TrimSpace(l) != "" {
+			lines++
+		}
+	}
+	if other := lines - len(entries); other > 0 {
+		fmt.Printf("%d line(s) in the log were not written by cs-campaign-member and are ignored\n", other)
+	}
 	return nil
 }
 

@@ -58,7 +58,7 @@ func main() {
 	case "reply":
 		err = cmdReply(env, args)
 	// Dispatcher verbs — orchestrator only.
-	case "list", "observe", "send", "read", "restart", "accept", "note", "wait", "fetch", "push":
+	case "list", "observe", "send", "read", "restart", "accept", "note", "log", "wait", "fetch", "push":
 		if err := gate(env, verb); err != nil {
 			fatal("%v", err)
 		}
@@ -77,6 +77,8 @@ func main() {
 			err = cmdAccept(env, args)
 		case "note":
 			err = cmdNote(env, args)
+		case "log":
+			err = cmdLog(env, args)
 		case "wait":
 			err = cmdWait(env, args)
 		case "fetch":
@@ -114,6 +116,8 @@ Orchestrator only:
   restart <agent>               drop its session and re-anchor it against its open dispatch
   accept <agent>                record its current reply as accepted (frees the agent)
   note plan|assessment --file F|-   append to your log; re-planning is another plan entry
+  log                           print your log, oldest first: plans, assessments, acceptances,
+                                stuck reports and deliveries. Only these verbs write it
   wait [--for SECS]             block; recovery runs itself, returns when a judgment is due
   fetch <agent> [repo]          fetch its branch to refs/remotes/campaign/<agent>/<repo>
   push <agent> [repo]           push HEAD to it at refs/campaign/orchestrator, and log the delivery;
@@ -154,7 +158,7 @@ func gate(env *envState, verb string) error {
 // host counts as free, and the mission opens behind it at a moment the clock
 // picks. Refused here, the early turn has nothing left to do but end, and the
 // mission opens within seconds. Looking stays open: list, observe, read,
-// fetch and note.
+// fetch, note and log.
 var missionBound = map[string]bool{"send": true, "accept": true, "restart": true, "wait": true, "push": true}
 
 // missionOpen refuses a verb that acts on the campaign unless this

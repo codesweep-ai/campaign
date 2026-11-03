@@ -314,9 +314,12 @@ func TestTheOrientationExplainsTheLineOnlyToASeatWithOne(t *testing.T) {
 		}
 	}
 	// The orchestrator's state of the team lives in its log, so its handoff
-	// and its fresh start both name the log; an agent keeps none.
-	if orch := renderOrientation(t, "orchestrator", 60000); !strings.Contains(orch, "~/"+protocol.LogFile) || !strings.Contains(orch, "your log,") {
-		t.Errorf("the orchestrator's orientation does not point it at its log:\n%s", orch)
+	// and its fresh start both name the log; an agent keeps none. The log is
+	// reached through the verb that prints it, never by its path: a member
+	// told the path took it as a file to keep, and rewrote it (SAC-102).
+	if orch := renderOrientation(t, "orchestrator", 60000); !strings.Contains(orch, "`cs-campaign-member log`") || !strings.Contains(orch, "your log") ||
+		strings.Contains(orch, protocol.LogFile) {
+		t.Errorf("the orchestrator's orientation must point it at its log through `cs-campaign-member log`, never by its path:\n%s", orch)
 	}
 	if dev := renderOrientation(t, "dev", 60000); strings.Contains(dev, protocol.LogFile) || strings.Contains(dev, "your log") {
 		t.Errorf("an agent's orientation names a log it does not keep:\n%s", dev)
@@ -524,10 +527,13 @@ func TestResumeStartsAHandedOffOrchestratorFresh(t *testing.T) {
 		t.Fatalf("the fresh session must read m1.001.handoff.md; the host wrote:\n%s", sent)
 	}
 	body := decoded(t, payloads)
-	for _, want := range []string{"fresh session after a hand-off", "~/" + protocol.LogFile, "~/" + protocol.HandoffFile, "m1.md"} {
+	for _, want := range []string{"fresh session after a hand-off", "`cs-campaign-member log`", "~/" + protocol.HandoffFile, "m1.md"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the orchestrator's fresh session is not pointed at %q:\n%s", want, body)
 		}
+	}
+	if strings.Contains(body, protocol.LogFile) {
+		t.Errorf("the orchestrator's fresh session names its log's path, which a member takes as a file to keep:\n%s", body)
 	}
 	assertFreshSession(t, remote, orch)
 }

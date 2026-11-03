@@ -108,9 +108,21 @@ agents:
 		return out.String(), err
 	}
 
+	// An earlier campaign of the same name left its log's backup behind. The
+	// copy only grows, so a new campaign starts it empty (SAC-102).
+	if err := a.store.MergeLogMirror("resumed", []byte("an earlier campaign's claim\n")); err != nil {
+		t.Fatal(err)
+	}
 	out, err := runCreate()
 	if err == nil {
 		t.Fatalf("the injected mission failure did not fail create:\n%s", out)
+	}
+	if _, err := os.Stat(a.store.LogMirrorPath("resumed")); !os.IsNotExist(err) {
+		t.Fatalf("a new campaign kept an earlier campaign's log backup: %v", err)
+	}
+	// A resumed create is the same campaign, and keeps what it has copied.
+	if err := a.store.MergeLogMirror("resumed", []byte("this campaign's claim\n")); err != nil {
+		t.Fatal(err)
 	}
 	failed, err := a.store.Load("resumed")
 	if err != nil || failed.Provisioning != "create-failed" {
@@ -131,6 +143,9 @@ agents:
 	resumed, err := a.store.Load("resumed")
 	if err != nil || resumed.Provisioning != "" {
 		t.Fatalf("resumed state = %+v, %v", resumed, err)
+	}
+	if b, err := os.ReadFile(a.store.LogMirrorPath("resumed")); err != nil || !strings.Contains(string(b), "this campaign's claim") {
+		t.Fatalf("a resumed create dropped its own log backup: %q, %v", b, err)
 	}
 
 	// The deadline is the second attempt's, and the first is kept as it was.

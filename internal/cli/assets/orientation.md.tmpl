@@ -96,8 +96,9 @@ and commit your work on your branch. Then, with your own tools, write
   Stop nothing and wait for nothing;
 {{- if .IsOrchestrator}}
 - the state of every teammate: its open dispatch, what you sent, what you are
-  waiting for, and what you have judged. Your log, `~/{{.LogFile}}`, holds your
-  notes and acceptances; the handoff holds what the log does not;
+  waiting for, and what you have judged. Your log holds your notes and
+  acceptances, and the handoff holds what the log does not. Only
+  `cs-campaign-member` writes the log, through `note`, `accept`, `wait` and `push`;
 {{- end}}
 - anything you learned that is written nowhere else.
 
@@ -109,7 +110,8 @@ handoff. It is not a restart, and it spends no rung.
 ## When you start fresh
 
 Your first message will say you are starting after a hand-off. Read this file and the
-files it lists, every message of your open dispatch,{{if .IsOrchestrator}} your log,{{end}}
+files it lists, every message of your open dispatch,{{if .IsOrchestrator}} your log as
+`cs-campaign-member log` prints it,{{end}}
 and `~/{{.HandoffFile}}`. Beyond those, read only what the handoff names as still to
 read, and never re-read the whole of what you had read before. Where the handoff and
 git disagree, trust git. Check every detached job the handoff lists by its file
