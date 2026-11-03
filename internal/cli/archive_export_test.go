@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -24,6 +25,11 @@ import (
 // export loop is nested inside `timeout ... sh -c '...'` and a mistake there
 // would break every opencode archive rather than only a slow one.
 func TestOpencodeExportCannotCostTheTarball(t *testing.T) {
+	// The collection runs in a Linux guest. Where there is no GNU timeout,
+	// as on macOS, the bounded loop never starts, so there is nothing to test.
+	if _, err := exec.LookPath("timeout"); err != nil {
+		t.Skip("timeout is not installed")
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
