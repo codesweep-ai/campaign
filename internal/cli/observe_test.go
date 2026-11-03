@@ -189,3 +189,57 @@ func TestObserveReportsAnUnreadableMissionReply(t *testing.T) {
 		t.Fatalf("the rendered observation must say so:\n%s", out.String())
 	}
 }
+
+// readbackApp builds an app over a fake sandbox whose every agent has replied
+// to d001 and holds nothing after it, and whose orchestrator has an empty log.
+// That is each agent just after create, before the orchestrator sends any work.
+func readbackApp(t *testing.T) *app {
+	t.Helper()
+	dir := t.TempDir()
+	tool := filepath.Join(dir, "fake-sandbox")
+	body := `#!/bin/sh
+case "$1" in
+  exec)
+    case "$5" in
+      *log.jsonl*) exit 0 ;;
+      *) case "$2" in
+           orch.*) printf 'DRIVERS 0\n' ;;
+           *) printf 'MSG 100 d001.md\nREPLY d001\nDRIVERS 0\n' ;;
+         esac ;;
+    esac
+    ;;
+esac
+`
+	if err := os.WriteFile(tool, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return &app{store: store.Store{Dir: filepath.Join(dir, "state")}, sandbox: sandboxCLI{Bin: tool}}
+}
+
+// SPEC.md R150: create judged each agent's readback, so an agent whose newest
+// dispatch is its passed readback reads node-free, not node-replied awaiting an
+// orchestrator. A readback that failed is no judgment create made, so that
+// agent's reply still reads as one nobody has accepted.
+func TestObserveReadsAPassedReadbackAsAccepted(t *testing.T) {
+	c := burstCampaign()
+	c.Members = append(c.Members,
+		model.Member{Name: "dev", Role: "agent", CLI: "codex", Sandbox: "dev", Ref: "dev.gone",
+			Readback: &model.Readback{Member: "dev", Goal: "ship it", Dispatch: "d001"}},
+		model.Member{Name: "qa", Role: "agent", CLI: "codex", Sandbox: "qa", Ref: "qa.gone",
+			Readback: &model.Readback{Member: "qa", Goal: "test it", Dispatch: "d001", Detail: "named the wrong branch"}},
+	)
+	obs, err := readbackApp(t).observeCampaign(context.Background(), c)
+	if err != nil {
+		t.Fatalf("observe: %v", err)
+	}
+	states := map[string]string{}
+	for _, row := range obs.Derived {
+		states[row.Name] = row.State
+	}
+	if states["dev"] != string(protocol.StateFree) {
+		t.Fatalf("dev's passed readback must read accepted, got %s: %+v", states["dev"], obs.Derived)
+	}
+	if states["qa"] != string(protocol.StateReplied) {
+		t.Fatalf("qa's failed readback is not accepted, got %s: %+v", states["qa"], obs.Derived)
+	}
+}

@@ -478,6 +478,10 @@ type AgentRecord struct {
 	// FreshPerDispatch is the agent's resolved policy: a dispatch that opens
 	// on it starts a fresh session.
 	FreshPerDispatch bool `json:"freshPerDispatch,omitempty"`
+	// Readback is the dispatch create judged this agent's readback on. Create
+	// writes it once every readback has passed, and the orchestrator's tools
+	// read that dispatch as accepted (R150).
+	Readback string `json:"readback,omitempty"`
 }
 
 // Manifest is manifest.json: the orchestrator's roster and the campaign

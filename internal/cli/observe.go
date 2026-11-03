@@ -96,11 +96,11 @@ func (a *app) observeCampaign(ctx context.Context, campaign *model.Campaign) (ob
 	for _, member := range campaign.Members {
 		facts, failed, blindRun := a.probeWithBurst(ctx, member, pol)
 		// Acceptance is node-qualified — dispatch IDs are per-node sequences.
-		// The orchestrator's own set stays empty: the host never accepts, and
-		// the mission ends at node-replied.
+		// The orchestrator's own set stays empty: the host accepts only the
+		// readbacks it judged, and the mission ends at node-replied.
 		acc := map[string]bool{}
 		if member.Role != "orchestrator" {
-			acc = protocol.AcceptedFor(entries, member.Name)
+			acc = protocol.JudgedFor(entries, member.Name, member.JudgedReadback())
 		}
 		o := protocol.Compute(facts, failed, protocol.Blind{Looks: blindRun}, acc, pol, now)
 		// A resume of the orchestrator is the host's to perform (PROTOCOL.md §9),

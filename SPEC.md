@@ -315,10 +315,12 @@ and **MUST NOT** drop a line the log loses. A create that starts a new campaign 
 mirror empty. *The log lives on a machine its member can write, and a backup that follows a
 rewrite backs nothing up.*
 
-**R149.** The orchestrator's log **MUST** be written only by `cs-campaign-member`. What a member reads
-**MUST** name the verb that prints the log, `cs-campaign-member log`, and **MUST NOT** name the
-log's path. `note` **MUST** refuse the log as its input. *A member told where the file lives
-takes it for a file to keep, and a rewritten log loses the acceptances computed from it.*
+**R149.** Create **MUST** make the orchestrator's log, empty, and every entry in it **MUST** be
+written only by `cs-campaign-member`. A create that resumes **MUST** keep the log it finds. What a
+member reads **MUST** name the verb that prints the log, `cs-campaign-member log`, and **MUST NOT**
+name the log's path. `note` **MUST** refuse the log as its input. *A member told where the file
+lives takes it for a file to keep, and a rewritten log loses the acceptances computed from it. A
+log that exists from create on can be missing only because it was lost.*
 
 **R25.** For a long or multiline instruction the sender **SHOULD** write a named file and then send
 a short single-line trigger to read it. *This avoids multiline paste failures in interactive
@@ -443,6 +445,12 @@ grows with every member. Rework is the move every other dispatcher already has (
 
 **R51.** Skipping the readback **MUST** be recorded on the campaign. *A team nobody verified must
 not be indistinguishable afterwards from one that passed.*
+
+**R150.** Create **MUST** accept each agent's passed readback itself, and the orchestrator's tools
+and `observe` **MUST** read that dispatch as accepted. An agent whose newest dispatch is its
+readback is then free. *The host sent the readback and judged the answer. An orchestrator asked to
+judge it again is asked for a judgment it cannot add. An agent sent no work afterwards would read
+as owed one for the whole campaign.*
 
 ### 4.5 Dispatch and completion
 
@@ -1025,7 +1033,8 @@ campaign deadline.
 name, the network, and the policy its `wait` loop runs on. One roster row per agent follows, with
 that agent's CLI, bare sandbox name, session name, repositories with branches, base commits,
 snapshots and the paths withheld from it per repository. The row also carries `freshPerDispatch`
-when the agent has it on (R145).
+when the agent has it on (R145). Once every readback has passed, create writes the manifest again,
+and each row carries `readback`, the dispatch create judged that agent's readback on (R150).
 
 ### 5.4 Dispatch messages
 
@@ -1084,11 +1093,11 @@ so a torn write must never be observable.
 ```
 
 `kind` is `plan`, `accepted`, `assessment`, `reported`, `delivered` or `refused`, and nothing
-else. Every entry is written by `cs-campaign-member`, and `cs-campaign-member log` prints them
-(R149). A `reported` entry is written by `wait` and never by hand. Its text is `<node>/<dispatch>`,
-and it says the orchestrator has been told that node is stuck (R134). A `delivered` or `refused`
-entry is written by `push` and never by hand. It carries `member`, `repo` and `commit` beside the
-text, which says what happened (R120d):
+else. Create makes the file, empty, and every entry is written by `cs-campaign-member`, which
+prints them with `cs-campaign-member log` (R149). A `reported` entry is written by `wait` and never
+by hand. Its text is `<node>/<dispatch>`, and it says the orchestrator has been told that node is
+stuck (R134). A `delivered` or `refused` entry is written by `push` and never by hand. It carries
+`member`, `repo` and `commit` beside the text, which says what happened (R120d):
 
 ```json
 {"at":"2026-08-19T17:40:02Z","kind":"refused","text":"refused: results/answers.txt is withheld from qa (the profile declares results), and commit 7c1d2e3f4a5b would deliver it","member":"qa","repo":"product","commit":"9f0e8d7c6b5a4a3b2c1d0e9f8a7b6c5d4e3f2a1b"}

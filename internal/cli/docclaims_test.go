@@ -8,6 +8,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -1077,9 +1078,10 @@ func TestEverySpecRuleTheSourceCitesIsWritten(t *testing.T) {
 }
 
 // SPEC.md R148 says the log's mirror keeps every line it has copied and that a
-// new campaign starts it empty; R149 says a member is pointed at its log only
-// through `cs-campaign-member log`, never by path. MANUAL.md lists the verb.
-// Each claim is checked against what the code does.
+// new campaign starts it empty; R149 says create makes the log, empty, keeps one
+// it finds, and points a member at it only through `cs-campaign-member log`,
+// never by path. MANUAL.md lists the verb. Each claim is checked against what
+// the code does; the seed itself is run in TestTheSeedMakesAnEmptyLogAndKeepsAnExistingOne.
 func TestTheDocumentedLogMirrorAndLogVerbAreWhatTheCodeDoes(t *testing.T) {
 	root, err := covmap.FindRepoRoot(".")
 	if err != nil {
@@ -1089,7 +1091,8 @@ func TestTheDocumentedLogMirrorAndLogVerbAreWhatTheCodeDoes(t *testing.T) {
 	for _, want := range []string{
 		"The mirror **MUST** keep every complete line it has copied, in the order first copied, and **MUST NOT** drop a line the log loses.",
 		"A create that starts a new campaign **MUST** start its mirror empty.",
-		"The orchestrator's log **MUST** be written only by `cs-campaign-member`.",
+		"Create **MUST** make the orchestrator's log, empty, and every entry in it **MUST** be written only by `cs-campaign-member`.",
+		"A create that resumes **MUST** keep the log it finds.",
 		"**MUST** name the verb that prints the log, `cs-campaign-member log`, and **MUST NOT** name the log's path.",
 	} {
 		if !strings.Contains(spec, want) {
@@ -1110,11 +1113,61 @@ func TestTheDocumentedLogMirrorAndLogVerbAreWhatTheCodeDoes(t *testing.T) {
 		t.Errorf("R148: the mirror dropped what the log lost: %q", b)
 	}
 
+	if !strings.Contains(seedLogScript, "[ -e ~/"+guestLogFile+" ] ||") {
+		t.Errorf("R149: the seed no longer leaves an existing log alone: %s", seedLogScript)
+	}
+
 	orch := renderOrientation(t, "orchestrator", 60000)
 	fresh := protocol.HandoffBody("m1", []string{"m1.md"}, true)
 	for name, text := range map[string]string{"the orientation": orch, "the fresh-session message": fresh} {
 		if !strings.Contains(text, "`cs-campaign-member log`") || strings.Contains(text, protocol.LogFile) {
 			t.Errorf("R149: %s must name `cs-campaign-member log` and never the log's path:\n%s", name, text)
 		}
+	}
+}
+
+// SPEC.md R150, PROTOCOL.md §6 and MANUAL.md say create accepts each agent's
+// passed readback itself, so an agent whose newest dispatch is its readback
+// reads node-free, and the orchestrator's roster names that dispatch. Each
+// claim is checked against the code that computes the state and writes the
+// roster; the tools that read it are tested beside them.
+func TestTheDocumentedReadbackAcceptanceIsWhatTheCodeDoes(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, manual, proto := docWords(t, root, "SPEC.md"), docWords(t, root, "MANUAL.md"), docWords(t, root, "PROTOCOL.md")
+	for doc, wants := range map[string][]string{
+		"SPEC.md": {
+			"Create **MUST** accept each agent's passed readback itself, and the orchestrator's tools and `observe` **MUST** read that dispatch as accepted.",
+			"each row carries `readback`, the dispatch create judged that agent's readback on (R150).",
+		},
+		"PROTOCOL.md": {"An agent whose newest dispatch is its readback is therefore `node-free` when the mission opens."},
+		"MANUAL.md": {
+			"an agent whose newest dispatch is its readback reads `node-free`, and the orchestrator owes it no `accept`.",
+			"| `node-free` | No dispatch is open, or the open one was replied to and accepted. A readback `create` passed counts as accepted. |",
+			"Each agent's row names the readback `create` judged, as `readback`.",
+		},
+	} {
+		text := map[string]string{"SPEC.md": spec, "MANUAL.md": manual, "PROTOCOL.md": proto}[doc]
+		for _, want := range wants {
+			if !strings.Contains(text, want) {
+				t.Errorf("%s no longer says %q", doc, want)
+			}
+		}
+	}
+
+	passed := model.Member{Name: "dev", Readback: &model.Readback{Member: "dev", Goal: "ship it", Dispatch: "d001"}}
+	failed := model.Member{Name: "qa", Readback: &model.Readback{Member: "qa", Dispatch: "d001", Detail: "named the wrong branch"}}
+	if passed.JudgedReadback() != "d001" || failed.JudgedReadback() != "" {
+		t.Fatalf("only a passed readback is create's acceptance: passed %q, failed %q", passed.JudgedReadback(), failed.JudgedReadback())
+	}
+	pol := protocol.Policy{ContinueAttempts: 2, Restarts: 1, ElapsedSeconds: 1000, BlindProbes: 3, SettlingSeconds: 1}
+	f := protocol.Facts{Msgs: []protocol.Msg{{Name: "d001.md", ID: "d001", MTime: 100}}, Replies: map[string]bool{"d001": true}}
+	if o := protocol.Compute(f, false, protocol.Blind{}, protocol.JudgedFor(nil, "dev", passed.JudgedReadback()), pol, 10000); o.State != protocol.StateFree {
+		t.Errorf("R150: an agent whose newest dispatch is its passed readback reads %s, not node-free", o.State)
+	}
+	if b, _ := json.Marshal(protocol.AgentRecord{Readback: "d001"}); !bytes.Contains(b, []byte(`"readback":"d001"`)) {
+		t.Errorf("the roster row does not carry `readback` as MANUAL.md names it: %s", b)
 	}
 }

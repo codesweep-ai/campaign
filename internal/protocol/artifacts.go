@@ -177,6 +177,19 @@ func AcceptedFor(entries []Entry, node string) map[string]bool {
 	return out
 }
 
+// JudgedFor is the set of one node's dispatches nobody owes a judgment: the
+// orchestrator's acceptances, plus readback, the dispatch create judged itself
+// (R150). Create sends the readback and checks the answer, so an agent whose
+// newest dispatch is its readback is free, not waiting on the orchestrator.
+// An empty readback adds nothing.
+func JudgedFor(entries []Entry, node, readback string) map[string]bool {
+	out := AcceptedFor(entries, node)
+	if readback != "" {
+		out[readback] = true
+	}
+	return out
+}
+
 // ReportedFor is which of one node's dispatches `wait` has already reported as
 // stuck. A stuck node stays stuck, and nothing on its machine records that the
 // orchestrator was told, so without this every later wait returns at once and

@@ -456,6 +456,11 @@ func (a *app) executeCreate(ctx context.Context, out io.Writer, campaign *model.
 		_ = a.store.Save(campaign)
 		return err
 	}
+	// Create judged every readback, so the orchestrator owes none of them a
+	// judgment: its manifest now names each agent's (R150).
+	if _, err = a.sandbox.writeManifest(ctx, campaign); err != nil {
+		return a.failCreate(campaign, fmt.Errorf("record the readbacks on the orchestrator: %w", err))
+	}
 	// The mission is dispatch #2 to the orchestrator, held open for the
 	// campaign's whole duration: the campaign is running for exactly as long
 	// as this dispatch is open, and its reply is the campaign's verdict.
