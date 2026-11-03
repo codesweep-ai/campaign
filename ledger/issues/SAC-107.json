@@ -1,0 +1,16 @@
+{
+  "id": "SAC-107",
+  "title": "An OpenCode member on podman archives no session export",
+  "type": "defect",
+  "severity": "high",
+  "status": "open",
+  "foundBy": "session agent, reading the failed smoke podman legs of ci run 41726614691 on main at 3fb83e6",
+  "opened": "2026-11-03",
+  "resolved": null,
+  "stint": null,
+  "evidence": { "commits": [], "integrated": [], "verified": null },
+  "resolution": null,
+  "details": "`TestSmokeReplay/opencode-fireworks` fails on both podman legs, Linux and macOS, with `dev (opencode) archived no session export`. The firecracker leg passes. The replay itself is clean: 49 requests, no miss. The check that fails was added in 4285952. These legs had not run since, because the macOS unit failure in SAC-106 skipped them.\n\nThe export loop calls `cs-opencode` by name. The wrapper is at `~/.local/bin/cs-opencode`. Under firecracker the command arrives over ssh and that directory is on PATH. Under podman it is not, so every export fails with `nice: 'cs-opencode': No such file or directory`, and the `|| rm -f` hides the error. Listing the sessions works: a diagnostic run on podman listed both of the member's sessions. The loop called `cs-opencode` by name on OpenCode 1 too, so a podman member has probably never archived an export. `TestOpencodeExportCannotCostTheTarball` could not catch it, because it puts its stub on PATH.",
+  "notes": [],
+  "links": ["SAC-105", "SAC-106"]
+}
