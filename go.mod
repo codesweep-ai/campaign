@@ -13,9 +13,9 @@ require (
 	github.com/codesweep-ai/ledger v0.0.0-20261030042257-ac350b6e5e5f // indirect
 	github.com/codesweep-ai/lint v0.0.0-20261028214306-6d35a8ef43e8 // indirect
 	github.com/codesweep-ai/npmrevs v0.0.0-20260929195159-d74ecfc3b09b // indirect
-	github.com/codesweep-ai/sandbox v0.0.0-20261102024631-fdcdd0e0a161 // indirect
+	github.com/codesweep-ai/sandbox v0.0.0-20261103220850-551200cd8083 // indirect
 	github.com/codesweep-ai/tracer v0.0.0-20261030040940-acfc12f1b1f7 // indirect
-	github.com/codesweep-ai/vcr v0.0.0-20261030044441-d0d868e222a0 // indirect
+	github.com/codesweep-ai/vcr v0.0.0-20261102071722-082eb23b36c0 // indirect
 	github.com/docker/cli v29.7.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
 	github.com/fatih/color v1.19.0 // indirect
