@@ -3,17 +3,19 @@
   "title": "A node whose token budget is spent would climb the recovery ladder until its queue is blocked",
   "type": "improvement",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "user request (host): \"Implement the note now.\", for the cs-sandbox token budget",
   "opened": "2026-11-04",
-  "resolved": null,
+  "resolved": "2026-11-05",
   "stint": "token budget session, 2026-11-04",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "5b10b1a"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`make check` passed at d09909d, unit tier and coverage included. Its tests hold each spent ending to no rung, a try as soon as the reading says the budget has room, and holds left out of the elapsed bound. The conformance scenario raises a budget after 3h15m under a one-hour bound, and the node is tried within 90 s and never stuck."
   },
-  "resolution": null,
+  "resolution": "A spent token budget is now a hold and not a rung of the ladder. The dispatcher tries the node again once its turn driver says the budget has room, and the hold does not count toward the elapsed bound. Nodes see this once their sandbox image carries the cs-sandbox drivers that answer `--budget`.",
   "details": "cs-sandbox is gaining a token budget per sandbox, filed as SBX-115 in the sandbox ledger. Its three turn drivers will log a new ending, class `spent`. With exit 5, the turn was refused: before it began, because the budget was past its ask line, or partway through, under a hard budget. The session is intact, and a retry costs nothing while the budget stays spent. With exit 0, the agent was asked to stop at the ask line, wrote its handoff and ended its turn, as at a context line. Only the operator can raise a budget, on the host.\n\ncs-campaign reads four endings and ladders every other one (PROTOCOL.md section 5, `Compute` in `internal/protocol/state.go`). A `spent` it does not know gets a continue, then a restart that drops the session, then `node-stuck`, which blocks the node's queue. So the two halves have to land together.\n\nWanted: `spent` read as a fifth ending that is not laddered. It spends no rung, and never counts toward the bound on rapid hand-offs. The line says the budget is spent, and names the token type when the driver's message does. The dispatcher waits a long time the operator sets, then tries again. A node that handed off takes the hand-off path on that try, and any other carries on in its session.",
   "notes": [
     {
