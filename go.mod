@@ -12,9 +12,9 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/codesweep-ai/ledger v0.0.0-20261030042257-ac350b6e5e5f // indirect
 	github.com/codesweep-ai/lint v0.0.0-20261028214306-6d35a8ef43e8 // indirect
-	github.com/codesweep-ai/npmrevs v0.0.0-20260929195159-d74ecfc3b09b // indirect
-	github.com/codesweep-ai/sandbox v0.0.0-20261105172502-1ffcf1a14e4f // indirect
-	github.com/codesweep-ai/tracer v0.0.0-20261030040940-acfc12f1b1f7 // indirect
+	github.com/codesweep-ai/npmrevs v0.0.0-20261030043132-3f90da1ef993 // indirect
+	github.com/codesweep-ai/sandbox v0.0.0-20261105223528-1c29e0a1afb9 // indirect
+	github.com/codesweep-ai/tracer v0.0.0-20261102220649-8bb7a1e921c3 // indirect
 	github.com/codesweep-ai/vcr v0.0.0-20261102071722-082eb23b36c0 // indirect
 	github.com/docker/cli v29.7.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
