@@ -637,7 +637,7 @@ jobs:
       - name: cache the guest image and the Firecracker artifacts
         id: artifacts
         if: steps.cassette.outputs.present == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: bin/ci-artifacts
           key: cs-sandbox-ci-${{ runner.os }}-${{ steps.tools.outputs.sandbox }}
