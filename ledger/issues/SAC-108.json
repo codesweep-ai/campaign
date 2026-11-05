@@ -19,6 +19,10 @@
     {
       "date": "2026-11-04",
       "text": "Two changes on review, both asked for by the user. First, the turn drivers now answer `--budget` with one line: `ok`, `ask <types>`, `none` or `off`. The probe reads it, and a node held on a spent budget whose reading is `ok` is tried on that look, not at the end of `spentRetrySeconds`. The wait stays for a driver too old to answer. Second, the elapsed bound now leaves out each hold, from a spent turn end to the try after it. The probe lists every spent end the turn log keeps, because a night's hold runs past the 16-line tail. A node whose last turn was spent and that is `node-stuck` for any reason says so on its line."
+    },
+    {
+      "date": "2026-11-04",
+      "text": "The work is committed on the branch token-budget as 5b10b1a, after d64739c filed this record. It reads the turn drivers' `--budget`, which cs-sandbox's ee36177 adds on its own branch token-budget. Close this once both branches are on main."
     }
   ],
   "links": [
