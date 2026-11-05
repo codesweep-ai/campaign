@@ -27,6 +27,7 @@ var runDocs = map[string]string{
 	"campaign.policy.handoffs":                 "",
 	"campaign.policy.rapidHandoffSeconds":      "",
 	"campaign.policy.freshPerDispatch":         "",
+	"campaign.policy.spentRetrySeconds":        "",
 	"nodes":                                    "the team, orchestrator first: `name`, `role`, `cli`, `model`, `effort`",
 	"nodes[].name":                             "",
 	"nodes[].role":                             "",

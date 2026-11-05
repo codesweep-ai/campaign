@@ -396,6 +396,41 @@ func ResumeBody(id string, refused bool) string {
 		"concluded run `cs-campaign-member reply --file <path-to-your-summary>`.", why, id)
 }
 
+// SpentResumeBody is what a node reads when it is carried on after its token
+// budget stopped a turn. It names the message that turn was given, msgName,
+// because the turn may have been a fresh session's first, after a hand-off or
+// a restart, and that session holds nothing to carry on from. While the budget
+// stays spent the node's machine refuses the turn before the model sees this,
+// so the node reads it only once it can work again.
+func SpentResumeBody(id, msgName string) string {
+	return fmt.Sprintf("Your token budget stopped your last turn, and this turn starts it again. Dispatch %s is still open. "+
+		"Read ~/%s/%s and follow it, or carry on from where you were if this session has read it already. "+
+		"When the work is concluded, run `cs-campaign-member reply --file <path-to-your-summary>`.", id, InputDir, msgName)
+}
+
+// ResumeBodyFor is the message a "resume" move carries dispatch id on with,
+// read from the facts the move was computed from: SpentResumeBody after a turn
+// its token budget stopped, else ResumeBody. The message SpentResumeBody names
+// is the newest of the dispatch that is not itself a resume, since a resume
+// adds nothing to what the node was asked.
+func ResumeBodyFor(f Facts, id string, refused bool) string {
+	d := Current(f.Msgs)
+	if d == nil || d.ID != id {
+		return ResumeBody(id, refused)
+	}
+	if last := f.endSince(d.NewestMsg); last == nil || last.Class != ClassSpent {
+		return ResumeBody(id, refused)
+	}
+	anchor := d.Msgs[0].Name
+	for _, m := range slices.Backward(d.Msgs) {
+		if !m.Resume {
+			anchor = m.Name
+			break
+		}
+	}
+	return SpentResumeBody(id, anchor)
+}
+
 // HandoffBody is what a fresh session reads after the node handed off. Like a
 // restart's re-anchor it is mechanical replay, and unlike one it ends at the
 // handoff the node wrote for itself, which is what makes the new session a

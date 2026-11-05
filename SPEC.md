@@ -660,6 +660,39 @@ operator (R64). A lined seat's orientation **MUST** instead tell it never to rat
 commit before it writes a handoff, and to trust git over the handoff. *A member that knows how far
 it is from its line rations its context against it, and cuts work short to stay under.*
 
+**R151.** A turn end of class `spent` **MUST** be read as a spent token budget, and only when it is
+newer than the node's newest message (R128). It **MUST NOT** spend a continue or a restart. The move
+**MUST** be a wait of `spentRetrySeconds` from that turn end, then another try. The probe **MUST**
+also ask the node's turn driver for a reading of the budget (`--budget`), which answers `ok`, `ask
+<types>`, `none` or `off`. A reading of `ok` **MUST** make the try due on that look. Any other
+reading, or none from a driver too old to give one, **MUST** leave the wait as it is. A turn end
+with exit 0 means the node handed off at its budget's line, and the try **MUST** be the hand-off
+move, its commit check included (R141, R144). Any other exit means the turn was refused, and the try
+**MUST** carry the same session on. Its message **MUST NOT** spend a rung, and **MUST** name the
+message the refused turn was given. A refused turn **MUST NOT** be charged as a turn that ran
+(R132). A session that met a spent ending **MUST NOT** count toward `handoffs`, and it ends the run
+of rapid hand-offs (R142). `elapsedSeconds` is the only bound, and `providerWaitSeconds` **MUST
+NOT** apply. The elapsed bound **MUST** leave out each hold, from a spent turn end to the next
+message, or to now while the hold lasts. The probe therefore reports every spent turn end the turn
+log keeps, beyond its tail. The node's line **MUST** say that its token budget is spent. It **MUST**
+name the type of token from a reading that asks, and otherwise from the turn's reason when that
+names one. A node whose newest turn end is `spent` and that is `node-stuck` for any reason **MUST**
+say so on its line, and end it on raising the budget. `spentRetrySeconds` defaults to 1800 and is
+recorded only when the profile names it. *Only the operator can raise a budget, on the host, and the
+dispatcher sees one only through the node's reading. While it stays spent, the node's machine
+refuses a turn before anything is sent, so a try is free. A reading of `ok` means the budget was
+raised, and waiting out the rest of the hold would only keep the node idle. The wait remains for a
+node whose machine cannot answer. The wait trades how soon a node starts again once its budget is
+raised against the messages its dispatch gathers meanwhile. There is one per try, and every later
+re-anchor lists them all. Half an hour keeps a node held overnight to about two dozen. A session
+resumed after a long wait sends its whole context again as new input, and a node that wrote its
+handoff does not need it. A refused turn may have been a fresh session's first, and such a session
+holds nothing to carry on from. A hold is the operator's time, not the node's, and the elapsed bound
+exists to stop a node that keeps failing. The bound counts only the node's own time even when it
+came from `defaults.deadline`, which stops nothing by itself (§6.1) and which the recorded policy no
+longer distinguishes. The ending is named `spent` because "budget" already names the ladder's
+attempts and time.*
+
 **R125.** The dispatcher's blocking `wait` **MUST** return only on a judgment. A judgment is a
 **world event** that needs a decision no code can make: `node-replied` and `node-stuck`, those two
 and no others. `node-free` **MUST NOT** end a block. *Its only arrows in are `accept` and campaign
@@ -730,7 +763,9 @@ orchestrator. `send` and `restart` against the orchestrator are operator instrum
 NOT** become a loop.
 
 **R78a.** `resume` against the orchestrator **MUST** perform only the move the state computation
-derives as a resume: a provider refusal whose wait has elapsed, or a turn that never ran. It
+derives as a resume. That is a provider refusal whose wait has elapsed, a spent token budget whose
+next try is due (R151), or a turn that never ran. While a spent budget's reading still asks, its
+refusal **MUST** name the types that still ask. It
 **MUST** also perform the hand-off move the computation derives for the orchestrator (R141), its
 commit check included (R144). It
 **MUST** refuse every other state by name and send nothing, and it **MUST** refuse an agent. *It is
@@ -1045,7 +1080,7 @@ Files in a node's input channel, under `~/.local/share/cs-campaign/input/`:
 | `d007.md` | the opening message of dispatch `d007` |
 | `d007.001.md` | its first continuation |
 | `d007.002.restart.md` | a restart re-anchor, counted as a restart rather than a continue |
-| `d007.003.resume.md` | a continuation that spends no rung: the provider refused the last turn, or the turn never ran |
+| `d007.003.resume.md` | a continuation that spends no rung: the provider refused the last turn, the node's token budget stopped it (R151), or the turn never ran |
 | `d007.004.handoff.md` | the first message of a fresh session after the node handed off; it re-anchors the session, ends at the node's handoff and spends no rung |
 | `d007.005.commit.md` | a hand-off not taken: the kept session reads what is missing and is asked to commit and write its handoff again; it spends no rung (R144) |
 | `m1.md`, `m1.001.md` | the mission and its continuations |
@@ -1181,7 +1216,7 @@ member document and in the orchestrator's manifest, and every node is computed a
 |---|---|---|
 | `continueAttempts` | 2 | Continues before escalating to a restart. |
 | `restarts` | 1 | Restarts before a node is unrecoverable. |
-| `elapsedSeconds` | the campaign deadline, else 86400 | Bound on recovering one dispatch, from its opening. |
+| `elapsedSeconds` | the campaign deadline, else 86400 | Bound on recovering one dispatch, from its opening. Time held on a spent token budget is left out (R151). |
 | `blindProbes` | 10 | Failed probes before a machine is called gone. The host counts them in one burst. The orchestrator's `wait` counts `blindProbes` times `pollSeconds` of unseen time, across calls (R133). |
 | `pollSeconds` | 30 | How often the orchestrator's `wait` looks. |
 | `settlingSeconds` | 300 | Grace after any send before a driverless node counts as stopped. |
@@ -1191,6 +1226,7 @@ member document and in the orchestrator's manifest, and every node is computed a
 | `handoffs` | 10 when any seat has a line, else absent | Rapid hand-offs in a row one dispatch may take before the node is `node-stuck`. A session that works longer than `rapidHandoffSeconds` ends the run. An explicit value is kept (R142). |
 | `rapidHandoffSeconds` | 300 when any seat has a line, else absent | The window that makes a hand-off rapid. A hand-off is rapid when its session began on a `.handoff` or `.commit` message less than this long before it. An explicit value is kept (R142). |
 | `freshPerDispatch` | off | A switch, per agent. Each dispatch that opens on the agent starts it in a fresh session. The orchestrator never has it (R145). |
+| `spentRetrySeconds` | 1800, recorded only when named | How long a node whose token budget is spent waits before its next try. No rung is spent, and a try costs nothing while the budget stays spent (R151). |
 
 `stallSeconds` and `handoffTokens` are the two numbers resolved per seat, because they are the two
 that are not the machine's. `stallSeconds` belongs to a member's own turn driver, and long quiet means something different for a
@@ -1289,7 +1325,8 @@ agree by construction rather than by convention.*
 
 `protocol.Msg` is one observed message file. `protocol.Dispatch` is the reconstruction of one
 dispatch from its messages. `protocol.Facts` is everything one probe returns: the messages, which
-replies exist, and how many turn drivers are alive. `protocol.Observation` is the computed state
+replies exist, how many turn drivers are alive, and the drivers' answers. Those cover the agent's
+turn, its context and its token budget. `protocol.Observation` is the computed state
 plus the mechanical next move. `model.Campaign` is the host record; `protocol.Member` is what a
 member is told about itself.
 

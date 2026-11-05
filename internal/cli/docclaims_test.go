@@ -8,6 +8,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -1169,5 +1170,73 @@ func TestTheDocumentedReadbackAcceptanceIsWhatTheCodeDoes(t *testing.T) {
 	}
 	if b, _ := json.Marshal(protocol.AgentRecord{Readback: "d001"}); !bytes.Contains(b, []byte(`"readback":"d001"`)) {
 		t.Errorf("the roster row does not carry `readback` as MANUAL.md names it: %s", b)
+	}
+}
+
+// MANUAL.md quotes the line of a member whose token budget is spent, and what
+// resume says when it tries the orchestrator again. The documents give the wait
+// as 1800 seconds, recorded only when named, and the protocol counts five
+// endings that are read and not laddered. Each is held to what the code does.
+func TestTheDocumentedSpentBudgetIsWhatTheCodeDoes(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	says := func(doc string, sentences ...string) {
+		t.Helper()
+		words := docWords(t, root, doc)
+		for _, want := range sentences {
+			if !strings.Contains(words, want) {
+				t.Errorf("%s no longer says %q", doc, want)
+			}
+		}
+	}
+	const line = "token budget spent (cached) 3m ago, session kept · trying again in 27m, no rung spent · raising its token budget on the host is all it needs"
+	const tried = "m1 tried again after the orchestrator's token budget was spent, no rung spent"
+	row := "| `spentRetrySeconds` | 1800, recorded only when named |"
+	const notRaised = "the budget has not been raised: cached still at the ask line on the latest reading, and nothing was sent"
+	says("MANUAL.md", line, tried, row, notRaised,
+		"A member whose tools are too old to give a reading is tried every `spentRetrySeconds` instead, 30 minutes unless the profile names another number.",
+		"Once you have raised the budget, the reading has room, and the member is tried on that look",
+		"A hold does not count toward `elapsedSeconds`.")
+	says("SPEC.md", row, "`spentRetrySeconds` defaults to 1800 and is recorded only when the profile names it.",
+		"A reading of `ok` **MUST** make the try due on that look.",
+		"The elapsed bound **MUST** leave out each hold, from a spent turn end to the next message, or to now while the hold lasts.")
+	says("PROTOCOL.md", "Five endings are read and not laddered:", "A spent ending is never a rapid hand-off, and a session that meets one ends the run",
+		"Once it answers yes, the budget has been raised, and the next try comes at once.",
+		"Each hold runs from a spent ending to the try after it, and the bound leaves it out")
+
+	if d := protocol.DefaultPolicy().SpentRetrySeconds; d != 1800 {
+		t.Errorf("the documents give the spent wait as 1800s, and the default is %d", d)
+	}
+	if got := (protocol.Policy{}).Resolve(); got.SpentRetrySeconds != 0 {
+		t.Errorf("a campaign that names no spent wait records %d; the documents say it records none", got.SpentRetrySeconds)
+	}
+	now := int64(1_700_000_000)
+	f := protocol.Facts{Msgs: []protocol.Msg{{Name: "d001.md", ID: "d001", MTime: now - 3600}}, Replies: map[string]bool{}, Agent: "idle",
+		TurnEnds: []protocol.TurnEnd{{At: now - 180, Exit: 5, Class: protocol.ClassSpent, Reason: "token budget spent: cached 1.004G of 1G"}}}
+	pol := protocol.Policy{ContinueAttempts: 2, Restarts: 1, ElapsedSeconds: 100_000, BlindProbes: 3, SettlingSeconds: 1}
+	if o := protocol.Compute(f, false, protocol.Blind{}, map[string]bool{}, pol, now); !strings.HasPrefix(o.Detail, line) {
+		t.Errorf("a member refused for its cached tokens 3m ago reads %q; MANUAL.md quotes %q", o.Detail, line)
+	}
+
+	a, _, _, _ := handoffApp(t, spentProbe("m1", 5, 1900), spentOrch)
+	if said, err := a.hostResumeOrchestrator(context.Background(), spentOrch, spentHostPolicy); err != nil || said != tried {
+		t.Errorf("resume said %q (%v); MANUAL.md quotes %q", said, err, tried)
+	}
+	a, _, _, _ = handoffApp(t, spentProbe("m1", 5, 60, "ask cached"), spentOrch)
+	if _, err := a.hostResumeOrchestrator(context.Background(), spentOrch, spentHostPolicy); err == nil || !strings.HasSuffix(err.Error(), notRaised) {
+		t.Errorf("resume refused with %v; MANUAL.md quotes %q", err, notRaised)
+	}
+	// A reading with room makes the try due on this look; held time is not
+	// counted against the bound.
+	f.Budget = "ok"
+	if o := protocol.Compute(f, false, protocol.Blind{}, map[string]bool{}, pol, now); o.NextMove != "resume" {
+		t.Errorf("a reading with room 3m after the refusal reads %s (%s); the documents say the try comes at once", o.State, o.Detail)
+	}
+	f.Budget = ""
+	pol.ElapsedSeconds = 3600
+	if o := protocol.Compute(f, false, protocol.Blind{}, map[string]bool{}, pol, now); o.State == protocol.StateStuck {
+		t.Errorf("57m of work and 3m held read %s under an hour's bound; the documents say the hold is not counted", o.State)
 	}
 }

@@ -11,7 +11,7 @@ import (
 )
 
 // The probe counts turn drivers from the process table. A driver asked for
-// --state or --context is a question and not a turn, and it matches the same
+// --state, --context or --budget is a question and not a turn, and it matches the same
 // pattern. Seen
 // live: a loop that polled --state counted itself as a live driver for three
 // minutes after the real one had exited. Two observers probe one node, so one
@@ -40,6 +40,7 @@ func TestTheProbeCountsTurnsAndNotStateQueries(t *testing.T) {
 	fake("cs-" + cli + "-turn --tmux token --format text")
 	fake("cs-" + cli + "-turn --state")
 	fake("cs-" + cli + "-turn --context")
+	fake("cs-" + cli + "-turn --budget")
 	time.Sleep(300 * time.Millisecond)
 
 	cmd := exec.Command("sh", "-c", ProbeScript(cli))
@@ -49,7 +50,7 @@ func TestTheProbeCountsTurnsAndNotStateQueries(t *testing.T) {
 		t.Fatalf("probe: %v", err)
 	}
 	if f := ParseProbe(string(out)); f.Drivers != 1 {
-		t.Fatalf("the probe counted %d drivers with one turn, one --state query and one --context query running; want 1:\n%s", f.Drivers, out)
+		t.Fatalf("the probe counted %d drivers with one turn, and one each of --state, --context and --budget running; want 1:\n%s", f.Drivers, out)
 	}
 	if !strings.Contains(string(out), "DRIVERS 1") {
 		t.Fatalf("no DRIVERS line:\n%s", out)

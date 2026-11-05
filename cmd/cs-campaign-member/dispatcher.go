@@ -1000,26 +1000,35 @@ func cmdWait(env *envState, args []string) error {
 		// 4). Delivering into the snapshot's known-open dispatch is safe either
 		// way: a reply that raced us has closed it, and the reply check
 		// precedes everything on the next look.
-		var judgment, free, known, refused []string
+		var judgment, free, known, refused, spent []string
 		resumed := false
 		entries := env.logEntries()
 		for _, n := range names {
 			o := obs[n].Obs
 			switch o.State {
 			case protocol.StateRefused:
-				refused = append(refused, n)
+				if o.Spent {
+					spent = append(spent, n)
+				} else {
+					refused = append(refused, n)
+				}
 				// Members refused together must not come back together: that is
 				// the load that was refused. One per look, so a fleet returns over
 				// minutes. The rest are due and are taken on the looks that follow.
+				// Members whose budgets were raised together are spread the same way.
 				if o.NextMove != "resume" || resumed {
 					continue
 				}
 				resumed = true
 				rec := env.Manifest.Agents[n]
-				if _, _, err := sendResumePrepared(env, rec, obs[n].Facts, o.Dispatch, protocol.ResumeBody(o.Dispatch, true)); err != nil {
+				done := fmt.Sprintf("resumed %s (%s) after its provider's refusal, no rung spent", n, o.Dispatch)
+				if o.Spent {
+					done = fmt.Sprintf("tried %s (%s) again after its token budget was spent, no rung spent", n, o.Dispatch)
+				}
+				if _, _, err := sendResumePrepared(env, rec, obs[n].Facts, o.Dispatch, protocol.ResumeBodyFor(obs[n].Facts, o.Dispatch, true)); err != nil {
 					acted = append(acted, fmt.Sprintf("resume %s FAILED: %v", n, err))
 				} else {
-					acted = append(acted, fmt.Sprintf("resumed %s (%s) after its provider's refusal, no rung spent", n, o.Dispatch))
+					acted = append(acted, done)
 				}
 			case protocol.StateStopped:
 				rec := env.Manifest.Agents[n]
@@ -1099,6 +1108,12 @@ func cmdWait(env *envState, args []string) error {
 				// refused node looks like lost time, and the costly mistake is to
 				// give its work to someone else while it waits.
 				what += fmt.Sprintf("; %s: the provider refused the last turn, and wait is holding and will carry the same session on — leave it, and do not reassign its work", strings.Join(refused, ", "))
+			}
+			if len(spent) > 0 {
+				// The same costly mistake, and one more: telling the node to
+				// spend less. Its machine sends nothing while the budget is
+				// spent, and only the operator can act.
+				what += fmt.Sprintf("; %s: the token budget is spent, and wait tries again by itself at no cost until the operator raises it on the host — leave it, and do not reassign its work", strings.Join(spent, ", "))
 			}
 			if len(known) > 0 {
 				what += fmt.Sprintf("; %s still stuck, as already reported", strings.Join(known, ", "))

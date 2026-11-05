@@ -109,9 +109,10 @@ func (a *app) deliver(ctx context.Context, member model.Member, facts protocol.F
 }
 
 // hostResume carries an open dispatch on without spending a rung: the member's
-// provider refused its last turn and the wait is over, or the turn never ran.
+// provider refused its last turn and the wait is over, its token budget stopped
+// the turn and the next try is due, or the turn never ran.
 func (a *app) hostResume(ctx context.Context, member model.Member, facts protocol.Facts, id string, refused bool) error {
-	return a.deliverNamed(ctx, member, protocol.NextResumeName(facts.Msgs, id), id, protocol.ResumeBody(id, refused))
+	return a.deliverNamed(ctx, member, protocol.NextResumeName(facts.Msgs, id), id, protocol.ResumeBodyFor(facts, id, refused))
 }
 
 func (a *app) deliverNamed(ctx context.Context, member model.Member, msgName, id, body string) error {
@@ -247,16 +248,25 @@ func (a *app) awaitReply(ctx context.Context, out io.Writer, member model.Member
 		case protocol.StateStuck:
 			return protocol.Reply{}, fmt.Errorf("%s is stuck (%s)", member.Name, obs.Detail)
 		case protocol.StateRefused:
-			// The provider refused the member's turn. Waiting is the move, and
-			// the wait is said out loud: at create this used to look like a
-			// member that would not answer its briefing.
-			if obs.NextMove == "resume" {
+			// The provider refused the member's turn, or its token budget is
+			// spent. Waiting is the move, and the wait is said out loud: at
+			// create this used to look like a member that would not answer its
+			// briefing.
+			switch {
+			case obs.NextMove == "resume" && obs.Spent:
+				fmt.Fprintf(out, "…  %s: its token budget was spent — tried again, no rung spent (%s)\n", member.Name, obs.Detail)
+			case obs.NextMove == "resume":
 				fmt.Fprintf(out, "…  %s: the wait its provider asked for is over — resumed, no rung spent (%s)\n", member.Name, obs.Detail)
+			case refusalSaid:
+			case obs.Spent:
+				fmt.Fprintf(out, "…  %s: its token budget is spent, and only the operator can raise it — waiting (%s)\n", member.Name, obs.Detail)
+			default:
+				fmt.Fprintf(out, "…  %s: its provider refused the turn — waiting (%s)\n", member.Name, obs.Detail)
+			}
+			if obs.NextMove == "resume" {
 				if err := a.hostResume(ctx, member, facts, obs.Dispatch, true); err != nil {
 					fmt.Fprintf(out, "…  %s: resume failed and will be tried again: %v\n", member.Name, err)
 				}
-			} else if !refusalSaid {
-				fmt.Fprintf(out, "…  %s: its provider refused the turn — waiting (%s)\n", member.Name, obs.Detail)
 			}
 			refusalSaid = true
 		case protocol.StateStopped:

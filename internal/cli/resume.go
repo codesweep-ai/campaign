@@ -21,7 +21,7 @@ import (
 )
 
 func (a *app) resumeCmd() *cobra.Command {
-	return &cobra.Command{Use: "resume <campaign>", Short: "Carry the orchestrator's open dispatch on after a provider refusal or a turn that never ran; spends no rung", Args: cobra.ExactArgs(1), RunE: func(c *cobra.Command, args []string) error {
+	return &cobra.Command{Use: "resume <campaign>", Short: "Carry the orchestrator's open dispatch on after a provider refusal, a spent token budget or a turn that never ran; spends no rung", Args: cobra.ExactArgs(1), RunE: func(c *cobra.Command, args []string) error {
 		member, err := parseMember(a, args[0])
 		if err != nil {
 			return err
@@ -60,6 +60,9 @@ func (a *app) hostResumeOrchestrator(ctx context.Context, member model.Member, p
 		if err := a.hostResume(ctx, member, facts, o.Dispatch, true); err != nil {
 			return "", err
 		}
+		if o.Spent {
+			return o.Dispatch + " tried again after the orchestrator's token budget was spent, no rung spent", nil
+		}
 		return o.Dispatch + " resumed after its provider's refusal, no rung spent", nil
 	case o.State == protocol.StateStopped && o.NextMove == "resume":
 		if err := a.hostResume(ctx, member, facts, o.Dispatch, false); err != nil {
@@ -79,6 +82,14 @@ func (a *app) hostResumeOrchestrator(ctx context.Context, member model.Member, p
 		}
 		return "ended the orchestrator's session; starting it fresh on its handoff\n" +
 			o.Dispatch + " carried on in a fresh session on the orchestrator's handoff, no rung spent", nil
+	case o.State == protocol.StateRefused && o.Spent:
+		// A reading that still asks is the operator's answer to "did my top-up
+		// land?", so it is said in words, apart from the line.
+		if asks := facts.BudgetAsks(); len(asks) > 0 {
+			return "", fmt.Errorf("%s; the budget has not been raised: %s still at the ask line on the latest reading, and nothing was sent",
+				where, strings.Join(asks, ", "))
+		}
+		return "", fmt.Errorf("%s; the next try is not due yet, and nothing was sent", where)
 	case o.State == protocol.StateRefused:
 		return "", fmt.Errorf("%s; the wait its provider asked for is still running, and nothing was sent", where)
 	case o.State == protocol.StateStopped:

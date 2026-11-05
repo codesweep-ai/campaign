@@ -362,7 +362,7 @@ observe its own death and you can.
 | `node-replied` | The reply exists and the orchestrator has not accepted it. |
 | `node-stuck` | The ladder is spent, a bound tripped, the machine is gone, the provider rejected the node's credential, or the orchestrator has been idle past one `wait` chunk. The line says which. |
 | `node-unreachable` | This look failed. An overlay on every state, not a state. |
-| `node-refused` | The node's provider ended its last turn, or could not be reached: a throttle, an overload, an outage or a network that is down. An overlay. The harness waits and then carries the same session on, and no rung is spent. For the orchestrator the line names `cs-campaign resume` as the host's move. |
+| `node-refused` | The node's provider ended its last turn, or could not be reached: a throttle, an overload, an outage or a network that is down. Or the node's token budget is spent. An overlay. The harness waits and then tries again, and no rung is spent. For the orchestrator the line names `cs-campaign resume` as the host's move. |
 
 A `node-refused` line carries what the provider said and what happens next, as in
 `throttled 40s ago · 3 refused in a row · provider asked for 12s · resuming in 80s, no rung spent`.
@@ -375,6 +375,28 @@ renew the key or sign in again there, and then restart the member's session with
 restart`. A held one is a copy inside the member, and neither a sign-in on the host nor a restart
 reaches it. Someone has to sign in inside the member with the agent's own CLI, or the seat is
 recreated.
+
+A line that reads `token budget spent` is yours as well, and raising the budget is all the member
+needs. A sandbox that lends a credential can hold it to a token budget, and only you can raise one,
+on the host, with `cs-sandbox budget`. The line names the type of token that ran out, `input`,
+`cached` or `output`, from the member's latest reading of its budget, or else from the turn's own
+words. It also says whether the member kept its session or handed off, as in
+`token budget spent (cached) 3m ago, session kept · trying again in 27m, no rung spent · raising its token budget on the host is all it needs`.
+
+Every look asks the member's turn driver for a reading of its budget. Once you have raised the
+budget, the reading has room, and the member is tried on that look, a poll or so after your top-up.
+A member that kept its session carries it on, and one that handed off starts fresh on its handoff,
+as after a hand-off at its context line. While the reading still has a type at its ask line, the
+line adds `still spent on its latest reading`, so you can see whether a top-up has landed. A member
+whose tools are too old to give a reading is tried every `spentRetrySeconds` instead, 30 minutes
+unless the profile names another number. A try costs nothing while the budget stays spent, because
+the sandbox refuses the turn before anything is sent.
+
+A hold does not count toward `elapsedSeconds`. That bound counts the member's own time, from
+the dispatch's opening, and leaves out each hold from a spent turn to the try after it. A member
+whose last turn its budget stopped can still end `node-stuck` for another reason. Its line then
+says the budget is spent too. It ends by saying the budget must be raised as well as the member
+recovered, because a recovery's turn is refused while the budget stays spent.
 
 A stopped or stuck line also quotes how the node's last turn ended, in the turn driver's own
 words. The members' machines keep that in `~/.cs-turns/<cli>.log`, and `archive` collects it.
@@ -481,6 +503,22 @@ This is the one host instrument a tending loop may call. Poll `observe --json`, 
 orchestrator's line says `resume next`, run it. The pacing and the bound come
 from the same computation, so a call made early does nothing. An agent's refusal is the
 orchestrator's to resume, and the command refuses an agent by name.
+
+It tries the orchestrator again after its token budget was spent, on the same line. The try is due
+as soon as the orchestrator's budget reading has room, or at the end of `spentRetrySeconds` when its
+tools give no reading. A tending loop needs no other rule.
+
+```console
+$ cs-campaign resume acme
+m1 tried again after the orchestrator's token budget was spent, no rung spent
+```
+
+Before the try is due it refuses and sends nothing. While the reading still asks, the refusal names
+the types still at their ask line, which tells you the top-up has not landed:
+
+```text
+the budget has not been raised: cached still at the ask line on the latest reading, and nothing was sent
+```
 
 It also starts the orchestrator fresh after a hand-off, when its line says `fresh session next`.
 The old session is ended, and a new one carries the open dispatch on from the orchestrator's
@@ -1251,7 +1289,7 @@ set.
 |---|---|---|
 | `continueAttempts` | 2 | Continues before escalating to a restart. |
 | `restarts` | 1 | Restarts before a node is unrecoverable. |
-| `elapsedSeconds` | the campaign deadline, else 86400 | Bound on recovering one dispatch, from its opening. |
+| `elapsedSeconds` | the campaign deadline, else 86400 | Bound on recovering one dispatch, from its opening. Time held on a spent token budget is left out. |
 | `blindProbes` | 10 | Failed probes before a machine is called gone. `observe` counts them in one burst. The orchestrator's `wait` counts `blindProbes` times `pollSeconds` of unseen time while another member answered. |
 | `pollSeconds` | 30 | How often the orchestrator's `wait` looks. |
 | `settlingSeconds` | 300 | Grace after any send before a driverless node counts as stopped. |
@@ -1261,6 +1299,7 @@ set.
 | `handoffs` | 10 when any seat has a line, else absent | Rapid hand-offs in a row one dispatch may take before the node is `node-stuck`. An explicit value is kept. |
 | `rapidHandoffSeconds` | 300 when any seat has a line, else absent | The window that makes a hand-off rapid: its session began on a `.handoff` or `.commit` message less than this long before it. An explicit value is kept. |
 | `freshPerDispatch` | off | A switch, per agent: each dispatch that opens on the agent starts it in a fresh session. |
+| `spentRetrySeconds` | 1800, recorded only when named | How long a member whose token budget is spent waits before its next try. A try costs nothing while the budget stays spent. |
 
 `stallSeconds` and `handoffTokens` are the two numbers resolved per seat. The first is how the
 orchestrator gets a longer threshold than the agents. A member's own `policy:` block sets it for that member, else

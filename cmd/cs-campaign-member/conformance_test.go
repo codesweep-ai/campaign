@@ -35,6 +35,7 @@ const (
 	classCapacity     = "capacity"
 	classUnauthorized = "unauthorized"
 	classContext      = "context"
+	classSpent        = "spent"
 )
 
 // turnOutcome is what one started turn will do.
@@ -43,6 +44,9 @@ type turnOutcome struct {
 	reply      bool   // it writes the open dispatch's reply
 	class      string // "" for a turn the model ended by itself
 	retryAfter int64  // what the provider asked for, 0 when it named no wait
+	// handedOff ends the turn with exit 0 and the class: the node stopped as
+	// it was asked and wrote its handoff. Every other class ends with exit 5.
+	handedOff bool
 }
 
 // turnEnd is one line of the node's own turn log.
@@ -70,6 +74,9 @@ type simNode struct {
 	// oldTools is a node whose image predates the turn log and --state: its
 	// probe says nothing about either.
 	oldTools bool
+	// budget is what the node's driver answers to --budget at this instant,
+	// or nil for a driver too old to know the flag.
+	budget func(now int64) string
 }
 
 type simEvent struct {
@@ -169,6 +176,11 @@ func (w *simWorld) sshOut(host, command, payload string) ([]byte, error) {
 	if command == protocol.ProbeScript(n.cli) {
 		return []byte(w.probeOutput(n)), nil
 	}
+	// The hand-off check finds the work committed and named, and the copy of
+	// the handoff succeeds: what a hand-off does to the session is the subject.
+	if strings.Contains(command, "NOHANDOFF") || strings.Contains(command, protocol.HandoffsDir+"/") {
+		return nil, nil
+	}
 	if m := putRe.FindStringSubmatch(command); m != nil {
 		body, err := base64.StdEncoding.DecodeString(payload)
 		if err != nil {
@@ -203,6 +215,14 @@ func (w *simWorld) probeOutput(n *simNode) string {
 		state = "busy"
 	}
 	fmt.Fprintf(&b, "AGENT %s\n", state)
+	if n.budget != nil {
+		fmt.Fprintf(&b, "BUDGET %s\n", n.budget(w.now))
+	}
+	for _, e := range n.ends {
+		if e.class == classSpent {
+			fmt.Fprintf(&b, "SPENT %d\n", e.at)
+		}
+	}
 	from := max(0, len(n.ends)-8)
 	for _, e := range n.ends[from:] {
 		class, ra := e.class, "-"
@@ -233,7 +253,7 @@ func (w *simWorld) startTurn(_ string, rec protocol.AgentRecord, _, id string) e
 		}
 		n.drivers, n.busy = 0, false
 		exit := 0
-		if out.class != "" {
+		if out.class != "" && !out.handedOff {
 			exit = 5
 		}
 		n.ends = append(n.ends, turnEnd{at: w.now, exit: exit, class: out.class, retryAfter: out.retryAfter})
@@ -834,5 +854,115 @@ func TestConformanceAKilledAgentIsRecoveredAtTheNextLook(t *testing.T) {
 	}
 	if final["dev"] != protocol.StateFree {
 		t.Errorf("the recovered agent delivered, and ended %s", final["dev"])
+	}
+}
+
+// spentUntil is a node whose token budget is spent until raised. Every turn
+// started before then is refused at once, as the turn driver refuses a turn
+// past the budget's line, and the first turn after it does the work. When
+// handOff is set, the opening turn instead works ten minutes and hands off at
+// the budget's line.
+func spentUntil(raised int64, handOff bool) func(int64) turnOutcome {
+	first := true
+	return func(now int64) turnOutcome {
+		opening := first
+		first = false
+		switch {
+		case opening && handOff:
+			return turnOutcome{runs: 600, class: classSpent, handedOff: true}
+		case now < raised:
+			return turnOutcome{runs: 1, class: classSpent}
+		}
+		return turnOutcome{runs: 300, reply: true}
+	}
+}
+
+// A token budget is spent for three hours, past providerWaitSeconds, and then
+// raised on the host. The node is held the whole time: never laddered, never
+// stuck, tried no more often than spentRetrySeconds, and back to work within
+// one wait of the raise. A node that handed off at its budget's line has its
+// session ended once, for the fresh start on its handoff, and no other.
+func TestConformanceASpentBudgetIsHeldUntilTheOperatorRaisesIt(t *testing.T) {
+	for _, handOff := range []bool{false, true} {
+		t.Run(fmt.Sprintf("handedOff=%v", handOff), func(t *testing.T) {
+			dev := &simNode{name: "dev"}
+			w := newSimWorld(t, dev)
+			start := w.now
+			raised := start + 3*3600
+			dev.script = spentUntil(raised, handOff)
+			final := w.campaign(w.env(), 6*3600)
+
+			if final["dev"] != protocol.StateFree {
+				t.Fatalf("a node whose budget was raised must deliver; it ended %s", final["dev"])
+			}
+			for _, l := range w.looks {
+				if l.node == "dev" && l.state == protocol.StateStuck {
+					t.Fatalf("a spent node was given up at +%ds; only the operator can raise its budget", l.at-start)
+				}
+			}
+			if d := w.current(dev); d.Continues != 0 || d.Restarts != 0 {
+				t.Errorf("a spent budget cost %d continues and %d restarts", d.Continues, d.Restarts)
+			}
+			wantKills := 0
+			if handOff {
+				wantKills = 1
+			}
+			if len(w.kills) != wantKills {
+				t.Errorf("want %d session ended, got %d: %+v", wantKills, len(w.kills), w.kills)
+			}
+			wait := protocol.DefaultPolicy().SpentRetrySeconds
+			poll := int64(protocol.DefaultPolicy().PollSeconds)
+			var back int64
+			for i := 1; i < len(w.starts); i++ {
+				if gap := w.starts[i].at - w.starts[i-1].at; gap < int64(wait) {
+					t.Errorf("try %d came %ds after the one before; the spent wait is %ds", i, gap, wait)
+				}
+				if back == 0 && w.starts[i].at >= raised {
+					back = w.starts[i].at - raised
+				}
+			}
+			if back > int64(wait)+3*poll {
+				t.Errorf("the budget was raised at +3h and the node was tried %ds later; want within one wait and a look", back)
+			}
+		})
+	}
+}
+
+// Three hours and a quarter, on a driver that answers --budget and a campaign whose
+// elapsed bound is one hour. The hold is the operator's time, so the bound
+// does not trip, and the reading brings the node back within a look or two of
+// the raise rather than within a wait.
+func TestConformanceARaisedBudgetIsTriedAtOnceAndTheHoldIsNotCounted(t *testing.T) {
+	for _, handOff := range []bool{false, true} {
+		t.Run(fmt.Sprintf("handedOff=%v", handOff), func(t *testing.T) {
+			dev := &simNode{name: "dev"}
+			w := newSimWorld(t, dev)
+			start := w.now
+			raised := start + 3*3600 + 900 // off the grid of 30-minute tries
+			dev.script = spentUntil(raised, handOff)
+			dev.budget = func(now int64) string {
+				if now < raised {
+					return "ask cached"
+				}
+				return "ok"
+			}
+			env := w.env()
+			env.Manifest.Policy.ElapsedSeconds = 3600
+			final := w.campaign(env, 6*3600)
+
+			if final["dev"] != protocol.StateFree {
+				t.Fatalf("a node held three hours under a one-hour bound must deliver once raised; it ended %s", final["dev"])
+			}
+			poll := int64(protocol.DefaultPolicy().PollSeconds)
+			for _, s := range w.starts {
+				if s.at >= raised {
+					if late := s.at - raised; late > 3*poll {
+						t.Errorf("the budget was raised at +3h15m and the node was tried %ds later; a reading with room should bring it within a look or two", late)
+					}
+					return
+				}
+			}
+			t.Errorf("the node was never tried after the raise")
+		})
 	}
 }

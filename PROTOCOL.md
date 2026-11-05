@@ -182,7 +182,7 @@ dearer one, and learns which failure it had from whichever worked.
 **A cause that can be looked up is not diagnosed either. It is read.** A node's machine records
 how each of its turns ended (§6). When that record says the node's provider ended the turn, the
 ladder is the wrong answer. Both of its instruments send the node's context again, and that is
-the load the provider refused. Four endings are read and not laddered:
+the load the provider refused. Five endings are read and not laddered:
 
 | The turn ended because | What it costs | Why |
 |---|---|---|
@@ -190,6 +190,7 @@ the load the provider refused. Four endings are read and not laddered:
 | the provider rejected the node's credential | nothing is sent; the node is `node-stuck` at the first look | no instrument of a dispatcher's repairs a credential (§9) |
 | the node's context is too long for its model | the restart, first | a continue sends the same context again, and only a restart shortens it |
 | the node handed off at the context line it was given | a fresh session on the node's handoff once its work is committed and named there, else the same session asked to commit first; no rung | the node did as it was asked, and its handoff carries the work on. Only the session that did the work knows what it was |
+| the node's token budget was spent | a long wait, then another try: a fresh session on the node's handoff if it handed off, else the same session carries on; no rung | only the operator can raise a budget, and while it stays spent a try sends nothing |
 
 Every other ending, and every ending the node's machine cannot explain, gets the ladder as
 before. **A reason older than the newest message is never used**: it describes an attempt that
@@ -228,8 +229,32 @@ commit. A dispatch's first session began on neither, and a session that works lo
 So a long dispatch hands off as often as its work needs. A node that never commits what its handoff
 describes is asked again at every hand-off. Each ask's turn is rapid, so that node ends there too.
 
+**A spent token budget is a hold.** A node's machine may give it a token budget, a limit on the
+tokens its model uses that only the operator can raise, on the host. It is not the ladder's budget
+below, which counts attempts and time. The dispatcher cannot see a token budget, and learns that one
+is spent from the node's record of its turns, in one of two ways. Either the turn was refused,
+before it began or partway through, and the session is intact. Or the node was asked to stop at the
+budget's line, and it wrote its handoff and ended its turn, as at a context line. Either way the
+dispatcher waits, then tries again, and spends no rung. While the budget stays spent, the node's
+machine refuses a try before anything is sent, so a try costs nothing. The node's machine can also
+be asked whether its budget would let a turn be sent now, as it is asked whether the agent is in a
+turn (§6). Once it answers yes, the budget has been raised, and the next try comes at once. The wait
+is what brings the node back when its machine cannot answer. It is long, and it is the operator's
+number. At that try, a node that handed off takes the hand-off move above, commit check included. A
+session resumed after a long wait would send its whole context again as new input. Any other node
+carries on in its session. Its message names the one its stopped turn was given, because that turn
+may have been a fresh session's first, and such a session holds nothing to carry on from. A spent
+ending is never a rapid hand-off, and a session that meets one ends the run, because the operator's
+top-ups set its pace. The elapsed bound is the only one that applies, and it counts the node's own
+time. Each hold runs from a spent ending to the try after it, and the bound leaves it out, because
+that time is the operator's. Every look reports the budget as spent, and names the type of token
+that ran out when the node's machine names it. So the operator knows that raising it is all the node
+needs. A node whose last turn its budget stopped may still end `node-stuck` for another reason, and
+its line then says the budget is spent too.
+
 **The budget is bounded by both attempts and elapsed time, whichever trips first.** The
-elapsed bound runs from the moment the dispatch opened; a continuation does not reset it.
+elapsed bound runs from the moment the dispatch opened; a continuation does not reset it. Time
+held on a spent token budget is left out of it (above).
 Neither alone suffices. An attempt count lets a node that works a while and then stops each time bleed for
 hours. A clock lets a node that stops instantly spin uselessly for the whole window.
 The values are policy, the operator's, per campaign. Exhausting the ladder produces
@@ -293,7 +318,8 @@ each time it refuses again, and then to carry the same session on. Nodes refused
 not brought back together, because their combined return is what was refused. The wait is
 computed from the node's own record of its turns, never kept by the dispatcher. It is bounded by
 an operator's number, and the elapsed bound runs throughout, so a provider that never relents
-ends in `node-stuck` with the refusal named.
+ends in `node-stuck` with the refusal named. A node whose token budget is spent is held under the
+same overlay until its next try is due.
 
 **`node-unreachable` is deliberately not a state.** When a probe fails, the observer has learned
 nothing, which is a fact about the observation rather than about the node. Drawing it as a state
@@ -332,6 +358,7 @@ stored.** Look, act, discard, the way you run `ps`.
 | did it come back? | whether its reply exists |
 | is it alive, and for how long? | its process table, and the agent's own word on whether it is in a turn |
 | how did its last turn end? | the node's own record of its turns |
+| would its token budget let a turn be sent? | the agent's own reading of its budget |
 | has its dispatcher accepted its reply? | **the orchestrator's acceptance record** (§7), or the host's, for a dispatch the host judged |
 
 All but the last live inside the node's own machine. A node cannot reach out, so nothing it
@@ -507,7 +534,8 @@ needs the host's judgment to keep it running has an orchestrator defect (§8). T
 a node too, and its provider can refuse its turn as it refuses any agent's. Nothing above it
 inside the campaign can carry it on. So the host performs for the orchestrator exactly what the
 orchestrator performs for a refused agent. After the provider's wait, it resumes the same session
-into the same dispatch, which spends no rung. When the orchestrator hands off, the host starts its
+into the same dispatch, which spends no rung. It tries an orchestrator whose token budget is spent
+again the same way, once its wait is over or its budget has room again. When the orchestrator hands off, the host starts its
 fresh session on its handoff, as the orchestrator does for an agent. It checks the orchestrator's
 work against that handoff first, in the same way, and keeps the session when they disagree. The
 host derives those moves
@@ -517,7 +545,9 @@ cannot be restarted by an orchestrator, which has no power to create or boot one
 the provider rejects is on the same side of that boundary, because an orchestrator cannot issue
 or renew one. Both repairs are infrastructure work by a human, outside this protocol rather
 than an exception within it. Both go into an assessment at once (§7), and both end a campaign
-that cannot go on without the node as `campaign-blocked`.
+that cannot go on without the node as `campaign-blocked`. Raising a spent token budget is the
+operator's work too, but the node is not lost meanwhile. Its dispatcher holds it and tries again
+(§5), so raising the budget is all the node needs.
 
 ## 10. Left to the implementation
 
@@ -537,6 +567,11 @@ Deliberately unspecified, because the protocol does not depend on the answers:
   hand-off is taken only once the work is committed and the handoff names it.
 - **Whether an agent starts each dispatch in a fresh session.** Only the properties are fixed: the
   turn re-anchors as a restart does, and it spends no rung.
+- **How long a node whose token budget is spent waits between tries.** Only the properties are
+  fixed. The wait is long and the operator's, and a try spends no rung and is never a rapid
+  hand-off. A reading that says the budget has room brings the try forward. A node that handed off
+  starts fresh on its handoff, and any other carries on in its session. Only the elapsed bound
+  applies, and it leaves the holds out.
 - **How the log and the reply are represented on disk.** Any format works that lets a reader
   check for a reply's existence cheaply and append to the log without rewriting it.
 

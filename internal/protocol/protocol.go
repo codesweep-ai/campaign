@@ -305,6 +305,14 @@ type Policy struct {
 	// share nothing a session must remember runs each on a clean context
 	// (SPEC.md R145).
 	FreshPerDispatch bool `json:"freshPerDispatch,omitempty" yaml:"freshPerDispatch,omitempty"`
+	// SpentRetrySeconds is how long a node whose token budget is spent waits
+	// before its next try. Only the operator can raise a budget, and while it
+	// stays spent a try is refused before anything is sent, so the wait guards
+	// nothing on the provider's side (SPEC.md R151). It is recorded only when
+	// the profile names it, and read through SpentRetry, so a campaign that
+	// says nothing records no new number and every member.json stays the bytes
+	// it was.
+	SpentRetrySeconds int `json:"spentRetrySeconds,omitempty" yaml:"spentRetrySeconds,omitempty"`
 }
 
 // DefaultPolicy is what a campaign gets for saying nothing; MANUAL.md's
@@ -324,6 +332,12 @@ func DefaultPolicy() Policy {
 		StallSeconds:        180,
 		Handoffs:            10,
 		RapidHandoffSeconds: 300,
+		// The wait trades how soon a node starts again once its budget is
+		// raised against the messages its dispatch gathers meanwhile: one per
+		// try, each listed again by every later re-anchor. Half an hour keeps a
+		// node held overnight to about two dozen. A dispatch has 999
+		// continuation numbers, some twenty days at this pace.
+		SpentRetrySeconds: 1800,
 	}
 }
 
@@ -355,6 +369,7 @@ func (p Policy) CampaignOnlyFields() []string {
 		{"providerWaitSeconds", p.ProviderWaitSeconds},
 		{"handoffs", p.Handoffs},
 		{"rapidHandoffSeconds", p.RapidHandoffSeconds},
+		{"spentRetrySeconds", p.SpentRetrySeconds},
 	} {
 		if field.value != 0 {
 			out = append(out, "policy."+field.name)
@@ -363,9 +378,10 @@ func (p Policy) CampaignOnlyFields() []string {
 	return out
 }
 
-// Resolve fills every zero field of p from DefaultPolicy, except Handoffs and
-// RapidHandoffSeconds. The hand-off bound is filled by WithHandoffBound alone,
-// so a campaign with no context line carries no hand-off number anywhere.
+// Resolve fills every zero field of p from DefaultPolicy, except Handoffs,
+// RapidHandoffSeconds and SpentRetrySeconds. The hand-off bound is filled by
+// WithHandoffBound alone, so a campaign with no context line carries no
+// hand-off number anywhere. The spent wait is read through SpentRetry.
 func (p Policy) Resolve() Policy {
 	d := DefaultPolicy()
 	if p.ContinueAttempts == 0 {
@@ -424,6 +440,15 @@ func (p Policy) rapidWindow() int64 {
 		return int64(DefaultPolicy().RapidHandoffSeconds)
 	}
 	return int64(p.RapidHandoffSeconds)
+}
+
+// SpentRetry is how long a node whose token budget is spent waits before its
+// next try, in seconds: the profile's number, else the default.
+func (p Policy) SpentRetry() int64 {
+	if p.SpentRetrySeconds <= 0 {
+		return int64(DefaultPolicy().SpentRetrySeconds)
+	}
+	return int64(p.SpentRetrySeconds)
 }
 
 // RepoRef is one repository a member holds: its guest directory name and the

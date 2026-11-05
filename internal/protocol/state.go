@@ -30,8 +30,8 @@ const (
 	StateRefused State = "node-refused"
 )
 
-// The failure classes a turn driver records. Only these five change a move;
-// anything else is reported and left to the ladder.
+// The classes a turn driver records. Only these change a move; anything else
+// is reported and left to the ladder.
 const (
 	ClassThrottled    = "throttled"
 	ClassCapacity     = "capacity"
@@ -46,6 +46,14 @@ const (
 	// its turn as asked. The move is a fresh session on that handoff, and no
 	// rung is spent (SPEC.md R141).
 	ClassHandoff = "handoff"
+	// ClassSpent is a turn its sandbox's token budget stopped. With exit 5 the
+	// turn was refused, before it began or partway through, and the session is
+	// intact. With exit 0 the node was asked to stop at the budget's line, wrote
+	// its handoff and ended its turn, as at a context line. Only the operator
+	// can raise a budget, on the host, and while it stays spent the node's
+	// machine refuses a turn before sending anything. So the move is a long
+	// wait and another try, and no rung is spent (SPEC.md R151).
+	ClassSpent = "spent"
 )
 
 // TurnEnd is one line of the node's own turn log: how a turn ended, written on
@@ -87,6 +95,38 @@ type Facts struct {
 	// absent or the node's tools are too old to say. It is reported beside the
 	// state and decides none (contextNote).
 	Context *ContextReading
+	// Budget is what the family's turn driver answers when asked whether the
+	// sandbox's token budget would let a turn be sent: "ok", "ask <types>"
+	// with the types at their ask line, comma-separated, "none" when no
+	// reading could be taken, or "off" when the sandbox has no meter. ""
+	// means the node's tools are too old to say. Only "ok" decides anything:
+	// it brings the next try of a node held on a spent budget forward.
+	Budget string
+	// SpentEnds is when every turn the token budget stopped ended, as far
+	// back as the turn log keeps, oldest first. TurnEnds holds only the tail,
+	// and a hold that lasts overnight runs past it. The elapsed bound leaves
+	// the holds out (heldSeconds), so it needs them all.
+	SpentEnds []int64
+}
+
+// budgetRoom says the node's machine read its token budget just now and
+// would send a turn.
+func (f Facts) budgetRoom() bool { return f.Budget == "ok" }
+
+// BudgetAsks is the token types the node's latest budget reading names as
+// at their ask line, or nil when the reading names none.
+func (f Facts) BudgetAsks() []string {
+	rest, ok := strings.CutPrefix(f.Budget, "ask ")
+	if !ok {
+		return nil
+	}
+	var types []string
+	for t := range strings.SplitSeq(rest, ",") {
+		if t = strings.TrimSpace(t); t != "" {
+			types = append(types, t)
+		}
+	}
+	return types
 }
 
 // ContextReading is one answer of `cs-<cli>-turn --context`. A CLI compacts a
@@ -142,11 +182,12 @@ var recordGlob = map[string][2]string{
 // from matching the probe's own command line.
 //
 // Output lines: "MSG <mtime> <name>", "REPLY <id>", "DRIVERS <n>",
-// "RECORD <mtime>", "AGENT <word> [word]", "CONTEXT <key=value>...", "TURNEND
-// <epoch> <exit> <class> <retry_after> <reason>", or "NOCHANNELS" when the
-// channel root does not exist yet. AGENT, CONTEXT and TURNEND come from the
-// sandbox's turn drivers. A driver too old to know --context refuses it with
-// nothing on stdout, so CONTEXT is then empty and parses as not known. A node whose
+// "RECORD <mtime>", "AGENT <word> [word]", "CONTEXT <key=value>...", "BUDGET
+// <word> [types]", "SPENT <epoch>", "TURNEND <epoch> <exit> <class>
+// <retry_after> <reason>", or "NOCHANNELS" when the channel root does not exist
+// yet. AGENT, CONTEXT, BUDGET, SPENT and TURNEND come from the sandbox's turn
+// drivers. A driver too old to know --context or --budget refuses it with
+// nothing on stdout, so the line is then empty and parses as not known. A node whose
 // tools are older prints an empty AGENT and no TURNEND, and is computed as before.
 // RECORD is left out for a family with no known record, and it reads 0 when the
 // member has written none, so an older probe and a newer parser agree.
@@ -155,10 +196,10 @@ func ProbeScript(cli string) string {
 	script := `cd "$HOME/` + ChannelsDir + `" 2>/dev/null || { echo NOCHANNELS; exit 0; }; ` +
 		`for f in input/*.md; do [ -e "$f" ] || continue; printf 'MSG %s %s\n' "$(stat -c %Y "$f" 2>/dev/null || echo 0)" "${f#input/}"; done; ` +
 		`for r in output/replies/*.json; do [ -e "$r" ] || continue; b="${r#output/replies/}"; printf 'REPLY %s\n' "${b%.json}"; done; ` +
-		// A driver asked for --state or --context is a question and not a turn. It
+		// A driver asked for --state, --context or --budget is a question and not a turn. It
 		// matches the pattern, and a second observer's probe can be running one at
 		// this moment, so it is left out of the count.
-		`printf 'DRIVERS %s\n' "$(pgrep -fa '` + pattern + ` ' 2>/dev/null | grep -vcE -- ' --(state|context)' || true)"`
+		`printf 'DRIVERS %s\n' "$(pgrep -fa '` + pattern + ` ' 2>/dev/null | grep -vcE -- ' --(state|context|budget)' || true)"`
 	if g, ok := recordGlob[cli]; ok {
 		script += `; printf 'RECORD %s\n' "$(find "$HOME/` + g[0] + `" -type f -name '` + g[1] + `' -printf '%T@\n' 2>/dev/null | sort -n | tail -1 | cut -d. -f1 | grep . || echo 0)"`
 	}
@@ -166,6 +207,11 @@ func ProbeScript(cli string) string {
 	script += `; d="$HOME/.local/bin/` + driver + `"; [ -x "$d" ] || d=` + driver +
 		`; printf 'AGENT %s\n' "$("$d" --state 2>/dev/null | head -n 1)"` +
 		`; printf 'CONTEXT %s\n' "$("$d" --context 2>/dev/null | head -n 1)"` +
+		`; printf 'BUDGET %s\n' "$("$d" --budget 2>/dev/null | head -n 1)"` +
+		// The epoch of every spent turn end the log keeps, a few bytes each and
+		// nothing at all on a node never held: the tail below is too short for
+		// a hold that lasts the night.
+		`; grep -E '^[0-9]+ [0-9]+ spent ' "$HOME/.cs-turns/` + cli + `.log" 2>/dev/null | cut -d' ' -f1 | sed 's/^/SPENT /'` +
 		`; tail -n 16 "$HOME/.cs-turns/` + cli + `.log" 2>/dev/null | cut -c1-240 | sed 's/^/TURNEND /'`
 	return script
 }
@@ -193,6 +239,12 @@ func ParseProbe(out string) Facts {
 			f.Agent = strings.Join(fields[1:], " ")
 		case len(fields) >= 2 && fields[0] == "CONTEXT":
 			f.Context = parseContext(fields[1:])
+		case len(fields) >= 2 && fields[0] == "BUDGET":
+			f.Budget = strings.Join(fields[1:], " ")
+		case len(fields) == 2 && fields[0] == "SPENT":
+			if at, err := strconv.ParseInt(fields[1], 10, 64); err == nil {
+				f.SpentEnds = append(f.SpentEnds, at)
+			}
 		case len(fields) >= 5 && fields[0] == "TURNEND":
 			at, err1 := strconv.ParseInt(fields[1], 10, 64)
 			exit, err2 := strconv.Atoi(fields[2])
@@ -223,6 +275,9 @@ type Observation struct {
 	// session on the node's handoff, no rung), or "" when the next arrow is
 	// nothing, a wait, or a judgment.
 	NextMove string
+	// Spent says the hold or the move is for a spent token budget, not a
+	// provider's refusal, so a caller words what it did for the operator.
+	Spent bool
 }
 
 // Blind is what an observer knows about its own failed looks at one node. It
@@ -249,6 +304,13 @@ func Compute(f Facts, probeFailed bool, blind Blind, accepted map[string]bool, p
 	o := compute(f, probeFailed, blind, accepted, pol, now)
 	if !probeFailed {
 		o.Detail += contextNote(f.Context, now)
+		// A node whose last turn its token budget stopped may be stuck for
+		// another reason. The line still says the budget is spent, because a
+		// person deciding what to do about the node needs to know it.
+		if n := len(f.TurnEnds); o.State == StateStuck && n > 0 && f.TurnEnds[n-1].Class == ClassSpent {
+			last := f.TurnEnds[n-1]
+			o.Detail += " · token budget spent" + spentTypes(f, &last) + " " + shortAge(clampAge(now-last.At)) + " ago" + spentStuckAsk
+		}
 	}
 	return o
 }
@@ -297,10 +359,15 @@ func compute(f Facts, probeFailed bool, blind Blind, accepted map[string]bool, p
 	}
 	// Inactive without a reply. The elapsed bound stays first among the stuck
 	// checks — it is the protocol's "whichever trips first" backstop, runs from
-	// dispatch open, and no continuation resets it.
-	if now-d.OpenedAt >= int64(pol.ElapsedSeconds) {
-		return Observation{State: StateStuck, Dispatch: d.ID,
-			Detail: fmt.Sprintf("open %ds — elapsed bound tripped", clampAge(now-d.OpenedAt))}
+	// dispatch open, and no continuation resets it. It counts the node's own
+	// time: a hold on a spent token budget is the operator's, and is left out.
+	held := heldSeconds(d, f, now)
+	if now-d.OpenedAt-held >= int64(pol.ElapsedSeconds) {
+		detail := fmt.Sprintf("open %ds — elapsed bound tripped", clampAge(now-d.OpenedAt))
+		if held > 0 {
+			detail = fmt.Sprintf("open %ds, %s of it held on a spent token budget and not counted — elapsed bound tripped", clampAge(now-d.OpenedAt), shortAge(held))
+		}
+		return Observation{State: StateStuck, Dispatch: d.ID, Detail: detail}
 	}
 	// Why the last turn ended, when the node's machine says. A reason counts only
 	// if it is newer than the newest message: an old reason must never be held
@@ -330,6 +397,48 @@ func compute(f Facts, probeFailed bool, blind Blind, accepted map[string]bool, p
 			}
 			return Observation{State: StateRefused, Dispatch: d.ID, NextMove: "resume",
 				Detail: detail + " · resume next, no rung spent"}
+		case last.Class == ClassSpent:
+			// Held as a refusal is, under the same overlay, and on a wait of its
+			// own: a try is free while the budget stays spent, and only the
+			// operator ends that. So no provider bound applies, and the elapsed
+			// bound above is the one that runs. Once the wait is over, a node that
+			// handed off takes the hand-off move, because a session resumed after
+			// a long wait sends its whole context again as new input. Any other
+			// carries on in its session. The bound on rapid hand-offs is not
+			// checked: its pace is the operator's top-ups, not the node's.
+			//
+			// A reading that says a turn would be sent means the budget was
+			// raised, and the try comes at once. Any other reading, or none from
+			// a driver too old to give one, leaves the wait as it is: the wait is
+			// what still brings a node back whose machine cannot say.
+			detail := spentNote(f, d.OpenedAt, last, now)
+			ask := spentAsk
+			switch {
+			case f.budgetRoom():
+				detail += " · its budget has room again"
+				ask = ""
+			case len(f.BudgetAsks()) > 0:
+				detail += " · still spent on its latest reading"
+			}
+			if due := last.At + pol.SpentRetry(); now < due && !f.budgetRoom() {
+				next := "trying again"
+				if last.Exit == 0 {
+					next = "fresh session on its handoff"
+				}
+				return Observation{State: StateRefused, Dispatch: d.ID, Spent: true,
+					Detail: detail + fmt.Sprintf(" · %s in %s, no rung spent", next, shortAge(due-now)) + ask + reasonNote(last)}
+			}
+			if last.Exit == 0 {
+				asks := ""
+				if d.CommitAsks > 0 {
+					asks = fmt.Sprintf(", %d asked to commit", d.CommitAsks)
+				}
+				return Observation{State: StateStopped, Dispatch: d.ID, NextMove: "handoff", Spent: true,
+					Detail: fmt.Sprintf("%d cont, %d restarts, %d hand-offs%s · ", continues, restarts, d.Handoffs, asks) + detail +
+						" · fresh session next, no rung spent" + ask + reasonNote(last)}
+			}
+			return Observation{State: StateRefused, Dispatch: d.ID, NextMove: "resume", Spent: true,
+				Detail: detail + " · resume next, no rung spent" + ask + reasonNote(last)}
 		case last.Class == ClassHandoff:
 			// The node did as asked, and the move is a fresh session on its
 			// handoff, at no cost to it. The bound is the one guard against a
@@ -388,6 +497,16 @@ func compute(f Facts, probeFailed bool, blind Blind, accepted map[string]bool, p
 		since := d.OpenedAt
 		if n := len(f.TurnEnds); n > 0 && f.TurnEnds[n-1].At > since {
 			since = f.TurnEnds[n-1].At
+			// A spent budget's wait is long by design, and nothing was launched
+			// while it ran. The launches that failed began with the try after it.
+			if f.TurnEnds[n-1].Class == ClassSpent {
+				for _, m := range d.Msgs {
+					if m.MTime >= since {
+						since = m.MTime
+						break
+					}
+				}
+			}
 		}
 		if now-since >= int64(pol.ProviderWaitSeconds) {
 			return Observation{State: StateStuck, Dispatch: d.ID,
@@ -458,6 +577,9 @@ func RefusalBackoff(n int) int64 {
 // rapid. An earlier session's end is the hand-off turn end between its
 // message and the next; past the reach of the turn log it is the next
 // message, which is later, so an old session reads as longer, never shorter.
+// A session whose token budget was spent is never rapid and ends the run,
+// whether it handed off at the budget's line or was refused, because the
+// operator's top-ups set its pace, not the line.
 func rapidHandoffs(d *Dispatch, f Facts, last *TurnEnd, window int64) (n, asks int) {
 	var starts []Msg
 	for _, m := range d.Msgs {
@@ -478,7 +600,7 @@ func rapidHandoffs(d *Dispatch, f Facts, last *TurnEnd, window int64) (n, asks i
 				}
 			}
 		}
-		if end-start.MTime >= window {
+		if end-start.MTime >= window || spentBetween(f.TurnEnds, start.MTime, end) {
 			break
 		}
 		n++
@@ -498,12 +620,117 @@ func refusedRun(ends []TurnEnd, since int64) (first int64, n int) {
 	return first, n
 }
 
+// spentAsk is what every spent line ends on, for the operator reading it: the
+// dispatcher cannot see or raise a budget, and the node needs nothing else.
+const spentAsk = " · raising its token budget on the host is all it needs"
+
+// spentStuckAsk ends the line of a stuck node whose budget is spent. Raising the
+// budget is not all it needs: nothing tries a stuck node again, so it needs a
+// recovery as well, and that recovery's turn is refused until the budget has room.
+const spentStuckAsk = " · its token budget must be raised on the host too, or a recovery's turn is refused as well"
+
+// spentNote says that a node's token budget is spent: the types that ran out,
+// since when the node has been held, and whether it handed off or keeps its
+// session.
+func spentNote(f Facts, since int64, last *TurnEnd, now int64) string {
+	first := last.At
+	for i := len(f.TurnEnds) - 1; i >= 0 && f.TurnEnds[i].Class == ClassSpent && f.TurnEnds[i].At >= since; i-- {
+		first = f.TurnEnds[i].At
+	}
+	note := "token budget spent" + spentTypes(f, last)
+	if first < last.At {
+		note += fmt.Sprintf(" %s ago, last tried %s ago", shortAge(clampAge(now-first)), shortAge(clampAge(now-last.At)))
+	} else {
+		note += " " + shortAge(clampAge(now-last.At)) + " ago"
+	}
+	if last.Exit == 0 {
+		return note + ", handed off"
+	}
+	return note + ", session kept"
+}
+
+// spentTypes names the token types that ran out, as " (cached)" or " (input,
+// output)", and "" when nothing names them. A budget reading that still asks
+// names them directly, and is taken first. Otherwise they are read from the
+// spent turn's reason, as the lender's three types, each a word: input, cached
+// and output. "cached input" names the cached type alone, which is what the
+// words mean.
+func spentTypes(f Facts, last *TurnEnd) string {
+	if asks := f.BudgetAsks(); len(asks) > 0 {
+		return " (" + strings.Join(asks, ", ") + ")"
+	}
+	words := strings.FieldsFunc(strings.ToLower(last.Reason), func(r rune) bool { return r < 'a' || r > 'z' })
+	var types []string
+	for i := 0; i < len(words); i++ {
+		w := words[i]
+		if w == "cached" && i+1 < len(words) && words[i+1] == "input" {
+			i++
+		}
+		if (w == "input" || w == "cached" || w == "output") && !slices.Contains(types, w) {
+			types = append(types, w)
+		}
+	}
+	if len(types) == 0 {
+		return ""
+	}
+	return " (" + strings.Join(types, ", ") + ")"
+}
+
+// heldSeconds is how much of dispatch d's life, up to now, the node spent held
+// on a spent token budget. Each hold runs from a spent turn end to the next
+// message, which is the try after it, or to now while it lasts. That time is
+// the operator's, so the elapsed bound leaves it out. The spent ends come from
+// the whole turn log where the probe gives them, and from the tail otherwise.
+func heldSeconds(d *Dispatch, f Facts, now int64) int64 {
+	ends := slices.Clone(f.SpentEnds)
+	for _, e := range f.TurnEnds {
+		if e.Class == ClassSpent {
+			ends = append(ends, e.At)
+		}
+	}
+	slices.Sort(ends)
+	held, covered := int64(0), d.OpenedAt
+	for _, at := range slices.Compact(ends) {
+		if at < covered {
+			continue
+		}
+		stop := now
+		for _, m := range d.Msgs {
+			if m.MTime > at {
+				stop = min(m.MTime, now)
+				break
+			}
+		}
+		if stop > at {
+			held += stop - at
+			covered = stop
+		}
+	}
+	return held
+}
+
+// spentBetween says a turn its token budget stopped ended after after, and at
+// or before upTo.
+func spentBetween(ends []TurnEnd, after, upTo int64) bool {
+	for _, e := range ends {
+		if e.Class == ClassSpent && e.At > after && e.At <= upTo {
+			return true
+		}
+	}
+	return false
+}
+
 // Charged counts the rungs a dispatch has really spent. A rung is a turn: a
 // continue or a restart whose message was delivered and whose turn never ran
 // spent nothing (seen as a launcher failing while file delivery still worked).
 // A message is known to have had no turn when the node records every turn end,
 // the log reaches back that far, and no turn ended between it and the message
 // after it. The newest message is always charged: its turn may yet run.
+//
+// A turn its token budget refused, exit 5 and class spent, is not counted as a
+// turn that ran. Refused before it began, it sent nothing. Refused partway
+// through, it was stopped by the operator's limit and not by anything the node
+// did, and a rung charged for it would be a rung charged for the budget.
 func Charged(d *Dispatch, f Facts) (continues, restarts int) {
 	if !f.knowsTurns() || len(f.TurnEnds) == 0 {
 		return d.Continues, d.Restarts
@@ -517,7 +744,7 @@ func Charged(d *Dispatch, f Facts) (continues, restarts int) {
 		if i+1 < len(d.Msgs) && m.MTime >= oldest {
 			ran = false
 			for _, e := range f.TurnEnds {
-				if e.At >= m.MTime && e.At <= d.Msgs[i+1].MTime {
+				if e.At >= m.MTime && e.At <= d.Msgs[i+1].MTime && (e.Class != ClassSpent || e.Exit == 0) {
 					ran = true
 					break
 				}
