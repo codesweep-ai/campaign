@@ -145,8 +145,8 @@ func (a *app) archiveFleetVerdict(ctx context.Context, root string, campaign *mo
 // the rest of the archive continue. A command that never returns is not a
 // failure, so without a bound it defeats that contract completely: the whole
 // archive blocks on one wedged member, and archive is the only copy of a
-// member's work. The opencode transcript export is the realistic case, because
-// it shells out once per recorded session.
+// member's work. The opencode transcript dump is the realistic case, because
+// it reads every recorded session.
 const archiveCollectBound = 2 * time.Minute
 
 // archiveExportBound is how much of a transcript collection's bound the
@@ -154,6 +154,63 @@ const archiveCollectBound = 2 * time.Minute
 // regardless. A fraction of archiveCollectBound, deliberately: the readable
 // export is the nice-to-have and the raw db is the evidence.
 const archiveExportBound = 45 * time.Second
+
+// opencodeStoreDump writes every session of an OpenCode store as one JSON
+// file, `<id>.json`, in the directory it is given. The file is the store's
+// own rows: `session` is the session's row, `messages` its message rows in
+// order, each with its `parts` rows, and every `data` column parsed. `store`
+// names the generation the tables belong to, 2 for `session_v2` and 1 for
+// `session`, and the OpenCode version that wrote the session. It is the input
+// cs-tracer's opencode adapter reads.
+//
+// A session that cannot be written costs only itself, and its half-written
+// file is removed, so an odd row leaves every other session in the archive.
+const opencodeStoreDump = `import json, os, re, sqlite3, sys
+db, out = sys.argv[1], sys.argv[2]
+c = sqlite3.connect(db, uri=True)
+c.row_factory = sqlite3.Row
+tables = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+if "session_v2" in tables:
+    gen, tab, order = 2, ("session_v2", "session_message", "session_part"), ("seq, time_created", "message_id, ordinal")
+elif "session" in tables:
+    gen, tab, order = 1, ("session", "message", "part"), ("time_created, id", "time_created, id")
+else:
+    sys.exit(1)
+def rows(sql, *args):
+    return [dict(r) for r in c.execute(sql, args)]
+def parsed(row):
+    try:
+        row["data"] = json.loads(row["data"])
+    except (TypeError, ValueError):
+        pass
+    return row
+failed = 0
+for s in rows("SELECT * FROM %s" % tab[0]):
+    sid = s.get("id")
+    if not isinstance(sid, str) or not re.fullmatch(r"ses_[A-Za-z0-9]+", sid):
+        continue
+    tmp = os.path.join(out, sid + ".json.tmp")
+    try:
+        parts = {}
+        for p in rows("SELECT * FROM %s WHERE session_id = ? ORDER BY %s" % (tab[2], order[1]), sid):
+            parts.setdefault(p.get("message_id"), []).append(parsed(p))
+        messages = []
+        for m in rows("SELECT * FROM %s WHERE session_id = ? ORDER BY %s" % (tab[1], order[0]), sid):
+            m = parsed(m)
+            m["parts"] = parts.pop(m.get("id"), [])
+            messages.append(m)
+        doc = {"store": {"generation": gen, "version": s.get("version")}, "session": s, "messages": messages}
+        with open(tmp, "w") as f:
+            json.dump(doc, f, default=str)
+        os.replace(tmp, os.path.join(out, sid + ".json"))
+    except Exception as e:
+        failed += 1
+        sys.stderr.write("%s: %s\n" % (sid, e))
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+sys.exit(1 if failed else 0)`
 
 // collect runs one collection command in a member under that bound, so a hung
 // command becomes a marker naming the deadline rather than an indefinite wait.
@@ -323,38 +380,44 @@ func (a *app) archiveTranscripts(ctx context.Context, base string, member model.
 		allow = ".cs-claude/projects"
 	case "opencode":
 		allow = ".cs-opencode/opencode.db .cs-opencode/opencode.db-wal .cs-opencode/opencode.db-shm .cs-opencode/export"
-		// Human-readable transcript layer beside the raw db (which an archive
-		// mid-checkpoint copy could tear): export every session through the
-		// cs-opencode wrapper so the profile's OPENCODE_DB is used. The export
-		// carries prompts, replies, tool calls, and per-message error/completed
-		// evidence, and contains no credential material.
+		// Readable transcript layer beside the raw db (which an archive
+		// mid-checkpoint copy could tear): every session is written out of the
+		// store, opened read-only, as one JSON file holding its session row and
+		// its message rows with their parts, the JSON columns parsed. That is
+		// the whole record on either generation of the store. OpenCode 1 keeps
+		// a message's parts in `part`; OpenCode 2 keeps them inside the
+		// message's `data.content` and leaves `session_part` empty. The CLI's
+		// own `session export` is not used: on OpenCode 2 it carries each
+		// message's text alone, with no tool call, model, cost or token count.
+		// The store's account and credential tables are never read, so the
+		// files hold no credential material.
 		//
-		// The sessions are listed from the store, opened read-only, rather than
-		// by `session list`, which lists only the top-level sessions of the
-		// directory it runs in. Sub-agents' sessions are exported too.
+		// Sessions are listed from the store rather than by `session list`,
+		// which lists only the top-level sessions of the directory it runs in.
+		// Sub-agents' sessions are written too.
 		//
-		// The wrapper is called by its path. PATH in the member depends on the
-		// engine, and under podman it does not hold ~/.local/bin.
-		//
-		// Bounded and niced, because this runs on the member's own machine and
-		// each session costs a whole opencode start. It shares one deadline
-		// with the tar below and runs first, so an export that takes the lot
-		// leaves no tarball at all — and `audit` reads a missing or empty
-		// cli-evidence.tgz as "declared opencode but produced no transcript;
-		// another CLI did the work". A member that was merely slow must not be
-		// able to look like a lying one. The raw db is always collected;
-		// whatever exports finish are collected with it, and a partial file is
-		// removed by the same `|| rm -f` that a failed export takes, since a
-		// timed-out export exits non-zero too.
+		// Bounded and niced, because this runs on the member's own machine. It
+		// shares one deadline with the tar below and runs first, so a dump
+		// that takes the lot leaves no tarball at all — and `audit` reads a
+		// missing or empty cli-evidence.tgz as "declared opencode but produced
+		// no transcript; another CLI did the work". A member that was merely
+		// slow must not be able to look like a lying one. The raw db is always
+		// collected; whatever sessions were written before the bound are
+		// collected with it. Each file is written under a `.tmp` name and
+		// renamed when whole, so a killed dump leaves only whole files once
+		// the sweep below removes the one it was writing.
 		bound := a.exportBound
 		if bound == 0 {
 			bound = archiveExportBound
 		}
-		pre = fmt.Sprintf(`umask 077; mkdir -p "$HOME/.cs-opencode/export"; timeout -k 5 %s sh -c 'for id in $(python3 -c "import sqlite3, sys; [print(r[0]) for r in sqlite3.connect(sys.argv[1], uri=True).execute(sys.argv[2])]" "file:$HOME/%s?mode=ro" "SELECT id FROM session_v2" 2>/dev/null); do case "$id" in ses_*) nice -n 10 "$HOME/%s/cs-opencode" session export "$id" > "$HOME/.cs-opencode/export/$id.json" 2>/dev/null || rm -f "$HOME/.cs-opencode/export/$id.json" ;; esac; done' || true; `,
+		pre = fmt.Sprintf(`umask 077; out="$HOME/.cs-opencode/export"; mkdir -p "$out"; timeout -k 5 %s nice -n 10 python3 -I - "file:$HOME/%s?mode=ro" "$out" <<'PY' || true
+%s
+PY
+rm -f "$out"/*.json.tmp; `,
 			// Seconds with a fraction: timeout takes it, and a test bound of a
 			// few hundred milliseconds must not truncate to 0, which timeout
 			// reads as "no limit".
-			strconv.FormatFloat(bound.Seconds(), 'f', -1, 64), opencodeDB, guestBinDir)
+			strconv.FormatFloat(bound.Seconds(), 'f', -1, 64), opencodeDB, opencodeStoreDump)
 	}
 	// The member's turn log: how each of its turns ended, and why, in the turn
 	// driver's words. It is the one record of a provider's refusal that does not

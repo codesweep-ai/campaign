@@ -162,9 +162,9 @@ func TestPrepareAuthPassesKeyNameNeverValue(t *testing.T) {
 }
 
 // The opencode evidence tar allowlists exactly the profile SQLite trio plus the
-// per-session JSON export layer, and the guest command exports every session
-// before packing; the profile env file and the two credential files must never
-// be allowlisted.
+// per-session JSON layer, and the guest command writes every session out of
+// the store, opened read-only, before packing; the profile env file and the
+// two credential files must never be allowlisted.
 func TestArchiveTranscriptsOpenCodeAllowlistAndExport(t *testing.T) {
 	covmap.ProveOnPass(t, "archive-evidence", "opencode", "", covmap.TierUnit)
 	sandbox, capture := captureExecSandbox(t, `if [ "$1" = exec ]; then printf '%s' "$5" > "$CAPTURE"; tar -czf - --files-from /dev/null; fi`)
@@ -183,7 +183,7 @@ func TestArchiveTranscriptsOpenCodeAllowlistAndExport(t *testing.T) {
 	}
 	for _, want := range []string{
 		".cs-opencode/opencode.db", ".cs-opencode/opencode.db-wal", ".cs-opencode/opencode.db-shm",
-		".cs-opencode/export", `/.local/bin/cs-opencode" session export`, ".cs-turns/opencode.log",
+		".cs-opencode/export", `python3 -I - "file:$HOME/.cs-opencode/opencode.db?mode=ro"`, "session_message", ".cs-turns/opencode.log",
 	} {
 		if !strings.Contains(string(command), want) {
 			t.Fatalf("opencode evidence command missing %q: %q", want, command)

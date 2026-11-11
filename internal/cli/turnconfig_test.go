@@ -67,6 +67,8 @@ func TestTurnConfigOnAHomeWithNoTranscripts(t *testing.T) {
 // ~/.cs-opencode/opencode.db, holding the named sessions and one message per
 // entry of messages, a type and the message's data, all in the first session.
 // The columns are OpenCode 2.2.5's own, cut to the ones cs-campaign reads.
+// writeOpenCodeStore writes an OpenCode 2 store: the first session is the
+// root and every later one its child, and the messages belong to the root.
 func writeOpenCodeStore(t *testing.T, home string, sessions []string, messages [][2]string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Join(home, ".cs-opencode"), 0o700); err != nil {
@@ -80,11 +82,13 @@ func writeOpenCodeStore(t *testing.T, home string, sessions []string, messages [
 import json, sqlite3, sys
 rows = json.loads(sys.argv[2])
 db = sqlite3.connect(sys.argv[1])
-db.execute("CREATE TABLE session_v2 (id TEXT PRIMARY KEY, parent_id TEXT)")
-db.execute("CREATE TABLE session_message (id TEXT PRIMARY KEY, session_id TEXT, type TEXT, seq INTEGER, data TEXT)")
-db.executemany("INSERT INTO session_v2 (id) VALUES (?)", [(s,) for s in rows["sessions"]])
-db.executemany("INSERT INTO session_message VALUES (?, ?, ?, ?, ?)",
-    [("msg_%d" % i, rows["sessions"][0], m[0], i, m[1]) for i, m in enumerate(rows["messages"] or [])])
+db.execute("CREATE TABLE session_v2 (id TEXT PRIMARY KEY, parent_id TEXT, title TEXT, version TEXT, cost REAL DEFAULT 0, time_created INTEGER DEFAULT 0)")
+db.execute("CREATE TABLE session_message (id TEXT PRIMARY KEY, session_id TEXT, type TEXT, seq INTEGER, time_created INTEGER DEFAULT 0, time_updated INTEGER DEFAULT 0, data TEXT)")
+db.execute("CREATE TABLE session_part (message_id TEXT, session_id TEXT, ordinal INTEGER, type TEXT, data TEXT)")
+db.executemany("INSERT INTO session_v2 (id, parent_id, version) VALUES (?, ?, '2.2.5')",
+    [(s, rows["sessions"][0] if i else None) for i, s in enumerate(rows["sessions"])])
+db.executemany("INSERT INTO session_message (id, session_id, type, seq, time_created, data) VALUES (?, ?, ?, ?, ?, ?)",
+    [("msg_%d" % i, rows["sessions"][0], m[0], i, 1000 + i, m[1]) for i, m in enumerate(rows["messages"] or [])])
 db.commit()
 `, filepath.Join(home, opencodeDB), string(rows))
 	if out, err := cmd.CombinedOutput(); err != nil {
