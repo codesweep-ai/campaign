@@ -404,6 +404,11 @@ export function MemberView({ p, m, focus }: { p: Packet; m: PacketMember; focus:
           </dd>
           <dt>Stall</dt>
           <dd>{pm?.stallSeconds ?? "?"} seconds without output before it is prodded</dd>
+          <dt>Sub-agents</dt>
+          <dd>
+            {pm?.profile?.fanout === "native" ? "fans its work out across its CLI's own sub-agents" : pm?.profile?.fanout === "none" ? "runs none" : "as its CLI ships"}
+            {pm?.profile?.fanoutMax ? `, at most ${pm.profile.fanoutMax} at once` : ""}
+          </dd>
           <dt>Credential</dt>
           <dd>{auth(p, m.name)}</dd>
           <dt>Environment</dt>

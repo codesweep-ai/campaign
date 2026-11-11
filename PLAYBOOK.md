@@ -631,6 +631,19 @@ Set it well above the slowest start that seat's model has shown in a real run. A
 genuine start fails a healthy call and retries it, and the seat spends its turn on retries. The
 wait ends once the answer starts, so a long answer is never cut off.
 
+### A seat slow on its own work
+
+A seat whose dispatches are many files to read or many claims to check can split that work across
+its CLI's own sub-agents. `fanout: native` asks for that, and `fanoutMax` caps how many run at
+once. The orchestrator is the usual seat. Between stages it reads replies and judges them with no
+dispatch open, and that reading is the work sub-agents share. A seat whose work is one chain, each
+step built on the last, gains nothing from the key and stays as it is. Sub-agents multiply token
+spend. Published measurements put a session that fans out at 1.4 to 3.3 times the tokens of one
+that does not. A model that spawns freely can cost many times its own session. So set `fanoutMax`,
+and set `fanout: none` on a seat whose children cost more than they return. Whether a
+model fans out at all shows only in a live run. Compare the seat's turn times in `observe` with and
+without the key before keeping it.
+
 ### A line to hand off at
 
 A long turn fills a member's context, and its CLI then compacts the conversation by itself. The

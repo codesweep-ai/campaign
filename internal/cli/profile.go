@@ -216,6 +216,9 @@ func validateModelConfig(m model.MemberProfile) error {
 	if err := validateHeaderTimeout(m); err != nil {
 		return err
 	}
+	if err := validateFanout(m); err != nil {
+		return err
+	}
 	if m.Effort == "" {
 		return nil
 	}
@@ -253,6 +256,24 @@ func validateHeaderTimeout(m model.MemberProfile) error {
 		return fmt.Errorf("providerHeaderTimeoutSeconds is honoured only by opencode, and this seat runs %s; remove it from the seat", m.CLI)
 	case !strings.Contains(m.Model, "/"):
 		return errors.New("providerHeaderTimeoutSeconds requires a model named as provider/model for opencode: the wait is set on the provider")
+	}
+	return nil
+}
+
+// validateFanout holds fanout to its two values, and refuses a cap beside
+// `none`: a seat told to run no sub-agents has nothing for the cap to bound,
+// so one of the two is a mistake, and which one is the operator's to say.
+func validateFanout(m model.MemberProfile) error {
+	switch m.Fanout {
+	case "", model.FanoutNative, model.FanoutNone:
+	default:
+		return fmt.Errorf("fanout: must be %s or %s, got %q", model.FanoutNative, model.FanoutNone, m.Fanout)
+	}
+	switch {
+	case m.FanoutMax < 0:
+		return fmt.Errorf("fanoutMax: must be positive, got %d", m.FanoutMax)
+	case m.FanoutMax > 0 && m.Fanout == model.FanoutNone:
+		return errors.New("fanoutMax caps the sub-agents a seat runs at once, and fanout: none allows it none; remove one of them")
 	}
 	return nil
 }

@@ -59,6 +59,19 @@ are kept. So before you reply, commit your work, and write anything a later
 dispatch needs into a file under `~/{{.OutputDir}}`. Where what you wrote and git
 disagree, trust git.
 {{- end}}
+{{- if .Fanout}}
+
+## Parallel work
+
+Your seat is set to split its work across your CLI's own sub-agents. When a task
+has independent parts, such as several files to read or several claims to check,
+run one sub-agent per part at the same time, then combine what they return. Prefer
+a read-only sub-agent for reading and checking. Run the sub-agents as one
+foreground batch, and wait for the whole batch inside your turn. Never run one in
+the background, and never end your turn while one runs. Never start a second CLI
+session yourself, with a `cs-*-remote` tool or any other way: the harness neither
+sees such a session nor hands it off.
+{{- end}}
 {{- if .Handoff}}
 
 ## Long work
@@ -66,12 +79,17 @@ disagree, trust git.
 Your context fills as you work. When it is full, the harness asks you to hand off,
 as the next section describes. Until then, never ration your context, and never cut
 work short to save it. So that nothing is lost when you are asked:
+{{- if not .Fanout}}
 
 - Use your CLI's own sub-agents for work in parallel. Never start a second CLI
   session yourself, with a `cs-*-remote` tool or any other way: the harness neither
   sees such a session nor hands it off.
 - Run sub-agents as one foreground batch, and wait for the whole batch inside your
   turn. Never run one in the background, and never end your turn while one runs.
+{{- else}}
+
+- Run sub-agents as the Parallel work section says, one foreground batch.
+{{- end}}
   Have each write its findings to a file and return the file's name. Asked to hand
   off while a batch runs, wait for the batch, then hand off. Never stop a sub-agent
   to hand off.

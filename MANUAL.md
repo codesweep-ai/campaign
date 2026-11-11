@@ -1097,6 +1097,30 @@ $ cs-campaign validate acme/profile.yaml
 cs-campaign: agent backend: providerHeaderTimeoutSeconds is honoured only by opencode, and this seat runs claude; remove it from the seat
 ```
 
+`fanout` says whether a seat splits its work across its CLI's own sub-agents. `native` turns that
+on, `none` turns it off, and a seat without the key keeps its CLI's own behaviour, which today is
+the model's choice. `fanoutMax` caps how many sub-agents run at once. Nothing about dispatching
+changes: the seat still holds one open dispatch, and the sub-agents run inside it. `create` writes
+the seat's CLI configuration and never its brief:
+
+| CLI | `native` | `none` | `fanoutMax` |
+|---|---|---|---|
+| `claude` | `ultracode: true` in `~/.cs-claude/settings.json` | `Agent` and `Workflow` under `permissions.deny` in the same file | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` and `CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS` in `~/.cs-claude/env` |
+| `codex` | a `Parallel work` section in `~/.cs-codex/AGENTS.md` | `agents.enabled = false` and `features.multi_agent_v2.enabled = false` at the top of `~/.cs-codex/config.toml` | `agents.max_concurrent_threads_per_session` in the same file |
+| `opencode` | an `instructions` file, `~/.cs-opencode/fanout.md`, named in `opencode.json` | `permission.task: deny` in `opencode.json` | a sentence in the same instructions file, since OpenCode has no setting that caps them |
+
+A seat with `fanout: native` also gets a `Parallel work` section in its orientation. It tells the
+seat to run sub-agents as one foreground batch, never in the background, and never to start a
+second CLI session. A Claude Code seat with a hand-off line keeps `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`
+beside it, and still fans out: it runs its sub-agents as one foreground batch instead of a
+workflow. Claude Code holds `fanoutMax` on workflow agents, and not on such a batch, so a seat with
+`ultracode` may run more at once than the cap says. `validate` refuses any other value of `fanout`, and a cap on a seat told to run none:
+
+```console
+$ cs-campaign validate acme/profile.yaml
+cs-campaign: agent backend: fanoutMax caps the sub-agents a seat runs at once, and fanout: none allows it none; remove one of them
+```
+
 Every member needs at least one repository, and `validate` refuses one without it. A member commits
 to its clone, and that branch is the only thing `fetch` can read.
 

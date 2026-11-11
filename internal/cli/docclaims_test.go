@@ -1240,3 +1240,29 @@ func TestTheDocumentedSpentBudgetIsWhatTheCodeDoes(t *testing.T) {
 		t.Errorf("57m of work and 3m held read %s under an hour's bound; the documents say the hold is not counted", o.State)
 	}
 }
+
+// MANUAL.md quotes the refusal `validate` prints for fanoutMax beside
+// fanout: none, and SPEC.md R152 says the cap is refused there.
+func TestTheDocumentedFanoutRefusalIsWhatValidatePrints(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := profileFromFlags("codex", []string{"backend=claude", "qa=codex"}, "", 0, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	backend := p.Agents["backend"]
+	backend.Fanout, backend.FanoutMax = model.FanoutNone, 2
+	p.Agents["backend"] = backend
+	refused := validateProfile(p)
+	if refused == nil {
+		t.Fatal("validate must refuse a cap beside fanout: none")
+	}
+	if !strings.Contains(docWords(t, root, "MANUAL.md"), "cs-campaign: "+refused.Error()) {
+		t.Errorf("MANUAL.md does not quote the refusal as validate prints it: %v", refused)
+	}
+	if !strings.Contains(docWords(t, root, "SPEC.md"), "`validate` **MUST** refuse any other value, and a cap on a seat whose `fanout` is `none`") {
+		t.Error("SPEC.md R152 no longer says validate refuses the cap beside none")
+	}
+}

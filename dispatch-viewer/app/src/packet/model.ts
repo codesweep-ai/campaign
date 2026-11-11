@@ -48,6 +48,8 @@ export interface PlannedMember {
   profile?: {
     model?: string;
     effort?: string;
+    fanout?: string;
+    fanoutMax?: number;
     resources?: { cpus?: number; memoryMiB?: number };
     auth?: Record<string, unknown>;
     env?: string[];

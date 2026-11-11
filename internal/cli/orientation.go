@@ -54,6 +54,10 @@ type orientationData struct {
 	// FreshPerDispatch gates the section for an agent that starts each
 	// dispatch in a fresh session, the same way.
 	FreshPerDispatch bool
+	// Fanout gates the section for a seat set to split its work across its
+	// CLI's own sub-agents, the same way. A seat set to run none, or left as
+	// its CLI ships, reads nothing about it.
+	Fanout bool
 }
 
 // buildOrientation renders one member's orientation and its manifest from the
@@ -70,6 +74,7 @@ func buildOrientation(campaign *model.Campaign, member model.Member, inputs camp
 		Handoff:          member.HandoffTokens > 0,
 		HandoffFile:      protocol.HandoffFile,
 		FreshPerDispatch: member.FreshPerDispatch,
+		Fanout:           member.Profile.Fanout == model.FanoutNative,
 	}
 	// The manifest lists EVERYTHING this member must read, orientation first;
 	// the prose above lists only what the operator placed here. They differ on

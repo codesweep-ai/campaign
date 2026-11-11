@@ -842,6 +842,15 @@ with the line a verified member gets.
 before. *Another CLI's nearest setting may bound the whole call rather than the wait for its first
 byte, so that CLI gets a mapping only once its setting is measured to mean the same.*
 
+**R152.** A seat's `fanout` **MUST** reach its CLI's own configuration at create. `native` reaches
+it as the setting or instruction that has the CLI split its work across its own sub-agents, and
+`none` as the setting that refuses them. `fanoutMax` reaches it as the CLI's cap on how many run at
+once. `validate`
+**MUST** refuse any other value, and a cap on a seat whose `fanout` is `none`. A seat without the
+keys **MUST** be configured exactly as before. Nothing about dispatching changes: the sub-agents
+run inside the seat's one open dispatch, and the dispatch machine sees one node. *Which setting
+each CLI reads is that CLI's, so MANUAL.md names them per CLI and this rule does not.*
+
 **R96.** Profiles **MUST** contain secret references, never secret values. A reference is an
 environment variable name, a provider, or a login family.
 
@@ -1029,6 +1038,8 @@ agents:
 | `cli` | member | One of `claude`, `codex`, `opencode`. |
 | `model`, `effort` | member | Passed to that member's CLI verbatim. `opencode` requires `model` whenever `effort` is set. |
 | `providerHeaderTimeoutSeconds` | member | Seconds to wait for the provider's response to start. `opencode` only, with `model` named as `provider/model`. See R147. |
+| `fanout` | member | Whether the seat splits its work across its CLI's own sub-agents: `native` for yes, `none` for no. Absent, the CLI runs as its image ships it. See R152. |
+| `fanoutMax` | member | How many sub-agents the seat runs at once, at most. Refused beside `fanout: none`. See R152. |
 | `repos[].path`, `.ref`, `.name` | member | A host repository cloned into the member. A relative path resolves beside the profile. |
 | `repos[].withhold` | member | Paths this member must never receive from that repository: files, directories or globs, relative to its root. See R120a and R120c. |
 | `snapshots[].path`, `.name` | member | A frozen tree the member can read. A relative path resolves beside the profile. |

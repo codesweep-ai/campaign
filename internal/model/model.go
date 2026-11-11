@@ -20,6 +20,13 @@ var Roles = []string{"orchestrator", "agent"}
 // ValidAdapterCLI reports whether cli is a supported adapter.
 func ValidAdapterCLI(cli string) bool { return slices.Contains(AdapterCLIs, cli) }
 
+// The two values of MemberProfile.Fanout. Empty is the third state: the CLI
+// as the image ships it.
+const (
+	FanoutNative = "native"
+	FanoutNone   = "none"
+)
+
 type Resources struct {
 	CPUS      int `yaml:"cpus,omitempty" json:"cpus,omitempty"`
 	MemoryMiB int `yaml:"memoryMiB,omitempty" json:"memoryMiB,omitempty"`
@@ -182,11 +189,20 @@ type MemberProfile struct {
 	// provider's response to start before it fails the call, in seconds. Only
 	// opencode takes it, as provider.<id>.options.headerTimeout; a seat
 	// without it keeps its CLI's own wait.
-	ProviderHeaderTimeoutSeconds int        `yaml:"providerHeaderTimeoutSeconds,omitempty" json:"providerHeaderTimeoutSeconds,omitempty"`
-	Repos                        []Repo     `yaml:"repos,omitempty" json:"repos,omitempty"`
-	Snapshots                    []Snapshot `yaml:"snapshots,omitempty" json:"snapshots,omitempty"`
-	Auth                         Auth       `yaml:"auth,omitempty" json:"auth,omitzero"`
-	Resources                    Resources  `yaml:"resources,omitempty" json:"resources,omitzero"`
+	ProviderHeaderTimeoutSeconds int `yaml:"providerHeaderTimeoutSeconds,omitempty" json:"providerHeaderTimeoutSeconds,omitempty"`
+	// Fanout says whether this seat splits its work across its CLI's own
+	// sub-agents: FanoutNative turns that on, FanoutNone turns it off, and
+	// empty leaves the CLI as the image ships it, where the choice is the
+	// model's. FanoutMax caps how many sub-agents run at once. Both reach the
+	// seat's own CLI configuration at create, the way Model and Effort do, and
+	// nothing about dispatching changes: the sub-agents run inside the seat's
+	// one open dispatch.
+	Fanout    string     `yaml:"fanout,omitempty" json:"fanout,omitempty"`
+	FanoutMax int        `yaml:"fanoutMax,omitempty" json:"fanoutMax,omitempty"`
+	Repos     []Repo     `yaml:"repos,omitempty" json:"repos,omitempty"`
+	Snapshots []Snapshot `yaml:"snapshots,omitempty" json:"snapshots,omitempty"`
+	Auth      Auth       `yaml:"auth,omitempty" json:"auth,omitzero"`
+	Resources Resources  `yaml:"resources,omitempty" json:"resources,omitzero"`
 	// ImageStores are shared image stores the member's own podman reads, made
 	// on the host with `cs-sandbox create-store` and `seed-store`. They are how
 	// an image built on the host reaches a member, which cannot build one: a
@@ -264,6 +280,9 @@ type Member struct {
 	Effort string `json:"effort,omitempty"`
 	// ProviderHeaderTimeoutSeconds is recorded the same way, once written.
 	ProviderHeaderTimeoutSeconds int `json:"providerHeaderTimeoutSeconds,omitempty"`
+	// Fanout and FanoutMax are recorded the same way, once written.
+	Fanout    string `json:"fanout,omitempty"`
+	FanoutMax int    `json:"fanoutMax,omitempty"`
 	// Harness is the verdict for the tools THIS member runs, recorded for the
 	// same reason as Model/Effort: an archive that cannot answer "what harness
 	// did this seat run on?" leaves the question to be re-derived from
