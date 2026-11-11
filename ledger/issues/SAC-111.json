@@ -1,0 +1,35 @@
+{
+  "id": "SAC-111",
+  "title": "A member on OpenCode 2 exports its transcripts as text alone, so the viewer draws none of its sessions",
+  "type": "defect",
+  "severity": "med",
+  "status": "closed",
+  "foundBy": "session agent, rendering the fanout-live archive with cs-dispatch-viewer on 2026-11-07: every OpenCode export was skipped as `normalized to zero events`",
+  "opened": "2026-11-07",
+  "resolved": "2026-11-07",
+  "stint": "cc/dynamic-workflow, 2026-11-07",
+  "evidence": {
+    "commits": [
+      "f4e9731",
+      "32be703"
+    ],
+    "integrated": [],
+    "verified": "`make check` passed with exit 0 at f4e9731 and again at 32be703. `go test ./internal/cli/ -run TestOpencodeExport -count=1`: PASS. TestOpencodeExportWritesEverySessionFromTheStore archives two members, one whose store is OpenCode 2 with a root and a child and one whose store is OpenCode 1. It reads the session files back out of the evidence tarball. Each file names its generation, carries the session row, and holds the message rows in order with their JSON parsed. The OpenCode 2 tool call sits under its message's content, and the OpenCode 1 parts are rows. The child's parent_id names the root. TestOpencodeExportCannotCostTheTarball still holds: a dump that never returns leaves the tarball with the raw store in 0.4s. The fanout-live archive's OpenCode store, dumped with the new script and normalized by the tracer build this commit pins, draws 8 sessions with 210 events and 83 tool calls. The viewer site shows the six children under their parent. The same script on an OpenCode 1.18.32 store from an older archive gives a file the tracer normalizes to the same 96 events as that session's own export."
+  },
+  "resolution": null,
+  "details": "The archive exports each OpenCode session with `cs-opencode session export`, and the comment in `archive.go` says the export carries prompts, replies, tool calls and per-message evidence. On OpenCode 2.2.5 it does not. Each exported message holds only `id`, `time`, `text` and `type`. The tool calls, reasoning, model, cost and tokens of every assistant message sit in the database, in `session_message.data`, under `content`, `model`, `cost` and `tokens`. The `session_part` table that OpenCode 1 used is empty.\n\ncs-tracer reads the OpenCode 1.18 shape, `messages[].info` and `messages[].parts`, so it normalizes every 2.2.5 export to zero events and skips it. The pinned build and tracer's newest commit do the same. The viewer site for the fanout-live run therefore shows 22 traced sessions for the Claude and Codex members and none for the OpenCode member. Its six child sessions are only in the raw database. `audit` still passes, because the export files exist.\n\nWanted: an export the tracer can read, from either side. The archive could write each session from `session_message.data`, which holds the whole message, instead of calling the flattening export. Or cs-tracer could gain an adapter for the 2.2.5 export or for the database itself. Either way, the `archive.go` comment should say what the export carries on each OpenCode generation.",
+  "notes": [
+    {
+      "date": "2026-11-07",
+      "text": "Decided with the user: the archive writes each session's rows out of the store as they are, on either generation, and cs-tracer learns that shape. The tracer side is filed in its own ledger."
+    },
+    {
+      "date": "2026-11-07",
+      "text": "The tracer side is TRC-054 in the tracer ledger, closed on its branch cc/opencode-store, and the pin moved to that branch's local build."
+    }
+  ],
+  "links": [
+    "SAC-105",
+    "SAC-109"
+  ]
+}

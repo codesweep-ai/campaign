@@ -1,0 +1,37 @@
+{
+  "id": "SAC-109",
+  "title": "A seat cannot be told to fan its own work out across its CLI's sub-agents, or to stop doing so",
+  "type": "improvement",
+  "severity": "med",
+  "status": "closed",
+  "foundBy": "user request (host): \"how do I turn dynamic workflows on per CLI for campaign members\", after measuring 192 archived runs",
+  "opened": "2026-11-07",
+  "resolved": "2026-11-07",
+  "stint": "cc/dynamic-workflow, 2026-11-07",
+  "evidence": {
+    "commits": [
+      "2a00e03"
+    ],
+    "integrated": [],
+    "verified": "The gate `make check` passed with exit 0 at 2a00e03. One live campaign, fanout-live, was created with the worktree binary on 2026-11-07 at 05:45 UTC. It had a Haiku 5.5 orchestrator without the key, and three readers with `fanout: native` and `fanoutMax: 4`, each given one short read-and-judge dispatch. Every reader's readback passed on its declared model, so each CLI loaded the written configuration. Read inside the VMs before the dispatch, the Claude settings held `ultracode: true` and its env held both caps. The Codex config held the dotted keys above its first table, and its AGENTS.md held the marked block. The OpenCode config held the `instructions` entry beside the first-dialect `permission` block. From the archive, the Claude reader on Opus 5.5 called the Workflow tool 36 seconds into its dispatch. It ran 12 agents in two phases, at most 4 at once, spent 3.6M tokens, and replied after 3m10s. The Codex reader on gpt-5.6-terra at effort ultra spawned 4 threads at depth 1, spent 1.9M tokens, and replied after 4m21s. The OpenCode reader on Kimi K3 ran 6 `explore` children, at most 4 at once, spent $1.66 on Fireworks, and replied after 5m32s. The control orchestrator, which had no key, started no sub-agent at all. The fleet audit was clean. Before this change, no Codex member in the archives had spawned and no Claude member had called Workflow."
+  },
+  "resolution": "A seat's `fanout` and `fanoutMax` reach its own CLI configuration at create, and a seat without them is configured as before. Measured live on all three CLIs, each fanned out under the key and held to the cap. One thing stays unmeasured. A Claude seat with a hand-off line also carries `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`. No seat in the live run had a line, so whether that variable blocks the Workflow tool is still open.",
+  "details": "Whether a member splits a task across its CLI's own sub-agents is today the model's habit and nothing the profile can set. Measured over 192 archived runs, 28 of 320 OpenCode members on Kimi K3 spawned children, at 10 to 27 times the root session's cost. No Claude Code or Codex member ever did. The orchestrator spends about a third of a run's wall clock on its own between-stage reading and judging, with no dispatch open. That reading is the work sub-agents speed up. Every CLI has a configuration switch for this. Claude Code reads `ultracode` and permission rules from its settings file and two concurrency caps from its environment. Codex reads `agents.enabled` and `agents.max_concurrent_threads_per_session` from `config.toml` and spawns on an instruction in its `AGENTS.md`. OpenCode reads `permission.task` and an `instructions` file from `opencode.json`. cs-campaign writes none of them.\n\nWanted: two member keys, `fanout: native | none` and `fanoutMax`, written into the seat's own CLI configuration at create, the way `model` and `effort` are. A seat without them is configured exactly as before, so no existing campaign changes. Nothing about dispatching, the protocol or one open dispatch per node changes: the switch acts inside one member's machine, within its one open dispatch.",
+  "notes": [
+    {
+      "date": "2026-11-07",
+      "text": "Commit 2a00e03 on the branch cc/dynamic-workflow adds `fanout` and `fanoutMax`, their writes for the three CLIs, the orientation section, the packet line and the documents. `make check` passes on it, with the unit tests holding each write to the file its CLI reads and to one copy after two applies. Whether a model then fans out, and whether `ultracode` takes effect in a Claude Code seat driven through tmux, shows only in a live run, which is the next step. The record stays open until that run."
+    },
+    {
+      "date": "2026-11-07",
+      "text": "The live run also showed what each cap means in practice. Claude Code and OpenCode bounded the agents running at once and ran more in waves: 12 and 6. Codex spawned exactly 4 and its children's own spawn calls produced no second-level threads. The Codex seat spent about 1.9M tokens of plan usage at effort ultra on a six-check task, so ultra is the trigger and also the bill."
+    },
+    {
+      "date": "2026-11-07",
+      "text": "A second live campaign, fanout-handoff, closed the open question. Its one reader was an Opus 5.5 seat with `fanout: native`, `fanoutMax: 4` and a hand-off line of 150000, so its machine carried `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`. The variable does not block fan-out. The reader used no Workflow call this time. It issued six Agent calls in one foreground batch, none in the background, and replied after four minutes with 4.3M tokens spent. All six ran at the same time, over the cap of four. Claude Code holds the cap on workflow agents and not on an Agent batch in an `ultracode` session, as its documentation says. The MANUAL now says so beside the cap."
+    }
+  ],
+  "links": [
+    "SAC-101"
+  ]
+}

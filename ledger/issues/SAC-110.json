@@ -1,0 +1,22 @@
+{
+  "id": "SAC-110",
+  "title": "A profile's env may carry a literal secret into the create command line and the campaign record, and nothing refuses it",
+  "type": "improvement",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "the fanout-live campaign's readers, checking CONTRIBUTING.md's credential promise against the code on 2026-11-07; the codex-reader's verdict, confirmed by the orchestrator",
+  "opened": "2026-11-07",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "CONTRIBUTING.md promises that no credential value enters a plan, a subprocess argument, campaign state or an archive. The credential grants keep it: `auth` carries names, and the lender moves the values. The `env` field does not. A member's `env: [\"OPENAI_API_KEY=sk-...\"]` passes `validateProfile`, reaches the host command as `--env KEY=VALUE` in `createArgs`, and stays in `Member.Profile`, so it is written into the plan, the campaign record and the archive. The comment on `MemberProfile.Env` says credentials do not belong there and names the bare `KEY` form for sensitive values, but nothing enforces it.\n\nWanted: a rule the operator meets before anything is provisioned. `validate` could refuse an `env` value whose name matches an API-key name the grants know. It could also warn on any `KEY=VALUE` whose name ends in `_KEY`, `_TOKEN` or `_SECRET`, and point at the bare `KEY` form or the `apiKey` grant. The promise in CONTRIBUTING.md should then say which fields it covers.",
+  "notes": [],
+  "links": [
+    "SAC-109"
+  ]
+}
