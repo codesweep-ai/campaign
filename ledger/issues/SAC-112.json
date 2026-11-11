@@ -1,0 +1,22 @@
+{
+  "id": "SAC-112",
+  "title": "The dispatch page has no link to the tracer's index of every session",
+  "type": "improvement",
+  "severity": "low",
+  "status": "closed",
+  "foundBy": "user report (host), 2026-11-11: \"in the dispatch viewer for a campaign, there is no way to link directly to all the traces of the campaign ... is it possible to link to it from the main page? maybe after the 'errors only' check box?\"",
+  "opened": "2026-11-11",
+  "resolved": "2026-11-11",
+  "stint": "cc/dynamic-workflow-sq, 2026-11-11",
+  "evidence": {
+    "commits": [
+      "4cbaaa5"
+    ],
+    "integrated": [],
+    "verified": "`make check` passed with exit 0 at 4cbaaa5. `go test ./dispatch-viewer/... -count=1`: PASS; TestSiteWritesItsFiles now asserts the site's run data names `tracer/index.html`, and fails without the change. A site of the fanout-live archive, rendered in a headless Chromium, shows the link `all trajectories` after the errors-only toggle, pointing at `tracer/index.html`."
+  },
+  "resolution": null,
+  "details": "A site written with `--site` holds the tracer's own export under `tracer/`, whose `index.html` lists every session with its lanes and links. The dispatch page links each step and anchor to its event on a trace page, but nothing on it leads to that index. A reader who wants all the trajectories has to know the folder layout. Wanted: a link on the dispatch page, beside the timeline's controls, that opens the tracer's index when the site has one.",
+  "notes": [],
+  "links": []
+}
