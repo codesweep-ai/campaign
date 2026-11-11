@@ -105,6 +105,7 @@ export interface Traces {
   tool: string;
   sessions: Session[];
   anchors: Anchor[];
+  index?: string; // the tracer's own index of every session, relative to this page, when a site was written
 }
 
 export interface Session {

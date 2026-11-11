@@ -128,7 +128,7 @@ normalize)
   echo '{"schemaVersion":3,"trajectories":[{"id":"s1","path":"s1"}]}' > "$4/index.json"
   echo '{"schemaVersion":3,"meta":{"source":"claude-code"},"totals":{"events":1,"output":5,"time":{"workMs":1000}},"strip":[{"i":0,"kind":"user","ts":"2026-09-22T00:00:00Z"}]}' > "$4/s1/summary.json"
   echo '{"events":[{"i":0,"kind":"user","text":"Dispatch ID: m1."}]}' > "$4/s1/chunks/000.json" ;;
-*) mkdir -p "$4/traces" && echo '{"files":["traces/s1.html"]}' > "$4/.cs-tracer.json" && echo page > "$4/traces/s1.html" ;;
+*) mkdir -p "$4/traces" && echo '{"files":["index.html","traces/s1.html"]}' > "$4/.cs-tracer.json" && echo index > "$4/index.html" && echo page > "$4/traces/s1.html" ;;
 esac
 `)
 	if err := os.Chmod(filepath.Join(bin, "cs-tracer"), 0o755); err != nil {
@@ -158,6 +158,11 @@ func TestSiteWritesItsFiles(t *testing.T) {
 	raw, _ := os.ReadFile(filepath.Join(site, "run-data.json"))
 	if err := json.Unmarshal(raw, &run); err != nil {
 		t.Fatal(err)
+	}
+	// The page links to the tracer's own index of every session, so a reader
+	// can reach all the trajectories from the dispatch page.
+	if run.Traces == nil || run.Traces.Index != "tracer/index.html" {
+		t.Errorf("traces.index = %+v, want tracer/index.html", run.Traces)
 	}
 	if run.Campaign.Name != "site1" || run.Traces == nil || run.Traces.Sessions[0].Strip[0].Addr != "traces/e/"+strconv.Itoa(len(run.Events)) {
 		t.Errorf("run-data: %+v", run.Traces)

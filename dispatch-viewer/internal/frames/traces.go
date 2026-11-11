@@ -28,6 +28,9 @@ type Traces struct {
 	Tool     string    `json:"tool"`
 	Sessions []Session `json:"sessions"`
 	Anchors  []Anchor  `json:"anchors"`
+	// Index is the path of the tracer's own index of every session, relative
+	// to the dispatch page, set only when the site was exported beside it.
+	Index string `json:"index,omitempty"`
 }
 
 // Session is one trajectory, owned by the member whose store it came from.
@@ -208,13 +211,14 @@ func AttachTraces(ctx context.Context, run *Run, dir string, opts TraceOptions) 
 		if out, err := cmd.Output(); err != nil {
 			return fmt.Errorf("cs-tracer --split: %v %s", err, strings.TrimSpace(string(out)))
 		}
-		pages, err := sitePages(site)
+		pages, index, err := sitePages(site)
 		if err != nil {
 			return err
 		}
 		for i := range tr.Sessions {
 			tr.Sessions[i].Page = pages[tr.Sessions[i].ID]
 		}
+		tr.Index = index
 	}
 	joinAnchors(run, tr)
 	run.Traces = tr
@@ -529,25 +533,32 @@ func isWaitCall(e tracerEvent) bool {
 
 // sitePages maps each session id to its page path relative to the site root,
 // read from the manifest the tracer writes beside its pages.
-func sitePages(site string) (map[string]string, error) {
+// sitePages reads the files the tracer's split export declares: a page per
+// session, by session id, and the index of every session, each as a path
+// relative to the dispatch page. The index is empty when the export has none.
+func sitePages(site string) (map[string]string, string, error) {
 	raw, err := os.ReadFile(filepath.Join(site, ".cs-tracer.json"))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	var m struct {
 		Files []string `json:"files"`
 	}
 	if err := json.Unmarshal(raw, &m); err != nil {
-		return nil, fmt.Errorf(".cs-tracer.json: %w", err)
+		return nil, "", fmt.Errorf(".cs-tracer.json: %w", err)
 	}
 	pages := map[string]string{}
+	index := ""
 	for _, f := range m.Files {
 		if strings.HasPrefix(f, "traces/") && strings.HasSuffix(f, ".html") {
 			id := strings.TrimSuffix(strings.TrimPrefix(f, "traces/"), ".html")
 			pages[id] = filepath.ToSlash(filepath.Join(filepath.Base(site), f))
 		}
+		if f == "index.html" {
+			index = filepath.ToSlash(filepath.Join(filepath.Base(site), f))
+		}
 	}
-	return pages, nil
+	return pages, index, nil
 }
 
 // joinAnchors finds the four anchors of every dispatch in the text the

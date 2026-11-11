@@ -315,6 +315,11 @@ export default function App() {
                       />{" "}
                       errors only
                     </label>
+                    {run.traces?.index ? (
+                      <a className="all-traces" href={run.traces.index} target="_blank" rel="noopener">
+                        all trajectories
+                      </a>
+                    ) : null}
                   </span>
                 }
               >

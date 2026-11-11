@@ -89,6 +89,7 @@ var runDocs = map[string]string{
 	"issueDefs":                                "one line defining each issue code",
 	"traces":                                   "what cs-tracer read from each member's transcript",
 	"traces.tool":                              "the tracer's version",
+	"traces.index":                             "the tracer's own index of every session, when a site was written",
 	"traces.sessions":                          "one per session, in the order the page numbers their steps",
 	"traces.sessions[].id":                     "the session, and the name of its file in `traces/`",
 	"traces.sessions[].node":                   "the member it belongs to",

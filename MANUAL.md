@@ -841,7 +841,7 @@ needs `cs-tracer`. The folder holds:
 
 | File | What it is |
 |---|---|
-| `index.html` | the dispatch page; every step and anchor links to its event in the trace |
+| `index.html` | the dispatch page; every step and anchor links to its event in the trace, and the timeline's header links to the tracer's index of every session |
 | `tracer/` | the tracer's own export, one page per session, with `tracer/index.html` listing them |
 | `run-data.json` | the document the page embeds, as a file |
 | `traces/<session>.json` | one session's trajectory as the tracer normalized it, with the member's `node` added and every event in `events` |
