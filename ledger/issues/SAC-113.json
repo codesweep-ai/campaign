@@ -1,0 +1,22 @@
+{
+  "id": "SAC-113",
+  "title": "No tier notices when the image's CLIs outgrow the pinned tracer",
+  "type": "improvement",
+  "severity": "med",
+  "status": "in-progress",
+  "foundBy": "session agent, 2026-11-12, after the tracer gained its own gate on unrecognized records (tracer TRC-061); approved by the host on 2026-11-13: \"seems worth doing\"",
+  "opened": "2026-11-13",
+  "resolved": null,
+  "stint": "cc/tracer-coverage, 2026-11-13",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The dispatch viewer draws each member's sessions with the `cs-tracer` that `go.mod` pins. That tracer recognizes only the record types it has been taught. The image ships its own Claude Code, Codex and OpenCode, and either side can move alone. When a CLI in the image writes a record type the pinned tracer does not know, the viewer fills with unrecognized boxes, or draws no session at all. Nothing fails when that happens. The tracer's own gate covers its fixtures, not the CLI versions this image ships. Wanted: the tiers that boot the image read each archived store with the pinned tracer. They fail when a store yields no session, or when more than one event in fifty is unrecognized.",
+  "notes": [],
+  "links": [
+    "SAC-111"
+  ]
+}

@@ -1418,6 +1418,12 @@ mission, the orchestrator driving an agent, a verdict, the archive and the audit
 credential and reaches no provider, because a cs-vcr joined to the campaign's own fabric network
 serves every model call from `test/cassettes/`.
 
+After the archive, the tier reads each member's store with the `cs-tracer` that `go.mod` pins,
+which is the tracer the dispatch viewer draws sessions with. It fails when a store yields no
+session, or when more than one event in fifty is a record type that tracer does not recognize. The
+image ships its own Claude Code, Codex and OpenCode, so this check is where a CLI that has outgrown
+the tracer pin shows up. The integration tier runs the same check on its live archives.
+
 The proxy is one container per group, taking the network alias `vcr` on `cs-sandbox-<group>`. An
 alias is network-scoped, so every campaign profile names the same URL; the container name is
 host-global, so it carries the group. One campaign therefore cannot read or write another's

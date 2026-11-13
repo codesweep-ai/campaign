@@ -1418,7 +1418,108 @@ func driveToVerdict(t *testing.T, a *app, sc scenario, name, profilePath, archiv
 		t.Fatalf("audit: %+v", findings)
 	}
 	assertOpenCodeExported(t, run.archive, campaign)
+	assertTracerReadsEvidence(t, run.archive, campaign)
 	return run
+}
+
+// assertTracerReadsEvidence reads each member's archived store with the
+// cs-tracer go.mod pins, the one the dispatch viewer draws traces with, and
+// fails on a session it cannot read. The image ships its own Claude Code,
+// Codex and OpenCode, and either side can move alone. A CLI record type the
+// pinned tracer was never taught fills the viewer with unrecognized boxes and
+// fails nothing else, so this is the tier that notices.
+//
+// The tracer on PATH is the one `make tools` installed at the pin. A different
+// one would answer for a tracer nobody draws with, so that fails too.
+func assertTracerReadsEvidence(t *testing.T, root string, campaign *model.Campaign) {
+	t.Helper()
+	tracer, err := exec.LookPath("cs-tracer")
+	if err != nil {
+		t.Fatalf("no cs-tracer on PATH to read the archive with; `make tools` installs the pinned one: %v", err)
+	}
+	pin := toolPins()["github.com/codesweep-ai/tracer"]
+	if got := probeVersion(context.Background(), tracer); got != pin {
+		t.Fatalf("%s is %q, and go.mod pins %q; `make tools` installs the pinned one", tracer, got, pin)
+	}
+	scratch := t.TempDir()
+	for _, member := range campaign.Members {
+		base := filepath.Join(root, "agents", member.Name)
+		if member.Role == "orchestrator" {
+			base = filepath.Join(root, "orchestrator")
+		}
+		store := filepath.Join(scratch, "stores", member.Name)
+		if err := untarRegular(filepath.Join(base, "transcript", "cli-evidence.tgz"), store); err != nil {
+			t.Fatalf("%s: unpack its evidence: %v", member.Name, err)
+		}
+		norm := filepath.Join(scratch, "norm", member.Name)
+		out, err := exec.Command(tracer, "normalize", store, "--out", norm).CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s: cs-tracer normalize: %v\n%s", member.Name, err, out)
+		}
+		sessions, findings, err := unreadSessions(norm)
+		if err != nil {
+			t.Fatalf("%s: read what cs-tracer wrote: %v", member.Name, err)
+		}
+		if sessions == 0 {
+			t.Errorf("%s (%s): cs-tracer %s read no session from its store; move the pin to a tracer that reads this CLI (`make repin`). It said:\n%s",
+				member.Name, member.CLI, pin, out)
+		}
+		for _, f := range findings {
+			t.Errorf("%s (%s): %s; move the pin to a tracer that classifies them (`make repin`)", member.Name, member.CLI, f)
+		}
+	}
+}
+
+// untarRegular unpacks the directories and regular files of a gzipped tar into
+// dir, and refuses an entry that would land outside it. A store is a member's
+// own home state, so it gets no more trust than the dispatch viewer gives it.
+// Links are left out: the tracer reads session files, and a link is not one.
+func untarRegular(tgz, dir string) error {
+	f, err := os.Open(tgz)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer gz.Close()
+	reader := tar.NewReader(gz)
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dir, header.Name)
+		if !strings.HasPrefix(target, filepath.Clean(dir)+string(os.PathSeparator)) {
+			return fmt.Errorf("entry %q leaves the store", header.Name)
+		}
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0o755); err != nil {
+				return err
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+				return err
+			}
+			out, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+			if err != nil {
+				return err
+			}
+			_, err = io.Copy(out, reader)
+			if closeErr := out.Close(); err == nil {
+				err = closeErr
+			}
+			if err != nil {
+				return err
+			}
+		}
+	}
 }
 
 // assertOpenCodeExported asks each OpenCode member's archived evidence for a
