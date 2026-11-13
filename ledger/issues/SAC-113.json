@@ -3,15 +3,17 @@
   "title": "No tier notices when the image's CLIs outgrow the pinned tracer",
   "type": "improvement",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, 2026-11-12, after the tracer gained its own gate on unrecognized records (tracer TRC-061); approved by the host on 2026-11-13: \"seems worth doing\"",
   "opened": "2026-11-13",
-  "resolved": null,
+  "resolved": "2026-11-13",
   "stint": "cc/tracer-coverage, 2026-11-13",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "18f58c9"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`make ci` passed with exit 0 at 18f58c9. The smoke tier replayed all four cassettes, claude-inherit, claude-subscription, codex-subscription and opencode-fireworks, and each read its stores with the pinned tracer. The same check was also run by hand on two archived campaigns. The campaign fanout-handoff passed with the pinned tracer. With the tracer pinned before 7 November, every one of its Claude sessions failed, at 30 to 45 percent unrecognized. The campaign fanout-live failed its OpenCode member as reading no session. Its archive holds the text-only export that SAC-111 replaced."
   },
   "resolution": null,
   "details": "The dispatch viewer draws each member's sessions with the `cs-tracer` that `go.mod` pins. That tracer recognizes only the record types it has been taught. The image ships its own Claude Code, Codex and OpenCode, and either side can move alone. When a CLI in the image writes a record type the pinned tracer does not know, the viewer fills with unrecognized boxes, or draws no session at all. Nothing fails when that happens. The tracer's own gate covers its fixtures, not the CLI versions this image ships. Wanted: the tiers that boot the image read each archived store with the pinned tracer. They fail when a store yields no session, or when more than one event in fifty is unrecognized.",
