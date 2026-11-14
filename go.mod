@@ -13,7 +13,7 @@ require (
 	github.com/codesweep-ai/ledger v0.0.0-20261030042257-ac350b6e5e5f // indirect
 	github.com/codesweep-ai/lint v0.0.0-20261028214306-6d35a8ef43e8 // indirect
 	github.com/codesweep-ai/npmrevs v0.0.0-20261030043132-3f90da1ef993 // indirect
-	github.com/codesweep-ai/sandbox v0.0.0-20261106051159-d5ea8d3af8be // indirect
+	github.com/codesweep-ai/sandbox v0.0.0-20261114233233-ee0e4b6f2b13 // indirect
 	github.com/codesweep-ai/tracer v0.0.0-20261113173049-89fae3e5ec5e // indirect
 	github.com/codesweep-ai/vcr v0.0.0-20261102071722-082eb23b36c0 // indirect
 	github.com/docker/cli v29.9.2+incompatible // indirect
