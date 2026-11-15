@@ -1,0 +1,20 @@
+{
+  "id": "SAC-114",
+  "title": "An OpenCode seat waits for good on a shell command that holds a NUL byte",
+  "type": "defect",
+  "severity": "high",
+  "status": "in-progress",
+  "foundBy": "a session reorganising the downstream dev workflow, from a hello-api campaign whose lap 0 stopped on 2026-11-15; the host approved this guard on 2026-11-15: \"yes - this sounds good\"",
+  "opened": "2026-11-15",
+  "resolved": null,
+  "stint": "nul-guard, 2026-11-15",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "OpenCode 2.2.5, the version the sandbox image installs, never finishes a shell call whose command holds a real NUL byte. Spawning the command throws at once, because a process cannot take such an argument. OpenCode 2 reads that throw as a fault in itself rather than as the tool's error, so the call stays `running`. The seat then circles until something outside ends the turn, which stopped a hello-api campaign's lap 0 after about 30 minutes. OpenCode 1.18.32 returns a clean error for the same call. To reproduce, have a model send the shell tool a command with a literal `\\u0000` in it. Wanted: every OpenCode member gets a plugin that fails such a call before it spawns, so the agent reads an error and can write the byte another way.",
+  "notes": [],
+  "links": []
+}
