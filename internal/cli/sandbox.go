@@ -863,6 +863,23 @@ var shellTimeoutVar = map[string]string{
 //go:embed assets/cs-shell-bound.ts
 var openCodeShellBound string
 
+// openCodeNulGuard is the OpenCode plugin that fails a shell call whose
+// command holds a NUL byte, which OpenCode 2 would otherwise leave running
+// for good.
+//
+//go:embed assets/cs-nul-guard.ts
+var openCodeNulGuard string
+
+// installNulGuard gives an OpenCode member the NUL guard. It runs on every
+// create, a resumed one included, and before the readback, which is the
+// member's first turn: opencode loads its plugins when its server starts.
+func (s sandboxCLI) installNulGuard(ctx context.Context, member model.Member) error {
+	if member.CLI != "opencode" {
+		return nil
+	}
+	return s.putMemberFile(ctx, member, opencodeNulGuardPlugin, openCodeNulGuard)
+}
+
 // handoffAsk is what a member reads in the tool result that crosses its line.
 // It names the orientation section that says what a handoff holds, and nothing
 // else: the content is the orientation's and the brief's, per role and per

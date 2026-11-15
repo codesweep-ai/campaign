@@ -284,6 +284,12 @@ and the orientation, and installs the guest binary into every member. In the orc
 the log, empty, and arms the family guard. Last, it runs the campaign doctor. A machine reports
 itself created before its guest accepts connections, so `create` prints `waiting for <member> to
 accept commands` when it has to wait, and gives up on that member after two minutes.
+
+Every OpenCode member also gets a NUL guard, the plugin `~/.cs-opencode/plugins/cs-nul-guard.ts`.
+OpenCode 2 never finishes a shell call whose command holds a NUL byte, so the seat would wait on it
+for good. The guard fails that call before it runs, and the agent reads why and can write the byte
+another way.
+
 Then the protocol starts:
 
 1. **Dispatch `d001`, the readback.** Every member is asked to restate its job and reply. The

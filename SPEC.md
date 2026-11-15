@@ -851,6 +851,12 @@ keys **MUST** be configured exactly as before. Nothing about dispatching changes
 run inside the seat's one open dispatch, and the dispatch machine sees one node. *Which setting
 each CLI reads is that CLI's, so MANUAL.md names them per CLI and this rule does not.*
 
+**R153.** Create **MUST** give every `opencode` member, whatever its role, a guard that fails a
+shell call whose command holds a NUL byte before the call starts a process. The agent **MUST** read
+that failure as the call's result. The guard **MUST** be in place before the member's first turn,
+on a resumed create as on a fresh one. *OpenCode 2 leaves such a call running for good, and the
+seat then waits on a call that never returns.*
+
 **R96.** Profiles **MUST** contain secret references, never secret values. A reference is an
 environment variable name, a provider, or a login family.
 

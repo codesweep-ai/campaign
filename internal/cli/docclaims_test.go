@@ -958,6 +958,21 @@ func TestTheDocumentedGuestLinesAreTheOnesItPrints(t *testing.T) {
 	}
 }
 
+// MANUAL.md names the file create installs as the NUL guard, and SPEC.md R153
+// says every opencode member gets it, whatever its role.
+func TestTheDocumentedNulGuardIsTheFileCreateInstalls(t *testing.T) {
+	root, err := covmap.FindRepoRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(docWords(t, root, "MANUAL.md"), "Every OpenCode member also gets a NUL guard, the plugin `~/"+opencodeNulGuardPlugin+"`") {
+		t.Errorf("MANUAL.md no longer names ~/%s as the guard every OpenCode member gets", opencodeNulGuardPlugin)
+	}
+	if !strings.Contains(docWords(t, root, "SPEC.md"), "Create **MUST** give every `opencode` member, whatever its role, a guard") {
+		t.Error("SPEC.md R153 no longer says every opencode member gets the guard")
+	}
+}
+
 // MANUAL.md quotes the refusal `validate` prints for providerHeaderTimeoutSeconds
 // on a seat that is not opencode, and SPEC.md R147 says it is refused there.
 func TestTheDocumentedHeaderTimeoutRefusalIsWhatValidatePrints(t *testing.T) {

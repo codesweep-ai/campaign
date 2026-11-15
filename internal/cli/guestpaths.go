@@ -53,10 +53,12 @@ const (
 	guestRolesDir = guestInputDir + "/roles"
 
 	// The profile cs-sandbox's cs-opencode wrapper keeps. cs-campaign reads its
-	// session store, and installs the orchestrator's shell-bound plugin into
-	// the plugins directory opencode loads from it.
+	// session store, and installs its plugins into the plugins directory
+	// opencode loads from it: the NUL guard in every member, the shell bound
+	// in the orchestrator.
 	opencodeDB               = ".cs-opencode/opencode.db"
 	opencodeShellBoundPlugin = ".cs-opencode/plugins/cs-shell-bound.ts"
+	opencodeNulGuardPlugin   = ".cs-opencode/plugins/cs-nul-guard.ts"
 )
 
 // reservedInputNames are basenames the product owns inside a member's input

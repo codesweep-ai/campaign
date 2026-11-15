@@ -636,6 +636,9 @@ func (a *app) provisionMember(ctx context.Context, campaign *model.Campaign, mem
 		return a.failCreate(campaign, fmt.Errorf("apply %s fanout config: %w", member.Name, err))
 	}
 	member.Fanout, member.FanoutMax = member.Profile.Fanout, member.Profile.FanoutMax
+	if err := a.sandbox.installNulGuard(ctx, *member); err != nil {
+		return a.failCreate(campaign, fmt.Errorf("install %s NUL guard: %w", member.Name, err))
+	}
 	if err := a.sandbox.configureChannels(ctx, campaign, *member, inputs); err != nil {
 		return a.failCreate(campaign, fmt.Errorf("configure %s channels: %w", member.Name, err))
 	}
