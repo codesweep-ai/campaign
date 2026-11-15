@@ -3,15 +3,17 @@
   "title": "An OpenCode seat waits for good on a shell command that holds a NUL byte",
   "type": "defect",
   "severity": "high",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "a session reorganising the downstream dev workflow, from a hello-api campaign whose lap 0 stopped on 2026-11-15; the host approved this guard on 2026-11-15: \"yes - this sounds good\"",
   "opened": "2026-11-15",
-  "resolved": null,
+  "resolved": "2026-11-15",
   "stint": "nul-guard, 2026-11-15",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "5d40ec4"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`make check` passed with exit 0 at 5d40ec4, every gate through surface. `TestEveryOpenCodeMemberGetsTheNulGuard` covers each CLI in both roles, on a new machine and on one already running. It failed under four mutations: no install call, the orchestrator only, every CLI, and the shell-bound file in its place. The embedded plugin was then replayed against OpenCode 2.2.5 with a local fake model, beside cs-shell-bound.ts and under the names create installs. The NUL command ended in 4.2 s with the tool part at `error` and the guard's message, and a clean command still completed. Without the guard, the same command stayed `running` until the 120 s kill. NUL bytes in the paths and patterns of grep, glob, read, write and edit all ended in about 4 s with no guard. Not run: the smoke tier, because live campaigns hold this host."
   },
   "resolution": null,
   "details": "OpenCode 2.2.5, the version the sandbox image installs, never finishes a shell call whose command holds a real NUL byte. Spawning the command throws at once, because a process cannot take such an argument. OpenCode 2 reads that throw as a fault in itself rather than as the tool's error, so the call stays `running`. The seat then circles until something outside ends the turn, which stopped a hello-api campaign's lap 0 after about 30 minutes. OpenCode 1.18.32 returns a clean error for the same call. To reproduce, have a model send the shell tool a command with a literal `\\u0000` in it. Wanted: every OpenCode member gets a plugin that fails such a call before it spawns, so the agent reads an error and can write the byte another way.",
