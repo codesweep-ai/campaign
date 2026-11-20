@@ -48,8 +48,19 @@ func Execute() error {
 	return a.root().Execute()
 }
 
+// rootLong and profileKeysLine point an operator who holds only the binary at
+// the two documents it carries. Help lists commands, and nothing else would
+// tell them that every profile key is described in the manual.
+const rootLong = `Run a team of AI coding agents in Firecracker microVMs on one mission.
+
+Start with ` + "`cs-campaign manual`" + `: it describes every command, and every profile key
+under Configuration. ` + "`cs-campaign playbook`" + ` says how to design, brief and run a
+campaign. ` + "`cs-campaign init`" + ` writes a starter profile.`
+
+const profileKeysLine = "Every profile key is listed in `cs-campaign manual`, under Configuration."
+
 func (a *app) root() *cobra.Command {
-	root := &cobra.Command{Use: "cs-campaign", Short: "Run a team of AI coding agents in Firecracker microVMs on one mission", SilenceUsage: true, SilenceErrors: true}
+	root := &cobra.Command{Use: "cs-campaign", Short: "Run a team of AI coding agents in Firecracker microVMs on one mission", Long: rootLong, SilenceUsage: true, SilenceErrors: true}
 	root.PersistentFlags().BoolVar(&a.json, "json", false, "print machine-readable JSON")
 	root.AddCommand(
 		// Planning and lifecycle.

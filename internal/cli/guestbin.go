@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // guestBinaryBytes is the embedded cs-campaign-member binary, produced by
@@ -28,7 +29,21 @@ func guestBinary() ([]byte, error) {
 		return os.ReadFile(path)
 	}
 	if len(guestBinaryBytes) < guestBinaryPlaceholderMax {
-		return nil, fmt.Errorf("the embedded guest binary is the committed placeholder (%d bytes) — build with `make build`, which compiles cmd/cs-campaign-member first", len(guestBinaryBytes))
+		return nil, errNoGuestBinary(buildVersion())
 	}
 	return guestBinaryBytes, nil
+}
+
+// errNoGuestBinary says what to do about a cs-campaign that carries no member
+// binary, which is every one installed with `go install`. It names the
+// install and the variable, because the operator holds the binary and nothing
+// else: a build step from this repository would mean nothing to them.
+func errNoGuestBinary(v string) error {
+	at := v
+	if !strings.HasPrefix(v, "v") {
+		at = "<the version of this cs-campaign>"
+	}
+	return fmt.Errorf("this cs-campaign carries no member binary, so create cannot install one; "+
+		"install it at the same version with `go install github.com/codesweep-ai/campaign/cmd/cs-campaign-member@%s` "+
+		"and name it with CS_CAMPAIGN_GUEST_BIN=<path to it>", at)
 }

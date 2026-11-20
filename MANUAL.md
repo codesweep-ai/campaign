@@ -54,8 +54,7 @@ governs the whole protocol:
 Nothing about a dispatch is stored on the host. What a **node** is doing is computed on demand from
 that node's own machine. The computation reads three things: the messages in its input channel, the
 presence of the reply file, and whether its turn driver is running. Ask `observe` at any time;
-nothing has to be caught as it happens. `PROTOCOL.md` is the authority on the machine, and
-`SPEC.md` is the contract this implementation meets.
+nothing has to be caught as it happens.
 
 Read the output, not the exit code. Commands that collect evidence leave markers where collection
 failed rather than aborting, so a zero exit can still mean an incomplete archive.
@@ -823,7 +822,7 @@ into its trajectory documents, and the viewer reads only those. It takes the per
 with each step's working and idle time, and the event text that joins dispatches to steps. The
 viewer therefore holds no knowledge of any CLI's format.
 
-The tracer is installed from its own repository, never by this one's `make install`:
+The tracer is installed on its own:
 
 ```sh
 go install github.com/codesweep-ai/tracer/cmd/cs-tracer@latest
@@ -1051,8 +1050,8 @@ with `--agent-cli`/`--agents`. Membership must not depend on ambiguous flag merg
 
 ## Configuration
 
-A campaign is configured by its profile. The full schema is in `SPEC.md` §5.1; this is
-the operator's view.
+A campaign is configured by its profile, a YAML file. **Every profile key**, at the end of this
+section, lists each key the profile takes. The text before it explains them.
 
 ```yaml
 apiVersion: codesweep.ai/v1alpha1
@@ -1183,8 +1182,7 @@ for a member that boots sandboxes itself.
 ### A build store
 
 A campaign can hand its members a build store. That is a git repository of the builds each
-project's `make ci` records (codesweep-ai/dashboards SPEC.md, "The local build store"), and with it
-members pin one another's work before anything is pushed. Seed it from the host's store, give it
+project's `make ci` records, and with it members pin one another's work before anything is pushed. Seed it from the host's store, give it
 to each member that builds or pins under `repos:`, and name the member's clone with
 `CS_BUILD_STORE`. A member's home is the host user's, so the path, with your home in place of
 `<home>`, is the same on both sides:
@@ -1499,6 +1497,71 @@ is short and closed, and an unsupported path fails rather than being accepted.
 `plan` takes the same overrides, so the resolved campaign can be read before anything is allocated.
 Everything else a campaign declares lives in the profile alone.
 
+### Every profile key
+
+Every key a profile takes, by where it goes. A **seat** is `orchestrator`, or one entry under
+`agents`. A `policy` block goes under `defaults`, and a seat may hold its own with the three keys
+marked per seat. `validate` refuses a key that is not in this table and names the keys its level
+takes.
+
+| Key | Where | Values | What it does |
+|---|---|---|---|
+| `apiVersion` | profile | `codesweep.ai/v1alpha1` | Required. The profile format's version. |
+| `kind` | profile | `CampaignProfile` | Required. |
+| `defaults` | profile | a block | Settings for the whole campaign, and for every seat that does not set its own. |
+| `orchestrator` | profile | a seat | Required. The one seat the host talks to. |
+| `agents` | profile | seat name to a seat | The seats the orchestrator dispatches to. |
+| `engine` | defaults | `firecracker` (default) or `podman` | What a member runs on: a microVM or a container. |
+| `credentials` | defaults | `lend` (default) or `inherit` | The campaign's verb for every grant a seat spells plainly. See **Credentials**. |
+| `deadline` | defaults | a duration, such as `90m` or `6h` | The campaign's wall clock from create. It also sets the default `elapsedSeconds`. |
+| `resources` | defaults | a block | CPUs and memory for every seat that sets none. |
+| `env` | defaults | a list of `KEY=VALUE` or `KEY` | Variables in every member's sandbox. A seat's own list replaces it. |
+| `imageStores` | defaults | a list of store names | Shared image stores every member's podman reads. A seat's own list replaces it. |
+| `policy` | defaults | a block | The dispatch machine's numbers. See **The policy numbers**. |
+| `cli` | seat | `claude`, `codex` or `opencode` | Required. The coding agent CLI the seat runs. |
+| `model` | seat | the CLI's own model slug | Handed to the CLI unchanged. |
+| `effort` | seat | the CLI's own effort level | Handed to the CLI unchanged. An `opencode` seat needs `model` beside it. |
+| `providerHeaderTimeoutSeconds` | seat | seconds | `opencode` only. How long to wait for the provider's response to start. |
+| `fanout` | seat | `native` or `none` | Whether the seat splits its work across its CLI's own sub-agents. Unset leaves it to the model. |
+| `fanoutMax` | seat | a positive number | How many of those sub-agents run at once. |
+| `repos` | seat | a list | Required, at least one. The git repositories cloned into the member. |
+| `snapshots` | seat | a list | Frozen trees the member can read. |
+| `auth` | seat | a block | The credentials the seat is granted. See **Credentials**. |
+| `resources` | seat | a block | This seat's CPUs and memory. |
+| `env` | seat | a list of `KEY=VALUE` or `KEY` | Variables in this member's sandbox. A bare `KEY` inherits the host's value. |
+| `imageStores` | seat | a list of store names | Shared image stores this member's podman reads. |
+| `policy` | seat | a block | This seat's own `stallSeconds`, `handoffTokens` and `freshPerDispatch`. |
+| `continueAttempts` | policy | default 2 | Continues before escalating to a restart. |
+| `restarts` | policy | default 1 | Restarts before a node is unrecoverable. |
+| `elapsedSeconds` | policy | default: the deadline, else 86400 | Bound on recovering one dispatch. |
+| `blindProbes` | policy | default 10 | Failed probes before a machine is called gone. |
+| `pollSeconds` | policy | default 30 | How often the orchestrator's `wait` looks. |
+| `settlingSeconds` | policy | default 300 | Grace after a send before a driverless node counts as stopped. |
+| `providerWaitSeconds` | policy | default 3600 | How long a dispatch may sit behind provider refusals before the node is `node-stuck`. |
+| `stallSeconds` | policy, per seat | default 180, or 1800 for the orchestrator | The turn driver's idle threshold. |
+| `handoffTokens` | policy, per seat | a token count; off when unset | The context size at which a member hands off to a fresh session. See **Hand-offs**. |
+| `handoffs` | policy | default 10 when a seat has a line | Rapid hand-offs in a row before the node is `node-stuck`. |
+| `rapidHandoffSeconds` | policy | default 300 when a seat has a line | The window that makes a hand-off rapid. |
+| `freshPerDispatch` | policy, per seat | `true` or `false` (default) | Agents only. Each dispatch starts the agent in a fresh session. |
+| `spentRetrySeconds` | policy | default 1800 | How long a member whose token budget is spent waits before its next try. |
+| `cpus` | resources | a positive number | CPUs. Unset leaves the engine's own default. |
+| `memoryMiB` | resources | `128` or more | Memory in MiB. Unset leaves the engine's own default. |
+| `path` | repos[] | a path | Required. The host repository. A relative path is read beside the profile. |
+| `ref` | repos[] | a branch or tag | What is checked out in the member. |
+| `name` | repos[] | a name | The clone's directory in the member's home. Default: the path's last element. |
+| `withhold` | repos[] | a list of paths or globs | Paths the member must never receive from this repository. |
+| `path` | snapshots[] | a path | Required. The host directory. |
+| `name` | snapshots[] | a name | What the snapshot is called in the member. Default: the path's last element. |
+| `withhold` | snapshots[] | a list of paths or globs | Paths the member must never receive from this snapshot. |
+| `agentLogin` | auth | `claude`, `codex` or `opencode` | The host login, under the campaign's verb. |
+| `lendAgentLogin` | auth | `claude` or `codex` | The host login, lent. |
+| `inheritAgentLogin` | auth | `claude`, `codex` or `opencode` | The host login, copied in. |
+| `apiKey` | auth | `anthropic`, `openai` or `fireworks` | A provider key from `~/.cs-keys`, under the campaign's verb. |
+| `lendApiKey` | auth | `anthropic`, `openai` or `fireworks` | A provider key, lent. |
+| `inheritApiKey` | auth | `anthropic`, `openai` or `fireworks` | A provider key, copied in. |
+| `apiKeyFromEnv` | auth | host environment variable names | A key from `create`'s environment, always copied. Refused on a seat that lends. |
+| `inheritApiKeyFromEnv` | auth | host environment variable names | The same grant, with the copy stated. |
+
 ## Files
 
 | Path | Written by | Contents |
@@ -1530,6 +1593,7 @@ Everything else a campaign declares lives in the profile alone.
 | `CS_CAMPAIGN_STATE_DIR` | `cs-campaign` | Where campaign state lives. Default `$XDG_CONFIG_HOME/cs-campaign/campaigns`. |
 | `CS_CAMPAIGN_GUEST_BIN` | `cs-campaign` | Install this guest binary instead of the embedded one. |
 | `CS_SANDBOX_BIN` | `cs-campaign` | The `cs-sandbox` executable to invoke. Default `cs-sandbox`. |
+| `CS_SANDBOX_IMAGE` | `cs-campaign` | The sandbox image `doctor` and `create` check the host against. Default: the image the pinned `cs-sandbox` names. |
 | `CS_SANDBOX_INSTANCES_DIR` | `cs-campaign` | Where `cs-sandbox` keeps instances, for the socket-path budget check. |
 | `CS_SANDBOX_HOME` | `cs-campaign` | Fallback root for the same check when the instances directory is unset. |
 | `CS_CAMPAIGN_POLL_SECONDS` | `cs-campaign`, `cs-campaign-member` | Overrides `policy.pollSeconds` for the wait loop alone. |
@@ -1639,9 +1703,11 @@ A member refused to be destroyed. The record is kept rather than orphaned. Re-ru
 The evidence says a different CLI did the work, or foreign-family state is present. Each finding
 names the member.
 
-**`the embedded guest binary is the committed placeholder`**
+**`this cs-campaign carries no member binary`**
 
-The host binary was built without compiling the guest binary first. Build with `make build`.
+A `cs-campaign` installed with `go install` does not carry the binary it installs into each member.
+Install `cs-campaign-member` at the same version, and name it with `CS_CAMPAIGN_GUEST_BIN`. The
+message prints the exact `go install` line.
 
 **`campaign <name> uses state version N, which predates sandbox groups`**
 

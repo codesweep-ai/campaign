@@ -78,6 +78,58 @@ const authHint = `
 # call, so signing in again on the host is all a stale one needs.
 `
 
+// optionalHint lists every optional key a profile takes, commented out, so an
+// operator who holds only the binary sees what can be set without having to
+// guess a key first. TestTheStarterProfileNamesEveryKey holds it to the
+// profile's structs, so a key added there cannot be left out of it.
+const optionalHint = `
+# Optional settings. Each one is off, or at its default, until you set it.
+# Every key, with what it does: cs-campaign manual, under Configuration,
+# Every profile key.
+#
+#   defaults:
+#     engine: firecracker              # or podman
+#     credentials: lend                # or inherit: the verb for every plain grant
+#     deadline: 6h                     # the campaign's wall clock from create
+#     resources: {cpus: 2, memoryMiB: 2048}
+#     env: [KEY=VALUE, KEY]            # in every member's sandbox; bare KEY inherits
+#     imageStores: [store-name]        # shared image stores a member's podman reads
+#     policy:                          # the dispatch machine's numbers
+#       continueAttempts: 2
+#       restarts: 1
+#       elapsedSeconds: 86400
+#       blindProbes: 10
+#       pollSeconds: 30
+#       settlingSeconds: 300
+#       providerWaitSeconds: 3600
+#       stallSeconds: 180
+#       handoffs: 10
+#       rapidHandoffSeconds: 300
+#       spentRetrySeconds: 1800
+#
+#   agents:
+#     agent-01:
+#       model: <the CLI's model slug>  # handed to the seat's CLI unchanged
+#       effort: high
+#       providerHeaderTimeoutSeconds: 60   # opencode only
+#       fanout: native                 # or none: split work across the CLI's sub-agents
+#       fanoutMax: 4                   # at most this many sub-agents at once
+#       repos: [{path: ../product, ref: main, name: product, withhold: [secrets]}]
+#       snapshots: [{path: ../reference, name: reference, withhold: [private]}]
+#       resources: {cpus: 4, memoryMiB: 4096}
+#       env: [KEY=VALUE]
+#       imageStores: [store-name]
+#       policy:
+#         stallSeconds: 240
+#         handoffTokens: 150000        # hand off to a fresh session at this context size
+#         freshPerDispatch: true       # agents only: each dispatch in a fresh session
+#
+# The grants in their lend and inherit spellings, beside the plain ones above:
+# lendAgentLogin, lendApiKey, inheritAgentLogin, inheritApiKey,
+# apiKeyFromEnv, inheritApiKeyFromEnv. The top-level keys are apiVersion,
+# kind, defaults, orchestrator and agents.
+`
+
 type stubData struct {
 	Campaign string
 	Member   string
@@ -89,16 +141,20 @@ func (a *app) initCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init <campaign>",
 		Short: "Scaffold a campaign's profile, mission and role briefs",
-		Args:  cobra.ExactArgs(1),
+		Long: "Scaffold a campaign's profile, mission and role briefs.\n\n" +
+			"The profile lists every optional key, commented out. " + profileKeysLine,
+		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			name := args[0]
 			// A path typed here is relative to the shell, and a profile's
 			// paths are read beside the profile (SAC-094). Written down
 			// absolute, it means what was typed wherever --dir puts it.
-			if opts.repo != "" {
+			// A URL is left as typed, so that profileFromFlags refuses it by
+			// name instead of writing it down as a path under the shell.
+			if opts.repo != "" && !looksLikeURL(opts.repo) {
 				opts.repo = expandPath(opts.repo)
 			}
-			if opts.snapshot != "" {
+			if opts.snapshot != "" && !looksLikeURL(opts.snapshot) {
 				opts.snapshot = expandPath(opts.snapshot)
 			}
 			// The fleet is parsed by the SAME function create uses, so a
@@ -116,11 +172,11 @@ func (a *app) initCmd() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	flags.StringVar(&dir, "dir", "", "directory to scaffold into (default: the campaign name)")
-	flags.StringVar(&opts.orchestrator, "orchestrator", "", "orchestrator CLI")
+	flags.StringVar(&opts.orchestrator, "orchestrator", "", "orchestrator CLI: claude, codex or opencode (required)")
 	flags.StringSliceVar(&opts.agents, "agent", nil, "agent name=cli (repeatable)")
-	flags.StringVar(&opts.agentCLI, "agent-cli", "", "CLI for homogeneous agents")
+	flags.StringVar(&opts.agentCLI, "agent-cli", "", "CLI for homogeneous agents: claude, codex or opencode")
 	flags.IntVar(&opts.count, "agents", 0, "number of homogeneous agents")
-	flags.StringVar(&opts.repo, "repo", "", "repository cloned into every member")
+	flags.StringVar(&opts.repo, "repo", "", "local git repository cloned into every member (a path, not a URL)")
 	flags.StringVar(&opts.snapshot, "snapshot", "", "frozen tree every member can read")
 	return cmd
 }
@@ -145,7 +201,7 @@ func scaffoldCampaign(out io.Writer, dir, name string, profile model.Profile) er
 	// authenticate, and that failure looks exactly like a broken fleet — so the
 	// file says where they go rather than leaving the operator to find out at the
 	// first turn. Comments survive the parser untouched.
-	profileText := render(profileHeader, stubData{Campaign: name}) + string(encoded) + authHint
+	profileText := render(profileHeader, stubData{Campaign: name}) + string(encoded) + authHint + optionalHint
 
 	files := map[string]string{filepath.Join(dir, "profile.yaml"): profileText}
 
@@ -185,6 +241,7 @@ func scaffoldCampaign(out io.Writer, dir, name string, profile model.Profile) er
 		fmt.Fprintf(out, "  %s\n", path)
 	}
 	fmt.Fprintf(out, "\nWhat goes in each one:\n  cs-campaign playbook\n\n"+
+		"Every profile key, and every command:\n  cs-campaign manual\n\n"+
 		"Then check it, and read it whole before create:\n  cs-campaign validate %s\n  cs-campaign packet %s --profile %s\n",
 		profilePath, name, profilePath)
 	return nil

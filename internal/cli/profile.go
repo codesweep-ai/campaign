@@ -69,7 +69,10 @@ func decodeProfile(path string) (model.Profile, string, error) {
 	d := yaml.NewDecoder(strings.NewReader(string(b)))
 	d.KnownFields(true)
 	if err = d.Decode(&p); err != nil {
-		return p, "", fmt.Errorf("decode profile: %w", err)
+		return p, "", fmt.Errorf("decode profile: %w", explainProfileError(err))
+	}
+	if err := refuseURLPaths(p); err != nil {
+		return p, "", err
 	}
 	besideProfile(&p, filepath.Dir(path))
 	h := sha256.Sum256(b)
@@ -360,7 +363,51 @@ func validCLI(s string) error {
 	if model.ValidAdapterCLI(s) {
 		return nil
 	}
-	return fmt.Errorf("unsupported CLI %q", s)
+	if s == "" {
+		return errors.New("no CLI named; a seat runs claude, codex or opencode")
+	}
+	return fmt.Errorf("unsupported CLI %q; a seat runs claude, codex or opencode", s)
+}
+
+// looksLikeURL is a repository or snapshot path that is a remote address. A
+// path is read on the host and a missing one is created empty, so a URL taken
+// as a path would plan an empty repository named after it.
+func looksLikeURL(s string) bool {
+	return strings.Contains(s, "://") || scpLikeAddress.MatchString(s)
+}
+
+var scpLikeAddress = regexp.MustCompile(`^[\w.-]+@[\w.-]+:`)
+
+// refuseURLPaths refuses a profile whose repository or snapshot path is a
+// remote address, before besideProfile would join it under the profile's
+// directory and planning would create an empty repository by that name.
+func refuseURLPaths(p model.Profile) error {
+	seats := map[string]model.MemberProfile{"orchestrator": p.Orchestrator}
+	for name, m := range p.Agents {
+		seats["agent "+name] = m
+	}
+	for _, seat := range sortedStrings(keysOfSeats(seats)) {
+		m := seats[seat]
+		for i, r := range m.Repos {
+			if looksLikeURL(r.Path) {
+				return fmt.Errorf("%s: repos[%d].path %q is a URL; a repository path is a local git repository, so clone it first and name the clone", seat, i, r.Path)
+			}
+		}
+		for i, sn := range m.Snapshots {
+			if looksLikeURL(sn.Path) {
+				return fmt.Errorf("%s: snapshots[%d].path %q is a URL; a snapshot is a local directory", seat, i, sn.Path)
+			}
+		}
+	}
+	return nil
+}
+
+func keysOfSeats(m map[string]model.MemberProfile) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
 }
 func expandPath(s string) string {
 	if strings.HasPrefix(s, "~/") {
@@ -724,6 +771,14 @@ func initializeRepos(p *model.Profile) error {
 // --snapshot are fleet-wide: one path each, handed to every member, because a
 // campaign that wants a tree per member wants a profile.
 func profileFromFlags(orchestrator string, agents []string, agentCLI string, count int, repo, snapshot string) (model.Profile, error) {
+	if orchestrator == "" {
+		return model.Profile{}, errors.New("--orchestrator is required: the orchestrator's CLI, claude, codex or opencode")
+	}
+	for flag, path := range map[string]string{"--repo": repo, "--snapshot": snapshot} {
+		if looksLikeURL(path) {
+			return model.Profile{}, fmt.Errorf("%s takes a local path, and %q is a URL; clone it first and pass the clone", flag, path)
+		}
+	}
 	// One writer for both trees, so a seat added later cannot be given the
 	// clone and miss the frozen copy.
 	share := func(m *model.MemberProfile) {

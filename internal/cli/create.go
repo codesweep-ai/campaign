@@ -285,7 +285,7 @@ func (a *app) createCmd(plan bool) *cobra.Command {
 	if plan {
 		use, short = "plan <name>", "Print the resolved creation plan"
 	}
-	cmd := &cobra.Command{Use: use, Short: short, Args: cobra.ExactArgs(1), RunE: func(c *cobra.Command, args []string) error {
+	cmd := &cobra.Command{Use: use, Short: short, Long: short + ".\n\n" + profileKeysLine, Args: cobra.ExactArgs(1), RunE: func(c *cobra.Command, args []string) error {
 		planning := plan || opts.dry
 		campaign, profile, err := a.planCampaign(*opts, args[0], planning)
 		if err != nil {
@@ -697,7 +697,7 @@ func (a *app) resolveProfile(opts createOpts) (model.Profile, string, error) {
 
 func (a *app) validateCmd() *cobra.Command {
 	var profilePath string
-	cmd := &cobra.Command{Use: "validate [profile]", Short: "Validate a campaign profile without changing state", Args: cobra.MaximumNArgs(1), RunE: func(c *cobra.Command, args []string) error {
+	cmd := &cobra.Command{Use: "validate [profile]", Short: "Validate a campaign profile without changing state", Long: "Validate a campaign profile without changing state.\n\n" + profileKeysLine, Args: cobra.MaximumNArgs(1), RunE: func(c *cobra.Command, args []string) error {
 		path := profilePath
 		if len(args) == 1 {
 			if path != "" {

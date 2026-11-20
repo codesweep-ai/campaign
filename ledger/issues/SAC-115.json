@@ -1,0 +1,28 @@
+{
+  "id": "SAC-115",
+  "title": "An agent given only the binary cannot find the profile keys",
+  "type": "improvement",
+  "severity": "med",
+  "status": "in-progress",
+  "foundBy": "session agent, 2026-11-20, from an audit the host asked for: \"if we just gave an agent the binary for cs-campaign, would they discover it\"",
+  "opened": "2026-11-20",
+  "resolved": null,
+  "stint": "cc/binary-discoverability, 2026-11-20",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "An audit read everything the binary prints: each command's help, the manual, the playbook, the orientation, the starter profile `init` writes, and the output of `validate`, `plan`, `doctor` and `packet`. All 31 profile keys appear only in the manual, and nothing in the help says where. The manual sends a reader to repository documents the binary does not carry for the full schema, and names repository make targets. An unknown key fails `validate` with a Go type name and no list of valid keys. The starter profile names no optional key. So an agent exploring with `--help`, `init` and `validate` would not learn that keys such as `fanout`, `handoffTokens` or `freshPerDispatch` exist. Also, `init` with no flags says only `unsupported CLI \"\"`, and `CS_SANDBOX_IMAGE` is missing from the manual's environment table.",
+  "notes": [
+    {
+      "date": "2026-11-20",
+      "text": "`make ci` passed with exit 0 on this change, the smoke tier's four scenarios included. Six new tests in internal/cli/discover_test.go pass, and each failed when its piece was removed by hand. They hold the manual's key table to the profile structs and keep repository files out of every shipped text. They also check the unknown-key message, the starter profile, init's flag errors and the no-member-binary message. A blind test then gave 48 fresh sandboxes one binary each and a goal that never named the setting, with OpenCode on glm-5p3-flash. That was 8 tasks, 3 runs each, on the binary before and after. All 48 found the setting and wrote a profile that validates. Over 24 runs each, the fixed binary's agents needed less. Manual reads fell from 57 to 31, `validate --help` reads from 24 to 8, and failed validations from 6 to 3."
+    }
+  ],
+  "links": [
+    "SAC-109",
+    "SAC-031"
+  ]
+}

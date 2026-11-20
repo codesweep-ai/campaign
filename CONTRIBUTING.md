@@ -248,7 +248,10 @@ code.
 
 A change to a **MUST** in `SPEC.md` changes the contract, so say so in the pull request. `MANUAL.md`
 and `PLAYBOOK.md` are compiled into `cs-campaign` and printed by `cs-campaign manual` and
-`cs-campaign playbook`, so editing either changes a shipped artifact.
+`cs-campaign playbook`, so editing either changes a shipped artifact. An operator may hold the binary
+and nothing else. So neither document names a file of this repository, and every profile key has a
+row in the manual's key table. `TestTheShippedTextNamesNoRepositoryFile` and
+`TestTheManualTableListsEveryProfileKey` hold them to that.
 
 ## Writing
 
