@@ -3,15 +3,17 @@
   "title": "An agent given only the binary cannot find the profile keys",
   "type": "improvement",
   "severity": "med",
-  "status": "in-progress",
+  "status": "closed",
   "foundBy": "session agent, 2026-11-20, from an audit the host asked for: \"if we just gave an agent the binary for cs-campaign, would they discover it\"",
   "opened": "2026-11-20",
-  "resolved": null,
+  "resolved": "2026-11-20",
   "stint": "cc/binary-discoverability, 2026-11-20",
   "evidence": {
-    "commits": [],
+    "commits": [
+      "111cc8c"
+    ],
     "integrated": [],
-    "verified": null
+    "verified": "`make ci` passed with exit 0 on the change's code, the smoke tier's four scenarios included, and `make check` passed at 111cc8c. The blind test in the 2026-11-20 note found every setting on both binaries, with about half the digging on the fixed one."
   },
   "resolution": null,
   "details": "An audit read everything the binary prints: each command's help, the manual, the playbook, the orientation, the starter profile `init` writes, and the output of `validate`, `plan`, `doctor` and `packet`. All 31 profile keys appear only in the manual, and nothing in the help says where. The manual sends a reader to repository documents the binary does not carry for the full schema, and names repository make targets. An unknown key fails `validate` with a Go type name and no list of valid keys. The starter profile names no optional key. So an agent exploring with `--help`, `init` and `validate` would not learn that keys such as `fanout`, `handoffTokens` or `freshPerDispatch` exist. Also, `init` with no flags says only `unsupported CLI \"\"`, and `CS_SANDBOX_IMAGE` is missing from the manual's environment table.",
